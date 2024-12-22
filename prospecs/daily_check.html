@@ -1,0 +1,110 @@
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+        content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title>프로스펙스 1월 출석 체크</title>
+    <script type="text/javascript" src="./js/jquery.lib.js"></script>
+    <link rel="stylesheet" type="text/css" href="./css/fonts.css">
+    <link rel="stylesheet" type="text/css" href="./css/reset.css">
+    <link rel="stylesheet" type="text/css" href="./css/style.css">
+    <link rel="stylesheet" type="text/css" href="./css/daily_check.css">
+</head>
+
+<body>
+    <main class="daily-chk-page">
+        <div class="inner-container">
+            <div class="title-area">
+                <h1>1월 <br />출석체크</h1>
+                <p>2025.01.01~01.31</p>
+                <i></i>
+            </div>
+            <div class="status-card">
+                <ul>
+                    <li>
+                        <span>나의 출석일수</span>
+                        <span>0<span class="text-gray">/31</span></span>
+                    </li>
+                    <li>
+                        <span>내가 받은 포인트</span>
+                        <span>5P</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="check-card">
+                <ul class="day-list">
+                    <li class="checked">5P</li>
+                    <li class="checked">10P</li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                    <li></li>
+                </ul>
+                <button class="chk-btn">출석체크하기</button>
+                <!--button class="chk-btn" disabled>출석체크완료</!--button-->
+            </div>
+            <div class="coupon-card">
+                <p class="title">31일 동안 모두 출석하면 <br /><span class="highlight">CU상품권 3천원</span>을 드려요</p>
+                <img src="./img/daily_check_naver.png" alt="">
+                <p class="desc">경품은 광고 수신 동의자에게만 발송됩니다.</p>
+            </div>
+            <div class="caution-area closed">
+                <p class="title">유의사항</p>
+                <ul>
+                    <li>출석체크 완료 시 지급 드리는 포인트의 유효기간은 2025년 2월 28일까지이며 미사용 시 소멸됩니다.</li>
+                    <li>경품 당첨자 추첨은 2025년 2월 10일(월)에 공지사항을 통하여 발표하며, 고객님의 회원정보에 등록된 휴대폰 번호로 문자 기프티콘을 발송 드립니다.</li>
+                    <li>마케팅 활용 및 광고 수신 미동의 시 경품이 발송되지 않으며, 재발송도 불가합니다.</li>
+                    <li>잘못된 연락처로 인한 미수령 시 재발송 드리지 않습니다.</li>
+                    <li>본 이벤트의 당첨 경품은 당사 사정에 의해 유사 가격대의 타 상품으로 대체될 수 있습니다.</li>
+                    <li>본 이벤트는 당사 사정에 의해 이벤트의 내용이나 혜택이 변경되거나 혹은 조기 종료될 수 있습니다.</li>
+                    <li>이벤트 관련 문의는 1:1문의 게시판을 통하여 문의 바랍니다.</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+    <script>
+        const PAGE = {
+            init: function () {
+
+                $('.caution-area .title').click(function () {
+                    if ($('.caution-area').hasClass('closed')) {
+                        $('.caution-area ul').slideDown();
+                    }
+                    else {
+                        $('.caution-area ul').slideUp();
+                    }
+                    $('.caution-area').toggleClass('closed');
+                })
+            },
+        }
+        PAGE.init();
+    </script>
+</body>
+
+</html>

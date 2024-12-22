@@ -1,0 +1,89 @@
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+        content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title>프로스펙스 1월 출석 체크</title>
+    <script type="text/javascript" src="./js/jquery.lib.js"></script>
+    <link rel="stylesheet" type="text/css" href="./css/fonts.css">
+    <link rel="stylesheet" type="text/css" href="./css/reset.css">
+    <link rel="stylesheet" type="text/css" href="./css/style.css">
+    <link rel="stylesheet" type="text/css" href="./css/join_us.css">
+</head>
+
+<body>
+    <main class="join-us-page">
+        <div class="inner-container">
+            <div class="title-area">
+                <h1>신규회원 <br />가입혜택</h1>
+                <p>2025.01.01~01.31</p>
+                <i></i>
+            </div>
+            <div class="card" style="margin-top: 4rem">
+                <p class="title">
+                    지금 가입하면<br />
+                    <span class="highlight">4만 9천원 쿠폰</span>을 받을 수 있어요!
+                </p>
+                <div class="img-area type2">
+                    <span class="txt1">신규회원 쿠폰팩</span>
+                    <span class="txt2">49,000원</span>
+                </div>
+                <p class="desc">발급일로부터 14일 이내 사용 가능</p>
+                <button class="btn">지금 가입하기</button>
+            </div>
+            <div class="card" style="margin-top: 2.5rem">
+                <p class="title">
+                    얼마 남지 않았어요!<br />
+                    선착순으로 <span class="highlight">1,000포인트</span> 더 드려요
+                </p>
+                <div class="img-area">
+                    <span class="txt1">선착순 포인트</span>
+                    <span class="txt2">1,000P</span>
+                </div>
+                <p class="desc">선착순 300명 증정</p>
+                <button class="btn">선착순 포인트 받기</button>
+                <!--button class="btn" disabled>선착순 마감되었습니다</!--button-->
+            </div>
+            <div class="card" style="margin-top: 2.5rem">
+                <p class="title">카카오 채널 친구 추가하고<br />5,000원 쿠폰 받으세요!</p>
+                <div class="img-area">
+                    <span class="txt1">카카오 채널 추가시</span>
+                    <span class="txt2">5,000원</span>
+                </div>
+                <button class="btn kakao-btn">채널 친구 추가하기</button>
+            </div>
+            <div class="caution-area closed">
+                <p class="title">유의사항</p>
+                <ul>
+                    <li>5종 패키지 쿠폰은 회원가입 시 ‘이메일 수신동의‘, ‘SMS 수신동의’를 모두 선택한 경우 지급됩니다.</li>
+                    <li>5종 패키지 쿠폰은 발급일로부터 14일 이내에만 사용이 가능하며 재발급이 불가합니다.</li>
+                    <li>정책에 따라 일부 상품은 쿠폰 사용이 불가할 수 있습니다.</li>
+                    <li>1,000P 증정 이벤트는 선착순 300명 한정으로 진행하는 이벤트로, 선착순 300명 초과 시 자동으로 종료됩니다.</li>
+                    <li>1,000P 증정 이벤트의 포인트는 가입 즉시 발급 드리며, 유효기간은 발급일로부터 +30일 입니다.</li>
+                    <li>본 이벤트는 당사 사정에 의해 이벤트의 내용이나 혜택이 변경되거나 혹은 조기 종료될 수 있습니다.</li>
+                    <li>이벤트 관련 문의는 1:1문의 게시판을 통하여 문의 바랍니다.</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+    <script>
+        const PAGE = {
+            init: function () {
+
+                $('.caution-area .title').click(function () {
+                    if ($('.caution-area').hasClass('closed')) {
+                        $('.caution-area ul').slideDown();
+                    }
+                    else {
+                        $('.caution-area ul').slideUp();
+                    }
+                    $('.caution-area').toggleClass('closed');
+                })
+            },
+        }
+        PAGE.init();
+    </script>
+</body>
+
+</html>

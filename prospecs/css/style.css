@@ -1,0 +1,70 @@
+@charset "UTF-8";
+
+html {
+  font-family: "Pretendard", "GeneralSans", sans-serif;
+  overflow-x: hidden;
+
+  --color-black: #222222;
+  --color-gray-100: #707072;
+  --color-gray-150: #999999;
+  --color-gray-200: #bababa;
+  --color-gray-700: #eeeeee;
+  --color-gray-900: #f6f6f6;
+}
+
+button,
+a,
+input,
+textarea,
+select,
+div {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-focus-ring-color: transparent;
+  outline: none !important;
+}
+
+/*텍스트 컬러*/
+.text-black {
+  color: var(--color-black); /* black */
+}
+
+.text-gray-100 {
+  color: var(--color-gray-100); /* battleship-grey */
+}
+
+.text-gray-150 {
+  color: var(--color-gray-150); /* warm-grey */
+}
+
+.text-gray-200 {
+  color: var(--color-gray-200); /* pinksh-gray */
+}
+
+/*폰트사이즈*/
+.fs-12 {
+  font-size: 0.75rem !important;
+}
+
+.fs-13 {
+  font-size: 0.8125rem !important;
+}
+
+.fs-14 {
+  font-size: 0.875rem !important;
+}
+
+.fs-15 {
+  font-size: 0.9375rem !important;
+}
+
+.fs-16 {
+  font-size: 1rem !important;
+}
+
+.fs-17 {
+  font-size: 1.0625rem !important;
+}
+
+.fs-18 {
+  font-size: 1.125rem !important;
+}

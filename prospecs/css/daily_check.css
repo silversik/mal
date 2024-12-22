@@ -1,0 +1,340 @@
+@charset "UTF-8";
+.daily-chk-page {
+  background-color: #f5f5f5;
+}
+.daily-chk-page .inner-container {
+  margin: 0 auto;
+  max-width: 480px;
+  padding: 5rem 0.9375rem;
+  box-sizing: border-box;
+}
+.daily-chk-page .title-area {
+  position: relative;
+}
+.daily-chk-page .title-area h1 {
+  color: #1d1d1d;
+  font-size: 3.125rem;
+  font-weight: 700;
+  line-height: 150%;
+  letter-spacing: 0.03125;
+}
+.daily-chk-page .title-area p {
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: #555;
+  font-size: 1.1875rem;
+  font-weight: 300;
+  line-height: 150%;
+}
+.daily-chk-page .title-area i {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 7.9375rem;
+  height: 7.9375rem;
+  background: url(../img/daily_check_icon@2x.png) center/cover no-repeat;
+}
+.daily-chk-page .status-card {
+  margin-top: 4rem;
+  background-color: #1e1e1e;
+  padding: 2rem 1rem;
+}
+.daily-chk-page .status-card ul {
+  display: flex;
+  flex-flow: column;
+  gap: 2rem;
+}
+.daily-chk-page .status-card ul li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.daily-chk-page .status-card ul li > span {
+  font-size: 1.3125rem;
+  letter-spacing: 0.013125;
+  color: #f3f3f3;
+}
+.daily-chk-page .status-card ul li > span .text-gray {
+  color: #757575;
+}
+.daily-chk-page .status-card ul li > span:last-of-type {
+  font-weight: 600;
+}
+.daily-chk-page .check-card {
+  padding: 2rem 1rem;
+  margin-top: 2.5rem;
+  background-color: white;
+  background-color: white;
+}
+.daily-chk-page .check-card ul.day-list {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1.25rem 0.71875rem;
+}
+.daily-chk-page .check-card ul.day-list li {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-grow: 1;
+  border-radius: 50%;
+  border: 1px dashed #b3b3b3;
+  background-color: #f3f3f3;
+  cursor: pointer;
+}
+.daily-chk-page .check-card ul.day-list li::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: block;
+  font-size: 1.0625rem;
+  font-weight: 400;
+  color: #b3b3b3;
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(1)::before {
+  content: "1";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(2)::before {
+  content: "2";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(3)::before {
+  content: "3";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(4)::before {
+  content: "4";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(5)::before {
+  content: "5";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(6)::before {
+  content: "6";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(7)::before {
+  content: "7";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(8)::before {
+  content: "8";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(9)::before {
+  content: "9";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(10)::before {
+  content: "10";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(11)::before {
+  content: "11";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(12)::before {
+  content: "12";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(13)::before {
+  content: "13";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(14)::before {
+  content: "14";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(15)::before {
+  content: "15";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(16)::before {
+  content: "16";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(17)::before {
+  content: "17";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(18)::before {
+  content: "18";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(19)::before {
+  content: "19";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(20)::before {
+  content: "20";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(21)::before {
+  content: "21";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(22)::before {
+  content: "22";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(23)::before {
+  content: "23";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(24)::before {
+  content: "24";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(25)::before {
+  content: "25";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(26)::before {
+  content: "26";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(27)::before {
+  content: "27";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(28)::before {
+  content: "28";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(29)::before {
+  content: "29";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(30)::before {
+  content: "30";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(31)::before {
+  content: "31";
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(5n):not(:nth-of-type(5)) {
+  background: url(../img/daily_cehck_logo.svg) center/cover no-repeat;
+  background-size: 55.35%;
+  background-color: #f3f3f3;
+}
+.daily-chk-page .check-card ul.day-list li:nth-of-type(5n):not(:nth-of-type(5))::before {
+  display: none;
+}
+.daily-chk-page .check-card ul.day-list li.checked {
+  background-image: none !important;
+  background-color: #1e1e1e !important;
+  border: 2px dashed #1e1e1e;
+  outline: 2px solid white; /* 내부에 추가 테두리 */
+  outline-offset: -4px;
+  color: #f3f3f3;
+  font-size: 1.0625rem;
+  font-weight: 300;
+}
+.daily-chk-page .check-card ul.day-list li.checked::before {
+  display: none;
+}
+.daily-chk-page .check-card .chk-btn {
+  margin-top: 2rem;
+  width: 100%;
+  height: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1e1e1e;
+  color: #f3f3f3;
+  font-size: 1.1875rem;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0.011875rem;
+}
+.daily-chk-page .check-card .chk-btn:disabled {
+  background-color: #cdcdcd;
+  cursor: not-allowed;
+}
+.daily-chk-page .coupon-card {
+  margin-top: 2.5rem;
+  padding: 2rem 1rem;
+  background-color: white;
+}
+.daily-chk-page .coupon-card .title {
+  color: #1d1d1d;
+  font-size: 1.3125rem;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 150%;
+  letter-spacing: 0.21px;
+}
+.daily-chk-page .coupon-card .title .highlight {
+  color: #6b34dd;
+}
+.daily-chk-page .coupon-card img {
+  margin-top: 1.5rem;
+  width: 100%;
+}
+.daily-chk-page .coupon-card .img-area {
+  position: relative;
+  margin-top: 1.5rem;
+  height: 12.6875rem;
+  background-color: #6b34dd;
+}
+.daily-chk-page .coupon-card .img-area .img1 {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.25rem;
+  width: 3.625rem;
+}
+.daily-chk-page .coupon-card .img-area .img2 {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8.375rem;
+  transform: translate(-50%, -50%);
+}
+.daily-chk-page .coupon-card .img-area .txt1 {
+  position: absolute;
+  bottom: 1.25rem;
+  left: 1.25rem;
+  color: #f3f3f3;
+  font-size: 0.9375rem;
+  font-weight: 300;
+  line-height: 150%;
+  letter-spacing: 0.009375rem;
+}
+.daily-chk-page .coupon-card .img-area .txt2 {
+  position: absolute;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  color: #f3f3f3;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 150%;
+  letter-spacing: 0.0225rem;
+}
+.daily-chk-page .coupon-card .desc {
+  margin-top: 0.9375rem;
+  color: #757575;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 300;
+  line-height: 150%;
+  letter-spacing: 0.01;
+}
+.daily-chk-page .caution-area {
+  margin-top: 4rem;
+}
+.daily-chk-page .caution-area .title {
+  color: #5a5a5a;
+  font-size: 0.9375rem;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 150%;
+  letter-spacing: 0.09375;
+  background: url(../img/i_caution_minus.svg) center right/1rem no-repeat;
+  cursor: pointer;
+}
+.daily-chk-page .caution-area ul {
+  margin-top: 1rem;
+}
+.daily-chk-page .caution-area ul li {
+  margin-top: 0.4rem;
+  color: #757575;
+  font-size: 1rem;
+  font-weight: 300;
+  line-height: 150%;
+  margin-left: 1rem;
+  text-indent: -0.5rem;
+  word-break: auto-phrase;
+}
+.daily-chk-page .caution-area ul li::before {
+  display: inline-block;
+  content: "·";
+  font-size: 1rem;
+  font-weight: 300;
+  line-height: 150%;
+  margin-right: 0.5rem;
+}
+.daily-chk-page .caution-area ul li:first-of-type {
+  margin-top: 0;
+}
+.daily-chk-page .caution-area.closed ul {
+  display: none;
+}
+.daily-chk-page .caution-area.closed .title {
+  background: url(../img/i_caution_plus.svg) center right/1rem no-repeat;
+}/*# sourceMappingURL=daily_check.css.map */

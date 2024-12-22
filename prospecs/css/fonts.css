@@ -1,0 +1,127 @@
+@charset "UTF-8";
+
+@font-face {
+  font-family: "Pretendard-light";
+  src: url("https://nw-nmall-prd-img.s3.ap-northeast-2.amazonaws.com/front/ux/css/font/Pretendard-Light.otf")
+    format("opentype");
+  font-style: normal;
+}
+@font-face {
+  font-family: "Pretendard-Regular";
+  src: url("https://nw-nmall-prd-img.s3.ap-northeast-2.amazonaws.com/front/ux/css/font/Pretendard-Regular.otf")
+    format("opentype");
+  font-style: normal;
+}
+@font-face {
+  font-family: "Pretendard-Medium";
+  src: url("https://nw-nmall-prd-img.s3.ap-northeast-2.amazonaws.com/front/ux/css/font/Pretendard-Medium.otf")
+    format("opentype");
+  font-style: normal;
+}
+@font-face {
+  font-family: "Pretendard-Semibold";
+  src: url("https://nw-nmall-prd-img.s3.ap-northeast-2.amazonaws.com/front/ux/css/font/Pretendard-SemiBold.otf")
+    format("opentype");
+  font-style: normal;
+}
+@font-face {
+  font-family: "Pretendard-bold";
+  src: url("https://nw-nmall-prd-img.s3.ap-northeast-2.amazonaws.com/front/ux/css/font/Pretendard-Bold.otf")
+    format("opentype");
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("https://nw-nmall-prd-img.s3.ap-northeast-2.amazonaws.com/front/ux/css/font/Pretendard-Light.otf")
+    format("opentype");
+  font-style: normal;
+  font-weight: 300; /* Light */
+}
+@font-face {
+  font-family: "Pretendard";
+  src: url("https://nw-nmall-prd-img.s3.ap-northeast-2.amazonaws.com/front/ux/css/font/Pretendard-Regular.otf")
+    format("opentype");
+  font-style: normal;
+  font-weight: 400; /* Regular */
+}
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("https://nw-nmall-prd-img.s3.ap-northeast-2.amazonaws.com/front/ux/css/font/Pretendard-Medium.otf")
+    format("opentype");
+  font-style: normal;
+  font-weight: 500; /* Medium */
+}
+
+@font-face {
+  font-family: "Pretendard";
+  src: url("https://nw-nmall-prd-img.s3.ap-northeast-2.amazonaws.com/front/ux/css/font/Pretendard-SemiBold.otf")
+    format("opentype");
+  font-style: normal;
+  font-weight: 600; /* SemiBold */
+}
+@font-face {
+  font-family: "Pretendard";
+  src: url("https://nw-nmall-prd-img.s3.ap-northeast-2.amazonaws.com/front/ux/css/font/Pretendard-Bold.otf")
+    format("opentype");
+  font-style: normal;
+  font-weight: 700; /* Bold */
+}
+
+@font-face {
+  font-family: "GeneralSans";
+  src: url("https://nw-nmall-prd-img.s3.ap-northeast-2.amazonaws.com/front/ux/css/font/GeneralSans-Medium.otf")
+    format("opentype");
+  font-style: normal;
+  unicode-range: U+0041-005A, /* 대문자 영어 (A-Z) */ U+0061-007A; /* 소문자 영어 (a-z) */
+}
+
+@font-face {
+  font-family: "GeneralSans";
+  src: url("https://nw-nmall-prd-img.s3.ap-northeast-2.amazonaws.com/front/ux/css/font/GeneralSans-Medium.otf")
+    format("opentype");
+  font-style: normal;
+  font-weight: 500; /* Medium */
+  unicode-range: U+0041-005A, /* 대문자 영어 (A-Z) */ U+0061-007A; /* 소문자 영어 (a-z) */
+}
+
+@font-face {
+  font-family: "GeneralSans";
+  src: url("https://nw-nmall-prd-img.s3.ap-northeast-2.amazonaws.com/front/ux/css/font/GeneralSans-Semibold.otf")
+    format("opentype");
+  font-style: normal;
+  font-weight: 600; /* SemiBold */
+  unicode-range: U+0041-005A, /* 대문자 영어 (A-Z) */ U+0061-007A; /* 소문자 영어 (a-z) */
+}
+
+@font-face {
+  font-family: "GeneralSans";
+  src: url("https://nw-nmall-prd-img.s3.ap-northeast-2.amazonaws.com/front/ux/css/font/GeneralSans-Bold.otf")
+    format("opentype");
+  font-style: normal;
+  font-weight: 700; /* Bold */
+  unicode-range: U+0041-005A, /* 대문자 영어 (A-Z) */ U+0061-007A; /* 소문자 영어 (a-z) */
+}
+
+@font-face {
+  font-family: "GeneralSans-semi";
+  src: url("https://nw-nmall-prd-img.s3.ap-northeast-2.amazonaws.com/front/ux/css/font/GeneralSans-Semibold.otf")
+    format("opentype");
+  font-style: normal;
+  unicode-range: U+0041-005A, /* 대문자 영어 (A-Z) */ U+0061-007A; /* 소문자 영어 (a-z) */
+}
+@font-face {
+  font-family: "GeneralSans-Regular";
+  src: url("https://nw-nmall-prd-img.s3.ap-northeast-2.amazonaws.com/front/ux/css/font/GeneralSans-Regular.otf")
+    format("opentype");
+  font-style: normal;
+  unicode-range: U+0041-005A, /* 대문자 영어 (A-Z) */ U+0061-007A; /* 소문자 영어 (a-z) */
+}
+@font-face {
+  font-family: "GeneralSans-bold";
+  src: url("https://nw-nmall-prd-img.s3.ap-northeast-2.amazonaws.com/front/ux/css/font/GeneralSans-Bold.otf")
+    format("opentype");
+  font-style: normal;
+  unicode-range: U+0041-005A, /* 대문자 영어 (A-Z) */ U+0061-007A; /* 소문자 영어 (a-z) */
+}
