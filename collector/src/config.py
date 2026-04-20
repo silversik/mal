@@ -23,6 +23,7 @@ class Settings:
     kra_rss_url: str
     youtube_api_key: str
     youtube_krbc_channel_id: str
+    discord_webhook_url: str
     log_level: str
 
     @classmethod
@@ -50,6 +51,8 @@ class Settings:
             # KRBC 한국마사회 경마방송 — UC...로 시작하는 채널 ID를 .env에 박아둘 것.
             # 미설정 시 채널 핸들 lookup이 추가 호출 1회를 소비하므로 운영시엔 항상 지정.
             youtube_krbc_channel_id=os.environ.get("YOUTUBE_KRBC_CHANNEL_ID", ""),
+            # 실패/stale 알림용 Discord 웹훅. 미설정 시 조용히 skip.
+            discord_webhook_url=os.environ.get("DISCORD_WEBHOOK_URL", ""),
             log_level=os.environ.get("LOG_LEVEL", "INFO"),
         )
 
