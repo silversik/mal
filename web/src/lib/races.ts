@@ -1,0 +1,153 @@
+import { query } from "./db";
+
+export type RaceInfo = {
+  id: number;
+  race_date: string;
+  meet: string;
+  race_no: number;
+  race_name: string | null;
+  distance: number | null;
+  grade: string | null;
+  track_type: string | null;
+  track_condition: string | null;
+  entry_count: number | null;
+  start_time: string | null;  // HH:MM 발주시각 (KRA API 수집 시 채워짐)
+};
+
+export type RaceEntry = {
+  rank: number | null;
+  horse_no: string;
+  horse_name: string;
+  jockey_name: string | null;
+  record_time: string | null;
+  weight: string | null;
+};
+
+const RACE_COLUMNS = `
+  id,
+  to_char(race_date, 'YYYY-MM-DD') AS race_date,
+  meet, race_no, race_name, distance, grade,
+  track_type, track_condition, entry_count, start_time
+`;
+
+export async function getRecentRaces(limit = 20, meet?: string): Promise<RaceInfo[]> {
+  if (meet) {
+    return query<RaceInfo>(
+      `SELECT ${RACE_COLUMNS}
+         FROM races
+        WHERE meet = $1
+        ORDER BY race_date DESC, race_no
+        LIMIT $2`,
+      [meet, limit],
+    );
+  }
+  return query<RaceInfo>(
+    `SELECT ${RACE_COLUMNS}
+       FROM races
+      ORDER BY race_date DESC, race_no
+      LIMIT $1`,
+    [limit],
+  );
+}
+
+export async function getUpcomingRaces(limit = 60, meet?: string): Promise<RaceInfo[]> {
+  if (meet) {
+    return query<RaceInfo>(
+      `SELECT ${RACE_COLUMNS}
+         FROM races
+        WHERE race_date >= CURRENT_DATE AND meet = $1
+        ORDER BY race_date ASC, race_no
+        LIMIT $2`,
+      [meet, limit],
+    );
+  }
+  return query<RaceInfo>(
+    `SELECT ${RACE_COLUMNS}
+       FROM races
+      WHERE race_date >= CURRENT_DATE
+      ORDER BY race_date ASC, meet, race_no
+      LIMIT $1`,
+    [limit],
+  );
+}
+
+export async function getFutureRaces(limit = 90, meet?: string): Promise<RaceInfo[]> {
+  if (meet) {
+    return query<RaceInfo>(
+      `SELECT ${RACE_COLUMNS}
+         FROM races
+        WHERE race_date > CURRENT_DATE AND meet = $1
+        ORDER BY race_date ASC, race_no
+        LIMIT $2`,
+      [meet, limit],
+    );
+  }
+  return query<RaceInfo>(
+    `SELECT ${RACE_COLUMNS}
+       FROM races
+      WHERE race_date > CURRENT_DATE
+      ORDER BY race_date ASC, meet, race_no
+      LIMIT $1`,
+    [limit],
+  );
+}
+
+export async function getRacesByDate(date: string, meet?: string): Promise<RaceInfo[]> {
+  if (meet) {
+    return query<RaceInfo>(
+      `SELECT ${RACE_COLUMNS}
+         FROM races
+        WHERE race_date = $1::date AND meet = $2
+        ORDER BY race_no`,
+      [date, meet],
+    );
+  }
+  return query<RaceInfo>(
+    `SELECT ${RACE_COLUMNS}
+       FROM races
+      WHERE race_date = $1::date
+      ORDER BY meet, race_no`,
+    [date],
+  );
+}
+
+/** currentDate 기준 ±days 범위 내에서 경기가 있는 날짜 목록 반환 */
+export async function getNearbyRaceDates(
+  fromDate: string,
+  days = 7,
+): Promise<string[]> {
+  const rows = await query<{ race_date: string }>(
+    `SELECT DISTINCT to_char(race_date, 'YYYY-MM-DD') AS race_date
+       FROM races
+      WHERE race_date BETWEEN $1::date - ($2 * INTERVAL '1 day') AND $1::date + ($2 * INTERVAL '1 day')
+      ORDER BY race_date`,
+    [fromDate, days],
+  );
+  return rows.map((r) => r.race_date);
+}
+
+export async function getAvailableMeets(): Promise<string[]> {
+  const rows = await query<{ meet: string }>(
+    `SELECT DISTINCT meet FROM races ORDER BY meet`,
+    [],
+  );
+  return rows.map((r) => r.meet);
+}
+
+export async function getRaceEntries(
+  raceDate: string,
+  meet: string,
+  raceNo: number,
+): Promise<RaceEntry[]> {
+  return query<RaceEntry>(
+    `SELECT r.rank, r.horse_no, h.horse_name,
+            r.jockey_name, r.record_time::text, r.weight::text
+       FROM race_results r
+       JOIN horses h ON h.horse_no = r.horse_no
+      WHERE r.race_date = $1::date
+        AND r.meet = $2
+        AND r.race_no = $3
+      ORDER BY r.rank NULLS LAST`,
+    [raceDate, meet, raceNo],
+  );
+}

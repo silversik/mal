@@ -1,0 +1,126 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: "Pretendard Variable", "Pretendard", sans-serif;
+  --font-serif: "Playfair Display", "Noto Serif KR", serif;
+  
+  --color-royal-green: #1B4332;
+  --color-champagne-gold: #D4AF37;
+  --color-ivory-white: #F8F9FA;
+  --color-midnight-black: #212529;
+  --color-slate-grey: #6C757D;
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  
+  --shadow-subtle: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+}
+
+:root {
+  --background: #F8F9FA;
+  --foreground: #212529;
+  --card: #FFFFFF;
+  --card-foreground: #212529;
+  --popover: #FFFFFF;
+  --popover-foreground: #212529;
+  --primary: #1B4332;
+  --primary-foreground: #FFFFFF;
+  --secondary: #D4AF37;
+  --secondary-foreground: #FFFFFF;
+  --muted: #F1F3F5;
+  --muted-foreground: #6C757D;
+  --accent: #D4AF37;
+  --accent-foreground: #FFFFFF;
+  --destructive: #8B0000;
+  --destructive-foreground: #FFFFFF;
+  --border: #E9ECEF;
+  --input: #E9ECEF;
+  --ring: #1B4332;
+  --radius: 8px;
+}
+
+.dark {
+  --background: #0F1F18;
+  --foreground: #F8F9FA;
+  --card: #142B22;
+  --card-foreground: #F8F9FA;
+  --border: #1B4332;
+  --primary: #D4AF37;
+  --primary-foreground: #1B4332;
+  --secondary: #1B4332;
+  --secondary-foreground: #D4AF37;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(27, 67, 50, 0.03) 0, transparent 50%),
+      radial-gradient(at 50% 0%, rgba(212, 175, 55, 0.02) 0, transparent 50%);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans font-bold tracking-tight;
+  }
+  table {
+    @apply w-full mx-auto text-center border-collapse;
+  }
+  th, td {
+    @apply px-4 py-2 text-center border-b;
+    border-color: var(--border);
+  }
+}
+
+@layer components {
+  .royal-card {
+    @apply bg-card rounded-[8px] shadow-subtle border-t-2 border-t-primary overflow-hidden transition-all duration-300;
+  }
+  .btn-cta {
+    @apply bg-secondary text-secondary-foreground font-bold px-6 py-2 rounded-[4px] hover:bg-[#B8962E] transition-colors;
+  }
+  .btn-outline {
+    @apply border border-primary text-primary font-semibold px-6 py-2 rounded-[4px] hover:bg-primary/5 transition-colors;
+  }
+  .data-positive {
+    @apply text-royal-green font-bold;
+  }
+  .data-negative {
+    @apply text-destructive font-bold;
+  }
+}
