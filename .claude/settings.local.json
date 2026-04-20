@@ -1,7 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:www.data.go.kr)"
+      "WebFetch(domain:www.data.go.kr)",
+      "Bash(npm run:*)",
+      "Bash(xargs ls *)",
+      "Bash(npm install *)",
+      "Bash(PGPASSWORD=mal_dev_pw psql -h localhost -p 5434 -U mal -d mal -c \"SELECT horse_no, horse_name, raw->'coatColor' as coat, jsonb_object_keys\\(raw\\) FROM horses LIMIT 1;\")",
+      "Bash(docker exec *)",
+      "Bash(grep -v '^$')",
+      "Bash(uv run python -c ' *)",
+      "Bash(PGPASSWORD=mal_dev_pw psql -h localhost -p 5434 -U mal -d mal -c \"\\\\dt\")"
     ]
   }
 }
