@@ -1,0 +1,12 @@
+[Unit]
+Description=mal.kr — sync_news (30분 주기)
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=30min
+Unit=mal-collector@periodic-news.service
+Persistent=true
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

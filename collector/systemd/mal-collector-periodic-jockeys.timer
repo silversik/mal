@@ -1,0 +1,11 @@
+[Unit]
+Description=mal.kr — sync_jockeys (매일 06:00 KST)
+
+[Timer]
+OnCalendar=*-*-* 06:00:00 Asia/Seoul
+Unit=mal-collector@periodic-jockeys.service
+Persistent=true
+AccuracySec=5min
+
+[Install]
+WantedBy=timers.target

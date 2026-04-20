@@ -1,0 +1,11 @@
+[Unit]
+Description=mal.kr — sync_horses_backfill (매일 06:30 KST)
+
+[Timer]
+OnCalendar=*-*-* 06:30:00 Asia/Seoul
+Unit=mal-collector@periodic-horses-backfill.service
+Persistent=true
+AccuracySec=5min
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,12 @@
+[Unit]
+Description=mal.kr — sync_videos (3시간 주기)
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=3h
+Unit=mal-collector@periodic-videos.service
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

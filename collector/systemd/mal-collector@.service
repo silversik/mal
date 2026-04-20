@@ -1,0 +1,21 @@
+[Unit]
+Description=mal.kr collector — %i
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+# %i 자리에 periodic-news, periodic-videos, periodic-races-today,
+# periodic-jockeys, periodic-horses-backfill, check-stale 등이 들어간다.
+User=mal
+WorkingDirectory=/opt/mal/collector
+# .env 에 DATABASE_URL, KRA_*, YOUTUBE_*, DISCORD_WEBHOOK_URL 등이 있어야 함.
+EnvironmentFile=/opt/mal/collector/.env
+ExecStart=/usr/bin/env uv run python -m src.main %i
+StandardOutput=journal
+StandardError=journal
+# 이전 실행이 끝나지 않았으면 스킵 (oneshot 이 자동 보장).
+# 네트워크/일시 장애용 소프트 재시도 — 실패는 Discord 로 알림 가지만 exit 1.
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=mal.kr — check_stale (매시 정각, Discord 알림)
+
+[Timer]
+OnCalendar=*-*-* *:00:00
+Unit=mal-collector@check-stale.service
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

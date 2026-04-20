@@ -1,0 +1,11 @@
+[Unit]
+Description=mal.kr — sync_races_today (매일 22:00 KST)
+
+[Timer]
+OnCalendar=*-*-* 22:00:00 Asia/Seoul
+Unit=mal-collector@periodic-races-today.service
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target
