@@ -14,6 +14,13 @@ from datetime import datetime
 import typer
 
 from .clients.horse_detail import HorseDetailClient
+from .jobs.periodic import (
+    run_sync_horses_backfill,
+    run_sync_jockeys,
+    run_sync_news,
+    run_sync_races_today,
+    run_sync_videos,
+)
 from .jobs.sync_horses import backfill_missing_raw, sync_by_name, sync_by_no, upsert_horses
 from .jobs.sync_jockeys import sync_all_jockeys
 from .jobs.sync_news import smoke_news, sync_news
@@ -21,6 +28,7 @@ from .jobs.sync_race_info import sync_races_by_year
 from .jobs.sync_races import sync_date, sync_date_all_meets
 from .jobs.sync_videos import smoke_videos, sync_videos
 from .logging import configure_logging, get_logger
+from .monitoring import check_stale
 
 app = typer.Typer(add_completion=False, help="mal.kr KRA data collector")
 configure_logging()
@@ -182,6 +190,62 @@ def cmd_smoke_videos(
             f"  · [{v.published_at:%Y-%m-%d}] {v.title[:60]} "
             f"(id={v.video_id}, dur={dur}, views={v.view_count})"
         )
+
+
+# ============================================================================
+# Periodic entry points — systemd timer 가 호출. scraper_runs 에 기록됨.
+# 수동 ad-hoc 실행은 위의 `sync-news` / `sync-today` 등을 그대로 사용.
+# ============================================================================
+
+@app.command("periodic-news")
+def cmd_periodic_news() -> None:
+    """[scheduled] sync_news — tracked run."""
+    n = run_sync_news()
+    typer.echo(f"upserted {n} news rows")
+
+
+@app.command("periodic-videos")
+def cmd_periodic_videos() -> None:
+    """[scheduled] sync_videos — tracked run."""
+    n = run_sync_videos()
+    typer.echo(f"upserted {n} video rows")
+
+
+@app.command("periodic-races-today")
+def cmd_periodic_races_today() -> None:
+    """[scheduled] sync_races_today — tracked run."""
+    n = run_sync_races_today()
+    typer.echo(f"upserted {n} race result rows")
+
+
+@app.command("periodic-jockeys")
+def cmd_periodic_jockeys() -> None:
+    """[scheduled] sync_jockeys — tracked run."""
+    n = run_sync_jockeys()
+    typer.echo(f"upserted {n} jockey rows")
+
+
+@app.command("periodic-horses-backfill")
+def cmd_periodic_horses_backfill() -> None:
+    """[scheduled] sync_horses_backfill — tracked run."""
+    n = run_sync_horses_backfill()
+    typer.echo(f"backfilled {n} horse rows")
+
+
+@app.command("check-stale")
+def cmd_check_stale(
+    multiplier: float = typer.Option(
+        1.5, help="expected_interval_sec * multiplier 초과 시 stale 로 판정",
+    ),
+) -> None:
+    """Stale job 탐지 + Discord 웹훅 전송. hourly 타이머로 호출."""
+    stale = check_stale(multiplier=multiplier)
+    if not stale:
+        typer.echo("all jobs are fresh")
+        return
+    typer.echo(f"found {len(stale)} stale job(s):")
+    for r in stale:
+        typer.echo(f"  · {r['job_key']} (since_sec={int(r['since_sec'] or 0)})")
 
 
 if __name__ == "__main__":
