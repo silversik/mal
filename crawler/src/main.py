@@ -234,6 +234,56 @@ def cmd_periodic_horses_backfill() -> None:
     typer.echo(f"backfilled {n} horse rows")
 
 
+@app.command("periodic-horses-refresh")
+def cmd_periodic_horses_refresh() -> None:
+    """[scheduled] sync_horses_refresh — stale horses (updated_at > 30d) 재조회."""
+    from .jobs.periodic import run_sync_horses_refresh
+    n = run_sync_horses_refresh()
+    typer.echo(f"refreshed {n} horse rows")
+
+
+@app.command("backfill-history")
+def cmd_backfill_history(
+    start: str = typer.Argument(..., help="시작 날짜 YYYY-MM-DD (inclusive)"),
+    end: str = typer.Argument(..., help="종료 날짜 YYYY-MM-DD (inclusive)"),
+    sleep: float = typer.Option(0.3, help="날짜간 대기 (초) — KRA rate-limit 보호"),
+) -> None:
+    """[one-shot] 과거 날짜 범위 전체 경주결과 + horses enrichment. 콜드스타트용.
+
+    예: 최근 33년 일괄 부트스트랩 —
+        python -m src.main backfill-history 1993-04-21 2026-04-20
+    """
+    from datetime import datetime as _dt
+
+    from .jobs.backfill_history import backfill_history
+
+    for fmt in ("%Y-%m-%d", "%Y%m%d"):
+        try:
+            s_date = _dt.strptime(start, fmt).date()
+            e_date = _dt.strptime(end, fmt).date()
+            break
+        except ValueError:
+            continue
+    else:
+        typer.echo("Invalid date format. Use YYYY-MM-DD or YYYYMMDD.")
+        raise typer.Exit(code=1)
+
+    if s_date > e_date:
+        typer.echo("start must be <= end")
+        raise typer.Exit(code=1)
+
+    n = backfill_history(s_date, e_date, sleep_sec=sleep)
+    typer.echo(f"backfilled {n} race_result rows across {(e_date - s_date).days + 1} days")
+
+
+@app.command("backfill-history-33y")
+def cmd_backfill_history_33y() -> None:
+    """[one-shot, tracked] 최근 33년 전체 부트스트랩 (대시보드에 run 기록됨)."""
+    from .jobs.backfill_history import run_backfill_last_33y
+    n = run_backfill_last_33y()
+    typer.echo(f"backfilled {n} race_result rows (last 33 years)")
+
+
 @app.command("periodic-race-plan")
 def cmd_periodic_race_plan() -> None:
     """[scheduled] sync_race_plan — 대상경주 연간계획."""

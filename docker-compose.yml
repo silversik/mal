@@ -30,10 +30,14 @@ services:
     networks: [appnet]
 
   # ── Python 크롤러 (KRA OpenAPI / RSS / YouTube) ─────────────────────────
+  #
+  # build context 는 `..` (monorepo 상위) — ../crawler/core 를 editable 로 설치하려면
+  # sibling crawler/ 디렉토리도 context 안에 포함돼야 한다. 서버에서는 /srv/services/
+  # 에 crawler 레포가 별도 파이프라인으로 미리 rsync 되어 있어야 한다.
   mal-crawler:
     build:
-      context: ./crawler
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: mal/crawler/Dockerfile
     image: mal-crawler:latest
     container_name: mal-crawler
     restart: unless-stopped

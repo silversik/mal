@@ -30,7 +30,7 @@ from typing import ParamSpec, TypeVar
 
 import httpx
 
-from . import dashboard_client as dash
+from crawler_core import client as dash
 from .logging import get_logger
 
 log = get_logger(__name__)
@@ -84,6 +84,16 @@ JOB_CATALOG: dict[str, dict] = {
         "description": "raw NULL 인 horses 재조회",
         "expected_interval_sec": 86400,
     },
+    "mal.sync_horses_refresh": {
+        "category": "kra_openapi",
+        "description": "updated_at > 30d stale horses 순환 재조회",
+        "expected_interval_sec": 86400,
+    },
+    "mal.backfill_history": {
+        "category": "kra_openapi",
+        "description": "최근 33년 race_results + horses 일괄 부트스트랩 (수동 트리거)",
+        "expected_interval_sec": 86400 * 365,  # 사실상 1회용 — stale 경고 방지용 큰 값
+    },
     "mal.sync_race_plan": {
         "category": "kra_openapi",
         "description": "연간 대상경주 계획",
@@ -130,14 +140,14 @@ def track_job(job_key: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
         @wraps(fn)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             _ensure_registered(job_key)
-            run_id = dash.start_run(job_key)
+            run_id = dash.safe_start_run(job_key)
             t0 = time.monotonic()
             try:
                 result = fn(*args, **kwargs)
             except Exception as exc:
                 err = f"{type(exc).__name__}: {exc}"
                 tb = traceback.format_exc()
-                dash.finish_run(
+                dash.safe_finish_run(
                     run_id,
                     status="failed",
                     error_message=(err + "\n\n" + tb)[:4000],
@@ -149,7 +159,7 @@ def track_job(job_key: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
                 raise
             else:
                 rows = result if isinstance(result, int) else None
-                dash.finish_run(run_id, status="success", rows_upserted=rows)
+                dash.safe_finish_run(run_id, status="success", rows_upserted=rows)
                 return result
 
         return wrapper

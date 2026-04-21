@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.6
 # mal 크롤러 (Python 3.12 + uv, KRA OpenAPI / RSS / YouTube).
-# Build context = ./crawler
+# Build context = 모노레포 루트(..) — crawler/core 를 editable 로 설치하기 위함.
 
 FROM python:3.12-slim-bookworm AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -17,26 +17,28 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# crawler-core 를 먼저 카피 — pyproject.toml 의 `../../crawler/core` 경로가 가리키는 위치.
+# /app 에서 상대적으로 `../../crawler/core` = /crawler/core 가 되도록 배치한다.
+COPY crawler/core /crawler/core
+
 # deps layer — lockfile 기반 reproducible install
-COPY pyproject.toml uv.lock* ./
+COPY mal/crawler/pyproject.toml mal/crawler/uv.lock* ./
 RUN uv sync --no-dev --no-install-project --frozen || uv sync --no-dev --no-install-project
 
 # 앱 코드
-COPY src ./src
-COPY README.md* ./
+COPY mal/crawler/src ./src
+COPY mal/crawler/README.md* ./
 
 # non-root
-RUN useradd -r -s /usr/sbin/nologin app && chown -R app:app /app
+RUN useradd -r -s /usr/sbin/nologin app && chown -R app:app /app /crawler
 USER app
 
 ENV PATH=/app/.venv/bin:$PATH \
     PYTHONPATH=/app
 
-# main.py 는 typer CLI — 단발성 명령을 호출하는 구조라 자체 스케줄러 루프가 없다.
-# 컨테이너는 유지해두고 호스트 cron 이 `docker exec mal-crawler python -m src.main periodic-*`
-# 형태로 트리거한다.
-#
-# 기동 시: 통합 대시보드에 JOB_CATALOG upsert 후 sleep. 대시보드가 아직 안 올라왔어도
-# 크롤러 자체는 계속 살아있도록 `|| true` 로 실패를 삼킴 — 이후 @track_job 이 첫 호출에서
-# lazy 재등록 시도.
-CMD ["sh", "-c", "python -m src.main register-dashboard-jobs || true; exec sleep infinity"]
+# src/scheduler_main.py 가 APScheduler(BlockingScheduler) 를 돌린다 — 호스트 systemd
+# timer 의존성 제거. 기존 systemd/*.timer 스펙을 그대로 KST CronTrigger 로 이식함.
+# @track_job 이 run 을 대시보드에 기록하므로 추가 훅 불필요.
+# 수동/일회성 명령 (backfill-history, sync-horse-no 등) 은 `docker exec mal-crawler
+# python -m src.main <cmd>` 형태로 여전히 호출 가능.
+CMD ["sh", "-c", "python -m src.main register-dashboard-jobs || true; exec python -m src.scheduler_main"]

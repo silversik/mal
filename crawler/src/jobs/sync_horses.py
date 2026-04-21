@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import func, or_, select, text
@@ -107,4 +108,52 @@ def backfill_missing_raw(
             if sleep_sec:
                 time.sleep(sleep_sec)
     log.info("backfill_done", upserted=count, total=len(horse_nos))
+    return count
+
+
+def refresh_stale_horses(
+    older_than_days: int = 30,
+    batch: int = 300,
+    sleep_sec: float = 0.15,
+) -> int:
+    """`updated_at` 이 N 일 넘은 horses 를 batch 만큼 재조회해 통산성적 갱신.
+
+    `backfill_missing_raw` 는 `raw IS NULL` 만 대상이라 한번 채운 뒤엔 영구 고정 →
+    은퇴/장기미출전 마필의 `total_race_count`, `first_place_count` 가 누적 안 됨.
+    이 함수가 주기적으로 (매일 batch 만큼) 순환시켜 메꾼다.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=older_than_days)
+    with session_scope() as s:
+        stmt = (
+            select(Horse.horse_no)
+            .where(Horse.updated_at < cutoff)
+            .order_by(Horse.updated_at)
+            .limit(batch)
+        )
+        horse_nos = list(s.execute(stmt).scalars())
+
+    if not horse_nos:
+        log.info("refresh_stale_nothing_to_do", cutoff_days=older_than_days)
+        return 0
+
+    log.info(
+        "refresh_stale_start", batch_size=len(horse_nos), cutoff_days=older_than_days
+    )
+    count = 0
+    with HorseDetailClient() as client:
+        for idx, hr_no in enumerate(horse_nos, 1):
+            try:
+                item = client.get_by_no(hr_no)
+            except Exception as e:  # noqa: BLE001
+                log.warning("refresh_stale_fetch_failed", horse_no=hr_no, err=str(e))
+                continue
+            if not item:
+                log.warning("refresh_stale_horse_not_found", horse_no=hr_no)
+                continue
+            count += upsert_horses([item])
+            if idx % 50 == 0:
+                log.info("refresh_stale_progress", done=idx, total=len(horse_nos))
+            if sleep_sec:
+                time.sleep(sleep_sec)
+    log.info("refresh_stale_done", upserted=count, batch_size=len(horse_nos))
     return count

@@ -14,7 +14,7 @@ from datetime import date
 from ..config import settings
 from ..logging import get_logger
 from ..monitoring import track_job
-from .sync_horses import backfill_missing_raw
+from .sync_horses import backfill_missing_raw, refresh_stale_horses
 from .sync_jockeys import sync_all_jockeys
 from .sync_news import sync_news
 from .sync_race_entries import sync_upcoming as sync_upcoming_race_entries
@@ -54,6 +54,12 @@ def run_sync_jockeys() -> int:
 @track_job("mal.sync_horses_backfill")
 def run_sync_horses_backfill() -> int:
     return backfill_missing_raw()
+
+
+@track_job("mal.sync_horses_refresh")
+def run_sync_horses_refresh() -> int:
+    """매일 batch 만큼 회전시켜 stale horses (updated_at > 30d) 재조회."""
+    return refresh_stale_horses(older_than_days=30, batch=300)
 
 
 @track_job("mal.sync_race_plan")
