@@ -41,12 +41,14 @@ services:
       DATABASE_URL: ${MAL_DATABASE_URL:?set in /srv/stack/.env}
       CRAWLER_SECRET: ${CRAWLER_SECRET:?set in /srv/stack/.env}
       DASHBOARD_URL: ${DASHBOARD_URL:-http://crawler-dashboard:3100}
-      # 외부 시크릿 — KRA OpenAPI key 등
-      KRA_API_KEY_FILE: /run/secrets/kra_api.key
-      YOUTUBE_API_KEY_FILE: /run/secrets/youtube_api.key
-    volumes:
-      - ${SECRETS_DIR:-/srv/stack/secrets}/kra_api.key:/run/secrets/kra_api.key:ro
-      - ${SECRETS_DIR:-/srv/stack/secrets}/youtube_api.key:/run/secrets/youtube_api.key:ro
+      # KRA OpenAPI / KRBC YouTube — src/config.py 가 KRA_SERVICE_KEY · YOUTUBE_API_KEY 를
+      # os.environ 로 직접 읽는다. `*_FILE` 패턴은 앱에서 파싱 코드가 없어서 무효였음 —
+      # 값은 /srv/stack/.env 로 관리하고 그대로 주입한다.
+      KRA_SERVICE_KEY: ${KRA_SERVICE_KEY:-}
+      KRA_CHULMA_OPERATION: ${KRA_CHULMA_OPERATION:-}
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      YOUTUBE_KRBC_CHANNEL_ID: ${YOUTUBE_KRBC_CHANNEL_ID:-}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
     depends_on:
       - mal-web
     networks: [appnet]
