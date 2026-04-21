@@ -32,11 +32,19 @@ class Settings:
         # All KRA APIs share the same per-account key, but we keep
         # separate slots for flexibility.
         default_key = os.environ.get("KRA_SERVICE_KEY", "")
+        # 공용 .env 는 `postgresql://` 스킴을 쓰고 있어 SQLAlchemy 가 psycopg2 로
+        # 붙으려고 시도해 실패한다. 우리는 psycopg (v3) 만 설치하므로 드라이버를
+        # 명시적으로 강제. 이미 `+psycopg` 가 붙어있으면 그대로 둔다.
+        db_url = os.environ.get(
+            "DATABASE_URL",
+            "postgresql+psycopg://mal:mal_dev_pw@localhost:5434/mal",
+        )
+        if db_url.startswith("postgresql://"):
+            db_url = "postgresql+psycopg://" + db_url[len("postgresql://"):]
+        elif db_url.startswith("postgres://"):
+            db_url = "postgresql+psycopg://" + db_url[len("postgres://"):]
         return cls(
-            database_url=os.environ.get(
-                "DATABASE_URL",
-                "postgresql+psycopg://mal:mal_dev_pw@localhost:5434/mal",
-            ),
+            database_url=db_url,
             kra_key_horse_detail=os.environ.get("KRA_SERVICE_KEY_HORSE_DETAIL", default_key),
             kra_key_race_result=os.environ.get("KRA_SERVICE_KEY_RACE_RESULT", default_key),
             kra_key_horse_race_history=os.environ.get(
