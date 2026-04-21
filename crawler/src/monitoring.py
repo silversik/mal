@@ -1,17 +1,23 @@
 """Scraper run tracking + Discord failure notifications.
 
 Usage:
-    @track_job("sync_news")
+    @track_job("mal.sync_news")
     def sync_news() -> int:
         ...
 
-The decorator records a `scraper_runs` row at entry (status=running) and
-updates it on exit with success/failed + duration + upserted count + error.
-On failure, posts a summary to DISCORD_WEBHOOK_URL if configured.
+이전 버전은 `scraper_runs` DB 테이블에 직접 row 를 insert/update 했지만,
+통합 크롤러 대시보드 (crawler-dashboard) 로 HTTP 리포트하도록 변경됐다.
+- 시작 시: `dashboard_client.start_run(job_key)` → run_id
+- 종료 시: `dashboard_client.finish_run(run_id, status=..., rows=..., error=...)`
 
-A separate `check_stale()` helper scans `scraper_jobs` for jobs whose
-`last_success_at` exceeds `expected_interval_sec * 1.5` and posts a single
-digest message — wire it to systemd timer at e.g. hourly cadence.
+대시보드가 일시 불가해도 크롤러 자체는 그대로 동작하도록 start/finish 호출은
+모두 예외 삼키도록 설계됨 (dashboard_client 내부 처리).
+
+`@track_job` 는 최초 호출 시 `dashboard_client.register_job(...)` 로 스펙을
+idempotent 하게 upsert 한다. job_key 는 전역 유니크 — 'mal.sync_news' 처럼
+서비스 prefix 를 붙여서 사용 권장.
+
+check_stale 은 대시보드가 자체적으로 보여주므로 별도 로직은 제거.
 """
 from __future__ import annotations
 
@@ -19,16 +25,13 @@ import os
 import time
 import traceback
 from collections.abc import Callable
-from datetime import UTC, datetime
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
 import httpx
-from sqlalchemy import select, text
 
-from .db import session_scope
+from . import dashboard_client as dash
 from .logging import get_logger
-from .models import ScraperJob, ScraperRun
 
 log = get_logger(__name__)
 
@@ -51,30 +54,92 @@ def _notify_discord(title: str, body: str) -> None:
         log.warning("discord_notify_failed", error=str(e))
 
 
-def track_job(job_key: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    """Wrap a sync function to record its run in `scraper_runs`.
+# ── JOB 메타 카탈로그 ──────────────────────────────────────────────────────────
+# 여기 한 곳에서 선언하고 @track_job 에서 lookup. 컨테이너 기동 시 (또는 첫 호출 시)
+# 대시보드에 idempotent upsert. mal 서비스 prefix 로 전역 유니크 키 구성.
+# 추가 job 은 이 dict 에 한 줄만 넣고 periodic.py / main.py 에서 @track_job("mal.<name>") 사용.
+JOB_CATALOG: dict[str, dict] = {
+    "mal.sync_news": {
+        "category": "rss",
+        "description": "KRA 공지/뉴스 RSS",
+        "expected_interval_sec": 1800,  # 30min
+    },
+    "mal.sync_videos": {
+        "category": "youtube",
+        "description": "KRBC YouTube 최신 업로드",
+        "expected_interval_sec": 3600,
+    },
+    "mal.sync_races_today": {
+        "category": "kra_openapi",
+        "description": "오늘 경주결과 (API4, 3개 경마장)",
+        "expected_interval_sec": 86400,
+    },
+    "mal.sync_jockeys": {
+        "category": "kra_openapi",
+        "description": "기수 목록/성적",
+        "expected_interval_sec": 86400,
+    },
+    "mal.sync_horses_backfill": {
+        "category": "kra_openapi",
+        "description": "raw NULL 인 horses 재조회",
+        "expected_interval_sec": 86400,
+    },
+    "mal.sync_race_plan": {
+        "category": "kra_openapi",
+        "description": "연간 대상경주 계획",
+        "expected_interval_sec": 86400,
+    },
+    "mal.sync_race_entries": {
+        "category": "kra_openapi",
+        "description": "예정 경주 출전표",
+        "expected_interval_sec": 14400,
+    },
+}
 
-    The wrapped function's return value — if it is an int — is stored as
-    `rows_upserted`. Any exception updates the row to status=failed, fires a
-    Discord alert, and is re-raised.
+_registered: set[str] = set()
+
+
+def _ensure_registered(job_key: str) -> None:
+    if job_key in _registered:
+        return
+    spec = JOB_CATALOG.get(job_key)
+    if spec is None:
+        log.warning("track_job_unknown_key", job_key=job_key)
+        # catalog 누락이어도 실행은 계속 — 최소 스펙으로 등록
+        spec = {"category": None, "description": None, "expected_interval_sec": 3600}
+    dash.safe_register(
+        job_key=job_key,
+        service="mal",
+        category=spec.get("category"),
+        description=spec.get("description"),
+        expected_interval_sec=int(spec.get("expected_interval_sec", 3600)),
+    )
+    _registered.add(job_key)
+
+
+def track_job(job_key: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    """Wrap a sync function to report its run to the crawler dashboard.
+
+    - 첫 호출 시 job_key 를 대시보드에 upsert (JOB_CATALOG 기반)
+    - 함수 호출 전 start_run → run_id
+    - 함수 반환값이 int 이면 rows_upserted 로 보고
+    - 예외 시 status=failed + error_message 보고 후 re-raise + Discord 알림
     """
 
     def decorator(fn: Callable[P, R]) -> Callable[P, R]:
         @wraps(fn)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            run_id = _insert_running(job_key)
+            _ensure_registered(job_key)
+            run_id = dash.start_run(job_key)
             t0 = time.monotonic()
             try:
                 result = fn(*args, **kwargs)
             except Exception as exc:
-                duration_ms = int((time.monotonic() - t0) * 1000)
                 err = f"{type(exc).__name__}: {exc}"
                 tb = traceback.format_exc()
-                _finish_run(
+                dash.finish_run(
                     run_id,
                     status="failed",
-                    rows_upserted=None,
-                    duration_ms=duration_ms,
                     error_message=(err + "\n\n" + tb)[:4000],
                 )
                 _notify_discord(
@@ -83,15 +148,8 @@ def track_job(job_key: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
                 )
                 raise
             else:
-                duration_ms = int((time.monotonic() - t0) * 1000)
                 rows = result if isinstance(result, int) else None
-                _finish_run(
-                    run_id,
-                    status="success",
-                    rows_upserted=rows,
-                    duration_ms=duration_ms,
-                    error_message=None,
-                )
+                dash.finish_run(run_id, status="success", rows_upserted=rows)
                 return result
 
         return wrapper
@@ -99,97 +157,17 @@ def track_job(job_key: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     return decorator
 
 
-def _insert_running(job_key: str) -> int:
-    now = datetime.now(tz=UTC)
-    with session_scope() as s:
-        # scraper_jobs 메타가 없으면 FK 위반이 나므로 안전하게 확인.
-        job = s.get(ScraperJob, job_key)
-        if job is None:
-            raise RuntimeError(
-                f"scraper_jobs row missing for '{job_key}' — run migration 006 "
-                f"or insert the job row first."
-            )
-        run = ScraperRun(
-            job_key=job_key,
-            started_at=now,
-            status="running",
-        )
-        s.add(run)
-        s.flush()
-        return run.id
+def register_all_jobs() -> None:
+    """컨테이너 기동 시 CLI 로 호출 가능 — JOB_CATALOG 전부 upsert.
 
-
-def _finish_run(
-    run_id: int,
-    *,
-    status: str,
-    rows_upserted: int | None,
-    duration_ms: int,
-    error_message: str | None,
-) -> None:
-    now = datetime.now(tz=UTC)
-    with session_scope() as s:
-        run = s.get(ScraperRun, run_id)
-        if run is None:
-            log.warning("scraper_run_missing", run_id=run_id)
-            return
-        run.finished_at = now
-        run.status = status
-        run.rows_upserted = rows_upserted
-        run.duration_ms = duration_ms
-        run.error_message = error_message
+    런타임에 @track_job 이 첫 호출에서 lazy 등록하므로 필수는 아니지만,
+    대시보드 UI 에 cold-start 상태에서도 job 목록이 보이도록 미리 등록하는 용도.
+    """
+    for job_key in JOB_CATALOG.keys():
+        _ensure_registered(job_key)
 
 
 def check_stale(*, multiplier: float = 1.5) -> list[dict]:
-    """enabled=true 인 job 중 마지막 성공이 expected_interval * multiplier 초과한 것을 찾아
-    Discord 로 digest 전송. 반환: 알림 대상 job 리스트.
-    """
-    sql = text(
-        """
-        SELECT j.job_key,
-               j.source,
-               j.description,
-               j.expected_interval_sec,
-               last.last_success_at,
-               EXTRACT(EPOCH FROM (NOW() - last.last_success_at)) AS since_sec
-          FROM scraper_jobs j
-          LEFT JOIN LATERAL (
-                SELECT MAX(finished_at) FILTER (WHERE status = 'success') AS last_success_at
-                  FROM scraper_runs
-                 WHERE job_key = j.job_key
-          ) last ON TRUE
-         WHERE j.enabled = TRUE
-           AND (
-                last.last_success_at IS NULL
-                OR EXTRACT(EPOCH FROM (NOW() - last.last_success_at))
-                   > j.expected_interval_sec * :mult
-           )
-        """
-    )
-    with session_scope() as s:
-        rows = s.execute(sql, {"mult": multiplier}).mappings().all()
-
-    stale = [dict(r) for r in rows]
-    if not stale:
-        log.info("check_stale_ok")
-        return []
-
-    log.warning("check_stale_found", count=len(stale))
-    lines = []
-    for r in stale:
-        since = r["since_sec"]
-        since_str = f"{int(since // 3600)}h" if since else "never"
-        lines.append(
-            f"- {r['job_key']} ({r['source']}): 마지막 성공 {since_str} 전 "
-            f"(기대 주기 {r['expected_interval_sec']}s)"
-        )
-    _notify_discord(
-        title=f"⚠️ 스크래퍼 {len(stale)}건 지연",
-        body="\n".join(lines),
-    )
-    return stale
-
-
-def list_enabled_jobs() -> list[ScraperJob]:
-    with session_scope() as s:
-        return list(s.execute(select(ScraperJob).where(ScraperJob.enabled)).scalars())
+    """통합 대시보드가 자체적으로 stale 판정/UI 표시하므로 여기서는 no-op."""
+    log.info("check_stale_delegated_to_dashboard", multiplier=multiplier)
+    return []

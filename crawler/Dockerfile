@@ -34,5 +34,9 @@ ENV PATH=/app/.venv/bin:$PATH \
 
 # main.py 는 typer CLI — 단발성 명령을 호출하는 구조라 자체 스케줄러 루프가 없다.
 # 컨테이너는 유지해두고 호스트 cron 이 `docker exec mal-crawler python -m src.main periodic-*`
-# 형태로 트리거한다. 추후 crawler.core 스케줄러 도입 시 CMD 를 그걸로 교체.
-CMD ["sleep", "infinity"]
+# 형태로 트리거한다.
+#
+# 기동 시: 통합 대시보드에 JOB_CATALOG upsert 후 sleep. 대시보드가 아직 안 올라왔어도
+# 크롤러 자체는 계속 살아있도록 `|| true` 로 실패를 삼킴 — 이후 @track_job 이 첫 호출에서
+# lazy 재등록 시도.
+CMD ["sh", "-c", "python -m src.main register-dashboard-jobs || true; exec sleep infinity"]

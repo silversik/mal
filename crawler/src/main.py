@@ -30,7 +30,7 @@ from .jobs.sync_race_info import sync_races_by_year
 from .jobs.sync_races import sync_date, sync_date_all_meets
 from .jobs.sync_videos import smoke_videos, sync_videos
 from .logging import configure_logging, get_logger
-from .monitoring import check_stale
+from .monitoring import check_stale, register_all_jobs
 
 app = typer.Typer(add_completion=False, help="mal.kr KRA data collector")
 configure_logging()
@@ -246,6 +246,17 @@ def cmd_periodic_race_entries() -> None:
     """[scheduled] sync_race_entries — 예정 출전표."""
     n = run_sync_race_entries()
     typer.echo(f"upserted {n} race entry rows")
+
+
+@app.command("register-dashboard-jobs")
+def cmd_register_dashboard_jobs() -> None:
+    """통합 크롤러 대시보드에 JOB_CATALOG 전체 idempotent 등록.
+
+    컨테이너 entrypoint 에서 기동 시 한 번 호출 권장 — 대시보드 cold-start
+    상태에서도 job 목록이 보이도록 미리 upsert.
+    """
+    register_all_jobs()
+    typer.echo("dashboard jobs registered")
 
 
 @app.command("check-stale")

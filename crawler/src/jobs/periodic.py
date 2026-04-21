@@ -25,12 +25,12 @@ from .sync_videos import sync_videos
 log = get_logger(__name__)
 
 
-@track_job("sync_news")
+@track_job("mal.sync_news")
 def run_sync_news() -> int:
     return sync_news()
 
 
-@track_job("sync_videos")
+@track_job("mal.sync_videos")
 def run_sync_videos() -> int:
     if not settings.youtube_api_key or not settings.youtube_krbc_channel_id:
         log.warning(
@@ -41,27 +41,27 @@ def run_sync_videos() -> int:
     return sync_videos(max_results=20)
 
 
-@track_job("sync_races_today")
+@track_job("mal.sync_races_today")
 def run_sync_races_today() -> int:
     return sync_date_all_meets(date.today())
 
 
-@track_job("sync_jockeys")
+@track_job("mal.sync_jockeys")
 def run_sync_jockeys() -> int:
     return sync_all_jockeys()
 
 
-@track_job("sync_horses_backfill")
+@track_job("mal.sync_horses_backfill")
 def run_sync_horses_backfill() -> int:
     return backfill_missing_raw()
 
 
-@track_job("sync_race_plan")
+@track_job("mal.sync_race_plan")
 def run_sync_race_plan() -> int:
     return sync_current_race_plan()
 
 
-@track_job("sync_race_entries")
+@track_job("mal.sync_race_entries")
 def run_sync_race_entries() -> int:
     if not settings.kra_chulma_operation:
         log.warning(
