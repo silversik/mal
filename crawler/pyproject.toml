@@ -27,7 +27,7 @@ dev = [
 package = false
 
 [tool.uv.sources]
-crawler-core = { path = "../../crawler/core", editable = true }
+crawler-core = { path = "./_crawler_core", editable = true }
 
 [tool.ruff]
 line-length = 100

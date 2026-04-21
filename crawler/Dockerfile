@@ -17,9 +17,9 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# crawler-core 를 먼저 카피 — pyproject.toml 의 `../../crawler/core` 경로가 가리키는 위치.
-# /app 에서 상대적으로 `../../crawler/core` = /crawler/core 가 되도록 배치한다.
-COPY crawler/core /crawler/core
+# crawler-core 를 /app 내부에 배치 — uv 는 workspace root 밖 path (../..) 를 거부.
+# pyproject.toml 의 `./_crawler_core` 와 대응.
+COPY crawler/core /app/_crawler_core
 
 # deps layer — lockfile 기반 reproducible install
 COPY mal/crawler/pyproject.toml mal/crawler/uv.lock* ./
@@ -30,7 +30,7 @@ COPY mal/crawler/src ./src
 COPY mal/crawler/README.md* ./
 
 # non-root
-RUN useradd -r -s /usr/sbin/nologin app && chown -R app:app /app /crawler
+RUN useradd -r -s /usr/sbin/nologin app && chown -R app:app /app
 USER app
 
 ENV PATH=/app/.venv/bin:$PATH \
