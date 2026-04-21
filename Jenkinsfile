@@ -71,7 +71,7 @@ pipeline {
                 sshagent(credentials: ['service-ssh']) {
                     sh '''
                         set -e
-                        ssh $DEPLOY_HOST "curl -fsS http://127.0.0.1:3001 >/dev/null"
+                        ssh $DEPLOY_HOST "curl -fsS http://127.0.0.1:4000 >/dev/null"
                     '''
                 }
             }

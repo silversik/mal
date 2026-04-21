@@ -12,6 +12,9 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      # Next.js 는 PORT env 를 그대로 따른다 — mal.kr = 4000 번대.
+      PORT: "4000"
+      HOSTNAME: "0.0.0.0"
       # mal_app role 로 접속 → ALTER ROLE 의 search_path = mal, public 자동 적용
       DATABASE_URL: ${MAL_DATABASE_URL:?set in /srv/stack/.env}
       # NextAuth v5 — nginx 뒤에 있으므로 호스트 헤더 검증을 신뢰한다.
@@ -23,7 +26,7 @@ services:
       AUTH_KAKAO_ID: ${MAL_AUTH_KAKAO_ID:-}
       AUTH_KAKAO_SECRET: ${MAL_AUTH_KAKAO_SECRET:-}
     ports:
-      - "127.0.0.1:3001:3000"
+      - "127.0.0.1:4000:4000"
     networks: [appnet]
 
   # ── Python 크롤러 (KRA OpenAPI / RSS / YouTube) ─────────────────────────

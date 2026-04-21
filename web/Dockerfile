@@ -25,7 +25,8 @@ FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=3000
+# mal.kr 는 4000 번대. compose 에서 PORT env 로 override 도 가능.
+ENV PORT=4000
 ENV HOSTNAME=0.0.0.0
 
 RUN addgroup -S app && adduser -S app -G app
@@ -35,5 +36,5 @@ COPY --from=build --chown=app:app /app/.next/standalone ./
 COPY --from=build --chown=app:app /app/.next/static ./.next/static
 COPY --from=build --chown=app:app /app/public ./public
 
-EXPOSE 3000
+EXPOSE 4000
 CMD ["node", "server.js"]
