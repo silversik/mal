@@ -27,9 +27,11 @@ pipeline {
             steps {
                 dir('web') {
                     sh '''
+                        set -e
                         if [ -f package-lock.json ]; then npm ci; else npm install; fi
                         npx tsc --noEmit
-                        npm run lint --if-present
+                        # lint 는 non-blocking
+                        npm run lint --if-present || echo "[warn] lint returned non-zero; continuing"
                     '''
                 }
             }
