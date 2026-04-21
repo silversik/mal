@@ -7,7 +7,7 @@
 ```
 mal/
 ├── web/          Next.js (App Router) 프론트엔드
-├── collector/    Python 데이터 수집 스크립트 (KRA OpenAPI)
+├── crawler/      Python 데이터 수집 스크립트 (KRA OpenAPI / RSS / YouTube). 리포트는 통합 대시보드로.
 ├── db/
 │   └── migrations/   PostgreSQL 스키마 마이그레이션
 └── docker/       로컬 개발용 docker-compose (Postgres 16)

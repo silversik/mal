@@ -149,7 +149,7 @@ export function ChatWidget() {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-champagne-gold/60"></span>
             <span className="relative inline-flex size-2 rounded-full bg-champagne-gold"></span>
           </span>
-          <span className="text-sm font-semibold text-ivory-white">
+          <span className="text-sm font-semibold text-sand-ivory">
             경마 채팅
           </span>
         </div>
@@ -197,7 +197,7 @@ export function ChatWidget() {
                   className={`max-w-[85%] rounded-lg px-3 py-2 text-sm leading-snug ${
                     mine
                       ? "bg-champagne-gold text-primary"
-                      : "bg-white/10 text-ivory-white"
+                      : "bg-white/10 text-sand-ivory"
                   }`}
                 >
                   <div
@@ -243,7 +243,7 @@ export function ChatWidget() {
               onChange={(e) => setNameDraft(e.target.value)}
               maxLength={USERNAME_MAX}
               placeholder="예) 경마팬1"
-              className="h-9 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-ivory-white placeholder:text-white/40 outline-none focus:border-champagne-gold/60"
+              className="h-9 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-sand-ivory placeholder:text-white/40 outline-none focus:border-champagne-gold/60"
             />
             <button
               type="submit"
@@ -265,7 +265,7 @@ export function ChatWidget() {
           <div className="flex items-center justify-between px-1 text-[11px] text-white/60">
             <span>
               <span className="text-white/40">닉네임:</span>{" "}
-              <span className="font-semibold text-ivory-white">{username}</span>
+              <span className="font-semibold text-sand-ivory">{username}</span>
               <button
                 type="button"
                 onClick={() => {
@@ -285,7 +285,7 @@ export function ChatWidget() {
                 onChange={(e) =>
                   setPostRoom(e.target.value as Exclude<Room, "전체">)
                 }
-                className="rounded bg-white/10 px-1 py-0.5 text-[11px] font-semibold text-ivory-white outline-none focus:ring-1 focus:ring-champagne-gold/60"
+                className="rounded bg-white/10 px-1 py-0.5 text-[11px] font-semibold text-sand-ivory outline-none focus:ring-1 focus:ring-champagne-gold/60"
               >
                 {POST_ROOMS.map((r) => (
                   <option key={r} value={r} className="text-primary">
@@ -301,7 +301,7 @@ export function ChatWidget() {
               onChange={(e) => setInput(e.target.value)}
               maxLength={MESSAGE_MAX}
               placeholder="메시지를 입력하세요…"
-              className="h-9 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-ivory-white placeholder:text-white/40 outline-none focus:border-champagne-gold/60"
+              className="h-9 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-sand-ivory placeholder:text-white/40 outline-none focus:border-champagne-gold/60"
             />
             <button
               type="submit"

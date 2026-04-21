@@ -11,12 +11,18 @@ from __future__ import annotations
 
 from datetime import date
 
+from ..config import settings
+from ..logging import get_logger
 from ..monitoring import track_job
 from .sync_horses import backfill_missing_raw
 from .sync_jockeys import sync_all_jockeys
 from .sync_news import sync_news
+from .sync_race_entries import sync_upcoming as sync_upcoming_race_entries
+from .sync_race_plan import sync_current_year as sync_current_race_plan
 from .sync_races import sync_date_all_meets
 from .sync_videos import sync_videos
+
+log = get_logger(__name__)
 
 
 @track_job("sync_news")
@@ -26,6 +32,12 @@ def run_sync_news() -> int:
 
 @track_job("sync_videos")
 def run_sync_videos() -> int:
+    if not settings.youtube_api_key or not settings.youtube_krbc_channel_id:
+        log.warning(
+            "sync_videos_skipped_missing_config",
+            reason="YOUTUBE_API_KEY / YOUTUBE_KRBC_CHANNEL_ID 미설정",
+        )
+        return 0
     return sync_videos(max_results=20)
 
 
@@ -42,3 +54,19 @@ def run_sync_jockeys() -> int:
 @track_job("sync_horses_backfill")
 def run_sync_horses_backfill() -> int:
     return backfill_missing_raw()
+
+
+@track_job("sync_race_plan")
+def run_sync_race_plan() -> int:
+    return sync_current_race_plan()
+
+
+@track_job("sync_race_entries")
+def run_sync_race_entries() -> int:
+    if not settings.kra_chulma_operation:
+        log.warning(
+            "sync_race_entries_skipped_missing_config",
+            reason="KRA_CHULMA_OPERATION 미설정 — Swagger 확인 후 .env 에 추가",
+        )
+        return 0
+    return sync_upcoming_race_entries(days_ahead=10)

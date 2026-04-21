@@ -11,9 +11,9 @@
   --font-sans: "Pretendard Variable", "Pretendard", sans-serif;
   --font-serif: "Playfair Display", "Noto Serif KR", serif;
   
-  --color-royal-green: #1B4332;
+  --color-dirt-brown: #8B5A3C;
   --color-champagne-gold: #D4AF37;
-  --color-ivory-white: #F8F9FA;
+  --color-sand-ivory: #FAF6F0;
   --color-midnight-black: #212529;
   --color-slate-grey: #6C757D;
 
@@ -51,37 +51,37 @@
 }
 
 :root {
-  --background: #F8F9FA;
+  --background: #FAF6F0;
   --foreground: #212529;
   --card: #FFFFFF;
   --card-foreground: #212529;
   --popover: #FFFFFF;
   --popover-foreground: #212529;
-  --primary: #1B4332;
+  --primary: #8B5A3C;
   --primary-foreground: #FFFFFF;
   --secondary: #D4AF37;
   --secondary-foreground: #FFFFFF;
-  --muted: #F1F3F5;
+  --muted: #F1ECE4;
   --muted-foreground: #6C757D;
   --accent: #D4AF37;
   --accent-foreground: #FFFFFF;
   --destructive: #8B0000;
   --destructive-foreground: #FFFFFF;
-  --border: #E9ECEF;
-  --input: #E9ECEF;
-  --ring: #1B4332;
+  --border: #E9E2D6;
+  --input: #E9E2D6;
+  --ring: #8B5A3C;
   --radius: 8px;
 }
 
 .dark {
-  --background: #0F1F18;
-  --foreground: #F8F9FA;
-  --card: #142B22;
-  --card-foreground: #F8F9FA;
-  --border: #1B4332;
+  --background: #1F1612;
+  --foreground: #FAF6F0;
+  --card: #2B1F17;
+  --card-foreground: #FAF6F0;
+  --border: #8B5A3C;
   --primary: #D4AF37;
-  --primary-foreground: #1B4332;
-  --secondary: #1B4332;
+  --primary-foreground: #8B5A3C;
+  --secondary: #8B5A3C;
   --secondary-foreground: #D4AF37;
 }
 
@@ -91,8 +91,8 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
-    background-image: 
-      radial-gradient(at 0% 0%, rgba(27, 67, 50, 0.03) 0, transparent 50%),
+    background-image:
+      radial-gradient(at 0% 0%, rgba(139, 90, 60, 0.03) 0, transparent 50%),
       radial-gradient(at 50% 0%, rgba(212, 175, 55, 0.02) 0, transparent 50%);
   }
   h1, h2, h3, h4, h5, h6 {
@@ -118,7 +118,7 @@
     @apply border border-primary text-primary font-semibold px-6 py-2 rounded-[4px] hover:bg-primary/5 transition-colors;
   }
   .data-positive {
-    @apply text-royal-green font-bold;
+    @apply text-dirt-brown font-bold;
   }
   .data-negative {
     @apply text-destructive font-bold;

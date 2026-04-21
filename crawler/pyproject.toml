@@ -1,7 +1,7 @@
 [project]
-name = "mal-collector"
+name = "mal-crawler"
 version = "0.1.0"
-description = "KRA OpenAPI data collector for mal.kr"
+description = "KRA OpenAPI / RSS / YouTube crawler for mal.kr (reports to unified dashboard)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

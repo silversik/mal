@@ -15,6 +15,8 @@ Ubuntu 에서 `mal-collector` 를 주기적으로 돌리기 위한 템플릿 서
 | `mal-collector-periodic-races-today.timer`    | `periodic-races-today`     | 매일 22:00 KST     |
 | `mal-collector-periodic-jockeys.timer`        | `periodic-jockeys`         | 매일 06:00 KST     |
 | `mal-collector-periodic-horses-backfill.timer`| `periodic-horses-backfill` | 매일 06:30 KST     |
+| `mal-collector-periodic-race-plan.timer`      | `periodic-race-plan`       | 매일 05:00 KST     |
+| `mal-collector-periodic-race-entries.timer`   | `periodic-race-entries`    | 3시간              |
 | `mal-collector-check-stale.timer`             | `check-stale`              | 매시 정각          |
 
 > 주기의 "진실 소스" 는 `scraper_jobs.expected_interval_sec` 이며 대시보드에서 수정
@@ -57,6 +59,8 @@ sudo systemctl enable --now \
     mal-collector-periodic-races-today.timer \
     mal-collector-periodic-jockeys.timer \
     mal-collector-periodic-horses-backfill.timer \
+    mal-collector-periodic-race-plan.timer \
+    mal-collector-periodic-race-entries.timer \
     mal-collector-check-stale.timer
 ```
 

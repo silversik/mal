@@ -1,0 +1,54 @@
+# mal.kr 서비스 단독 compose.
+# 통합 서버에서는 /srv/stack/docker-compose.yml 이 include 로 이 파일을 병합한다.
+
+services:
+  # ── Next.js (mal.kr) ────────────────────────────────────────────────────
+  mal-web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    image: mal-web:latest
+    container_name: mal-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # mal_app role 로 접속 → ALTER ROLE 의 search_path = mal, public 자동 적용
+      DATABASE_URL: ${MAL_DATABASE_URL:?set in /srv/stack/.env}
+      # NextAuth v5 — nginx 뒤에 있으므로 호스트 헤더 검증을 신뢰한다.
+      # DNS 컷오버 후에는 AUTH_URL=https://mal.kr 로 확정 지정 권장.
+      AUTH_TRUST_HOST: "true"
+      AUTH_URL: ${MAL_AUTH_URL:-https://mal.kr}
+      AUTH_SECRET: ${MAL_AUTH_SECRET:?set in /srv/stack/.env (NextAuth v5 세션 서명 키)}
+      # 카카오 OAuth (선택) — 없으면 로그인만 막힘, 앱은 기동.
+      AUTH_KAKAO_ID: ${MAL_AUTH_KAKAO_ID:-}
+      AUTH_KAKAO_SECRET: ${MAL_AUTH_KAKAO_SECRET:-}
+    ports:
+      - "127.0.0.1:3001:3000"
+    networks: [appnet]
+
+  # ── Python 크롤러 (KRA OpenAPI / RSS / YouTube) ─────────────────────────
+  mal-crawler:
+    build:
+      context: ./crawler
+      dockerfile: Dockerfile
+    image: mal-crawler:latest
+    container_name: mal-crawler
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${MAL_DATABASE_URL:?set in /srv/stack/.env}
+      CRAWLER_SECRET: ${CRAWLER_SECRET:?set in /srv/stack/.env}
+      DASHBOARD_URL: ${DASHBOARD_URL:-http://crawler-dashboard:3100}
+      # 외부 시크릿 — KRA OpenAPI key 등
+      KRA_API_KEY_FILE: /run/secrets/kra_api.key
+      YOUTUBE_API_KEY_FILE: /run/secrets/youtube_api.key
+    volumes:
+      - ${SECRETS_DIR:-/srv/stack/secrets}/kra_api.key:/run/secrets/kra_api.key:ro
+      - ${SECRETS_DIR:-/srv/stack/secrets}/youtube_api.key:/run/secrets/youtube_api.key:ro
+    depends_on:
+      - mal-web
+    networks: [appnet]
+
+networks:
+  appnet:
+    name: appnet
+    external: ${APPNET_EXTERNAL:-true}

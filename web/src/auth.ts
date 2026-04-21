@@ -1,4 +1,8 @@
 import NextAuth, { type DefaultSession } from "next-auth";
+// Type-only import to force TS to resolve the module before augmentation.
+// Next.js 16 + "moduleResolution: bundler" 에서 순수 `declare module` 만 두면
+// "Invalid module name in augmentation" 로 터지므로 명시 import 필요.
+import type {} from "next-auth/jwt";
 import Kakao from "next-auth/providers/kakao";
 
 import { query } from "@/lib/db";
@@ -83,7 +87,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
 
     async session({ session, token }) {
-      if (token.userId) {
+      if (typeof token.userId === "string") {
         session.user.id = token.userId;
       }
       return session;

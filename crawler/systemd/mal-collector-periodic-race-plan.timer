@@ -1,0 +1,11 @@
+[Unit]
+Description=mal.kr — sync_race_plan (매일 05:00 KST, 대상경주 연간계획)
+
+[Timer]
+OnCalendar=*-*-* 05:00:00 Asia/Seoul
+Unit=mal-collector@periodic-race-plan.service
+Persistent=true
+AccuracySec=5min
+
+[Install]
+WantedBy=timers.target

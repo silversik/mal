@@ -67,7 +67,9 @@ class KraClient:
         reraise=True,
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=8),
-        retry=retry_if_exception_type((httpx.TransportError, httpx.HTTPStatusError)),
+        # 4xx 는 재시도해도 의미 없음 (404 op 오류, 403 활성화 대기 등).
+        # 네트워크 오류와 5xx 만 재시도 대상.
+        retry=retry_if_exception_type(httpx.TransportError),
         before_sleep=before_sleep_log(log, 30),  # 30=WARNING
     )
     def get(self, operation: str, **params: Any) -> dict[str, Any]:

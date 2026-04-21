@@ -216,7 +216,7 @@ function RaceResultsTable({
           <br />
           <span className="text-xs">
             경주성적정보 API 활용신청 후{" "}
-            <code className="rounded bg-muted px-1">collector</code> 의
+            <code className="rounded bg-muted px-1">crawler</code> 의
             race-result 수집 잡을 실행하세요.
           </span>
         </CardContent>

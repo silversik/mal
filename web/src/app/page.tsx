@@ -19,7 +19,7 @@ function getRaceStatus(raceDate: string): "예정" | "진행중" | "종료" {
 
 const STATUS_STYLE = {
   종료: "bg-muted text-slate-grey border-slate-grey/20",
-  진행중: "bg-royal-green/10 text-royal-green border-royal-green/30 animate-pulse",
+  진행중: "bg-dirt-brown/10 text-dirt-brown border-dirt-brown/30 animate-pulse",
   예정: "bg-champagne-gold text-white border-champagne-gold shadow-sm",
 } as const;
 
@@ -73,7 +73,7 @@ export default async function Home() {
                 <Badge variant="outline" className="mb-3 border-champagne-gold text-champagne-gold">
                   TODAY · {todayDate}
                 </Badge>
-                <h1 className="font-serif text-3xl font-bold tracking-tight text-ivory-white md:text-4xl">
+                <h1 className="font-serif text-3xl font-bold tracking-tight text-sand-ivory md:text-4xl">
                   오늘의 대상 경기
                 </h1>
               </div>
@@ -213,7 +213,7 @@ function BannerRaceCard({
             {status}
           </Badge>
         </div>
-        <h3 className={`mb-2 text-xl font-bold transition-colors ${stakes ? "text-champagne-gold" : "text-ivory-white group-hover:text-champagne-gold"}`}>
+        <h3 className={`mb-2 text-xl font-bold transition-colors ${stakes ? "text-champagne-gold" : "text-sand-ivory group-hover:text-champagne-gold"}`}>
           {race.race_name ?? `${race.race_no}R 메인 경주`}
         </h3>
         <div className="mt-4 flex items-center justify-between border-t border-dashed border-white/10 pt-4">
@@ -305,7 +305,7 @@ function JockeyRow({ jockey }: { jockey: Jockey }) {
           </div>
         </div>
         <div className="text-right">
-          <div className="text-sm font-bold text-royal-green">{jockey.win_rate}%</div>
+          <div className="text-sm font-bold text-dirt-brown">{jockey.win_rate}%</div>
         </div>
       </div>
     </Link>

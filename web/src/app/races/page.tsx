@@ -17,6 +17,10 @@ import {
   getRacesByDate,
   type RaceInfo,
 } from "@/lib/races";
+import { getRaceVideo, youtubeEmbedUrl, youtubeWatchUrl } from "@/lib/videos";
+
+// KRBC 채널(UCsIvYoihIg37E96LkG-XHAw)의 라이브 URL — 방송 중이면 현재 스트림으로 자동 리다이렉트.
+const KRBC_LIVE_URL = "https://www.youtube.com/channel/UCsIvYoihIg37E96LkG-XHAw/live";
 
 type SearchParams = { date?: string; venue?: string; race?: string };
 
@@ -75,13 +79,16 @@ export default async function RacesPage({
         null
       : null;
 
-  const entries = selectedRace
-    ? await getRaceEntries(currentDate, selectedRace.meet, selectedRace.race_no)
-    : [];
+  const [entries, raceVideo] = selectedRace
+    ? await Promise.all([
+        getRaceEntries(currentDate, selectedRace.meet, selectedRace.race_no),
+        getRaceVideo(currentDate, selectedRace.meet, selectedRace.race_no),
+      ])
+    : [[], null];
 
-  const ytUrl = selectedRace
+  const ytSearchUrl = selectedRace
     ? `https://www.youtube.com/results?search_query=${encodeURIComponent(
-        `한국마사회 ${currentDate} ${selectedRace.meet} ${selectedRace.race_no}R`,
+        `KRBC ${currentDate} ${selectedRace.meet} ${selectedRace.race_no}경주`,
       )}`
     : null;
 
@@ -369,18 +376,71 @@ export default async function RacesPage({
                 주로: {selectedRace.track_condition}
               </span>
             )}
-            {ytUrl && (
-              <a
-                href={ytUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-[#FF0000]/10 px-3 py-1.5 text-xs font-medium text-[#FF0000] transition hover:bg-[#FF0000]/20"
-              >
-                <YoutubeIcon />
-                유튜브에서 보기
-              </a>
+            {selectedRace && (
+              <div className="ml-auto flex items-center gap-2">
+                {isToday && (
+                  <a
+                    href={KRBC_LIVE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-[#FF0000] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#CC0000]"
+                  >
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                    </span>
+                    KRBC 라이브
+                  </a>
+                )}
+                {raceVideo ? (
+                  <a
+                    href={youtubeWatchUrl(raceVideo.video_id)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-[#FF0000]/10 px-3 py-1.5 text-xs font-medium text-[#FF0000] transition hover:bg-[#FF0000]/20"
+                  >
+                    <YoutubeIcon />
+                    경주 영상 보기
+                  </a>
+                ) : (
+                  ytSearchUrl && (
+                    <a
+                      href={ytSearchUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-[#FF0000]/30 px-3 py-1.5 text-xs font-medium text-[#FF0000] transition hover:bg-[#FF0000]/10"
+                    >
+                      <YoutubeIcon />
+                      유튜브에서 검색
+                    </a>
+                  )
+                )}
+              </div>
             )}
           </div>
+
+          {raceVideo && (
+            <div className="mb-6 overflow-hidden rounded-xl border bg-card shadow-sm">
+              <div className="aspect-video w-full bg-black">
+                <iframe
+                  src={youtubeEmbedUrl(raceVideo.video_id)}
+                  title={raceVideo.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="h-full w-full"
+                />
+              </div>
+              <div className="px-4 py-3 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">{raceVideo.title}</span>
+                {raceVideo.channel_title && (
+                  <>
+                    <span className="mx-1.5 opacity-40">·</span>
+                    {raceVideo.channel_title}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           {entries.length > 0 ? (
             <Card>

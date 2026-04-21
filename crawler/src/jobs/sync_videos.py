@@ -1,7 +1,8 @@
 """Sync KRBC YouTube uploads → `kra_videos` (UPSERT, uploads playlist 캐싱)."""
 from __future__ import annotations
 
-from datetime import UTC, datetime
+import re
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import func
@@ -16,8 +17,28 @@ from ..models import KraVideo, SyncMeta
 log = get_logger(__name__)
 SOURCE = "youtube_krbc"
 
+# KRBC 제목 포맷: "(서울) 2026.02.28 1경주" — 구분자는 `.` 또는 `-` 허용.
+_TITLE_RACE_RE = re.compile(
+    r"\(\s*(?P<meet>[^)]+?)\s*\)\s*"
+    r"(?P<y>\d{4})[.\-](?P<m>\d{1,2})[.\-](?P<d>\d{1,2})\s*"
+    r"(?P<no>\d+)\s*경주"
+)
+
+
+def parse_race_from_title(title: str) -> tuple[date | None, str | None, int | None]:
+    """제목에서 (race_date, meet, race_no) 추출. 매칭 실패 시 모두 None."""
+    m = _TITLE_RACE_RE.search(title)
+    if not m:
+        return None, None, None
+    try:
+        d = date(int(m["y"]), int(m["m"]), int(m["d"]))
+    except ValueError:
+        return None, None, None
+    return d, m["meet"].strip(), int(m["no"])
+
 
 def _to_row(v: YoutubeVideo) -> dict[str, Any]:
+    race_date, meet, race_no = parse_race_from_title(v.title)
     return {
         "video_id": v.video_id,
         "channel_id": v.channel_id,
@@ -28,6 +49,9 @@ def _to_row(v: YoutubeVideo) -> dict[str, Any]:
         "duration_sec": v.duration_sec,
         "view_count": v.view_count,
         "published_at": v.published_at,
+        "race_date": race_date,
+        "meet": meet,
+        "race_no": race_no,
         "raw": v.raw,
     }
 
@@ -49,6 +73,9 @@ def upsert_videos(videos: list[YoutubeVideo]) -> int:
             "duration_sec": stmt.excluded.duration_sec,
             "view_count": stmt.excluded.view_count,
             "published_at": stmt.excluded.published_at,
+            "race_date": stmt.excluded.race_date,
+            "meet": stmt.excluded.meet,
+            "race_no": stmt.excluded.race_no,
             "raw": stmt.excluded.raw,
             "updated_at": func.now(),
         },

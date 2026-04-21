@@ -167,6 +167,71 @@ class KraVideo(Base):
     duration_sec: Mapped[int | None] = mapped_column(Integer)
     view_count: Mapped[int | None] = mapped_column(BigInteger)
     published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    race_date: Mapped[date | None] = mapped_column(Date)
+    meet: Mapped[str | None] = mapped_column(Text)
+    race_no: Mapped[int | None] = mapped_column(Integer)
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class RacePlan(Base):
+    """연간 대상(스테이크) 경주 계획 — API40/raceAnnualPlan."""
+
+    __tablename__ = "race_plans"
+    __table_args__ = (
+        UniqueConstraint("meet", "year", "race_name", name="uq_race_plans"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    meet: Mapped[str] = mapped_column(String(20), nullable=False)
+    year: Mapped[int] = mapped_column(Integer, nullable=False)
+    race_date: Mapped[date | None] = mapped_column(Date)
+    race_no: Mapped[int | None] = mapped_column(Integer)
+    race_name: Mapped[str] = mapped_column(Text, nullable=False)
+    grade: Mapped[str | None] = mapped_column(String(20))
+    distance: Mapped[int | None] = mapped_column(Integer)
+    track_type: Mapped[str | None] = mapped_column(String(20))
+    age_cond: Mapped[str | None] = mapped_column(String(50))
+    prize_1st: Mapped[int | None] = mapped_column(BigInteger)
+    total_prize: Mapped[int | None] = mapped_column(BigInteger)
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class RaceEntry(Base):
+    """출전표 (예정 경주의 출전 마필) — API26_2/<op>."""
+
+    __tablename__ = "race_entries"
+    __table_args__ = (
+        UniqueConstraint(
+            "race_date", "meet", "race_no", "horse_no", name="uq_race_entries"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    race_date: Mapped[date] = mapped_column(Date, nullable=False)
+    meet: Mapped[str] = mapped_column(String(20), nullable=False)
+    race_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    horse_no: Mapped[str] = mapped_column(String(20), nullable=False)
+    chul_no: Mapped[int | None] = mapped_column(Integer)
+    horse_name: Mapped[str | None] = mapped_column(String(100))
+    jk_no: Mapped[str | None] = mapped_column(String(20))
+    jockey_name: Mapped[str | None] = mapped_column(String(50))
+    trainer_name: Mapped[str | None] = mapped_column(String(50))
+    weight: Mapped[float | None] = mapped_column(Numeric(5, 1))
+    age: Mapped[str | None] = mapped_column(String(10))
+    sex: Mapped[str | None] = mapped_column(String(10))
+    rating: Mapped[int | None] = mapped_column(Integer)
     raw: Mapped[dict | None] = mapped_column(JSONB)
     fetched_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

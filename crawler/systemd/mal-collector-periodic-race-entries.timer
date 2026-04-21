@@ -1,0 +1,12 @@
+[Unit]
+Description=mal.kr — sync_race_entries (3시간 주기, 예정 출전표)
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=3h
+Unit=mal-collector@periodic-race-entries.service
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target
