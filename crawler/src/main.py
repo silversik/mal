@@ -19,6 +19,7 @@ from .jobs.periodic import (
     run_sync_jockeys,
     run_sync_news,
     run_sync_race_entries,
+    run_sync_race_info,
     run_sync_race_plan,
     run_sync_races_today,
     run_sync_videos,
@@ -296,6 +297,13 @@ def cmd_periodic_race_entries() -> None:
     """[scheduled] sync_race_entries — 예정 출전표."""
     n = run_sync_race_entries()
     typer.echo(f"upserted {n} race entry rows")
+
+
+@app.command("periodic-race-info")
+def cmd_periodic_race_info() -> None:
+    """[scheduled] sync_race_info — API187 메타 백필."""
+    n = run_sync_race_info()
+    typer.echo(f"backfilled {n} race metadata rows")
 
 
 @app.command("register-dashboard-jobs")

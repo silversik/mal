@@ -22,6 +22,7 @@ from .jobs.periodic import (
     run_sync_jockeys,
     run_sync_news,
     run_sync_race_entries,
+    run_sync_race_info,
     run_sync_race_plan,
     run_sync_races_today,
     run_sync_videos,
@@ -91,6 +92,13 @@ def main() -> None:
         run_sync_races_today,
         CronTrigger(hour=22, minute=0),
         id="mal.sync_races_today",
+        **common,
+    )
+    # 결과 수집(22:00) 직후 메타 백필(22:30) — races.race_name/distance/grade/track_type 채움.
+    sched.add_job(
+        run_sync_race_info,
+        CronTrigger(hour=22, minute=30),
+        id="mal.sync_race_info",
         **common,
     )
 

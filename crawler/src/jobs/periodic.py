@@ -18,6 +18,7 @@ from .sync_horses import backfill_missing_raw, refresh_stale_horses
 from .sync_jockeys import sync_all_jockeys
 from .sync_news import sync_news
 from .sync_race_entries import sync_upcoming as sync_upcoming_race_entries
+from .sync_race_info import backfill_races_metadata
 from .sync_race_plan import sync_current_year as sync_current_race_plan
 from .sync_races import sync_date_all_meets
 from .sync_videos import sync_videos
@@ -76,3 +77,9 @@ def run_sync_race_entries() -> int:
         )
         return 0
     return sync_upcoming_race_entries(days_ahead=10)
+
+
+@track_job("mal.sync_race_info")
+def run_sync_race_info() -> int:
+    """API187 로 races 메타(이름/거리/등급/주로) 백필 — 22:30 KST."""
+    return backfill_races_metadata()
