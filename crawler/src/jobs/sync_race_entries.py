@@ -14,7 +14,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from ..clients.race_chulma import RaceChulmaClient, api_item_to_race_entry_fields
 from ..db import session_scope
 from ..logging import get_logger
-from ..models import RaceEntry
+from ..models import Race, RaceEntry
 
 log = get_logger(__name__)
 
@@ -59,6 +59,44 @@ def upsert_race_entries(items: list[dict[str, Any]]) -> int:
     return len(unique)
 
 
+def upsert_races_skeleton(items: list[dict[str, Any]]) -> int:
+    """출전표 items 로부터 (race_date, meet, race_no) 고유 키를 뽑아 `races` 에
+    선(先) 행을 만든다. entry_count 만 채우고 나머지 메타(race_name/distance/
+    grade/track_*)는 sync_race_info 의 API187 백필이 담당한다.
+
+    기존 races 행이 이미 있으면 entry_count 만 COALESCE 로 채운다 — 결과가
+    이미 들어온 레이스의 정확한 entry_count 를 덮어쓰지 않도록.
+    """
+    counts: dict[tuple[date, str, int], int] = {}
+    for r in items:
+        rd = r.get("race_date")
+        mt = r.get("meet")
+        rn = r.get("race_no")
+        if not (rd and mt and rn is not None):
+            continue
+        counts[(rd, mt, rn)] = counts.get((rd, mt, rn), 0) + 1
+
+    if not counts:
+        return 0
+
+    rows = [
+        {"race_date": rd, "meet": mt, "race_no": rn, "entry_count": n}
+        for (rd, mt, rn), n in counts.items()
+    ]
+    stmt = pg_insert(Race).values(rows)
+    stmt = stmt.on_conflict_do_update(
+        constraint="uq_races",
+        set_={
+            # 기존 값 보존 — race_results 기반 정확 카운트를 덮어쓰지 않음.
+            "entry_count": func.coalesce(Race.entry_count, stmt.excluded.entry_count),
+        },
+    )
+    with session_scope() as s:
+        s.execute(stmt)
+    log.info("races_skeleton_upserted", count=len(rows))
+    return len(rows)
+
+
 def _upcoming_race_dates(base: date, days_ahead: int = 10) -> list[date]:
     """base~base+days 내의 금/토/일 일자만 반환 — KRA 경주 요일."""
     out: list[date] = []
@@ -91,4 +129,7 @@ def sync_upcoming(days_ahead: int = 10) -> int:
                 )
                 mapped = [api_item_to_race_entry_fields(it) for it in items]
                 total += upsert_race_entries(mapped)
+                # 출전표 수집 시점에 races 테이블에도 예정 경주 행을 즉시 만들어
+                # 메인 페이지 "다음 진행 예정 경기" 섹션에 반영되도록 한다.
+                upsert_races_skeleton(mapped)
     return total
