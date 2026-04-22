@@ -71,6 +71,44 @@ export async function getUpcomingRaces(limit = 60, meet?: string): Promise<RaceI
   );
 }
 
+/**
+ * 오늘 이후(포함) 첫 번째로 경기가 있는 날의 모든 경주를 반환.
+ * 대부분의 경우 주말 단위로 경기가 몰리므로 "다음 개최일" 전체를 가져와야
+ * 대상/메인 경주를 뽑을 수 있다.
+ */
+export async function getNextRaceDayRaces(): Promise<RaceInfo[]> {
+  return query<RaceInfo>(
+    `SELECT ${RACE_COLUMNS}
+       FROM races
+      WHERE race_date = (
+        SELECT MIN(race_date) FROM races WHERE race_date >= CURRENT_DATE
+      )
+      ORDER BY meet, race_no`,
+    [],
+  );
+}
+
+/**
+ * 가장 최근 N개의 개최일에 속한 모든 경주를 반환 (최신일 먼저).
+ * 메인 페이지에서 (날짜 × 경마장) 단위로 묶어 보여줄 때 사용.
+ */
+export async function getRecentRaceDaysRaces(days = 2): Promise<RaceInfo[]> {
+  return query<RaceInfo>(
+    `WITH recent_days AS (
+       SELECT DISTINCT race_date
+         FROM races
+        WHERE race_date < CURRENT_DATE
+        ORDER BY race_date DESC
+        LIMIT $1
+     )
+     SELECT ${RACE_COLUMNS}
+       FROM races
+      WHERE race_date IN (SELECT race_date FROM recent_days)
+      ORDER BY race_date DESC, meet, race_no`,
+    [days],
+  );
+}
+
 export async function getFutureRaces(limit = 90, meet?: string): Promise<RaceInfo[]> {
   if (meet) {
     return query<RaceInfo>(
