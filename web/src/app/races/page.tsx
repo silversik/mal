@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { RaceDatePicker } from "@/components/race-date-picker";
 import { VenueIcon } from "@/components/venue-icon";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  getNearbyRaceDates,
+  getAllRaceDates,
   getRaceEntries,
   getRacesByDate,
   type RaceInfo,
@@ -68,9 +69,9 @@ export default async function RacesPage({
   const currentDate = date ?? today;
   const isToday = currentDate === today;
 
-  const [races, nearbyDates] = await Promise.all([
+  const [races, raceDates] = await Promise.all([
     getRacesByDate(currentDate),
-    getNearbyRaceDates(currentDate, 7),
+    getAllRaceDates(currentDate, 3),
   ]);
 
   const selectedRace =
@@ -86,9 +87,11 @@ export default async function RacesPage({
       ])
     : [[], null];
 
+  // 크롤러 `sync_videos_backfill.format_race_title_query()` 와 동일한 포맷 — 수동 검색과
+  // 자동 백필이 같은 쿼리를 쓰도록 맞춤. 예) "(서울) 2026.02.28 1경주"
   const ytSearchUrl = selectedRace
     ? `https://www.youtube.com/results?search_query=${encodeURIComponent(
-        `KRBC ${currentDate} ${selectedRace.meet} ${selectedRace.race_no}경주`,
+        `(${selectedRace.meet}) ${currentDate.replaceAll("-", ".")} ${selectedRace.race_no}경주`,
       )}`
     : null;
 
@@ -103,52 +106,31 @@ export default async function RacesPage({
   const prevDate = offsetDate(currentDate, -1);
   const nextDate = offsetDate(currentDate, 1);
 
-  /* 오늘이 nearbyDates에 없고 현재가 오늘이 아닐 때 별도 버튼 표시 */
-  const showTodayButton = !isToday && !nearbyDates.includes(today);
-
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8">
       <h1 className="mb-5 text-2xl font-bold tracking-tight">경기 일람</h1>
 
-      {/* ── 날짜 탭 네비게이션 ── */}
-      <div className="mb-6 flex items-center gap-1 overflow-x-auto pb-1">
+      {/* ── 날짜 네비게이션: 이전/다음 + 데이트피커 + 오늘 ── */}
+      <div className="mb-6 flex items-center gap-2">
         <Link
           href={`/races?date=${prevDate}`}
+          aria-label="이전 날"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-card text-muted-foreground transition hover:bg-muted"
         >
           ‹
         </Link>
 
-        {nearbyDates.map((d) => {
-          const isActive = d === currentDate;
-          const isTodayDate = d === today;
+        <RaceDatePicker currentDate={currentDate} raceDates={raceDates} />
 
-          /*
-           * "오늘" 레이블: 오늘 날짜 탭이지만 현재 오늘을 보고 있지 않을 때만 표시.
-           * 오늘을 보고 있으면 그냥 날짜 형식으로 선택된 상태를 보여준다.
-           */
-          const label =
-            isTodayDate && !isToday ? "오늘" : formatDateLabel(d);
+        <Link
+          href={`/races?date=${nextDate}`}
+          aria-label="다음 날"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-card text-muted-foreground transition hover:bg-muted"
+        >
+          ›
+        </Link>
 
-          return (
-            <Link
-              key={d}
-              href={isTodayDate ? "/races" : `/races?date=${d}`}
-              className={`shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium transition whitespace-nowrap ${
-                isActive
-                  ? "border-primary bg-primary text-white"
-                  : isTodayDate
-                  ? "border-champagne-gold/60 bg-champagne-gold/10 text-champagne-gold hover:bg-champagne-gold/20"
-                  : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              {label}
-            </Link>
-          );
-        })}
-
-        {/* 오늘이 nearbyDates에 없고 현재 오늘이 아닐 때만 표시 */}
-        {showTodayButton && (
+        {!isToday && (
           <Link
             href="/races"
             className="shrink-0 rounded-lg border border-champagne-gold/60 bg-champagne-gold/10 px-3 py-1.5 text-sm font-medium text-champagne-gold transition hover:bg-champagne-gold/20 whitespace-nowrap"
@@ -156,13 +138,6 @@ export default async function RacesPage({
             오늘
           </Link>
         )}
-
-        <Link
-          href={`/races?date=${nextDate}`}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-card text-muted-foreground transition hover:bg-muted"
-        >
-          ›
-        </Link>
       </div>
 
       {/* ── 경기 없음 ── */}

@@ -164,6 +164,24 @@ export async function getNearbyRaceDates(
   return rows.map((r) => r.race_date);
 }
 
+/**
+ * fromDate 기준 ±months 개월 범위 내 경주가 있는 날짜 목록 (달력 하이라이트용).
+ * DayPicker 의 modifiers 에 넘겨 "경주 있는 날" 을 금색으로 강조.
+ */
+export async function getAllRaceDates(
+  fromDate: string,
+  months = 3,
+): Promise<string[]> {
+  const rows = await query<{ race_date: string }>(
+    `SELECT DISTINCT to_char(race_date, 'YYYY-MM-DD') AS race_date
+       FROM races
+      WHERE race_date BETWEEN $1::date - ($2 * INTERVAL '1 month') AND $1::date + ($2 * INTERVAL '1 month')
+      ORDER BY race_date`,
+    [fromDate, months],
+  );
+  return rows.map((r) => r.race_date);
+}
+
 export async function getAvailableMeets(): Promise<string[]> {
   const rows = await query<{ meet: string }>(
     `SELECT DISTINCT meet FROM races ORDER BY meet`,
