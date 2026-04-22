@@ -23,6 +23,7 @@ from .jobs.periodic import (
     run_sync_race_plan,
     run_sync_races_today,
     run_sync_videos,
+    run_sync_videos_backfill,
 )
 from .jobs.sync_horses import backfill_missing_raw, sync_by_name, sync_by_no, upsert_horses
 from .jobs.sync_jockeys import sync_all_jockeys
@@ -304,6 +305,13 @@ def cmd_periodic_race_info() -> None:
     """[scheduled] sync_race_info — API187 메타 백필."""
     n = run_sync_race_info()
     typer.echo(f"backfilled {n} race metadata rows")
+
+
+@app.command("periodic-videos-backfill")
+def cmd_periodic_videos_backfill() -> None:
+    """[scheduled] sync_videos_backfill — 누락 경주 영상 search."""
+    n = run_sync_videos_backfill()
+    typer.echo(f"backfilled {n} video rows")
 
 
 @app.command("register-dashboard-jobs")

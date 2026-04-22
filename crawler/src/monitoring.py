@@ -109,6 +109,11 @@ JOB_CATALOG: dict[str, dict] = {
         "description": "경주 메타(이름/거리/등급/주로) API187 백필",
         "expected_interval_sec": 86400,
     },
+    "mal.sync_videos_backfill": {
+        "category": "youtube",
+        "description": "누락된 경주 영상 YouTube search 로 매칭",
+        "expected_interval_sec": 86400,
+    },
 }
 
 _registered: set[str] = set()

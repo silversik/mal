@@ -109,6 +109,58 @@ class YoutubeClient:
             raise YoutubeApiError(f"channel not found: {channel_id}")
         return items[0]["contentDetails"]["relatedPlaylists"]["uploads"]
 
+    def search_video_ids(
+        self,
+        query: str,
+        *,
+        channel_id: str | None = None,
+        max_results: int = 5,
+        published_after: datetime | None = None,
+    ) -> list[str]:
+        """YouTube Data API v3 search → videoId 목록.
+
+        할당량: 100 units/call (uploads playlist 대비 100배). 백필 전용.
+        `channel_id` 지정 시 해당 채널(KRBC)로 스코프 제한해 정밀도를 높인다.
+        """
+        params: dict[str, Any] = {
+            "part": "id",
+            "q": query,
+            "type": "video",
+            "maxResults": min(max_results, 50),
+            "order": "relevance",
+        }
+        if channel_id:
+            params["channelId"] = channel_id
+        if published_after is not None:
+            # RFC3339 (e.g., 1970-01-01T00:00:00Z)
+            params["publishedAfter"] = published_after.strftime("%Y-%m-%dT%H:%M:%SZ")
+        data = self._get("search", **params)
+        ids: list[str] = []
+        for it in data.get("items", []):
+            vid = (it.get("id") or {}).get("videoId")
+            if vid:
+                ids.append(vid)
+        return ids
+
+    def search_videos(
+        self,
+        query: str,
+        *,
+        channel_id: str | None = None,
+        max_results: int = 5,
+        published_after: datetime | None = None,
+    ) -> list[YoutubeVideo]:
+        """search_video_ids + fetch_videos 콤보."""
+        ids = self.search_video_ids(
+            query,
+            channel_id=channel_id,
+            max_results=max_results,
+            published_after=published_after,
+        )
+        if not ids:
+            return []
+        return self.fetch_videos(ids)
+
     def list_recent_video_ids(
         self, uploads_playlist_id: str, *, max_results: int = 20
     ) -> list[str]:

@@ -22,6 +22,7 @@ from .sync_race_info import backfill_races_metadata
 from .sync_race_plan import sync_current_year as sync_current_race_plan
 from .sync_races import sync_date_all_meets
 from .sync_videos import sync_videos
+from .sync_videos_backfill import backfill_missing_race_videos
 
 log = get_logger(__name__)
 
@@ -83,3 +84,15 @@ def run_sync_race_entries() -> int:
 def run_sync_race_info() -> int:
     """API187 로 races 메타(이름/거리/등급/주로) 백필 — 22:30 KST."""
     return backfill_races_metadata()
+
+
+@track_job("mal.sync_videos_backfill")
+def run_sync_videos_backfill() -> int:
+    """누락된 경주 영상을 YouTube search 로 매칭 — 23:00 KST."""
+    if not settings.youtube_api_key or not settings.youtube_krbc_channel_id:
+        log.warning(
+            "sync_videos_backfill_skipped_missing_config",
+            reason="YOUTUBE_API_KEY / YOUTUBE_KRBC_CHANNEL_ID 미설정",
+        )
+        return 0
+    return backfill_missing_race_videos(days_back=30, limit=50)

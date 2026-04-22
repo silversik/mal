@@ -26,6 +26,7 @@ from .jobs.periodic import (
     run_sync_race_plan,
     run_sync_races_today,
     run_sync_videos,
+    run_sync_videos_backfill,
 )
 from .logging import configure_logging, get_logger
 from .monitoring import register_all_jobs
@@ -99,6 +100,13 @@ def main() -> None:
         run_sync_race_info,
         CronTrigger(hour=22, minute=30),
         id="mal.sync_race_info",
+        **common,
+    )
+    # 메타 백필 다음 영상 매칭(23:00) — 누락된 경주에 KRBC YouTube search 로 upsert.
+    sched.add_job(
+        run_sync_videos_backfill,
+        CronTrigger(hour=23, minute=0),
+        id="mal.sync_videos_backfill",
         **common,
     )
 
