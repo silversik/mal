@@ -20,6 +20,7 @@ from .jobs.periodic import (
     run_sync_horses_backfill,
     run_sync_jockeys,
     run_sync_news,
+    run_sync_owners,
     run_sync_race_dividends,
     run_sync_race_entries,
     run_sync_race_info,
@@ -397,6 +398,23 @@ def cmd_periodic_trainers() -> None:
     """[scheduled] sync_trainers — tracked run."""
     n = run_sync_trainers()
     typer.echo(f"upserted {n} trainer rows")
+
+
+@app.command("sync-owners")
+def cmd_sync_owners(
+    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 전체)"),
+) -> None:
+    """Fetch all active owners and upsert into `owners`."""
+    from .jobs.sync_owners import sync_all_owners
+    n = sync_all_owners(meet=meet)
+    typer.echo(f"upserted {n} owner rows")
+
+
+@app.command("periodic-owners")
+def cmd_periodic_owners() -> None:
+    """[scheduled] sync_owners — tracked run."""
+    n = run_sync_owners()
+    typer.echo(f"upserted {n} owner rows")
 
 
 @app.command("periodic-horse-ratings")

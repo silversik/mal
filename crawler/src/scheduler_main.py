@@ -25,6 +25,7 @@ from .jobs.periodic import (
     run_sync_horses_refresh,
     run_sync_jockeys,
     run_sync_news,
+    run_sync_owners,
     run_sync_race_dividends,
     run_sync_race_entries,
     run_sync_race_info,
@@ -97,6 +98,13 @@ def main() -> None:
         id="mal.sync_trainers",
         **common,
     )
+    # 마주 마스터 — trainers 직후, 같은 마스터 데이터 묶음.
+    sched.add_job(
+        run_sync_owners,
+        CronTrigger(hour=6, minute=20),
+        id="mal.sync_owners",
+        **common,
+    )
     sched.add_job(
         run_sync_horses_backfill,
         CronTrigger(hour=6, minute=30),
@@ -156,6 +164,7 @@ def main() -> None:
         "mal.sync_race_plan": run_sync_race_plan,
         "mal.sync_jockeys": run_sync_jockeys,
         "mal.sync_trainers": run_sync_trainers,
+        "mal.sync_owners": run_sync_owners,
         "mal.sync_horses_backfill": run_sync_horses_backfill,
         "mal.sync_horses_refresh": run_sync_horses_refresh,
         "mal.sync_horse_ratings": run_sync_horse_ratings,

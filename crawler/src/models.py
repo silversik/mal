@@ -129,6 +129,34 @@ class Trainer(Base):
     )
 
 
+class Owner(Base):
+    """마주 마스터 — KRA API309/horseOwnerInfo (dataset 15130589).
+
+    개인+법인 혼재. trainers/jockeys 와 동일한 형태.
+    See: db/migrations/018_owners.sql
+    """
+
+    __tablename__ = "owners"
+
+    ow_no: Mapped[str] = mapped_column(String(20), primary_key=True)
+    ow_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    ow_name_en: Mapped[str | None] = mapped_column(String(200))
+    meet: Mapped[str | None] = mapped_column(String(20))
+    reg_date: Mapped[date | None] = mapped_column(Date)
+    total_race_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    first_place_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    second_place_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    third_place_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    win_rate: Mapped[float | None] = mapped_column(Numeric(5, 2))
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class Race(Base):
     __tablename__ = "races"
     __table_args__ = (
