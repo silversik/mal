@@ -19,6 +19,13 @@ import {
   getRacesByDate,
   type RaceInfo,
 } from "@/lib/races";
+import {
+  getRaceComboDividends,
+  POOL_LABEL,
+  POOL_ORDERED,
+  type ComboPool,
+  type RaceComboDividend,
+} from "@/lib/race_combo_dividends";
 import { getRaceVideo, youtubeEmbedUrl, youtubeWatchUrl } from "@/lib/videos";
 
 // KRBC 채널(UCsIvYoihIg37E96LkG-XHAw)의 라이브 URL — 방송 중이면 현재 스트림으로 자동 리다이렉트.
@@ -109,13 +116,14 @@ export default async function RacesPage({
         null
       : null;
 
-  const [entries, raceVideo, syncedAt] = selectedRace
+  const [entries, raceVideo, syncedAt, comboDividends] = selectedRace
     ? await Promise.all([
         getRaceEntries(currentDate, selectedRace.meet, selectedRace.race_no),
         getRaceVideo(currentDate, selectedRace.meet, selectedRace.race_no),
         getRaceDataSyncedAt(currentDate, selectedRace.meet, selectedRace.race_no),
+        getRaceComboDividends(currentDate, selectedRace.meet, selectedRace.race_no),
       ])
-    : [[], null, null];
+    : [[], null, null, [] as RaceComboDividend[]];
 
   // 크롤러 `sync_videos_backfill.format_race_title_query()` 와 동일한 포맷 — 수동 검색과
   // 자동 백필이 같은 쿼리를 쓰도록 맞춤. 예) "(서울) 2026.02.28 1경주"
@@ -527,9 +535,82 @@ export default async function RacesPage({
               </CardContent>
             </Card>
           )}
+
+          {comboDividends.length > 0 && (
+            <ComboDividendsSection rows={comboDividends} />
+          )}
         </section>
       )}
     </main>
+  );
+}
+
+/* ── 복식 배당 섹션 ──────────────────────────────────────── */
+
+const POOL_ORDER: ComboPool[] = ["QNL", "QPL", "EXA", "TRI", "TLA"];
+
+function formatCombo(d: RaceComboDividend): string {
+  const sep = POOL_ORDERED[d.pool] ? " → " : ", ";
+  const parts = [
+    d.horse_name_1 ? `${d.horse_no_1} ${d.horse_name_1}` : d.horse_no_1,
+    d.horse_name_2 ? `${d.horse_no_2} ${d.horse_name_2}` : d.horse_no_2,
+  ];
+  if (d.horse_no_3) {
+    parts.push(
+      d.horse_name_3 ? `${d.horse_no_3} ${d.horse_name_3}` : d.horse_no_3,
+    );
+  }
+  return parts.join(sep);
+}
+
+function formatOdds(odds: string | null): string {
+  if (odds === null) return "-";
+  const n = Number(odds);
+  if (Number.isNaN(n)) return odds;
+  return n.toFixed(1);
+}
+
+function ComboDividendsSection({ rows }: { rows: RaceComboDividend[] }) {
+  const byPool = new Map<ComboPool, RaceComboDividend[]>();
+  for (const r of rows) {
+    const arr = byPool.get(r.pool) ?? [];
+    arr.push(r);
+    byPool.set(r.pool, arr);
+  }
+  const activePools = POOL_ORDER.filter((p) => byPool.has(p));
+
+  return (
+    <div className="mt-6">
+      <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
+        복식 배당
+      </h3>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {activePools.map((pool) => {
+          const items = byPool.get(pool) ?? [];
+          return (
+            <Card key={pool}>
+              <div className="border-b bg-muted/40 px-4 py-2 text-xs font-semibold tracking-wide text-muted-foreground">
+                {POOL_LABEL[pool]}{" "}
+                <span className="ml-1 font-mono opacity-70">{pool}</span>
+              </div>
+              <div className="divide-y divide-border/40">
+                {items.map((d, i) => (
+                  <div
+                    key={`${pool}-${i}`}
+                    className="flex items-center justify-between px-4 py-1.5 text-xs"
+                  >
+                    <span className="truncate">{formatCombo(d)}</span>
+                    <span className="ml-2 shrink-0 font-mono tabular-nums font-semibold">
+                      {formatOdds(d.odds)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

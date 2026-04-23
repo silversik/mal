@@ -13,8 +13,9 @@ Endpoint: https://apis.data.go.kr/B551015/API301/Dividend_rate_total
 
     공통 필드: rcDate, meet, rcNo, pool, odds, chulNo[, chulNo2, chulNo3]
 
-1차 사이클 범위: WIN + PLC 만 처리 — 출마표/결과 페이지 horse-level 표시용.
-복식(QNL/QPL/EXA/TRI/TLA) 은 별도 후속 이터레이션 (race_combo_dividends 등).
+처리 범위:
+    - WIN/PLC → race_dividends (horse-level, 한 row 에 단·연 합쳐짐).
+    - QNL/QPL/EXA/TRI/TLA → race_combo_dividends (combo-level, pool 별 1 row).
 """
 from __future__ import annotations
 
@@ -160,3 +161,72 @@ def items_to_dividend_rows(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
             }
         )
     return rows
+
+
+# ------------------------------------------------------------- combo dividends
+
+# pool 별 마수 (chulNo + chulNo2 [+ chulNo3])
+_COMBO_POOL_SIZE = {"QNL": 2, "QPL": 2, "EXA": 2, "TRI": 3, "TLA": 3}
+# pool 별 순서 의미 — True = ordered (1·2[·3] 순서 일치), False = unordered.
+_COMBO_POOL_ORDERED = {"QNL": False, "QPL": False, "EXA": True,
+                        "TRI": False, "TLA": True}
+
+
+def _combo_horses(item: dict[str, Any], size: int) -> list[str] | None:
+    """chulNo, chulNo2[, chulNo3] 를 size 만큼 추출. 결측이면 None."""
+    keys = ("chulNo", "chulNo2", "chulNo3")[:size]
+    horses: list[str] = []
+    for k in keys:
+        v = _clean_str(item.get(k))
+        if v is None:
+            return None
+        horses.append(v)
+    return horses
+
+
+def _combo_key(horses: list[str], ordered: bool) -> str:
+    """canonical key — unordered 는 정렬, ordered 는 원순서."""
+    if ordered:
+        return "-".join(horses)
+    return "-".join(sorted(horses))
+
+
+def items_to_combo_dividend_rows(
+    items: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """API 응답 item 리스트 → race_combo_dividends row dict 리스트.
+
+    QNL/QPL/EXA/TRI/TLA 만 처리. 같은 (race, pool, combo_key) 가 중복으로 들어오면
+    마지막 값을 채택 (방어적 — KRA 응답에 중복은 관측되지 않았지만 idempotent).
+    """
+    dedup: dict[tuple[date, str, int, str, str], dict[str, Any]] = {}
+    for item in items:
+        pool = (item.get("pool") or "").strip().upper()
+        size = _COMBO_POOL_SIZE.get(pool)
+        if size is None:
+            continue
+        rd = _parse_date(item.get("rcDate") or item.get("rc_date"))
+        meet = _meet_name(item)
+        race_no = _parse_int(item.get("rcNo") or item.get("rc_no"))
+        if rd is None or meet is None or race_no is None:
+            continue
+        horses = _combo_horses(item, size)
+        if horses is None:
+            continue
+        ordered = _COMBO_POOL_ORDERED[pool]
+        key = _combo_key(horses, ordered)
+        odds = _parse_number(item.get("odds"))
+
+        dedup[(rd, meet, race_no, pool, key)] = {
+            "race_date": rd,
+            "meet": meet,
+            "race_no": race_no,
+            "pool": pool,
+            "combo_key": key,
+            "horse_no_1": horses[0],
+            "horse_no_2": horses[1],
+            "horse_no_3": horses[2] if size == 3 else None,
+            "odds": odds,
+            "raw": item,
+        }
+    return list(dedup.values())

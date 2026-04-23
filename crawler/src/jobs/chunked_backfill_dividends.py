@@ -29,7 +29,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from ..db import session_scope
 from ..logging import get_logger
-from ..models import Race, RaceDividend
+from ..models import Race, RaceComboDividend, RaceDividend  # noqa: F401
 
 log = get_logger(__name__)
 
@@ -74,14 +74,20 @@ def _save_state(next_date: date) -> None:
 
 
 def _has_dividend(d: date, meet_name: str) -> bool:
-    """이미 (date, meet) 의 race_dividends 가 있으면 skip."""
+    """이미 (date, meet) 의 *combo* dividend 가 있으면 skip.
+
+    sync_date 한 번 호출이 horse-level + combo 를 동시 upsert 하므로 combo 존재 =
+    "이 (date, meet) 는 017 마이그레이션 이후 fetch 됨" 의 정확한 마커.
+    horse-level (race_dividends) 만 보면 pre-017 backfill 적재분도 skip 되어
+    combo 가 영원히 비게 된다.
+    """
     with session_scope() as s:
         return bool(
             s.execute(
                 select(
                     exists().where(
-                        RaceDividend.race_date == d,
-                        RaceDividend.meet == meet_name,
+                        RaceComboDividend.race_date == d,
+                        RaceComboDividend.meet == meet_name,
                     )
                 )
             ).scalar()

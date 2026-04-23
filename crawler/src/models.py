@@ -296,6 +296,45 @@ class RaceDividend(Base):
     )
 
 
+class RaceComboDividend(Base):
+    """경주별·복식 조합 배당 — API301/Dividend_rate_total 의 QNL/QPL/EXA/TRI/TLA pool.
+
+    한 row = (race, pool, combo_key) 의 단일 배당. canonical combo_key 는
+    unordered pool (QNL/QPL/TRI) 의 경우 horse_no 정렬, ordered pool (EXA/TLA) 는
+    원순서. horse_no_1/2/3 은 KRA 응답 원순서.
+
+    See: db/migrations/017_race_combo_dividends.sql
+    """
+
+    __tablename__ = "race_combo_dividends"
+    __table_args__ = (
+        UniqueConstraint(
+            "race_date", "meet", "race_no", "pool", "combo_key",
+            name="uq_race_combo_dividends",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    race_date: Mapped[date] = mapped_column(Date, nullable=False)
+    meet: Mapped[str] = mapped_column(String(20), nullable=False)
+    race_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    pool: Mapped[str] = mapped_column(String(8), nullable=False)
+    combo_key: Mapped[str] = mapped_column(Text, nullable=False)
+
+    horse_no_1: Mapped[str] = mapped_column(String(20), nullable=False)
+    horse_no_2: Mapped[str] = mapped_column(String(20), nullable=False)
+    horse_no_3: Mapped[str | None] = mapped_column(String(20))
+
+    odds: Mapped[float | None] = mapped_column(Numeric(10, 1))
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class HorseRating(Base):
     """경주마 레이팅 스냅샷 시계열 — KRA API77/raceHorseRating (dataset 15057323).
 
