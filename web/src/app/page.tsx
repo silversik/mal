@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { getRecentHorses, type Horse } from "@/lib/horses";
 import { getAllJockeys, type Jockey } from "@/lib/jockeys";
 import { getLatestNews, type NewsItem } from "@/lib/news";
+import { getRecentPosts, type CommunityPost } from "@/lib/posts";
 import {
   getNextRaceDayRaces,
   getRecentRaceDaysRaces,
@@ -40,13 +41,15 @@ function isStakesRace(r: RaceInfo): boolean {
 
 export default async function Home() {
   const todayDate = new Date().toISOString().slice(0, 10);
-  const [recentDayRaces, horses, jockeys, nextDayRaces, news] = await Promise.all([
-    getRecentRaceDaysRaces(2),
-    getRecentHorses(6),
-    getAllJockeys(6),
-    getNextRaceDayRaces(),
-    getLatestNews(3),
-  ]);
+  const [recentDayRaces, horses, jockeys, nextDayRaces, news, recentPosts] =
+    await Promise.all([
+      getRecentRaceDaysRaces(2),
+      getRecentHorses(6),
+      getAllJockeys(6),
+      getNextRaceDayRaces(),
+      getLatestNews(3),
+      getRecentPosts(5),
+    ]);
 
   /*
    * "다음 진행 예정 경기": 가장 가까운 개최일(오늘 포함)의 경주 중 대상/G/L 경주를 우선,
@@ -141,6 +144,19 @@ export default async function Home() {
             <div className="divide-y divide-primary/5 rounded-lg border border-primary/5 bg-white">
               {news.map((n) => (
                 <NewsRow key={n.id} item={n} />
+              ))}
+            </div>
+          )}
+        </Section>
+
+        {/* 커뮤니티 최근 글 */}
+        <Section title="커뮤니티 최근 글" href="/board">
+          {recentPosts.length === 0 ? (
+            <EmptyCard>아직 작성된 글이 없습니다.</EmptyCard>
+          ) : (
+            <div className="divide-y divide-primary/5 rounded-lg border border-primary/5 bg-white">
+              {recentPosts.map((p) => (
+                <PostRow key={p.id} post={p} />
               ))}
             </div>
           )}
@@ -379,6 +395,29 @@ function JockeyRow({ jockey }: { jockey: Jockey }) {
         </div>
         <div className="text-right">
           <div className="text-sm font-bold text-dirt-brown">{jockey.win_rate}%</div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function PostRow({ post }: { post: CommunityPost }) {
+  return (
+    <Link
+      href={`/board/${post.id}`}
+      className="block first:rounded-t-lg last:rounded-b-lg"
+    >
+      <div className="group flex items-center justify-between gap-4 px-4 py-2.5 transition-colors hover:bg-muted/50">
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-semibold transition-colors group-hover:text-primary">
+            {post.title}
+          </div>
+          <div className="mt-0.5 text-xs text-slate-grey">
+            {post.author_name ?? "익명"}
+          </div>
+        </div>
+        <div className="shrink-0 font-mono text-xs text-slate-grey tabular-nums">
+          {post.created_at.slice(0, 10)}
         </div>
       </div>
     </Link>

@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { href: "/horses", label: "마필" },
   { href: "/jockeys", label: "기수" },
   { href: "/news", label: "뉴스" },
+  { href: "/board", label: "커뮤니티" },
 ] as const;
 
 export function NavLinks() {
