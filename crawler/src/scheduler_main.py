@@ -17,14 +17,17 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from .jobs.periodic import (
+    run_sync_horse_ratings,
     run_sync_horses_backfill,
     run_sync_horses_refresh,
     run_sync_jockeys,
     run_sync_news,
+    run_sync_race_dividends,
     run_sync_race_entries,
     run_sync_race_info,
     run_sync_race_plan,
     run_sync_races_today,
+    run_sync_trainers,
     run_sync_videos,
     run_sync_videos_backfill,
 )
@@ -77,6 +80,13 @@ def main() -> None:
         id="mal.sync_jockeys",
         **common,
     )
+    # 기수와 동일한 마스터 데이터 — sync_jockeys 직후 실행.
+    sched.add_job(
+        run_sync_trainers,
+        CronTrigger(hour=6, minute=15),
+        id="mal.sync_trainers",
+        **common,
+    )
     sched.add_job(
         run_sync_horses_backfill,
         CronTrigger(hour=6, minute=30),
@@ -87,6 +97,13 @@ def main() -> None:
         run_sync_horses_refresh,
         CronTrigger(hour=7, minute=0),
         id="mal.sync_horses_refresh",
+        **common,
+    )
+    # 주 1회 토요일 — KRA 레이팅 공시 주기에 맞춤.
+    sched.add_job(
+        run_sync_horse_ratings,
+        CronTrigger(day_of_week="sat", hour=7, minute=30),
+        id="mal.sync_horse_ratings",
         **common,
     )
     sched.add_job(
@@ -100,6 +117,13 @@ def main() -> None:
         run_sync_race_info,
         CronTrigger(hour=22, minute=30),
         id="mal.sync_race_info",
+        **common,
+    )
+    # 메타 백필 직후 확정배당율(22:45) — race_dividends 적재.
+    sched.add_job(
+        run_sync_race_dividends,
+        CronTrigger(hour=22, minute=45),
+        id="mal.sync_race_dividends",
         **common,
     )
     # 메타 백필 다음 영상 매칭(23:00) — 누락된 경주에 KRBC YouTube search 로 upsert.

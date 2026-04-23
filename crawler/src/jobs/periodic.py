@@ -14,12 +14,15 @@ from datetime import date
 from ..config import settings
 from ..logging import get_logger
 from ..monitoring import track_job
+from .sync_horse_ratings import sync_all_meets as sync_horse_ratings_all_meets
 from .sync_horses import backfill_missing_raw, refresh_stale_horses
 from .sync_jockeys import sync_all_jockeys
+from .sync_trainers import sync_all_trainers
 from .sync_news import sync_news
 from .sync_race_entries import sync_upcoming as sync_upcoming_race_entries
 from .sync_race_info import backfill_races_metadata
 from .sync_race_plan import sync_current_year as sync_current_race_plan
+from .sync_race_dividends import sync_date_all_meets as sync_dividends_all_meets
 from .sync_races import sync_date_all_meets
 from .sync_videos import sync_videos
 from .sync_videos_backfill import backfill_missing_race_videos
@@ -84,6 +87,24 @@ def run_sync_race_entries() -> int:
 def run_sync_race_info() -> int:
     """API187 로 races 메타(이름/거리/등급/주로) 백필 — 22:30 KST."""
     return backfill_races_metadata()
+
+
+@track_job("mal.sync_race_dividends")
+def run_sync_race_dividends() -> int:
+    """오늘 경주의 확정배당율 적재 — 결과 sync (22:00) 이후 22:45 KST."""
+    return sync_dividends_all_meets(date.today())
+
+
+@track_job("mal.sync_trainers")
+def run_sync_trainers() -> int:
+    """매일 06:15 KST — sync_jockeys (06:00) 직후."""
+    return sync_all_trainers()
+
+
+@track_job("mal.sync_horse_ratings")
+def run_sync_horse_ratings() -> int:
+    """매주 KRA 공시 레이팅 적재 — 토요일 07:30 KST."""
+    return sync_horse_ratings_all_meets()
 
 
 @track_job("mal.sync_videos_backfill")

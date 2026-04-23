@@ -106,6 +106,29 @@ class Jockey(Base):
     )
 
 
+class Trainer(Base):
+    __tablename__ = "trainers"
+
+    tr_no: Mapped[str] = mapped_column(String(20), primary_key=True)
+    tr_name: Mapped[str] = mapped_column(String(50), nullable=False)
+    tr_name_en: Mapped[str | None] = mapped_column(String(100))
+    meet: Mapped[str | None] = mapped_column(String(20))
+    birth_date: Mapped[date | None] = mapped_column(Date)
+    debut_date: Mapped[date | None] = mapped_column(Date)
+    total_race_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    first_place_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    second_place_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    third_place_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    win_rate: Mapped[float | None] = mapped_column(Numeric(5, 2))
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class Race(Base):
     __tablename__ = "races"
     __table_args__ = (
@@ -232,6 +255,65 @@ class RaceEntry(Base):
     age: Mapped[str | None] = mapped_column(String(10))
     sex: Mapped[str | None] = mapped_column(String(10))
     rating: Mapped[int | None] = mapped_column(Integer)
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class RaceDividend(Base):
+    """경주별·마필별 단/연 배당 — API301/Dividend_rate_total.
+
+    한 row = (race, horse) 의 단승/연승 배당. 복식(QNL/QPL/EXA/TRI/TLA) 은 후속 작업.
+    """
+
+    __tablename__ = "race_dividends"
+    __table_args__ = (
+        UniqueConstraint(
+            "race_date", "meet", "race_no", "horse_no", name="uq_race_dividends"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    race_date: Mapped[date] = mapped_column(Date, nullable=False)
+    meet: Mapped[str] = mapped_column(String(20), nullable=False)
+    race_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    horse_no: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    win_rate: Mapped[float | None] = mapped_column(Numeric(8, 1))
+    plc_rate: Mapped[float | None] = mapped_column(Numeric(8, 1))
+
+    raw_win: Mapped[dict | None] = mapped_column(JSONB)
+    raw_plc: Mapped[dict | None] = mapped_column(JSONB)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class HorseRating(Base):
+    """경주마 레이팅 스냅샷 — KRA API77/raceHorseRating (dataset 15057323).
+
+    응답에 공시일자가 없어 horse_no PK 의 단순 스냅샷으로 저장.
+    rating1~rating4 는 의미 미공개 — raw 보존.
+    """
+
+    __tablename__ = "horse_ratings"
+
+    horse_no: Mapped[str] = mapped_column(String(20), primary_key=True)
+    horse_name: Mapped[str | None] = mapped_column(String(100))
+    meet: Mapped[str | None] = mapped_column(String(20))
+
+    rating1: Mapped[int | None] = mapped_column(Integer)
+    rating2: Mapped[int | None] = mapped_column(Integer)
+    rating3: Mapped[int | None] = mapped_column(Integer)
+    rating4: Mapped[int | None] = mapped_column(Integer)
+
     raw: Mapped[dict | None] = mapped_column(JSONB)
     fetched_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

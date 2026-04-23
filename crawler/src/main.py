@@ -15,13 +15,16 @@ import typer
 
 from .clients.horse_detail import HorseDetailClient
 from .jobs.periodic import (
+    run_sync_horse_ratings,
     run_sync_horses_backfill,
     run_sync_jockeys,
     run_sync_news,
+    run_sync_race_dividends,
     run_sync_race_entries,
     run_sync_race_info,
     run_sync_race_plan,
     run_sync_races_today,
+    run_sync_trainers,
     run_sync_videos,
     run_sync_videos_backfill,
 )
@@ -312,6 +315,68 @@ def cmd_periodic_videos_backfill() -> None:
     """[scheduled] sync_videos_backfill — 누락 경주 영상 search."""
     n = run_sync_videos_backfill()
     typer.echo(f"backfilled {n} video rows")
+
+
+@app.command("periodic-race-dividends")
+def cmd_periodic_race_dividends() -> None:
+    """[scheduled] sync_race_dividends — 오늘 확정배당율."""
+    n = run_sync_race_dividends()
+    typer.echo(f"upserted {n} race_dividend rows")
+
+
+@app.command("sync-dividend-date")
+def cmd_sync_dividend_date(
+    rc_date: str = typer.Argument(..., help="경주 일자 (YYYY-MM-DD 또는 YYYYMMDD)"),
+    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 3곳 모두)"),
+) -> None:
+    """Ad-hoc: 특정 날짜 확정배당율을 fetch & upsert."""
+    from .jobs.sync_race_dividends import sync_date as sync_div, sync_date_all_meets as sync_div_all
+    for fmt in ("%Y-%m-%d", "%Y%m%d"):
+        try:
+            d = datetime.strptime(rc_date, fmt).date()
+            break
+        except ValueError:
+            continue
+    else:
+        typer.echo("Invalid date format. Use YYYY-MM-DD or YYYYMMDD.")
+        raise typer.Exit(code=1)
+    n = sync_div(d, meet=meet) if meet is not None else sync_div_all(d)
+    typer.echo(f"upserted {n} race_dividend rows")
+
+
+@app.command("backfill-dividends")
+def cmd_backfill_dividends(
+    months: int = typer.Option(6, help="과거 몇 개월치 백필 (races 기준)"),
+    sleep: float = typer.Option(0.3, help="(date,meet) 호출 간격 (초)"),
+) -> None:
+    """[one-shot] race_dividends 1차 백필 — 최근 N개월 races 를 역순 순회."""
+    from .jobs.backfill_dividends import backfill
+    n = backfill(months=months, sleep_sec=sleep)
+    typer.echo(f"backfilled {n} race_dividend rows")
+
+
+@app.command("sync-trainers")
+def cmd_sync_trainers(
+    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 전체)"),
+) -> None:
+    """Fetch all active trainers and upsert into `trainers`."""
+    from .jobs.sync_trainers import sync_all_trainers
+    n = sync_all_trainers(meet=meet)
+    typer.echo(f"upserted {n} trainer rows")
+
+
+@app.command("periodic-trainers")
+def cmd_periodic_trainers() -> None:
+    """[scheduled] sync_trainers — tracked run."""
+    n = run_sync_trainers()
+    typer.echo(f"upserted {n} trainer rows")
+
+
+@app.command("periodic-horse-ratings")
+def cmd_periodic_horse_ratings() -> None:
+    """[scheduled] sync_horse_ratings — 주간 레이팅 공시."""
+    n = run_sync_horse_ratings()
+    typer.echo(f"upserted {n} horse_rating rows")
 
 
 @app.command("register-dashboard-jobs")

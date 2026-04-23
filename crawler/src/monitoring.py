@@ -109,6 +109,21 @@ JOB_CATALOG: dict[str, dict] = {
         "description": "경주 메타(이름/거리/등급/주로) API187 백필",
         "expected_interval_sec": 86400,
     },
+    "mal.sync_race_dividends": {
+        "category": "kra_openapi",
+        "description": "확정배당율 (API301/Dividend_rate_total)",
+        "expected_interval_sec": 86400,
+    },
+    "mal.sync_trainers": {
+        "category": "kra_openapi",
+        "description": "조교사정보_영문추가 (API308, 15130588)",
+        "expected_interval_sec": 86400,
+    },
+    "mal.sync_horse_ratings": {
+        "category": "kra_openapi",
+        "description": "경주마 레이팅 (15057323, recommendDataYn=Y)",
+        "expected_interval_sec": 604800,  # weekly
+    },
     "mal.sync_videos_backfill": {
         "category": "youtube",
         "description": "누락된 경주 영상 YouTube search 로 매칭",
