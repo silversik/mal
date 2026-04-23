@@ -15,6 +15,7 @@ import typer
 
 from .clients.horse_detail import HorseDetailClient
 from .jobs.periodic import (
+    run_chunked_dividends_backfill,
     run_sync_horse_ratings,
     run_sync_horses_backfill,
     run_sync_jockeys,
@@ -349,10 +350,36 @@ def cmd_backfill_dividends(
     months: int = typer.Option(6, help="과거 몇 개월치 백필 (races 기준)"),
     sleep: float = typer.Option(0.3, help="(date,meet) 호출 간격 (초)"),
 ) -> None:
-    """[one-shot] race_dividends 1차 백필 — 최근 N개월 races 를 역순 순회."""
+    """[one-shot] race_dividends 1차 백필 — 최근 N개월 races 를 역순 순회.
+
+    NOTE: API301 한 (date, meet) = ~30~60 page calls 이라 1회 실행에 일일 쿼터를
+    초과할 수 있다. 정상 운영에선 `chunked-dividends-backfill` (야간 청크 잡) 를 사용.
+    """
     from .jobs.backfill_dividends import backfill
     n = backfill(months=months, sleep_sec=sleep)
     typer.echo(f"backfilled {n} race_dividend rows")
+
+
+@app.command("chunked-dividends-backfill")
+def cmd_chunked_dividends_backfill(
+    budget: int = typer.Option(15, help="이번 청크에서 호출할 최대 sync_date 수"),
+    lookback_days: int = typer.Option(186, help="윈도우 (오늘 - N일)"),
+) -> None:
+    """[manual] race_dividends 야간 청크 1회 수동 실행 (스케줄러 02:30 KST 와 동일)."""
+    from .jobs.chunked_backfill_dividends import run_chunk
+    s = run_chunk(max_calls=budget, lookback_days=lookback_days)
+    typer.echo(
+        f"cursor={s['cursor']} next={s['next_cursor']} calls={s['calls']} "
+        f"added={s['added_rows']} skipped_existing={s['skipped_existing']} "
+        f"errors={s['errors']} quota_hit={s['quota_hit']} done={s['done']}"
+    )
+
+
+@app.command("periodic-chunked-dividends")
+def cmd_periodic_chunked_dividends() -> None:
+    """[scheduled] chunked_dividends_backfill — tracked run."""
+    n = run_chunked_dividends_backfill()
+    typer.echo(f"chunked added {n} race_dividend rows")
 
 
 @app.command("sync-trainers")

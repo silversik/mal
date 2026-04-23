@@ -17,6 +17,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from .jobs.periodic import (
+    run_chunked_dividends_backfill,
     run_sync_horse_ratings,
     run_sync_horses_backfill,
     run_sync_horses_refresh,
@@ -68,6 +69,13 @@ def main() -> None:
         **common,
     )
     # 매일 KST 고정 시각
+    # 자정 KRA 쿼터 리셋 직후, 모닝 sync 잡들 전에 야간 청크 백필 1회.
+    sched.add_job(
+        run_chunked_dividends_backfill,
+        CronTrigger(hour=2, minute=30),
+        id="mal.chunked_dividends_backfill",
+        **common,
+    )
     sched.add_job(
         run_sync_race_plan,
         CronTrigger(hour=5, minute=0),

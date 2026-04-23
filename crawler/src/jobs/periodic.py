@@ -24,6 +24,7 @@ from .sync_race_info import backfill_races_metadata
 from .sync_race_plan import sync_current_year as sync_current_race_plan
 from .sync_race_dividends import sync_date_all_meets as sync_dividends_all_meets
 from .sync_races import sync_date_all_meets
+from .chunked_backfill_dividends import run_chunk as run_chunked_dividends_chunk
 from .sync_videos import sync_videos
 from .sync_videos_backfill import backfill_missing_race_videos
 
@@ -105,6 +106,19 @@ def run_sync_trainers() -> int:
 def run_sync_horse_ratings() -> int:
     """매주 KRA 공시 레이팅 적재 — 토요일 07:30 KST."""
     return sync_horse_ratings_all_meets()
+
+
+@track_job("mal.chunked_dividends_backfill")
+def run_chunked_dividends_backfill() -> int:
+    """야간 청크 백필 — race_dividends 6개월 윈도우 역시간 진행.
+
+    매일 KST 02:30 (자정 쿼터 리셋 직후, 모닝 sync 잡들 전) 1회 실행.
+    각 호출 = 최대 ~15 (date, meet) sync_date 호출 = ~450~900 API page calls.
+    cursor 는 mal.sync_meta(source='chunked_backfill_dividends') 에 영속.
+    반환값: 이번 청크에서 upsert 한 row 수.
+    """
+    summary = run_chunked_dividends_chunk()
+    return int(summary.get("added_rows", 0))
 
 
 @track_job("mal.sync_videos_backfill")
