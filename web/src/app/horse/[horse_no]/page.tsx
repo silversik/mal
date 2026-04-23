@@ -27,6 +27,7 @@ import {
   type PedigreeNode,
   type RaceResult,
 } from "@/lib/horses";
+import { getLatestRating, type HorseRating } from "@/lib/horse_ratings";
 
 type JockeyMap = Record<string, string>; // jk_name → jk_no
 
@@ -50,10 +51,11 @@ export default async function HorseDetailPage({
   const horse = await getHorseByNo(horse_no);
   if (!horse) notFound();
 
-  const [results, siblings, pedigree] = await Promise.all([
+  const [results, siblings, pedigree, rating] = await Promise.all([
     getRaceResultsForHorse(horse_no, 10),
     getSiblings(horse.sire_name, horse_no),
     getPedigree(horse_no, 4),
+    getLatestRating(horse_no),
   ]);
 
   const jockeyMap = await buildJockeyMap(
@@ -70,7 +72,7 @@ export default async function HorseDetailPage({
         메인으로
       </Link>
 
-      <ProfileCard horse={horse} pedigree={pedigree} />
+      <ProfileCard horse={horse} pedigree={pedigree} rating={rating} />
 
       <section className="mt-10">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -114,9 +116,11 @@ export default async function HorseDetailPage({
 function ProfileCard({
   horse,
   pedigree,
+  rating,
 }: {
   horse: Horse;
   pedigree: PedigreeNode | null;
+  rating: HorseRating | null;
 }) {
   const fields: Array<[string, React.ReactNode]> = [
     ["마번", <span className="font-mono" key="no">{horse.horse_no}</span>],
@@ -138,6 +142,21 @@ function ProfileCard({
         <span className="text-primary">{horse.first_place_count}</span>
         <span className="text-muted-foreground">회</span>
       </span>,
+    ],
+    [
+      "레이팅",
+      rating?.rating4 != null ? (
+        <span key="r" className="font-mono tabular-nums">
+          {rating.rating4}
+          {rating.rating1 != null && rating.rating1 !== rating.rating4 && (
+            <span className="ml-1 text-xs text-muted-foreground">
+              ({rating.rating1} → {rating.rating2} → {rating.rating3} → {rating.rating4})
+            </span>
+          )}
+        </span>
+      ) : (
+        "-"
+      ),
     ],
   ];
 
