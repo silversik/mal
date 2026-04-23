@@ -21,6 +21,8 @@ export type RaceEntry = {
   jockey_name: string | null;
   record_time: string | null;
   weight: string | null;
+  win_rate: string | null;   // 단승 배당률 (모든 출주마)
+  plc_rate: string | null;   // 연승 배당률 (모든 출주마)
 };
 
 const RACE_COLUMNS = `
@@ -197,9 +199,16 @@ export async function getRaceEntries(
 ): Promise<RaceEntry[]> {
   return query<RaceEntry>(
     `SELECT r.rank, r.horse_no, h.horse_name,
-            r.jockey_name, r.record_time::text, r.weight::text
+            r.jockey_name, r.record_time::text, r.weight::text,
+            d.win_rate::text AS win_rate,
+            d.plc_rate::text AS plc_rate
        FROM race_results r
        JOIN horses h ON h.horse_no = r.horse_no
+       LEFT JOIN race_dividends d
+              ON d.race_date = r.race_date
+             AND d.meet = r.meet
+             AND d.race_no = r.race_no
+             AND d.horse_no = (r.raw->>'chulNo')
       WHERE r.race_date = $1::date
         AND r.meet = $2
         AND r.race_no = $3

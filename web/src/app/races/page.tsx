@@ -465,6 +465,8 @@ export default async function RacesPage({
                     <TableHead className="text-center">기수</TableHead>
                     <TableHead className="text-right">기록</TableHead>
                     <TableHead className="text-right">마체중</TableHead>
+                    <TableHead className="text-right">단승</TableHead>
+                    <TableHead className="text-right">연승</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -489,6 +491,12 @@ export default async function RacesPage({
                       </TableCell>
                       <TableCell className="text-right font-mono tabular-nums">
                         {e.weight ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-right font-mono tabular-nums text-muted-foreground">
+                        {e.win_rate ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-right font-mono tabular-nums text-muted-foreground">
+                        {e.plc_rate ?? "-"}
                       </TableCell>
                     </TableRow>
                   ))}
