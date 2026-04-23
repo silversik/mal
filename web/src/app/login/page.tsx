@@ -38,21 +38,6 @@ export default async function LoginPage() {
             </button>
           </form>
 
-          <button
-            type="button"
-            disabled
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-border bg-background text-[15px] font-semibold text-slate-grey opacity-60"
-          >
-            구글로 시작하기 · 준비 중
-          </button>
-
-          <button
-            type="button"
-            disabled
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-black text-[15px] font-semibold text-white opacity-60"
-          >
-            Apple 로 시작하기 · 준비 중
-          </button>
         </CardContent>
       </Card>
 
