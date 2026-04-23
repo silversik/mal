@@ -19,6 +19,8 @@ export type RaceEntry = {
   horse_no: string;
   horse_name: string;
   jockey_name: string | null;
+  trainer_name: string | null;
+  trainer_no: string | null;  // trainers 테이블 LEFT JOIN — 매칭 안 되면 null (raw text 만 표시)
   record_time: string | null;
   weight: string | null;
   win_rate: string | null;   // 단승 배당률 (모든 출주마)
@@ -198,12 +200,17 @@ export async function getRaceEntries(
   raceNo: number,
 ): Promise<RaceEntry[]> {
   return query<RaceEntry>(
+    // trainer JOIN 은 이름 매칭 — race_results.tr_no 가 백필되기 전까지의 임시 브릿지.
+    // 동명이인 가능하나 실데이터상 충돌 거의 없음 (trainers ~333명).
     `SELECT r.rank, r.horse_no, h.horse_name,
-            r.jockey_name, r.record_time::text, r.weight::text,
+            r.jockey_name, r.trainer_name,
+            t.tr_no AS trainer_no,
+            r.record_time::text, r.weight::text,
             d.win_rate::text AS win_rate,
             d.plc_rate::text AS plc_rate
        FROM race_results r
        JOIN horses h ON h.horse_no = r.horse_no
+       LEFT JOIN trainers t ON t.tr_name = r.trainer_name
        LEFT JOIN race_dividends d
               ON d.race_date = r.race_date
              AND d.meet = r.meet

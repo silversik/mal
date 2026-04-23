@@ -26,6 +26,7 @@ export type RaceResult = {
   weight: string | null;
   jockey_name: string | null;
   trainer_name: string | null;
+  trainer_no: string | null;  // trainers JOIN by name
 };
 
 const HORSE_COLUMNS = `
@@ -70,14 +71,16 @@ export async function getRaceResultsForHorse(
   limit = 10,
 ): Promise<RaceResult[]> {
   return query<RaceResult>(
-    `SELECT id, horse_no,
-            to_char(race_date, 'YYYY-MM-DD') AS race_date,
-            meet, race_no, track_condition, rank,
-            record_time::text, weight::text,
-            jockey_name, trainer_name
-       FROM race_results
-      WHERE horse_no = $1
-      ORDER BY race_date DESC, race_no DESC
+    `SELECT rr.id, rr.horse_no,
+            to_char(rr.race_date, 'YYYY-MM-DD') AS race_date,
+            rr.meet, rr.race_no, rr.track_condition, rr.rank,
+            rr.record_time::text, rr.weight::text,
+            rr.jockey_name, rr.trainer_name,
+            t.tr_no AS trainer_no
+       FROM race_results rr
+       LEFT JOIN trainers t ON t.tr_name = rr.trainer_name
+      WHERE rr.horse_no = $1
+      ORDER BY rr.race_date DESC, rr.race_no DESC
       LIMIT $2`,
     [horseNo, limit],
   );

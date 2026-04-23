@@ -255,6 +255,7 @@ function RaceResultsTable({
             <TableHead className="text-right">기록</TableHead>
             <TableHead className="text-right">마체중</TableHead>
             <TableHead>기수</TableHead>
+            <TableHead>조교사</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -296,6 +297,22 @@ function RaceResultsTable({
                     </Link>
                   ) : (
                     r.jockey_name
+                  )
+                ) : (
+                  "-"
+                )}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {r.trainer_name ? (
+                  r.trainer_no ? (
+                    <Link
+                      href={`/trainer/${r.trainer_no}`}
+                      className="text-primary hover:underline"
+                    >
+                      {r.trainer_name}
+                    </Link>
+                  ) : (
+                    r.trainer_name
                   )
                 ) : (
                   "-"

@@ -463,6 +463,7 @@ export default async function RacesPage({
                     <TableHead className="w-14 text-center">착순</TableHead>
                     <TableHead>마명</TableHead>
                     <TableHead className="text-center">기수</TableHead>
+                    <TableHead className="text-center">조교사</TableHead>
                     <TableHead className="text-right">기록</TableHead>
                     <TableHead className="text-right">마체중</TableHead>
                     <TableHead className="text-right">단승</TableHead>
@@ -485,6 +486,22 @@ export default async function RacesPage({
                       </TableCell>
                       <TableCell className="text-center text-muted-foreground">
                         {e.jockey_name ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-center text-muted-foreground">
+                        {e.trainer_name ? (
+                          e.trainer_no ? (
+                            <Link
+                              href={`/trainer/${e.trainer_no}`}
+                              className="text-primary hover:underline"
+                            >
+                              {e.trainer_name}
+                            </Link>
+                          ) : (
+                            e.trainer_name
+                          )
+                        ) : (
+                          "-"
+                        )}
                       </TableCell>
                       <TableCell className="text-right font-mono tabular-nums">
                         {e.record_time ?? "-"}
