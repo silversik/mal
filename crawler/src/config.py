@@ -27,7 +27,8 @@ class Settings:
     youtube_api_key: str
     youtube_krbc_channel_id: str
     kra_chulma_operation: str
-    discord_webhook_url: str
+    telegram_bot_token: str
+    telegram_chat_id: str
     log_level: str
 
     @classmethod
@@ -68,8 +69,10 @@ class Settings:
             youtube_krbc_channel_id=os.environ.get("YOUTUBE_KRBC_CHANNEL_ID", ""),
             # 출전표 API26_2 의 operation 이름 — Swagger 확인 후 설정. 비어있으면 job skip.
             kra_chulma_operation=os.environ.get("KRA_CHULMA_OPERATION", ""),
-            # 실패/stale 알림용 Discord 웹훅. 미설정 시 조용히 skip.
-            discord_webhook_url=os.environ.get("DISCORD_WEBHOOK_URL", ""),
+            # 실패/stale 알림용 Telegram 봇. 둘 다 채워져야 전송, 아니면 조용히 skip.
+            # BotFather 로 봇 생성 → getUpdates 로 chat_id 확인.
+            telegram_bot_token=os.environ.get("TELEGRAM_BOT_TOKEN", ""),
+            telegram_chat_id=os.environ.get("TELEGRAM_CHAT_ID", ""),
             log_level=os.environ.get("LOG_LEVEL", "INFO"),
         )
 

@@ -1,4 +1,4 @@
-"""Scraper run tracking + Discord failure notifications.
+"""Scraper run tracking + Telegram failure notifications.
 
 Usage:
     @track_job("mal.sync_news")
@@ -38,20 +38,42 @@ log = get_logger(__name__)
 P = ParamSpec("P")
 R = TypeVar("R")
 
-DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
 ERROR_SNIPPET_MAX = 500
 
 
-def _notify_discord(title: str, body: str) -> None:
-    """Fire-and-forget Discord webhook. Silent no-op if env var missing."""
-    if not DISCORD_WEBHOOK_URL:
+def _html_escape(s: str) -> str:
+    """Telegram HTML parse_mode 는 <, >, & 만 escape. 나머지는 그대로 둔다."""
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _notify_telegram(title: str, body: str) -> None:
+    """Fire-and-forget Telegram bot message. Silent no-op if env var missing.
+
+    parse_mode=HTML 로 보낸다 — MarkdownV2 는 escape 해야 하는 특수문자가 많아
+    traceback 메시지와 상성이 나쁘다. <pre> 블록으로 감싸서 그대로 보여준다.
+    """
+    if not (TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID):
         return
-    content = f"**{title}**\n```\n{body[:1800]}\n```"
+    text = (
+        f"<b>{_html_escape(title)}</b>\n"
+        f"<pre>{_html_escape(body[:3800])}</pre>"
+    )
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     try:
         with httpx.Client(timeout=5.0) as client:
-            client.post(DISCORD_WEBHOOK_URL, json={"content": content})
+            client.post(
+                url,
+                json={
+                    "chat_id": TELEGRAM_CHAT_ID,
+                    "text": text,
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": True,
+                },
+            )
     except Exception as e:
-        log.warning("discord_notify_failed", error=str(e))
+        log.warning("telegram_notify_failed", error=str(e))
 
 
 # ── JOB 메타 카탈로그 ──────────────────────────────────────────────────────────
@@ -158,7 +180,7 @@ def track_job(job_key: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     - 첫 호출 시 job_key 를 대시보드에 upsert (JOB_CATALOG 기반)
     - 함수 호출 전 start_run → run_id
     - 함수 반환값이 int 이면 rows_upserted 로 보고
-    - 예외 시 status=failed + error_message 보고 후 re-raise + Discord 알림
+    - 예외 시 status=failed + error_message 보고 후 re-raise + Telegram 알림
     """
 
     def decorator(fn: Callable[P, R]) -> Callable[P, R]:
@@ -177,7 +199,7 @@ def track_job(job_key: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
                     status="failed",
                     error_message=(err + "\n\n" + tb)[:4000],
                 )
-                _notify_discord(
+                _notify_telegram(
                     title=f"❌ {job_key} 실패",
                     body=err[:ERROR_SNIPPET_MAX],
                 )
