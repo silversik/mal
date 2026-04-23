@@ -130,7 +130,9 @@ type AncestryRow = {
   birth_date: string | null;
   country: string | null;
   sire_name: string | null;
+  sire_no: string | null;
   dam_name: string | null;
+  dam_no: string | null;
   total_race_count: number;
   first_place_count: number;
   gen: number;
@@ -151,12 +153,14 @@ export async function getPedigree(
   rootHorseNo: string,
   maxGenerations = 4,
 ): Promise<PedigreeNode | null> {
+  // 마이그레이션 019 이후: horses.sire_no/dam_no 가 채워져 있어 ID-기반 traversal.
+  // 폴백: sire_no 가 NULL 이면 sire_name 으로 fuzzy match (구버전 데이터).
   const rows = await query<AncestryRow>(
     `
     WITH RECURSIVE ancestry AS (
       SELECT horse_no, horse_name, sex,
              to_char(birth_date, 'YYYY-MM-DD') AS birth_date,
-             country, sire_name, dam_name,
+             country, sire_name, sire_no, dam_name, dam_no,
              total_race_count, first_place_count,
              0 AS gen,
              ARRAY[horse_no]::text[] AS path,
@@ -167,7 +171,7 @@ export async function getPedigree(
       UNION ALL
       SELECT h.horse_no, h.horse_name, h.sex,
              to_char(h.birth_date, 'YYYY-MM-DD') AS birth_date,
-             h.country, h.sire_name, h.dam_name,
+             h.country, h.sire_name, h.sire_no, h.dam_name, h.dam_no,
              h.total_race_count, h.first_place_count,
              a.gen + 1,
              a.path || h.horse_no,
@@ -175,21 +179,31 @@ export async function getPedigree(
              s.side
         FROM ancestry a
         CROSS JOIN LATERAL (
-          VALUES ('sire'::text, a.sire_name),
-                 ('dam'::text,  a.dam_name)
-        ) AS s(side, ancestor_name)
+          VALUES ('sire'::text, a.sire_no, a.sire_name),
+                 ('dam'::text,  a.dam_no,  a.dam_name)
+        ) AS s(side, ancestor_no, ancestor_name)
         JOIN LATERAL (
-          SELECT * FROM horses h2
-           WHERE h2.horse_name = s.ancestor_name
-           ORDER BY h2.birth_date ASC NULLS LAST
-           LIMIT 1
+          SELECT * FROM (
+            -- 1순위: ID 매칭 (정확)
+            SELECT h2.*, 0 AS prio FROM horses h2
+             WHERE s.ancestor_no IS NOT NULL AND h2.horse_no = s.ancestor_no
+            UNION ALL
+            -- 2순위: ID 가 없을 때만 이름 매칭 (구버전 fallback)
+            SELECT h2.*, 1 AS prio FROM horses h2
+             WHERE s.ancestor_no IS NULL
+               AND s.ancestor_name IS NOT NULL
+               AND h2.horse_name = s.ancestor_name
+          ) cands
+          ORDER BY prio ASC, cands.birth_date ASC NULLS LAST
+          LIMIT 1
         ) h ON TRUE
        WHERE a.gen < $2
-         AND s.ancestor_name IS NOT NULL
+         AND (s.ancestor_no IS NOT NULL OR s.ancestor_name IS NOT NULL)
          AND NOT (h.horse_no = ANY(a.path))
     )
     SELECT horse_no, horse_name, sex, birth_date, country,
-           sire_name, dam_name, total_race_count, first_place_count,
+           sire_name, sire_no, dam_name, dam_no,
+           total_race_count, first_place_count,
            gen, parent_horse_no, side
       FROM ancestry
     `,

@@ -119,6 +119,16 @@ def _collect_chars(item: dict[str, Any]) -> list[str]:
     return tokens
 
 
+def _parent_no(value: Any) -> str | None:
+    """fhrNo/mhrNo 정규화. KRA 는 number/string 혼재 + "-"/"0"/빈문자 placeholder."""
+    if value is None:
+        return None
+    s = str(value).strip()
+    if s in ("", "-", "0"):
+        return None
+    return s
+
+
 def api_item_to_horse_fields(item: dict[str, Any]) -> dict[str, Any]:
     """Map a raw API42_1/totalHorseInfo_1 item into `horses` table columns.
 
@@ -129,7 +139,9 @@ def api_item_to_horse_fields(item: dict[str, Any]) -> dict[str, Any]:
         sex      성별 (수/암/거)
         birthDt  생년월일 (YYYYMMDD)
         fhrNm    부마명 (Father horse name)
+        fhrNo    부마번호 — 혈통 트리에서 ID 기반 join 에 사용 (migration 019)
         mhrNm    모마명 (Mother horse name)
+        mhrNo    모마번호
         rcCnt    통산출전횟수
         fstCnt   통산 1착 횟수
         color    모색 (갈색/밤색/흑색/회색/백색/청색)
@@ -142,7 +154,9 @@ def api_item_to_horse_fields(item: dict[str, Any]) -> dict[str, Any]:
         "sex": _clean(item.get("sex")),
         "birth_date": _parse_date(item.get("birthDt")),
         "sire_name": _clean(item.get("fhrNm")),
+        "sire_no": _parent_no(item.get("fhrNo")),
         "dam_name": _clean(item.get("mhrNm")),
+        "dam_no": _parent_no(item.get("mhrNo")),
         "total_race_count": _parse_int(item.get("rcCnt")),
         "first_place_count": _parse_int(item.get("fstCnt")),
         "coat_color": _normalize_coat(item.get("color")),
