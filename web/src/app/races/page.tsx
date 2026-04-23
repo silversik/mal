@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import {
   getAllRaceDates,
+  getRaceDataSyncedAt,
   getRaceEntries,
   getRacesByDate,
   type RaceInfo,
@@ -45,6 +46,34 @@ function formatDateLabel(dateStr: string): string {
     new Date(y, m - 1, d).getDay()
   ];
   return `${m}월 ${d}일 (${dow})`;
+}
+
+/**
+ * Postgres `timestamptz::text` 포맷("2026-04-22 13:15:42.056544+00") 을 Asia/Seoul
+ * 시각 기준 짧은 문자열("04/22 22:15") 로 변환. 호버 title 에는 원본 ISO 를 그대로
+ * 노출해 타임존/초 단위까지 확인할 수 있게 한다.
+ *
+ * JS `Date` 는 공백 구분자와 콜론 없는 offset("+00") 을 거부하므로,
+ *   1. 공백 → "T"
+ *   2. 뒤 offset "+HH" → "+HH:00"
+ * 으로 정규화해서 넘긴다.
+ */
+function formatSyncedAt(isoWithTz: string): string {
+  const normalized = isoWithTz
+    .replace(" ", "T")
+    .replace(/([+-]\d{2})$/, "$1:00");
+  const d = new Date(normalized);
+  if (Number.isNaN(d.getTime())) return isoWithTz;
+  const parts = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("month")}/${get("day")} ${get("hour")}:${get("minute")}`;
 }
 
 function isStakesRace(r: RaceInfo): boolean {
@@ -80,12 +109,13 @@ export default async function RacesPage({
         null
       : null;
 
-  const [entries, raceVideo] = selectedRace
+  const [entries, raceVideo, syncedAt] = selectedRace
     ? await Promise.all([
         getRaceEntries(currentDate, selectedRace.meet, selectedRace.race_no),
         getRaceVideo(currentDate, selectedRace.meet, selectedRace.race_no),
+        getRaceDataSyncedAt(currentDate, selectedRace.meet, selectedRace.race_no),
       ])
-    : [[], null];
+    : [[], null, null];
 
   // 크롤러 `sync_videos_backfill.format_race_title_query()` 와 동일한 포맷 — 수동 검색과
   // 자동 백필이 같은 쿼리를 쓰도록 맞춤. 예) "(서울) 2026.02.28 1경주"
@@ -353,6 +383,14 @@ export default async function RacesPage({
             )}
             {selectedRace && (
               <div className="ml-auto flex items-center gap-2">
+                {syncedAt && (
+                  <span
+                    className="text-[11px] text-muted-foreground/70 tabular-nums"
+                    title={`데이터 수집 시각: ${syncedAt}`}
+                  >
+                    업데이트 {formatSyncedAt(syncedAt)}
+                  </span>
+                )}
                 {isToday && (
                   <a
                     href={KRBC_LIVE_URL}

@@ -207,3 +207,26 @@ export async function getRaceEntries(
     [raceDate, meet, raceNo],
   );
 }
+
+/**
+ * 해당 경주의 출전표/성적이 크롤러에 의해 가장 최근에 수집/갱신된 시각.
+ * `race_results.created_at` 은 per-row 삽입 시각이므로 MAX 를 "마지막 동기화"
+ * 로 간주한다 (upsert 시 created_at 은 유지되지만, 새로 들어온 출전 row 가
+ * 생기면 그 시점이 MAX 가 되므로 사실상 "가장 최근 sync" 와 동치).
+ * 반환값은 ISO 8601 with offset (예: "2026-04-22 13:15:42+00").
+ */
+export async function getRaceDataSyncedAt(
+  raceDate: string,
+  meet: string,
+  raceNo: number,
+): Promise<string | null> {
+  const rows = await query<{ synced_at: string | null }>(
+    `SELECT MAX(created_at)::text AS synced_at
+       FROM race_results
+      WHERE race_date = $1::date
+        AND meet = $2
+        AND race_no = $3`,
+    [raceDate, meet, raceNo],
+  );
+  return rows[0]?.synced_at ?? null;
+}
