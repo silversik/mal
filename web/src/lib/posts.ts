@@ -13,12 +13,14 @@ export type CommunityPost = {
   updated_at: string;
 };
 
+// 작성자 표시 이름은 닉네임 우선, 미설정이면 OAuth 이름으로 fallback.
+// users 가 삭제돼도(ON DELETE CASCADE 로 post 도 같이 사라지긴 하나) LEFT JOIN 유지.
 const POST_COLUMNS = `
   p.id::int AS id,
   p.user_id::text AS user_id,
   p.title,
   p.content,
-  u.name AS author_name,
+  COALESCE(u.nickname, u.name) AS author_name,
   to_char(p.created_at AT TIME ZONE 'Asia/Seoul', 'YYYY-MM-DD"T"HH24:MI:SSOF') AS created_at,
   to_char(p.updated_at AT TIME ZONE 'Asia/Seoul', 'YYYY-MM-DD"T"HH24:MI:SSOF') AS updated_at
 `;
