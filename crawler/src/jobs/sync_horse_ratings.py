@@ -1,7 +1,7 @@
 """Sync 경주마 레이팅 (15057323) → `horse_ratings` 테이블.
 
-API 응답에 공시일자가 없어 horse_no PK 의 단순 스냅샷.
-호출 시마다 전체 마필 레이팅을 다시 받아 UPSERT 로 덮어씀.
+API 응답에 공시일자가 없으므로 fetch 시점(`snapshot_date = CURRENT_DATE`)을
+PK 의 일부로 묶어 시계열 누적. 같은 날 재실행은 update, 다른 날은 새 row insert.
 """
 from __future__ import annotations
 
@@ -52,7 +52,12 @@ def upsert_ratings(items: list[dict[str, Any]]) -> int:
             set_ = {c: getattr(stmt.excluded, c) for c in _UPDATE_COLS}
             set_["fetched_at"] = func.now()
             set_["updated_at"] = func.now()
-            stmt = stmt.on_conflict_do_update(index_elements=["horse_no"], set_=set_)
+            # snapshot_date 는 server_default = CURRENT_DATE 로 자동 채워짐.
+            # 같은 날 재실행은 (horse_no, snapshot_date) 에서 충돌 → update,
+            # 다른 날은 신규 row insert (시계열 누적).
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["horse_no", "snapshot_date"], set_=set_,
+            )
             s.execute(stmt)
     log.info("horse_ratings_upserted", count=len(unique))
     return len(unique)
