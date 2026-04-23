@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@next/third-parties": "^16.2.4",
     "@types/d3": "^7.4.3",
     "@types/pg": "^8.20.0",
     "class-variance-authority": "^0.7.1",

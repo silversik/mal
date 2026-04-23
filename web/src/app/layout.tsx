@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Playfair_Display, Noto_Serif_KR } from "next/font/google";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import { Navbar } from "@/components/navbar";
 import "./globals.css";
 
@@ -40,6 +41,7 @@ export default function RootLayout({
           {children}
         </main>
       </body>
+      <GoogleAnalytics gaId="G-N9EQPNFPR7" />
     </html>
   );
 }
