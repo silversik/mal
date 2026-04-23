@@ -25,6 +25,9 @@ export type RaceEntry = {
   weight: string | null;
   win_rate: string | null;   // 단승 배당률 (모든 출주마)
   plc_rate: string | null;   // 연승 배당률 (모든 출주마)
+  // 기수변경 (jockey_changes LEFT JOIN) — 출주표 발표 후 교체된 경우만 채워짐.
+  jockey_changed_from: string | null;  // 변경 전 기수명 (jk_name_before)
+  jockey_change_reason: string | null; // 사유 (예: "기수부상")
 };
 
 const RACE_COLUMNS = `
@@ -207,7 +210,9 @@ export async function getRaceEntries(
             t.tr_no AS trainer_no,
             r.record_time::text, r.weight::text,
             d.win_rate::text AS win_rate,
-            d.plc_rate::text AS plc_rate
+            d.plc_rate::text AS plc_rate,
+            jc.jk_name_before AS jockey_changed_from,
+            jc.reason AS jockey_change_reason
        FROM race_results r
        JOIN horses h ON h.horse_no = r.horse_no
        LEFT JOIN trainers t ON t.tr_name = r.trainer_name
@@ -216,6 +221,11 @@ export async function getRaceEntries(
              AND d.meet = r.meet
              AND d.race_no = r.race_no
              AND d.horse_no = (r.raw->>'chulNo')
+       LEFT JOIN jockey_changes jc
+              ON jc.race_date = r.race_date
+             AND jc.meet = r.meet
+             AND jc.race_no = r.race_no
+             AND jc.horse_no = r.horse_no
       WHERE r.race_date = $1::date
         AND r.meet = $2
         AND r.race_no = $3

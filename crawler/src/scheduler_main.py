@@ -23,6 +23,7 @@ from .jobs.periodic import (
     run_sync_horse_ratings,
     run_sync_horses_backfill,
     run_sync_horses_refresh,
+    run_sync_jockey_changes,
     run_sync_jockeys,
     run_sync_news,
     run_sync_owners,
@@ -105,6 +106,13 @@ def main() -> None:
         id="mal.sync_owners",
         **common,
     )
+    # 기수변경 이벤트 — owners 직후. KRA 기본 윈도우(~1개월) 매일 idempotent UPSERT.
+    sched.add_job(
+        run_sync_jockey_changes,
+        CronTrigger(hour=6, minute=25),
+        id="mal.sync_jockey_changes",
+        **common,
+    )
     sched.add_job(
         run_sync_horses_backfill,
         CronTrigger(hour=6, minute=30),
@@ -165,6 +173,7 @@ def main() -> None:
         "mal.sync_jockeys": run_sync_jockeys,
         "mal.sync_trainers": run_sync_trainers,
         "mal.sync_owners": run_sync_owners,
+        "mal.sync_jockey_changes": run_sync_jockey_changes,
         "mal.sync_horses_backfill": run_sync_horses_backfill,
         "mal.sync_horses_refresh": run_sync_horses_refresh,
         "mal.sync_horse_ratings": run_sync_horse_ratings,

@@ -18,6 +18,7 @@ from .jobs.periodic import (
     run_chunked_dividends_backfill,
     run_sync_horse_ratings,
     run_sync_horses_backfill,
+    run_sync_jockey_changes,
     run_sync_jockeys,
     run_sync_news,
     run_sync_owners,
@@ -415,6 +416,35 @@ def cmd_periodic_owners() -> None:
     """[scheduled] sync_owners — tracked run."""
     n = run_sync_owners()
     typer.echo(f"upserted {n} owner rows")
+
+
+@app.command("sync-jockey-changes")
+def cmd_sync_jockey_changes() -> None:
+    """Fetch recent jockey-change events (KRA 기본 윈도우 ~1개월) and upsert."""
+    from .jobs.sync_jockey_changes import sync_recent
+    n = sync_recent()
+    typer.echo(f"upserted {n} jockey_change rows")
+
+
+@app.command("backfill-jockey-changes")
+def cmd_backfill_jockey_changes(
+    days: int = typer.Option(180, help="과거 며칠치 일자별 백필 (1차 적재용)"),
+) -> None:
+    """[one-shot] 최근 N 일 일자별 백필.
+
+    KRA 기본 응답이 ~1개월이라 sync-jockey-changes 1회로는 빈 과거가 못 채워짐 →
+    초기 적재용으로만 사용. 일일 운영은 periodic-jockey-changes (cron 06:25 KST).
+    """
+    from .jobs.sync_jockey_changes import backfill_recent_days
+    n = backfill_recent_days(days=days)
+    typer.echo(f"backfilled {n} jockey_change rows")
+
+
+@app.command("periodic-jockey-changes")
+def cmd_periodic_jockey_changes() -> None:
+    """[scheduled] sync_jockey_changes — tracked run."""
+    n = run_sync_jockey_changes()
+    typer.echo(f"upserted {n} jockey_change rows")
 
 
 @app.command("periodic-horse-ratings")

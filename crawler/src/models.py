@@ -365,6 +365,48 @@ class RaceComboDividend(Base):
     )
 
 
+class JockeyChange(Base):
+    """기수 변경 이벤트 — KRA API10_1/jockeyChangeInfo_1 (dataset 15057181).
+
+    출주표 발표 이후 부상/사정 등으로 기수 교체된 경우의 단일 이벤트.
+    같은 (race_date, meet, race_no, chul_no) 는 1건만 (KRA 보장).
+
+    See: db/migrations/020_jockey_changes.sql
+    """
+
+    __tablename__ = "jockey_changes"
+    __table_args__ = (
+        UniqueConstraint(
+            "race_date", "meet", "race_no", "chul_no", name="uq_jockey_changes"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    race_date: Mapped[date] = mapped_column(Date, nullable=False)
+    meet: Mapped[str] = mapped_column(String(20), nullable=False)
+    race_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    chul_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    horse_no: Mapped[str] = mapped_column(String(20), nullable=False)
+    horse_name: Mapped[str | None] = mapped_column(String(100))
+
+    jk_no_before: Mapped[str | None] = mapped_column(String(20))
+    jk_name_before: Mapped[str | None] = mapped_column(String(50))
+    jk_no_after: Mapped[str | None] = mapped_column(String(20))
+    jk_name_after: Mapped[str | None] = mapped_column(String(50))
+
+    weight_before: Mapped[float | None] = mapped_column(Numeric(4, 1))
+    weight_after: Mapped[float | None] = mapped_column(Numeric(4, 1))
+
+    reason: Mapped[str | None] = mapped_column(Text)
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class HorseRating(Base):
     """경주마 레이팅 스냅샷 시계열 — KRA API77/raceHorseRating (dataset 15057323).
 

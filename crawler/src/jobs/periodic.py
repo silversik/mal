@@ -17,6 +17,7 @@ from ..monitoring import track_job
 from .sync_horse_ratings import sync_all_meets as sync_horse_ratings_all_meets
 from .sync_horses import backfill_missing_raw, refresh_stale_horses
 from .sync_jockeys import sync_all_jockeys
+from .sync_jockey_changes import sync_recent as sync_jockey_changes_recent
 from .sync_owners import sync_all_owners
 from .sync_trainers import sync_all_trainers
 from .sync_news import sync_news
@@ -107,6 +108,16 @@ def run_sync_trainers() -> int:
 def run_sync_owners() -> int:
     """매일 06:20 KST — trainers (06:15) 직후, 마스터 데이터 묶음."""
     return sync_all_owners()
+
+
+@track_job("mal.sync_jockey_changes")
+def run_sync_jockey_changes() -> int:
+    """기수변경 이벤트 적재 — 매일 06:25 KST.
+
+    KRA 기본 응답 윈도우(~1개월) 그대로 받아 idempotent UPSERT 하므로
+    어제/오늘 새 이벤트는 자동 누적. 별도 백필 불필요.
+    """
+    return sync_jockey_changes_recent()
 
 
 @track_job("mal.sync_horse_ratings")

@@ -493,7 +493,21 @@ export default async function RacesPage({
                         </Link>
                       </TableCell>
                       <TableCell className="text-center text-muted-foreground">
-                        {e.jockey_name ?? "-"}
+                        <span className="inline-flex items-center gap-1">
+                          {e.jockey_name ?? "-"}
+                          {e.jockey_changed_from && (
+                            <span
+                              className="inline-flex items-center rounded border border-amber-500/40 bg-amber-500/10 px-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400"
+                              title={`기수교체: ${e.jockey_changed_from} → ${e.jockey_name}${
+                                e.jockey_change_reason
+                                  ? ` (${e.jockey_change_reason})`
+                                  : ""
+                              }`}
+                            >
+                              교체
+                            </span>
+                          )}
+                        </span>
                       </TableCell>
                       <TableCell className="text-center text-muted-foreground">
                         {e.trainer_name ? (
