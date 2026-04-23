@@ -25,6 +25,7 @@ from .sync_race_entries import sync_upcoming as sync_upcoming_race_entries
 from .sync_race_info import backfill_races_metadata
 from .sync_race_plan import sync_current_year as sync_current_race_plan
 from .sync_race_dividends import sync_date_all_meets as sync_dividends_all_meets
+from .sync_race_sales import sync_date_all_meets as sync_race_sales_all_meets
 from .sync_races import sync_date_all_meets
 from .chunked_backfill_dividends import run_chunk as run_chunked_dividends_chunk
 from .sync_videos import sync_videos
@@ -96,6 +97,12 @@ def run_sync_race_info() -> int:
 def run_sync_race_dividends() -> int:
     """오늘 경주의 확정배당율 적재 — 결과 sync (22:00) 이후 22:45 KST."""
     return sync_dividends_all_meets(date.today())
+
+
+@track_job("mal.sync_race_sales")
+def run_sync_race_sales() -> int:
+    """오늘 경주의 풀별 매출 적재 — race_dividends (22:45) 직후 22:50 KST."""
+    return sync_race_sales_all_meets(date.today())
 
 
 @track_job("mal.sync_trainers")

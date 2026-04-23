@@ -25,6 +25,7 @@ class Settings:
     kra_key_trainer: str
     kra_key_owner: str
     kra_key_jockey_change: str
+    kra_key_race_sales: str
     kra_rss_url: str
     youtube_api_key: str
     youtube_krbc_channel_id: str
@@ -64,6 +65,9 @@ class Settings:
             kra_key_owner=os.environ.get("KRA_SERVICE_KEY_OWNER", default_key),
             kra_key_jockey_change=os.environ.get(
                 "KRA_SERVICE_KEY_JOCKEY_CHANGE", default_key
+            ),
+            kra_key_race_sales=os.environ.get(
+                "KRA_SERVICE_KEY_RACE_SALES", default_key
             ),
             kra_rss_url=os.environ.get(
                 "KRA_RSS_URL",

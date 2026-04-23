@@ -26,6 +26,7 @@ from .jobs.periodic import (
     run_sync_race_entries,
     run_sync_race_info,
     run_sync_race_plan,
+    run_sync_race_sales,
     run_sync_races_today,
     run_sync_trainers,
     run_sync_videos,
@@ -416,6 +417,43 @@ def cmd_periodic_owners() -> None:
     """[scheduled] sync_owners — tracked run."""
     n = run_sync_owners()
     typer.echo(f"upserted {n} owner rows")
+
+
+@app.command("sync-race-sales-date")
+def cmd_sync_race_sales_date(
+    rc_date: str = typer.Argument(..., help="경주 일자 (YYYY-MM-DD 또는 YYYYMMDD)"),
+    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 3곳 모두)"),
+) -> None:
+    """Ad-hoc: 특정 날짜 풀별 매출액을 fetch & upsert."""
+    from .jobs.sync_race_sales import sync_date as sync_sales, sync_date_all_meets as sync_sales_all
+    for fmt in ("%Y-%m-%d", "%Y%m%d"):
+        try:
+            d = datetime.strptime(rc_date, fmt).date()
+            break
+        except ValueError:
+            continue
+    else:
+        typer.echo("Invalid date format. Use YYYY-MM-DD or YYYYMMDD.")
+        raise typer.Exit(code=1)
+    n = sync_sales(d, meet=meet) if meet is not None else sync_sales_all(d)
+    typer.echo(f"upserted {n} race_pool_sales rows")
+
+
+@app.command("backfill-race-sales")
+def cmd_backfill_race_sales(
+    days: int = typer.Option(180, help="과거 며칠치 일자별 백필"),
+) -> None:
+    """[one-shot] race_pool_sales 1차 백필 — 최근 N 일 일자별 순회."""
+    from .jobs.sync_race_sales import backfill_recent_days
+    n = backfill_recent_days(days=days)
+    typer.echo(f"backfilled {n} race_pool_sales rows")
+
+
+@app.command("periodic-race-sales")
+def cmd_periodic_race_sales() -> None:
+    """[scheduled] sync_race_sales — tracked run."""
+    n = run_sync_race_sales()
+    typer.echo(f"upserted {n} race_pool_sales rows")
 
 
 @app.command("sync-jockey-changes")

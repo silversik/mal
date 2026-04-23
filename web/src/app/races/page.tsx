@@ -26,6 +26,11 @@ import {
   type ComboPool,
   type RaceComboDividend,
 } from "@/lib/race_combo_dividends";
+import {
+  getRacePoolSales,
+  POOL_DISPLAY_ORDER,
+  type RacePoolSales,
+} from "@/lib/race_pool_sales";
 import { getRaceVideo, youtubeEmbedUrl, youtubeWatchUrl } from "@/lib/videos";
 
 // KRBC 채널(UCsIvYoihIg37E96LkG-XHAw)의 라이브 URL — 방송 중이면 현재 스트림으로 자동 리다이렉트.
@@ -116,14 +121,21 @@ export default async function RacesPage({
         null
       : null;
 
-  const [entries, raceVideo, syncedAt, comboDividends] = selectedRace
+  const [entries, raceVideo, syncedAt, comboDividends, poolSales] = selectedRace
     ? await Promise.all([
         getRaceEntries(currentDate, selectedRace.meet, selectedRace.race_no),
         getRaceVideo(currentDate, selectedRace.meet, selectedRace.race_no),
         getRaceDataSyncedAt(currentDate, selectedRace.meet, selectedRace.race_no),
         getRaceComboDividends(currentDate, selectedRace.meet, selectedRace.race_no),
+        getRacePoolSales(currentDate, selectedRace.meet, selectedRace.race_no),
       ])
-    : [[], null, null, [] as RaceComboDividend[]];
+    : [
+        [],
+        null,
+        null,
+        [] as RaceComboDividend[],
+        [] as RacePoolSales[],
+      ];
 
   // 크롤러 `sync_videos_backfill.format_race_title_query()` 와 동일한 포맷 — 수동 검색과
   // 자동 백필이 같은 쿼리를 쓰도록 맞춤. 예) "(서울) 2026.02.28 1경주"
@@ -553,9 +565,67 @@ export default async function RacesPage({
           {comboDividends.length > 0 && (
             <ComboDividendsSection rows={comboDividends} />
           )}
+
+          {poolSales.length > 0 && <PoolSalesSection rows={poolSales} />}
         </section>
       )}
     </main>
+  );
+}
+
+/* ── 풀별 매출 섹션 ──────────────────────────────────────── */
+
+/** 매출액(원) → "1.2억" / "3,400만" / "5,200" 형태로 축약. */
+function formatAmount(amountStr: string): string {
+  const n = Number(amountStr);
+  if (!Number.isFinite(n) || n === 0) return "-";
+  if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(2)}억`;
+  if (n >= 10_000) return `${Math.round(n / 10_000).toLocaleString("ko-KR")}만`;
+  return n.toLocaleString("ko-KR");
+}
+
+function PoolSalesSection({ rows }: { rows: RacePoolSales[] }) {
+  const total = rows.reduce((s, r) => s + Number(r.amount), 0);
+  // KRA 가 응답 안 한 풀은 표시하지 않음 — 단순히 받은 풀만 정렬해 보여준다.
+  const sorted = [...rows].sort(
+    (a, b) =>
+      POOL_DISPLAY_ORDER.indexOf(a.pool as (typeof POOL_DISPLAY_ORDER)[number]) -
+      POOL_DISPLAY_ORDER.indexOf(b.pool as (typeof POOL_DISPLAY_ORDER)[number]),
+  );
+
+  return (
+    <div className="mt-6">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h3 className="text-sm font-semibold text-muted-foreground">풀별 매출</h3>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          총 매출 <strong className="text-foreground">{formatAmount(String(total))}</strong>
+        </span>
+      </div>
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-16">풀</TableHead>
+              <TableHead className="text-right">매출액</TableHead>
+              <TableHead>인기순위 (배당률)</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sorted.map((r) => (
+              <TableRow key={r.pool}>
+                <TableCell className="font-semibold">{r.pool}</TableCell>
+                <TableCell className="text-right font-mono tabular-nums">
+                  {formatAmount(r.amount)}
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {r.odds_summary ?? "-"}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+    </div>
   );
 }
 

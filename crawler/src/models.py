@@ -365,6 +365,40 @@ class RaceComboDividend(Base):
     )
 
 
+class RacePoolSales(Base):
+    """경주별·풀별 매출액 — KRA API179_1/salesAndDividendRate_1 (dataset 15119558).
+
+    한 row = (race_date, meet, race_no, pool) 의 매출액 + 인기순위 odds 텍스트.
+    pool ∈ {단식, 연식, 쌍식, 복식, 복연, 삼복, 삼쌍} 7종.
+
+    See: db/migrations/021_race_pool_sales.sql
+    """
+
+    __tablename__ = "race_pool_sales"
+    __table_args__ = (
+        UniqueConstraint(
+            "race_date", "meet", "race_no", "pool", name="uq_race_pool_sales"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    race_date: Mapped[date] = mapped_column(Date, nullable=False)
+    meet: Mapped[str] = mapped_column(String(20), nullable=False)
+    race_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    pool: Mapped[str] = mapped_column(String(8), nullable=False)
+
+    amount: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    odds_summary: Mapped[str | None] = mapped_column(Text)
+
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class JockeyChange(Base):
     """기수 변경 이벤트 — KRA API10_1/jockeyChangeInfo_1 (dataset 15057181).
 

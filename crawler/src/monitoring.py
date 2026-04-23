@@ -136,6 +136,11 @@ JOB_CATALOG: dict[str, dict] = {
         "description": "확정배당율 (API301/Dividend_rate_total)",
         "expected_interval_sec": 86400,
     },
+    "mal.sync_race_sales": {
+        "category": "kra_openapi",
+        "description": "경주별·풀별 매출액 (API179_1, 15119558)",
+        "expected_interval_sec": 86400,
+    },
     "mal.sync_trainers": {
         "category": "kra_openapi",
         "description": "조교사정보_영문추가 (API308, 15130588)",
