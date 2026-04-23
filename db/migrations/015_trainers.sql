@@ -38,9 +38,7 @@ ALTER TABLE race_results
 CREATE INDEX IF NOT EXISTS idx_race_results_tr_no ON race_results (tr_no);
 
 
--- scraper_jobs seed
-INSERT INTO scraper_jobs (job_key, source, description, expected_interval_sec) VALUES
-    ('sync_trainers', 'kra_openapi', '조교사정보_영문추가 (API308, 15130588)', 86400)
-ON CONFLICT (job_key) DO NOTHING;
+-- scraper_jobs seed 은 통합 대시보드(crawler 스키마)에서 관리 — mal_app 은 권한 없음.
+-- JOB_CATALOG + `register-dashboard-jobs` CLI 가 idempotent 등록.
 
 COMMIT;

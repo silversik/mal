@@ -41,9 +41,7 @@ CREATE TRIGGER trg_horse_ratings_updated_at
     EXECUTE FUNCTION set_updated_at();
 
 
--- scraper_jobs seed
-INSERT INTO scraper_jobs (job_key, source, description, expected_interval_sec) VALUES
-    ('sync_horse_ratings', 'kra_openapi', '경주마 레이팅 (API77/raceHorseRating)', 604800)
-ON CONFLICT (job_key) DO NOTHING;
+-- scraper_jobs seed 은 통합 대시보드(crawler 스키마)에서 관리 — mal_app 은 권한 없음.
+-- JOB_CATALOG + `register-dashboard-jobs` CLI 가 idempotent 등록.
 
 COMMIT;
