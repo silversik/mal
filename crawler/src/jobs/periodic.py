@@ -14,6 +14,7 @@ from datetime import date
 from ..config import settings
 from ..logging import get_logger
 from ..monitoring import track_job
+from .sync_horse_rank_changes import sync_all as sync_horse_rank_changes_all
 from .sync_horse_ratings import sync_all_meets as sync_horse_ratings_all_meets
 from .sync_horses import backfill_missing_raw, refresh_stale_horses
 from .sync_jockeys import sync_all_jockeys
@@ -125,6 +126,12 @@ def run_sync_jockey_changes() -> int:
     어제/오늘 새 이벤트는 자동 누적. 별도 백필 불필요.
     """
     return sync_jockey_changes_recent()
+
+
+@track_job("mal.sync_horse_rank_changes")
+def run_sync_horse_rank_changes() -> int:
+    """경주마 등급변동 이력 — 매일 06:35 KST. 전체 ~5000 row idempotent UPSERT."""
+    return sync_horse_rank_changes_all()
 
 
 @track_job("mal.sync_horse_ratings")

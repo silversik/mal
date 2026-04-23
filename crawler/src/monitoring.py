@@ -156,6 +156,11 @@ JOB_CATALOG: dict[str, dict] = {
         "description": "기수변경 이벤트 (API10_1, 15057181)",
         "expected_interval_sec": 86400,
     },
+    "mal.sync_horse_rank_changes": {
+        "category": "kra_openapi",
+        "description": "경주마 등급변동 (raceHorseRatingChangeInfo_2, 15058076)",
+        "expected_interval_sec": 86400,
+    },
     "mal.sync_horse_ratings": {
         "category": "kra_openapi",
         "description": "경주마 레이팅 (15057323, recommendDataYn=Y)",

@@ -399,6 +399,41 @@ class RacePoolSales(Base):
     )
 
 
+class HorseRankChange(Base):
+    """경주마 등급변동 이벤트 — KRA raceHorseRatingChangeInfo_2 (dataset 15058076).
+
+    KRA "등급" 라벨 변경 로그 (국1~국6 등). numeric rating 시계열은 별도
+    `horse_ratings` 테이블 (B1).
+
+    See: db/migrations/022_horse_rank_changes.sql
+    """
+
+    __tablename__ = "horse_rank_changes"
+    __table_args__ = (
+        UniqueConstraint("horse_no", "st_date", name="uq_horse_rank_changes"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    horse_no: Mapped[str] = mapped_column(String(20), nullable=False)
+    st_date: Mapped[date] = mapped_column(Date, nullable=False)
+
+    horse_name: Mapped[str | None] = mapped_column(String(100))
+    meet: Mapped[str | None] = mapped_column(String(20))
+    blood: Mapped[str | None] = mapped_column(String(40))
+
+    before_rank: Mapped[str | None] = mapped_column(String(20))
+    after_rank: Mapped[str | None] = mapped_column(String(20))
+    sp_date: Mapped[date | None] = mapped_column(Date)
+
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class JockeyChange(Base):
     """기수 변경 이벤트 — KRA API10_1/jockeyChangeInfo_1 (dataset 15057181).
 

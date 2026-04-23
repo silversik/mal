@@ -16,6 +16,7 @@ import typer
 from .clients.horse_detail import HorseDetailClient
 from .jobs.periodic import (
     run_chunked_dividends_backfill,
+    run_sync_horse_rank_changes,
     run_sync_horse_ratings,
     run_sync_horses_backfill,
     run_sync_jockey_changes,
@@ -483,6 +484,21 @@ def cmd_periodic_jockey_changes() -> None:
     """[scheduled] sync_jockey_changes — tracked run."""
     n = run_sync_jockey_changes()
     typer.echo(f"upserted {n} jockey_change rows")
+
+
+@app.command("sync-horse-rank-changes")
+def cmd_sync_horse_rank_changes() -> None:
+    """Fetch all KRA 등급변동 events and upsert into `horse_rank_changes`."""
+    from .jobs.sync_horse_rank_changes import sync_all
+    n = sync_all()
+    typer.echo(f"upserted {n} horse_rank_change rows")
+
+
+@app.command("periodic-horse-rank-changes")
+def cmd_periodic_horse_rank_changes() -> None:
+    """[scheduled] sync_horse_rank_changes — tracked run."""
+    n = run_sync_horse_rank_changes()
+    typer.echo(f"upserted {n} horse_rank_change rows")
 
 
 @app.command("periodic-horse-ratings")

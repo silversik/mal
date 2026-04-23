@@ -28,6 +28,10 @@ import {
   type RaceResult,
 } from "@/lib/horses";
 import { getLatestRating, type HorseRating } from "@/lib/horse_ratings";
+import {
+  getHorseRankChanges,
+  type HorseRankChange,
+} from "@/lib/horse_rank_changes";
 
 type JockeyMap = Record<string, string>; // jk_name → jk_no
 
@@ -51,11 +55,12 @@ export default async function HorseDetailPage({
   const horse = await getHorseByNo(horse_no);
   if (!horse) notFound();
 
-  const [results, siblings, pedigree, rating] = await Promise.all([
+  const [results, siblings, pedigree, rating, rankChanges] = await Promise.all([
     getRaceResultsForHorse(horse_no, 10),
     getSiblings(horse.sire_name, horse_no),
     getPedigree(horse_no, 4),
     getLatestRating(horse_no),
+    getHorseRankChanges(horse_no, 10),
   ]);
 
   const jockeyMap = await buildJockeyMap(
@@ -80,6 +85,15 @@ export default async function HorseDetailPage({
         </h2>
         <RaceResultsTable results={results} jockeyMap={jockeyMap} />
       </section>
+
+      {rankChanges.length > 0 && (
+        <section className="mt-10">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            등급변동 이력
+          </h2>
+          <RankChangesTable changes={rankChanges} />
+        </section>
+      )}
 
       {siblings.length > 0 && (
         <section className="mt-10">
@@ -347,4 +361,53 @@ function RankBadge({ rank }: { rank: number | null }) {
     return <Badge className="bg-primary text-primary-foreground">1</Badge>;
   if (rank <= 3) return <Badge variant="secondary">{rank}</Badge>;
   return <span>{rank}</span>;
+}
+
+/* ── Rank Changes Table ───────────────────────────────── */
+
+function RankChangesTable({ changes }: { changes: HorseRankChange[] }) {
+  return (
+    <Card>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>적용일</TableHead>
+            <TableHead>이전 등급</TableHead>
+            <TableHead></TableHead>
+            <TableHead>변경 등급</TableHead>
+            <TableHead className="text-muted-foreground">혈통</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {changes.map((c) => (
+            <TableRow key={c.st_date}>
+              <TableCell className="font-mono text-xs">{c.st_date}</TableCell>
+              <TableCell>
+                {c.before_rank ? (
+                  <Badge variant="outline" className="font-normal">
+                    {c.before_rank}
+                  </Badge>
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </TableCell>
+              <TableCell className="text-muted-foreground">→</TableCell>
+              <TableCell>
+                {c.after_rank ? (
+                  <Badge variant="secondary" className="font-normal">
+                    {c.after_rank}
+                  </Badge>
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </TableCell>
+              <TableCell className="text-xs text-muted-foreground">
+                {c.blood ?? "-"}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Card>
+  );
 }

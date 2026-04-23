@@ -20,6 +20,7 @@ from crawler_core import client as dash
 
 from .jobs.periodic import (
     run_chunked_dividends_backfill,
+    run_sync_horse_rank_changes,
     run_sync_horse_ratings,
     run_sync_horses_backfill,
     run_sync_horses_refresh,
@@ -114,6 +115,13 @@ def main() -> None:
         id="mal.sync_jockey_changes",
         **common,
     )
+    # 마필 등급변동 이력 — 매일 06:35 KST. 누적 ~5000 row 전체 fetch + UPSERT.
+    sched.add_job(
+        run_sync_horse_rank_changes,
+        CronTrigger(hour=6, minute=35),
+        id="mal.sync_horse_rank_changes",
+        **common,
+    )
     sched.add_job(
         run_sync_horses_backfill,
         CronTrigger(hour=6, minute=30),
@@ -182,6 +190,7 @@ def main() -> None:
         "mal.sync_trainers": run_sync_trainers,
         "mal.sync_owners": run_sync_owners,
         "mal.sync_jockey_changes": run_sync_jockey_changes,
+        "mal.sync_horse_rank_changes": run_sync_horse_rank_changes,
         "mal.sync_horses_backfill": run_sync_horses_backfill,
         "mal.sync_horses_refresh": run_sync_horses_refresh,
         "mal.sync_horse_ratings": run_sync_horse_ratings,
