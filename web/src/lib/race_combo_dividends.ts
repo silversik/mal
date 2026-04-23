@@ -44,7 +44,8 @@ export const POOL_ORDERED: Record<ComboPool, boolean> = {
 
 /**
  * 한 경주의 모든 복식 배당. pool · odds 오름차순 (우승 가능성 높은 조합부터).
- * race_results LEFT JOIN 으로 마명 보강 — 미매칭 시 horse_no 만 표시.
+ * horses 테이블 LEFT JOIN 으로 마명 보강 — race_results 에는 horse_name 컬럼이
+ * 없으므로 horses (PK=horse_no) 와 직접 조인. 미매칭 시 horse_no 만 표시.
  */
 export async function getRaceComboDividends(
   raceDate: string,
@@ -62,21 +63,9 @@ export async function getRaceComboDividends(
         h3.horse_name AS horse_name_3,
         d.odds::text AS odds
        FROM race_combo_dividends d
-       LEFT JOIN race_results h1
-              ON h1.race_date = d.race_date
-             AND h1.meet      = d.meet
-             AND h1.race_no   = d.race_no
-             AND h1.horse_no  = d.horse_no_1
-       LEFT JOIN race_results h2
-              ON h2.race_date = d.race_date
-             AND h2.meet      = d.meet
-             AND h2.race_no   = d.race_no
-             AND h2.horse_no  = d.horse_no_2
-       LEFT JOIN race_results h3
-              ON h3.race_date = d.race_date
-             AND h3.meet      = d.meet
-             AND h3.race_no   = d.race_no
-             AND h3.horse_no  = d.horse_no_3
+       LEFT JOIN horses h1 ON h1.horse_no = d.horse_no_1
+       LEFT JOIN horses h2 ON h2.horse_no = d.horse_no_2
+       LEFT JOIN horses h3 ON h3.horse_no = d.horse_no_3
       WHERE d.race_date = $1
         AND d.meet      = $2
         AND d.race_no   = $3
