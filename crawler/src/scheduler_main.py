@@ -16,6 +16,8 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
+from crawler_core import client as dash
+
 from .jobs.periodic import (
     run_chunked_dividends_backfill,
     run_sync_horse_ratings,
@@ -140,6 +142,39 @@ def main() -> None:
         CronTrigger(hour=23, minute=0),
         id="mal.sync_videos_backfill",
         **common,
+    )
+
+    # 대시보드 "지금 실행" 트리거 폴링 — 15초마다 pending_trigger 확인해서 즉시 실행.
+    # 각 job id 는 위 add_job 의 id 와 동일 key 를 사용 (대시보드 UI 와 1:1).
+    # 주의: `run_chunked_dividends_backfill` 과 `mal.backfill_history` 는 수동 전용이라
+    # 특수 취급 — history 는 별도 CLI 로 돌리던 것이지만 dash 트리거 오면 여기서 실행.
+    TRIGGER_JOBS = {
+        "mal.sync_news": run_sync_news,
+        "mal.sync_videos": run_sync_videos,
+        "mal.sync_videos_backfill": run_sync_videos_backfill,
+        "mal.sync_race_entries": run_sync_race_entries,
+        "mal.sync_race_plan": run_sync_race_plan,
+        "mal.sync_jockeys": run_sync_jockeys,
+        "mal.sync_trainers": run_sync_trainers,
+        "mal.sync_horses_backfill": run_sync_horses_backfill,
+        "mal.sync_horses_refresh": run_sync_horses_refresh,
+        "mal.sync_horse_ratings": run_sync_horse_ratings,
+        "mal.sync_races_today": run_sync_races_today,
+        "mal.sync_race_info": run_sync_race_info,
+        "mal.sync_race_dividends": run_sync_race_dividends,
+        "mal.chunked_dividends_backfill": run_chunked_dividends_backfill,
+    }
+
+    def _trigger_poll() -> None:
+        dash.poll_and_dispatch(TRIGGER_JOBS)
+
+    sched.add_job(
+        _trigger_poll,
+        IntervalTrigger(seconds=15),
+        id="mal.trigger_poll",
+        coalesce=True,
+        max_instances=1,
+        misfire_grace_time=30,
     )
 
     log.info(
