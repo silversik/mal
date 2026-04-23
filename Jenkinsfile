@@ -1,6 +1,8 @@
 // mal.kr 레포 파이프라인.
 // - web (Next.js) 빌드 + crawler (Python/uv) 배포
-// - db/migrations/*.sql 도 함께 올리지만, 실제 적용은 별도 run-migrations.sh 수행 (수동 트리거).
+// - db/migrations/*.sql 자동 적용 (Build & restart 사이의 'Migrate' stage).
+//   기존엔 수동 run-migrations.sh 였지만 nickname/owners 두 번 prod 500 발생 →
+//   재발 방지로 자동화. 마이그레이션은 _migrations_applied 테이블로 idempotent.
 
 pipeline {
     agent any
@@ -16,6 +18,11 @@ pipeline {
         DEPLOY_PATH      = '/srv/services/mal'
         STACK_PATH       = '/srv/stack'
         COMPOSE_SERVICES = 'mal-web mal-crawler'
+        // mal.kr prod DB: stack-db 컨테이너 + mal_app role + app DB
+        // run-migrations.sh 가 PG_CONTAINER/PG_USER/PG_DB env 로 override 가능.
+        PG_CONTAINER     = 'stack-db'
+        PG_USER          = 'mal_app'
+        PG_DB            = 'app'
     }
 
     stages {
@@ -50,6 +57,20 @@ pipeline {
                             --exclude='**/__pycache__/' \
                             --exclude='**/*.pyc' \
                             ./ $DEPLOY_HOST:$DEPLOY_PATH/
+                    '''
+                }
+            }
+        }
+
+        stage('Migrate DB') {
+            // Build/restart 직전에 마이그레이션을 적용해야 새 컬럼/테이블 참조하는
+            // 새 코드가 실행됐을 때 500 (column does not exist) 을 회피한다.
+            // run-migrations.sh 는 _migrations_applied 추적 테이블로 idempotent.
+            steps {
+                sshagent(credentials: ['service-ssh']) {
+                    sh '''
+                        set -e
+                        ssh $DEPLOY_HOST "PG_CONTAINER=$PG_CONTAINER PG_USER=$PG_USER PG_DB=$PG_DB bash $DEPLOY_PATH/db/run-migrations.sh"
                     '''
                 }
             }
