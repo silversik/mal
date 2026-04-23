@@ -46,8 +46,10 @@ export const POOL_ORDERED: Record<ComboPool, boolean> = {
  * 한 경주의 모든 복식 배당. pool · odds 오름차순 (우승 가능성 높은 조합부터).
  *
  * 마명 보강: race_combo_dividends.horse_no_N 은 KRA chulNo (= 출주번호 = 게이트
- * 번호 1~12) 이지 마등록번호가 아니다. 같은 (race_date, meet, race_no) 의
- * race_entries.chul_no 와 매칭해 마명을 끌어온다. 미매칭 시 chul_no 숫자만 표시.
+ * 번호 1~12) 이지 마등록번호가 아니다. 두 데이터 소스 양쪽을 COALESCE:
+ *   - race_entries.chul_no       — 출마표 (예정/당일 경주, 결과 전)
+ *   - race_results.raw->>'chulNo' — 결과 (확정 후, 복식배당과 동시에 존재)
+ * 복식배당은 결과 확정 후만 존재하므로 race_results 가 주 소스.
  */
 export async function getRaceComboDividends(
   raceDate: string,
@@ -55,34 +57,35 @@ export async function getRaceComboDividends(
   raceNo: number,
 ): Promise<RaceComboDividend[]> {
   return query<RaceComboDividend>(
-    `SELECT
+    `WITH chul_map AS (
+        SELECT chul_no_text AS chul_no, horse_name
+          FROM (
+              SELECT chul_no::text AS chul_no_text, horse_name
+                FROM race_entries
+               WHERE race_date = $1 AND meet = $2 AND race_no = $3
+              UNION ALL
+              SELECT r.raw->>'chulNo' AS chul_no_text, h.horse_name
+                FROM race_results r
+                LEFT JOIN horses h ON h.horse_no = r.horse_no
+               WHERE r.race_date = $1 AND r.meet = $2 AND r.race_no = $3
+                 AND r.raw IS NOT NULL
+          ) u
+         WHERE chul_no_text IS NOT NULL AND chul_no_text <> ''
+     )
+     SELECT
         d.pool,
         d.horse_no_1,
         d.horse_no_2,
         d.horse_no_3,
-        e1.horse_name AS horse_name_1,
-        e2.horse_name AS horse_name_2,
-        e3.horse_name AS horse_name_3,
+        m1.horse_name AS horse_name_1,
+        m2.horse_name AS horse_name_2,
+        m3.horse_name AS horse_name_3,
         d.odds::text AS odds
        FROM race_combo_dividends d
-       LEFT JOIN race_entries e1
-              ON e1.race_date = d.race_date
-             AND e1.meet      = d.meet
-             AND e1.race_no   = d.race_no
-             AND e1.chul_no::text = d.horse_no_1
-       LEFT JOIN race_entries e2
-              ON e2.race_date = d.race_date
-             AND e2.meet      = d.meet
-             AND e2.race_no   = d.race_no
-             AND e2.chul_no::text = d.horse_no_2
-       LEFT JOIN race_entries e3
-              ON e3.race_date = d.race_date
-             AND e3.meet      = d.meet
-             AND e3.race_no   = d.race_no
-             AND e3.chul_no::text = d.horse_no_3
-      WHERE d.race_date = $1
-        AND d.meet      = $2
-        AND d.race_no   = $3
+       LEFT JOIN chul_map m1 ON m1.chul_no = d.horse_no_1
+       LEFT JOIN chul_map m2 ON m2.chul_no = d.horse_no_2
+       LEFT JOIN chul_map m3 ON m3.chul_no = d.horse_no_3
+      WHERE d.race_date = $1 AND d.meet = $2 AND d.race_no = $3
       ORDER BY d.pool, d.odds NULLS LAST`,
     [raceDate, meet, raceNo],
   );
