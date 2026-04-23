@@ -12,6 +12,8 @@ export type Horse = {
   first_place_count: number;
   coat_color: string | null;
   characteristics: string[] | null;
+  ow_no: string | null;       // 마주번호 (horses.ow_no 또는 raw->>'owNo' 폴백)
+  owner_name: string | null;  // owners.ow_name (LEFT JOIN, 미등록 마주는 NULL)
 };
 
 export type RaceResult = {
@@ -30,19 +32,27 @@ export type RaceResult = {
 };
 
 const HORSE_COLUMNS = `
-  horse_no, horse_name, country, sex,
-  to_char(birth_date, 'YYYY-MM-DD') AS birth_date,
-  sire_name, dam_name, total_race_count, first_place_count,
-  coat_color, characteristics
+  h.horse_no, h.horse_name, h.country, h.sex,
+  to_char(h.birth_date, 'YYYY-MM-DD') AS birth_date,
+  h.sire_name, h.dam_name, h.total_race_count, h.first_place_count,
+  h.coat_color, h.characteristics,
+  COALESCE(h.ow_no, h.raw->>'owNo') AS ow_no,
+  o.ow_name AS owner_name
+`;
+
+// horses 와 owners 의 LEFT JOIN — ow_no 가 채워져 있거나 raw 에 owNo 가 있을 때만 매칭.
+const HORSE_FROM = `
+  horses h
+    LEFT JOIN owners o ON o.ow_no = COALESCE(h.ow_no, h.raw->>'owNo')
 `;
 
 export async function searchHorsesByName(name: string, limit = 30): Promise<Horse[]> {
   if (!name.trim()) return [];
   return query<Horse>(
     `SELECT ${HORSE_COLUMNS}
-       FROM horses
-      WHERE horse_name ILIKE $1
-      ORDER BY horse_name
+       FROM ${HORSE_FROM}
+      WHERE h.horse_name ILIKE $1
+      ORDER BY h.horse_name
       LIMIT $2`,
     [`%${name.trim()}%`, limit],
   );
@@ -50,7 +60,7 @@ export async function searchHorsesByName(name: string, limit = 30): Promise<Hors
 
 export async function getHorseByNo(horseNo: string): Promise<Horse | null> {
   const rows = await query<Horse>(
-    `SELECT ${HORSE_COLUMNS} FROM horses WHERE horse_no = $1`,
+    `SELECT ${HORSE_COLUMNS} FROM ${HORSE_FROM} WHERE h.horse_no = $1`,
     [horseNo],
   );
   return rows[0] ?? null;
@@ -59,8 +69,8 @@ export async function getHorseByNo(horseNo: string): Promise<Horse | null> {
 export async function getRecentHorses(limit = 20): Promise<Horse[]> {
   return query<Horse>(
     `SELECT ${HORSE_COLUMNS}
-       FROM horses
-      ORDER BY created_at DESC
+       FROM ${HORSE_FROM}
+      ORDER BY h.created_at DESC
       LIMIT $1`,
     [limit],
   );
@@ -90,9 +100,9 @@ export async function getSiblings(sireName: string | null, excludeHorseNo: strin
   if (!sireName) return [];
   return query<Horse>(
     `SELECT ${HORSE_COLUMNS}
-       FROM horses
-      WHERE sire_name = $1 AND horse_no <> $2
-      ORDER BY birth_date DESC NULLS LAST
+       FROM ${HORSE_FROM}
+      WHERE h.sire_name = $1 AND h.horse_no <> $2
+      ORDER BY h.birth_date DESC NULLS LAST
       LIMIT 12`,
     [sireName, excludeHorseNo],
   );

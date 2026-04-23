@@ -130,6 +130,20 @@ function ProfileCard({
     ["父마", horse.sire_name ?? "-"],
     ["母마", horse.dam_name ?? "-"],
     [
+      "마주",
+      horse.owner_name && horse.ow_no ? (
+        <Link
+          key="ow"
+          href={`/owner/${horse.ow_no}`}
+          className="text-primary hover:underline"
+        >
+          {horse.owner_name}
+        </Link>
+      ) : (
+        (horse.owner_name ?? horse.ow_no ?? "-")
+      ),
+    ],
+    [
       "통산 출전",
       <span key="rc">
         {horse.total_race_count}
