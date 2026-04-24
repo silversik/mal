@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { RaceDatePicker } from "@/components/race-date-picker";
 import { VenueIcon } from "@/components/venue-icon";
@@ -115,6 +116,22 @@ export default async function RacesPage({
     getAllRaceDates(currentDate, 3),
   ]);
 
+  const byMeet = Object.fromEntries(
+    MEET_ORDER.map((m) => [
+      m,
+      races.filter((r) => r.meet === m).sort((a, b) => a.race_no - b.race_no),
+    ]),
+  );
+  const activeMeets = MEET_ORDER.filter((m) => byMeet[m].length > 0);
+
+  if (!venue && !race && activeMeets.length > 0) {
+    const firstMeet = activeMeets[0];
+    const firstRace = byMeet[firstMeet][0];
+    redirect(
+      `/races?date=${currentDate}&venue=${encodeURIComponent(firstMeet)}&race=${firstRace.race_no}`,
+    );
+  }
+
   const selectedRace =
     venue && race
       ? races.find((r) => r.meet === venue && r.race_no === Number(race)) ??
@@ -144,14 +161,6 @@ export default async function RacesPage({
         `(${selectedRace.meet}) ${currentDate.replaceAll("-", ".")} ${selectedRace.race_no}경주`,
       )}`
     : null;
-
-  const byMeet = Object.fromEntries(
-    MEET_ORDER.map((m) => [
-      m,
-      races.filter((r) => r.meet === m).sort((a, b) => a.race_no - b.race_no),
-    ]),
-  );
-  const activeMeets = MEET_ORDER.filter((m) => byMeet[m].length > 0);
 
   const prevDate = offsetDate(currentDate, -1);
   const nextDate = offsetDate(currentDate, 1);
