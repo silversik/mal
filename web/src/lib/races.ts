@@ -15,19 +15,31 @@ export type RaceInfo = {
 };
 
 export type RaceEntry = {
-  rank: number | null;
+  rank: number | null;        // 경주 확정 후에만 채워짐 (phase='pre' 이면 항상 null)
+  chul_no: number | null;     // 출전번호(gate #) — 경주 전 출전표 핵심 식별자
   horse_no: string;
   horse_name: string;
   jockey_name: string | null;
   trainer_name: string | null;
   trainer_no: string | null;  // trainers 테이블 LEFT JOIN — 매칭 안 되면 null (raw text 만 표시)
-  record_time: string | null;
-  weight: string | null;
-  win_rate: string | null;   // 단승 배당률 (모든 출주마)
-  plc_rate: string | null;   // 연승 배당률 (모든 출주마)
+  record_time: string | null; // phase='pre' 이면 null (아직 뛰지 않음)
+  weight: string | null;      // 마체중(kg)
+  win_rate: string | null;   // 단승 배당률 (phase='pre' 이면 null — 배당은 확정 후)
+  plc_rate: string | null;   // 연승 배당률 (phase='pre' 이면 null)
   // 기수변경 (jockey_changes LEFT JOIN) — 출주표 발표 후 교체된 경우만 채워짐.
   jockey_changed_from: string | null;  // 변경 전 기수명 (jk_name_before)
   jockey_change_reason: string | null; // 사유 (예: "기수부상")
+};
+
+/**
+ * 경주 출전표/결과 조회 결과.
+ * - phase='post': race_results 에 결과가 확정된 상태 (과거 경주). rank·record_time·단/연승 채워짐.
+ * - phase='pre':  race_results 가 아직 비어 있어 race_entries(출마표, API26_2)로 폴백.
+ *                 rank=null, record_time=null, win_rate/plc_rate=null. 대신 chul_no 가 채워짐.
+ */
+export type RaceEntriesResult = {
+  phase: "pre" | "post";
+  entries: RaceEntry[];
 };
 
 const RACE_COLUMNS = `
@@ -201,11 +213,14 @@ export async function getRaceEntries(
   raceDate: string,
   meet: string,
   raceNo: number,
-): Promise<RaceEntry[]> {
-  return query<RaceEntry>(
+): Promise<RaceEntriesResult> {
+  // 확정된 결과(race_results) 우선. 없으면 출마표(race_entries)로 폴백해
+  // 경주 전 페이지가 비어 보이지 않게 한다.
+  const post = await query<RaceEntry>(
     // trainer JOIN 은 이름 매칭 — race_results.tr_no 가 백필되기 전까지의 임시 브릿지.
     // 동명이인 가능하나 실데이터상 충돌 거의 없음 (trainers ~333명).
-    `SELECT r.rank, r.horse_no, h.horse_name,
+    `SELECT r.rank, (r.raw->>'chulNo')::int AS chul_no,
+            r.horse_no, h.horse_name,
             r.jockey_name, r.trainer_name,
             t.tr_no AS trainer_no,
             r.record_time::text, r.weight::text,
@@ -232,6 +247,34 @@ export async function getRaceEntries(
       ORDER BY r.rank NULLS LAST`,
     [raceDate, meet, raceNo],
   );
+  if (post.length > 0) return { phase: "post", entries: post };
+
+  // 경주 전 — race_entries(API26_2, 3시간 주기) 로부터 출전표를 구성.
+  // 단/연승 배당은 결과 확정 후에만 존재하므로 null. 기수변경은 조기에 발표되는 경우도
+  // 있으므로 LEFT JOIN 유지.
+  const pre = await query<RaceEntry>(
+    `SELECT NULL::int AS rank, e.chul_no,
+            e.horse_no, e.horse_name,
+            e.jockey_name, e.trainer_name,
+            t.tr_no AS trainer_no,
+            NULL::text AS record_time, e.weight::text,
+            NULL::text AS win_rate, NULL::text AS plc_rate,
+            jc.jk_name_before AS jockey_changed_from,
+            jc.reason AS jockey_change_reason
+       FROM race_entries e
+       LEFT JOIN trainers t ON t.tr_name = e.trainer_name
+       LEFT JOIN jockey_changes jc
+              ON jc.race_date = e.race_date
+             AND jc.meet = e.meet
+             AND jc.race_no = e.race_no
+             AND jc.horse_no = e.horse_no
+      WHERE e.race_date = $1::date
+        AND e.meet = $2
+        AND e.race_no = $3
+      ORDER BY e.chul_no NULLS LAST`,
+    [raceDate, meet, raceNo],
+  );
+  return { phase: "pre", entries: pre };
 }
 
 /**

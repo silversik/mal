@@ -138,7 +138,7 @@ export default async function RacesPage({
         null
       : null;
 
-  const [entries, raceVideo, syncedAt, comboDividends, poolSales] = selectedRace
+  const [entriesResult, raceVideo, syncedAt, comboDividends, poolSales] = selectedRace
     ? await Promise.all([
         getRaceEntries(currentDate, selectedRace.meet, selectedRace.race_no),
         getRaceVideo(currentDate, selectedRace.meet, selectedRace.race_no),
@@ -147,12 +147,14 @@ export default async function RacesPage({
         getRacePoolSales(currentDate, selectedRace.meet, selectedRace.race_no),
       ])
     : [
-        [],
+        { phase: "post" as const, entries: [] },
         null,
         null,
         [] as RaceComboDividend[],
         [] as RacePoolSales[],
       ];
+  const entries = entriesResult.entries;
+  const entriesPhase = entriesResult.phase;
 
   // 크롤러 `sync_videos_backfill.format_race_title_query()` 와 동일한 포맷 — 수동 검색과
   // 자동 백필이 같은 쿼리를 쓰도록 맞춤. 예) "(서울) 2026.02.28 1경주"
@@ -485,11 +487,23 @@ export default async function RacesPage({
           )}
 
           {entries.length > 0 ? (
-            <Card>
+            <>
+              {entriesPhase === "pre" && (
+                <div className="mb-3 inline-flex items-center gap-2 rounded-md border border-champagne-gold/40 bg-champagne-gold/10 px-3 py-1.5 text-xs font-medium text-champagne-gold">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-champagne-gold opacity-60" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-champagne-gold" />
+                  </span>
+                  출전표 (경주 전 · 결과 미확정)
+                </div>
+              )}
+              <Card>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-14 text-center">착순</TableHead>
+                    <TableHead className="w-14 text-center">
+                      {entriesPhase === "pre" ? "출전" : "착순"}
+                    </TableHead>
                     <TableHead>마명</TableHead>
                     <TableHead className="text-center">기수</TableHead>
                     <TableHead className="text-center">조교사</TableHead>
@@ -503,7 +517,13 @@ export default async function RacesPage({
                   {entries.map((e, i) => (
                     <TableRow key={i}>
                       <TableCell className="text-center font-semibold">
-                        <RankBadge rank={e.rank} />
+                        {entriesPhase === "pre" ? (
+                          <span className="font-mono text-sm tabular-nums text-muted-foreground">
+                            {e.chul_no ?? "-"}
+                          </span>
+                        ) : (
+                          <RankBadge rank={e.rank} />
+                        )}
                       </TableCell>
                       <TableCell>
                         <Link
@@ -563,6 +583,7 @@ export default async function RacesPage({
                 </TableBody>
               </Table>
             </Card>
+            </>
           ) : (
             <Card className="border-dashed">
               <CardContent className="py-8 text-center text-sm text-muted-foreground">
