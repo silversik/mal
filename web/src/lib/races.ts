@@ -193,6 +193,8 @@ export async function getNearbyRaceDates(
 
 /**
  * fromDate 기준 ±months 개월 범위 내 경주가 있는 날짜 목록 (달력 하이라이트용).
+ * 예정된 대상경주(race_plans.raw.pgDate)도 함께 UNION 해서, KRA 가 아직
+ * races 테이블에 주간 카드를 올리지 않은 미래 일자도 달력에서 선택 가능하게 한다.
  * DayPicker 의 modifiers 에 넘겨 "경주 있는 날" 을 금색으로 강조.
  */
 export async function getAllRaceDates(
@@ -200,9 +202,17 @@ export async function getAllRaceDates(
   months = 3,
 ): Promise<string[]> {
   const rows = await query<{ race_date: string }>(
-    `SELECT DISTINCT to_char(race_date, 'YYYY-MM-DD') AS race_date
-       FROM races
-      WHERE race_date BETWEEN $1::date - ($2 * INTERVAL '1 month') AND $1::date + ($2 * INTERVAL '1 month')
+    `SELECT DISTINCT race_date FROM (
+       SELECT to_char(race_date, 'YYYY-MM-DD') AS race_date
+         FROM races
+        WHERE race_date BETWEEN $1::date - ($2 * INTERVAL '1 month') AND $1::date + ($2 * INTERVAL '1 month')
+       UNION
+       SELECT to_char(to_date(raw->>'pgDate','YYYYMMDD'), 'YYYY-MM-DD') AS race_date
+         FROM race_plans
+        WHERE raw->>'pgDate' ~ '^[0-9]{8}$'
+          AND to_date(raw->>'pgDate','YYYYMMDD')
+              BETWEEN $1::date - ($2 * INTERVAL '1 month') AND $1::date + ($2 * INTERVAL '1 month')
+     ) d
       ORDER BY race_date`,
     [fromDate, months],
   );
