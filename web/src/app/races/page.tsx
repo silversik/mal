@@ -507,7 +507,31 @@ export default async function RacesPage({
                     <TableHead>마명</TableHead>
                     <TableHead className="text-center">기수</TableHead>
                     <TableHead className="text-center">조교사</TableHead>
+                    <TableHead
+                      className="hidden text-center sm:table-cell"
+                      title="말 연령"
+                    >
+                      연령
+                    </TableHead>
+                    <TableHead
+                      className="hidden text-right sm:table-cell"
+                      title="경주 시점의 말 레이팅"
+                    >
+                      레이팅
+                    </TableHead>
+                    <TableHead
+                      className="hidden text-right sm:table-cell"
+                      title="부담중량 (핸디캡)"
+                    >
+                      부담
+                    </TableHead>
                     <TableHead className="text-right">기록</TableHead>
+                    <TableHead
+                      className="hidden text-right md:table-cell"
+                      title="1착과의 착차"
+                    >
+                      착차
+                    </TableHead>
                     <TableHead className="text-right">마체중</TableHead>
                     <TableHead className="text-right">단승</TableHead>
                     <TableHead className="text-right">연승</TableHead>
@@ -566,8 +590,20 @@ export default async function RacesPage({
                           "-"
                         )}
                       </TableCell>
+                      <TableCell className="hidden text-center font-mono tabular-nums text-muted-foreground sm:table-cell">
+                        {e.age ?? "-"}
+                      </TableCell>
+                      <TableCell className="hidden text-right font-mono tabular-nums text-muted-foreground sm:table-cell">
+                        {e.hr_rating ?? "-"}
+                      </TableCell>
+                      <TableCell className="hidden text-right font-mono tabular-nums text-muted-foreground sm:table-cell">
+                        {e.budam_weight ?? "-"}
+                      </TableCell>
                       <TableCell className="text-right font-mono tabular-nums">
                         {e.record_time ?? "-"}
+                      </TableCell>
+                      <TableCell className="hidden text-right font-mono tabular-nums text-muted-foreground md:table-cell">
+                        {e.differ ?? "-"}
                       </TableCell>
                       <TableCell className="text-right font-mono tabular-nums">
                         {e.weight ?? "-"}

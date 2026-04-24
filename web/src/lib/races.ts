@@ -26,6 +26,11 @@ export type RaceEntry = {
   weight: string | null;      // 마체중(kg)
   win_rate: string | null;   // 단승 배당률 (phase='pre' 이면 null — 배당은 확정 후)
   plc_rate: string | null;   // 연승 배당률 (phase='pre' 이면 null)
+  // race_results.raw JSONB / race_entries 컬럼에서 추출한 부가 필드.
+  age: string | null;         // 말 연령 (예: "4") — 양쪽 phase 에서 채워짐
+  budam_weight: string | null; // 부담중량(kg) — 마체중(wgHr)과 별개의 핸디캡 중량. raw.wgBudam
+  differ: string | null;       // 1착과의 착차 (예: "1", "코") — phase='post' 만. raw.differ
+  hr_rating: number | null;    // 경주 시점의 말 레이팅 — 양쪽 phase (race_entries.rating / raw.hrRating)
   // 기수변경 (jockey_changes LEFT JOIN) — 출주표 발표 후 교체된 경우만 채워짐.
   jockey_changed_from: string | null;  // 변경 전 기수명 (jk_name_before)
   jockey_change_reason: string | null; // 사유 (예: "기수부상")
@@ -226,6 +231,10 @@ export async function getRaceEntries(
             r.record_time::text, r.weight::text,
             d.win_rate::text AS win_rate,
             d.plc_rate::text AS plc_rate,
+            r.raw->>'age' AS age,
+            r.raw->>'wgBudam' AS budam_weight,
+            r.raw->>'differ' AS differ,
+            (r.raw->>'hrRating')::int AS hr_rating,
             jc.jk_name_before AS jockey_changed_from,
             jc.reason AS jockey_change_reason
        FROM race_results r
@@ -259,6 +268,8 @@ export async function getRaceEntries(
             t.tr_no AS trainer_no,
             NULL::text AS record_time, e.weight::text,
             NULL::text AS win_rate, NULL::text AS plc_rate,
+            e.age, e.raw->>'wgBudam' AS budam_weight,
+            NULL::text AS differ, e.rating AS hr_rating,
             jc.jk_name_before AS jockey_changed_from,
             jc.reason AS jockey_change_reason
        FROM race_entries e
