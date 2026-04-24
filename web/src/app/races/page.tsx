@@ -561,16 +561,13 @@ export default async function RacesPage({
                         <span className="inline-flex items-center gap-1">
                           {e.jockey_name ?? "-"}
                           {e.jockey_changed_from && (
-                            <span
-                              className="inline-flex items-center rounded border border-amber-500/40 bg-amber-500/10 px-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400"
-                              title={`기수교체: ${e.jockey_changed_from} → ${e.jockey_name}${
-                                e.jockey_change_reason
-                                  ? ` (${e.jockey_change_reason})`
-                                  : ""
-                              }`}
-                            >
-                              교체
-                            </span>
+                            <JockeyChangeBadge
+                              from={e.jockey_changed_from}
+                              to={e.jockey_name}
+                              reason={e.jockey_change_reason}
+                              weightBefore={e.jockey_weight_before}
+                              weightAfter={e.jockey_weight_after}
+                            />
                           )}
                         </span>
                       </TableCell>
@@ -718,6 +715,50 @@ function formatOdds(odds: string | null): string {
   const n = Number(odds);
   if (Number.isNaN(n)) return odds;
   return n.toFixed(1);
+}
+
+/**
+ * 기수교체 인라인 배지.
+ * 체중(부담중량) 변화가 있으면 배지 우측에 "56→57" 형태로 노출.
+ * 교체 사유는 hover title 로 유지.
+ */
+function JockeyChangeBadge({
+  from,
+  to,
+  reason,
+  weightBefore,
+  weightAfter,
+}: {
+  from: string;
+  to: string | null;
+  reason: string | null;
+  weightBefore: string | null;
+  weightAfter: string | null;
+}) {
+  const wb = weightBefore ? Number(weightBefore) : null;
+  const wa = weightAfter ? Number(weightAfter) : null;
+  const hasWeightDelta =
+    wb !== null && wa !== null && Number.isFinite(wb) && Number.isFinite(wa) && wb !== wa;
+  const title = [
+    `기수교체: ${from} → ${to ?? "?"}`,
+    reason ? `(${reason})` : null,
+    hasWeightDelta ? `부담중량: ${wb} → ${wa}kg` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/10 px-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400"
+      title={title}
+    >
+      교체
+      {hasWeightDelta && (
+        <span className="font-mono tabular-nums opacity-80">
+          {wb}→{wa}
+        </span>
+      )}
+    </span>
+  );
 }
 
 function ComboDividendsSection({ rows }: { rows: RaceComboDividend[] }) {

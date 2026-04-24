@@ -34,6 +34,9 @@ export type RaceEntry = {
   // 기수변경 (jockey_changes LEFT JOIN) — 출주표 발표 후 교체된 경우만 채워짐.
   jockey_changed_from: string | null;  // 변경 전 기수명 (jk_name_before)
   jockey_change_reason: string | null; // 사유 (예: "기수부상")
+  // 교체 시 부담중량 변화 (kg) — 조교사가 기수 체중 차이를 반영해 부담중량을 조정.
+  jockey_weight_before: string | null;
+  jockey_weight_after: string | null;
 };
 
 /**
@@ -236,7 +239,9 @@ export async function getRaceEntries(
             r.raw->>'differ' AS differ,
             (r.raw->>'hrRating')::int AS hr_rating,
             jc.jk_name_before AS jockey_changed_from,
-            jc.reason AS jockey_change_reason
+            jc.reason AS jockey_change_reason,
+            jc.weight_before::text AS jockey_weight_before,
+            jc.weight_after::text AS jockey_weight_after
        FROM race_results r
        JOIN horses h ON h.horse_no = r.horse_no
        LEFT JOIN trainers t ON t.tr_name = r.trainer_name
@@ -271,7 +276,9 @@ export async function getRaceEntries(
             e.age, e.raw->>'wgBudam' AS budam_weight,
             NULL::text AS differ, e.rating AS hr_rating,
             jc.jk_name_before AS jockey_changed_from,
-            jc.reason AS jockey_change_reason
+            jc.reason AS jockey_change_reason,
+            jc.weight_before::text AS jockey_weight_before,
+            jc.weight_after::text AS jockey_weight_after
        FROM race_entries e
        LEFT JOIN trainers t ON t.tr_name = e.trainer_name
        LEFT JOIN jockey_changes jc
