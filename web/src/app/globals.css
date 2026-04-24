@@ -107,6 +107,16 @@
   }
 }
 
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer components {
   .royal-card {
     @apply bg-card rounded-[8px] shadow-subtle border-t-2 border-t-primary overflow-hidden transition-all duration-300;
