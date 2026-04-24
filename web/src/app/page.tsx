@@ -13,6 +13,10 @@ import {
   getRecentRaceDaysRaces,
   type RaceInfo,
 } from "@/lib/races";
+import {
+  getUpcomingStakesFromPlans,
+  type UpcomingStake,
+} from "@/lib/race_plans";
 
 function getRaceStatus(raceDate: string): "예정" | "진행중" | "종료" {
   const today = new Date().toISOString().slice(0, 10);
@@ -41,20 +45,32 @@ function isStakesRace(r: RaceInfo): boolean {
 
 export default async function Home() {
   const todayDate = new Date().toISOString().slice(0, 10);
-  const [recentDayRaces, horses, jockeys, nextDayRaces, news, recentPosts] =
-    await Promise.all([
-      getRecentRaceDaysRaces(2),
-      getRecentHorses(6),
-      getAllJockeys(6),
-      getNextRaceDayRaces(),
-      getLatestNews(3),
-      getRecentPosts(5),
-    ]);
+  const [
+    recentDayRaces,
+    horses,
+    jockeys,
+    nextDayRaces,
+    upcomingStakes,
+    news,
+    recentPosts,
+  ] = await Promise.all([
+    getRecentRaceDaysRaces(2),
+    getRecentHorses(6),
+    getAllJockeys(6),
+    getNextRaceDayRaces(),
+    getUpcomingStakesFromPlans(6),
+    getLatestNews(3),
+    getRecentPosts(5),
+  ]);
 
   /*
    * "다음 진행 예정 경기": 가장 가까운 개최일(오늘 포함)의 경주 중 대상/G/L 경주를 우선,
    * 등급 메타데이터가 없으면 경마장별 마지막 경주(일반적으로 메인 경주)로 대체.
    * KRA 공공API(racedetailresult)가 등급·경주명을 제공하지 않아서 생기는 갭.
+   *
+   * races 테이블에 미래 일자가 아직 없는 평일에는 race_plans(API40) 의 예정된
+   * 대상경주를 폴백으로 노출한다 — 일정 자체가 비어있는 건 아니므로 "없음" 으로
+   * 보이는 것을 방지.
    */
   const nextRaceDate = nextDayRaces[0]?.race_date ?? null;
   const nextStatus = nextRaceDate
@@ -70,8 +86,18 @@ export default async function Home() {
             .sort((a, b) => b.race_no - a.race_no);
           return meetRaces.slice(0, 1);
         });
-  const nextDayHref = nextRaceDate
-    ? `/races?date=${nextRaceDate}`
+
+  // 폴백: races 가 비어있을 때만 race_plans 의 가장 가까운 일자만 뽑아 노출.
+  const useStakesFallback = featureRaces.length === 0 && upcomingStakes.length > 0;
+  const fallbackDate = useStakesFallback ? upcomingStakes[0].race_date : null;
+  const fallbackStakes = useStakesFallback
+    ? upcomingStakes.filter((s) => s.race_date === fallbackDate)
+    : [];
+
+  const heroDate = nextRaceDate ?? fallbackDate;
+  const heroStatus = heroDate ? getRaceStatus(heroDate) : null;
+  const nextDayHref = heroDate
+    ? `/races?date=${heroDate}`
     : `/races?date=${todayDate}`;
 
   /*
@@ -89,23 +115,33 @@ export default async function Home() {
             <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
               <div>
                 <Badge variant="outline" className="mb-3 border-champagne-gold text-champagne-gold">
-                  {nextStatus === "진행중" ? "LIVE" : "NEXT"} · {nextRaceDate ?? todayDate}
+                  {heroStatus === "진행중" ? "LIVE" : useStakesFallback ? "UPCOMING" : "NEXT"} · {heroDate ?? todayDate}
                 </Badge>
                 <h1 className="font-serif text-3xl font-bold tracking-tight text-sand-ivory md:text-4xl">
-                  {nextStatus === "진행중" ? "진행중인 경기" : "다음 진행 예정 경기"}
+                  {nextStatus === "진행중"
+                    ? "진행중인 경기"
+                    : useStakesFallback
+                      ? "다가오는 대상경주"
+                      : "다음 진행 예정 경기"}
                 </h1>
               </div>
               <Link
-                href={nextDayHref}
+                href={useStakesFallback ? "/races/schedule" : nextDayHref}
                 className="text-sm font-semibold text-champagne-gold transition hover:text-white"
               >
                 더보기 &rarr;
               </Link>
             </div>
 
-            {featureRaces.length === 0 || !nextRaceDate ? (
+            {featureRaces.length === 0 && !useStakesFallback ? (
               <div className="rounded-xl border border-white/10 bg-white/5 p-12 text-center">
                 <p className="font-medium text-white/60">예정된 경기가 없습니다.</p>
+              </div>
+            ) : useStakesFallback ? (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                {fallbackStakes.map((s) => (
+                  <StakesPlanCard key={s.id} stake={s} />
+                ))}
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -256,6 +292,49 @@ function BannerRaceCard({ race }: { race: RaceInfo }) {
             <span className="text-[10px] font-bold uppercase text-white/50">Entries</span>
             <span className="text-sm font-semibold text-white">{race.entry_count ?? "-"}두</span>
           </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function StakesPlanCard({ stake }: { stake: UpcomingStake }) {
+  const displayName = stake.race_name.replace(/\s*\((G[123]|L|특)\)\s*/g, "").trim();
+  const tierBadge = stake.tier ?? (stake.grade === "대상" ? "대상" : null);
+  return (
+    <Link href={`/races?date=${stake.race_date}`}>
+      <div className="group cursor-pointer rounded-xl border border-champagne-gold/30 bg-white/5 p-6 backdrop-blur-sm transition-all hover:border-champagne-gold/60 hover:bg-white/10">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-champagne-gold">
+            <VenueIcon meet={stake.meet} size={18} />
+            <span className="text-sm font-semibold">{stake.meet}</span>
+          </div>
+          {tierBadge && (
+            <Badge variant="outline" className="border border-champagne-gold/60 bg-champagne-gold/15 text-champagne-gold">
+              {tierBadge}
+            </Badge>
+          )}
+        </div>
+        <h3 className="mb-2 text-xl font-bold text-champagne-gold transition-colors">
+          {displayName}
+        </h3>
+        <div className="mt-4 flex items-center justify-between border-t border-dashed border-white/10 pt-4">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold uppercase text-white/50">Date</span>
+            <span className="font-mono text-sm font-semibold tabular-nums text-white">{stake.race_date}</span>
+          </div>
+          {stake.distance && (
+            <div className="flex flex-col text-center">
+              <span className="text-[10px] font-bold uppercase text-white/50">Dist</span>
+              <span className="font-mono text-sm font-semibold tabular-nums text-white">{stake.distance}m</span>
+            </div>
+          )}
+          {stake.age_cond && (
+            <div className="flex flex-col text-right">
+              <span className="text-[10px] font-bold uppercase text-white/50">Age</span>
+              <span className="text-sm font-semibold text-white">{stake.age_cond}</span>
+            </div>
+          )}
         </div>
       </div>
     </Link>
