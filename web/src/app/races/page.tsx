@@ -169,7 +169,15 @@ export default async function RacesPage({
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8">
-      <h1 className="mb-5 text-2xl font-bold tracking-tight">경기 일람</h1>
+      <div className="mb-5 flex items-baseline justify-between gap-3">
+        <h1 className="text-2xl font-bold tracking-tight">경기 일람</h1>
+        <Link
+          href="/races/schedule"
+          className="text-sm text-muted-foreground transition hover:text-primary"
+        >
+          대상경주 일정 →
+        </Link>
+      </div>
 
       {/* ── 날짜 네비게이션: 이전/다음 + 데이트피커 + 오늘 ── */}
       <div className="mb-6 flex items-center gap-2">
