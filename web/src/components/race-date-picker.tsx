@@ -51,6 +51,8 @@ export function RaceDatePicker({
   const selected = parseYmd(currentDate);
 
   const hasRace = (d: Date) => raceDateSet.has(fmtYmd(d));
+  // 경기 없는 날은 비활성 — 클릭/키보드 선택 모두 차단.
+  const noRace = (d: Date) => !raceDateSet.has(fmtYmd(d));
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -84,6 +86,7 @@ export function RaceDatePicker({
           defaultMonth={selected}
           locale={ko}
           captionLayout="dropdown"
+          disabled={noRace}
           modifiers={{ hasRace }}
           modifiersClassNames={{
             hasRace:
@@ -92,6 +95,7 @@ export function RaceDatePicker({
           onSelect={(d) => {
             if (!d) return;
             const ymd = fmtYmd(d);
+            if (!raceDateSet.has(ymd)) return;
             setOpen(false);
             // 오늘을 고르면 query 제거 (기본 경로로)
             router.push(ymd === today ? "/races" : `/races?date=${ymd}`);
