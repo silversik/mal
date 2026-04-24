@@ -21,6 +21,10 @@ import {
   type RaceInfo,
 } from "@/lib/races";
 import {
+  getUpcomingStakesFromPlans,
+  type UpcomingStake,
+} from "@/lib/race_plans";
+import {
   getRaceComboDividends,
   POOL_LABEL,
   POOL_ORDERED,
@@ -51,6 +55,27 @@ function offsetDate(dateStr: string, days: number): string {
     String(dt.getMonth() + 1).padStart(2, "0"),
     String(dt.getDate()).padStart(2, "0"),
   ].join("-");
+}
+
+/**
+ * 정렬된 YYYY-MM-DD 리스트(`raceDates`)에서 기준일의 바로 이전/다음
+ * "경기 있는 날" 을 반환. 현재 날짜가 리스트에 없어도 주변 레이스데이로 점프한다.
+ */
+function findNearbyRaceDate(
+  raceDates: string[],
+  currentDate: string,
+  direction: "prev" | "next",
+): string | null {
+  if (raceDates.length === 0) return null;
+  if (direction === "prev") {
+    let candidate: string | null = null;
+    for (const d of raceDates) {
+      if (d < currentDate) candidate = d;
+      else break;
+    }
+    return candidate;
+  }
+  return raceDates.find((d) => d > currentDate) ?? null;
 }
 
 function formatDateLabel(dateStr: string): string {
@@ -111,10 +136,13 @@ export default async function RacesPage({
   const currentDate = date ?? today;
   const isToday = currentDate === today;
 
-  const [races, raceDates] = await Promise.all([
+  const [races, raceDates, upcomingAll] = await Promise.all([
     getRacesByDate(currentDate),
     getAllRaceDates(currentDate, 3),
+    getUpcomingStakesFromPlans(30),
   ]);
+  // 선택된 날짜의 예정 대상경주 — races 가 비어도 race_plans 에 있으면 예고 카드 노출.
+  const plannedForDate = upcomingAll.filter((s) => s.race_date === currentDate);
 
   const byMeet = Object.fromEntries(
     MEET_ORDER.map((m) => [
@@ -130,6 +158,18 @@ export default async function RacesPage({
     redirect(
       `/races?date=${currentDate}&venue=${encodeURIComponent(firstMeet)}&race=${firstRace.race_no}`,
     );
+  }
+
+  /*
+   * 기본 진입(date 파라미터 없음)인데 오늘은 경기가 없고 예정된 대상경주도 없는 경우,
+   * 가까운 경기 있는 날로 자동 점프 — 빈 페이지로 유입되는 UX 결함 방지.
+   * 1순위: 다음 경기일(예정 대상경주 포함), 2순위: 최근 경기일.
+   */
+  if (!date && activeMeets.length === 0 && plannedForDate.length === 0) {
+    const nextRaceDay = raceDates.find((d) => d >= currentDate) ?? null;
+    const prevRaceDay = [...raceDates].reverse().find((d) => d < currentDate) ?? null;
+    const jumpTo = nextRaceDay ?? prevRaceDay;
+    if (jumpTo) redirect(`/races?date=${jumpTo}`);
   }
 
   const selectedRace =
@@ -164,8 +204,9 @@ export default async function RacesPage({
       )}`
     : null;
 
-  const prevDate = offsetDate(currentDate, -1);
-  const nextDate = offsetDate(currentDate, 1);
+  // 경기 있는 날만 순회하도록 raceDates 내에서 탐색. 인접 레이스데이가 없으면 null.
+  const prevDate = findNearbyRaceDate(raceDates, currentDate, "prev");
+  const nextDate = findNearbyRaceDate(raceDates, currentDate, "next");
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8">
@@ -179,25 +220,13 @@ export default async function RacesPage({
         </Link>
       </div>
 
-      {/* ── 날짜 네비게이션: 이전/다음 + 데이트피커 + 오늘 ── */}
+      {/* ── 날짜 네비게이션: 이전/다음(경기 있는 날로 점프) + 데이트피커 + 오늘 ── */}
       <div className="mb-6 flex items-center gap-2">
-        <Link
-          href={`/races?date=${prevDate}`}
-          aria-label="이전 날"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-card text-muted-foreground transition hover:bg-muted"
-        >
-          ‹
-        </Link>
+        <NavArrow target={prevDate} direction="prev" />
 
         <RaceDatePicker currentDate={currentDate} raceDates={raceDates} />
 
-        <Link
-          href={`/races?date=${nextDate}`}
-          aria-label="다음 날"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-card text-muted-foreground transition hover:bg-muted"
-        >
-          ›
-        </Link>
+        <NavArrow target={nextDate} direction="next" />
 
         {!isToday && (
           <Link
@@ -210,12 +239,17 @@ export default async function RacesPage({
       </div>
 
       {/* ── 경기 없음 ── */}
-      {activeMeets.length === 0 && (
+      {activeMeets.length === 0 && plannedForDate.length === 0 && (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
             {formatDateLabel(currentDate)}에는 경기 기록이 없습니다.
           </CardContent>
         </Card>
+      )}
+
+      {/* ── 예정된 대상경주 (races 미적재 상태) ── */}
+      {activeMeets.length === 0 && plannedForDate.length > 0 && (
+        <UpcomingStakesPanel date={currentDate} stakes={plannedForDate} />
       )}
 
       {/* ── 경마장 컬럼 그리드 ── */}
@@ -814,6 +848,109 @@ function ComboDividendsSection({ rows }: { rows: RaceComboDividend[] }) {
 }
 
 /* ── helpers ─────────────────────────────────────────────── */
+
+function UpcomingStakesPanel({
+  date,
+  stakes,
+}: {
+  date: string;
+  stakes: UpcomingStake[];
+}) {
+  const byMeet = new Map<string, UpcomingStake[]>();
+  for (const s of stakes) {
+    const arr = byMeet.get(s.meet) ?? [];
+    arr.push(s);
+    byMeet.set(s.meet, arr);
+  }
+  return (
+    <Card>
+      <CardContent className="py-8">
+        <div className="mb-4 flex items-baseline justify-between gap-3">
+          <div>
+            <Badge className="mb-1 bg-champagne-gold text-white">예정</Badge>
+            <h2 className="text-base font-bold">
+              {formatDateLabel(date)} 예정 대상경주
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              주간 카드가 아직 등록되지 않아 출전표·결과는 일정 공개 후 표시됩니다.
+            </p>
+          </div>
+          <Link
+            href="/races/schedule"
+            className="text-xs text-muted-foreground transition hover:text-primary whitespace-nowrap"
+          >
+            전체 일정 →
+          </Link>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from(byMeet.entries()).map(([meet, items]) => (
+            <div key={meet} className="overflow-hidden rounded-lg border bg-card">
+              <div className="flex items-center gap-2 border-b bg-primary/5 px-3 py-2">
+                <VenueIcon meet={meet} size={14} />
+                <span className="text-sm font-bold">{meet}</span>
+              </div>
+              <ul className="divide-y divide-border/40">
+                {items.map((s) => {
+                  const display = s.race_name.replace(/\s*\((G[123]|L|특)\)\s*/g, "").trim();
+                  return (
+                    <li key={s.id} className="flex items-center gap-2 px-3 py-2 text-sm">
+                      {s.tier && (
+                        <span className="shrink-0 rounded bg-champagne-gold/20 px-1.5 py-0.5 text-[10px] font-bold text-champagne-gold">
+                          {s.tier}
+                        </span>
+                      )}
+                      <span className="min-w-0 flex-1 truncate font-medium">{display}</span>
+                      {s.distance && (
+                        <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
+                          {s.distance}m
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function NavArrow({
+  target,
+  direction,
+}: {
+  target: string | null;
+  direction: "prev" | "next";
+}) {
+  const arrow = direction === "prev" ? "‹" : "›";
+  const label = direction === "prev" ? "이전 경기일" : "다음 경기일";
+  const base =
+    "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-card text-muted-foreground transition";
+  if (!target) {
+    return (
+      <span
+        aria-label={label}
+        aria-disabled="true"
+        title={`${label} 없음`}
+        className={`${base} cursor-not-allowed opacity-40`}
+      >
+        {arrow}
+      </span>
+    );
+  }
+  return (
+    <Link
+      href={`/races?date=${target}`}
+      aria-label={label}
+      title={`${label}: ${target}`}
+      className={`${base} hover:bg-muted`}
+    >
+      {arrow}
+    </Link>
+  );
+}
 
 function RankBadge({ rank }: { rank: number | null }) {
   if (rank === null) return <span className="text-muted-foreground">-</span>;
