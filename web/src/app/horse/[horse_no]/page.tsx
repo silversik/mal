@@ -27,11 +27,17 @@ import {
   type PedigreeNode,
   type RaceResult,
 } from "@/lib/horses";
-import { getLatestRating, type HorseRating } from "@/lib/horse_ratings";
+import {
+  getLatestRating,
+  getRatingHistory,
+  type HorseRating,
+  type HorseRatingPoint,
+} from "@/lib/horse_ratings";
 import {
   getHorseRankChanges,
   type HorseRankChange,
 } from "@/lib/horse_rank_changes";
+import { RatingSparkline } from "@/components/rating-sparkline";
 
 type JockeyMap = Record<string, string>; // jk_name → jk_no
 
@@ -55,11 +61,12 @@ export default async function HorseDetailPage({
   const horse = await getHorseByNo(horse_no);
   if (!horse) notFound();
 
-  const [results, siblings, pedigree, rating, rankChanges] = await Promise.all([
+  const [results, siblings, pedigree, rating, ratingHistory, rankChanges] = await Promise.all([
     getRaceResultsForHorse(horse_no, 10),
     getSiblings(horse.sire_name, horse_no),
     getPedigree(horse_no, 4),
     getLatestRating(horse_no),
+    getRatingHistory(horse_no, 52),
     getHorseRankChanges(horse_no, 10),
   ]);
 
@@ -77,7 +84,12 @@ export default async function HorseDetailPage({
         메인으로
       </Link>
 
-      <ProfileCard horse={horse} pedigree={pedigree} rating={rating} />
+      <ProfileCard
+        horse={horse}
+        pedigree={pedigree}
+        rating={rating}
+        ratingHistory={ratingHistory}
+      />
 
       <section className="mt-10">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -131,10 +143,12 @@ function ProfileCard({
   horse,
   pedigree,
   rating,
+  ratingHistory,
 }: {
   horse: Horse;
   pedigree: PedigreeNode | null;
   rating: HorseRating | null;
+  ratingHistory: HorseRatingPoint[];
 }) {
   const fields: Array<[string, React.ReactNode]> = [
     ["마번", <span className="font-mono" key="no">{horse.horse_no}</span>],
@@ -227,6 +241,16 @@ function ProfileCard({
             </div>
           ))}
         </dl>
+        {ratingHistory.filter((p) => p.rating4 !== null).length >= 2 && (
+          <div className="mt-5 border-t pt-4">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
+              레이팅 추이
+            </div>
+            <div className="mt-2">
+              <RatingSparkline points={ratingHistory} />
+            </div>
+          </div>
+        )}
         {characteristics.length > 0 && (
           <div className="mt-5 border-t pt-4">
             <div className="text-xs uppercase tracking-wider text-muted-foreground">
