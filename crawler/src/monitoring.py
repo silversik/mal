@@ -59,6 +59,16 @@ JOB_CATALOG: dict[str, dict] = {
         "description": "오늘 경주결과 (API4, 3개 경마장)",
         "expected_interval_sec": 86400,
     },
+    "mal.sync_races_live": {
+        "category": "kra_openapi",
+        "description": "경기일 실시간 결과+배당 갱신 (매시간 10~21시 KST)",
+        "expected_interval_sec": 3600,
+    },
+    "mal.sync_yesterday_catchup": {
+        "category": "kra_openapi",
+        "description": "전날 경주결과·배당·매출 누락 보정 (07:30 KST)",
+        "expected_interval_sec": 86400,
+    },
     "mal.sync_jockeys": {
         "category": "kra_openapi",
         "description": "기수 목록/성적",
@@ -138,6 +148,11 @@ JOB_CATALOG: dict[str, dict] = {
         "category": "youtube",
         "description": "누락된 경주 영상 YouTube search 로 매칭",
         "expected_interval_sec": 86400,
+    },
+    "mal.settle_bets": {
+        "category": "mock_betting",
+        "description": "모의배팅 정산 — 결과 확정된 경주의 PENDING bets → /api/internal/settle",
+        "expected_interval_sec": 600,  # 10min
     },
 }
 

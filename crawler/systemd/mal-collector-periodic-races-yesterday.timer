@@ -1,0 +1,11 @@
+[Unit]
+Description=mal.kr — sync_yesterday_catchup (매일 07:30 KST, 전날 경주결과·배당·매출 보정)
+
+[Timer]
+OnCalendar=*-*-* 07:30:00 Asia/Seoul
+Unit=mal-collector@periodic-races-yesterday.service
+Persistent=true
+AccuracySec=5min
+
+[Install]
+WantedBy=timers.target

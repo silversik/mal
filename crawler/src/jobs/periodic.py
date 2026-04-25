@@ -9,7 +9,10 @@ migration 에 seed row 를 넣고 여기에 래퍼를 추가.
 """
 from __future__ import annotations
 
+import os
 from datetime import date
+
+import httpx
 
 from ..config import settings
 from ..logging import get_logger
@@ -54,6 +57,43 @@ def run_sync_videos() -> int:
 @track_job("mal.sync_races_today")
 def run_sync_races_today() -> int:
     return sync_date_all_meets(date.today())
+
+
+@track_job("mal.sync_races_live")
+def run_sync_races_live() -> int:
+    """경기일 실시간 업데이트 — 매시간 10~21시 KST.
+
+    경기 진행 중 결과와 배당을 갱신한다. 비경기일이면 KRA API 가 0건을 반환하므로
+    idempotent 하게 무해하게 실행된다.
+    """
+    races = sync_date_all_meets(date.today())
+    dividends = sync_dividends_all_meets(date.today())
+    log.info("races_live_done", races=races, dividends=dividends)
+    return races + dividends
+
+
+@track_job("mal.sync_yesterday_catchup")
+def run_sync_yesterday_catchup() -> int:
+    """전날 경주결과·배당·매출 누락 보정 — 매일 07:30 KST.
+
+    22:00 KST sync 가 실패하거나 KRA API 가 결과 공표를 지연한 경우,
+    다음날 아침에 전날 데이터를 재수집해 빈 날짜를 채운다.
+    upsert 이므로 데이터가 이미 존재해도 안전하게 재실행.
+
+    결과 적재 직후 모의배팅 정산도 즉시 트리거 — 10분 주기 잡을 기다리지 않도록.
+    정산 실패해도 catchup 자체는 성공으로 본다 (정산 잡이 다음 cycle 에 재시도).
+    """
+    from datetime import timedelta
+    yesterday = date.today() - timedelta(days=1)
+    races = sync_date_all_meets(yesterday)
+    dividends = sync_dividends_all_meets(yesterday)
+    sales = sync_race_sales_all_meets(yesterday)
+    try:
+        run_settle_bets()
+    except Exception as e:  # noqa: BLE001
+        log.warning("yesterday_catchup_settle_failed", err=str(e))
+    log.info("yesterday_catchup_done", date=str(yesterday), races=races, dividends=dividends, sales=sales)
+    return races + dividends + sales
 
 
 @track_job("mal.sync_jockeys")
@@ -163,3 +203,52 @@ def run_sync_videos_backfill() -> int:
         )
         return 0
     return backfill_missing_race_videos(days_back=30, limit=50)
+
+
+@track_job("mal.settle_bets")
+def run_settle_bets() -> int:
+    """모의배팅 정산 — Next.js `/api/internal/settle` 호출.
+
+    정산 비즈니스 로직(적중 판정·배당 lookup·잔액 ledger)은 web 쪽 한 곳에만 있고,
+    여기는 단순 트리거. 결과 row 가 있는데 race_settlements 에 없는 race 모두 처리.
+    개별 race 는 web 쪽에서 자체 트랜잭션 + 멱등성(race_settlements PK + idem_key) 보장.
+
+    env:
+      MAL_WEB_INTERNAL_URL — 컨테이너 네트워크 내 Next.js (예: http://mal-web:4000)
+      CRAWLER_SECRET       — X-Crawler-Secret 헤더 (timing-safe 검증)
+
+    반환: bets_settled + bets_void (대시보드 rows_upserted 표시용).
+    """
+    base = os.environ.get("MAL_WEB_INTERNAL_URL", "").rstrip("/")
+    secret = os.environ.get("CRAWLER_SECRET", "")
+    if not base or not secret:
+        log.warning(
+            "settle_bets_skipped_missing_config",
+            reason="MAL_WEB_INTERNAL_URL / CRAWLER_SECRET 미설정",
+        )
+        return 0
+    url = f"{base}/api/internal/settle"
+    try:
+        resp = httpx.post(
+            url,
+            headers={"x-crawler-secret": secret, "content-type": "application/json"},
+            content=b"",
+            timeout=httpx.Timeout(60.0, connect=5.0),
+        )
+    except httpx.HTTPError as e:
+        log.error("settle_bets_http_error", url=url, err=str(e))
+        raise
+    if resp.status_code != 200:
+        log.error(
+            "settle_bets_non_200",
+            url=url,
+            status=resp.status_code,
+            body=resp.text[:300],
+        )
+        resp.raise_for_status()
+    payload = resp.json()
+    races = int(payload.get("races", 0) or 0)
+    settled = int(payload.get("bets_settled", 0) or 0)
+    void = int(payload.get("bets_void", 0) or 0)
+    log.info("settle_bets_done", races=races, bets_settled=settled, bets_void=void)
+    return settled + void

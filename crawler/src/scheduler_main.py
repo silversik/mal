@@ -20,6 +20,7 @@ from crawler_core import client as dash
 
 from .jobs.periodic import (
     run_chunked_dividends_backfill,
+    run_settle_bets,
     run_sync_horse_rank_changes,
     run_sync_horse_ratings,
     run_sync_horses_backfill,
@@ -33,10 +34,12 @@ from .jobs.periodic import (
     run_sync_race_info,
     run_sync_race_plan,
     run_sync_race_sales,
+    run_sync_races_live,
     run_sync_races_today,
     run_sync_trainers,
     run_sync_videos,
     run_sync_videos_backfill,
+    run_sync_yesterday_catchup,
 )
 from .logging import configure_logging, get_logger
 from .monitoring import register_all_jobs
@@ -63,6 +66,13 @@ def main() -> None:
     # 30분 주기
     sched.add_job(
         run_sync_news, IntervalTrigger(minutes=30), id="mal.sync_news", **common,
+    )
+    # 10분 주기 — 모의배팅 정산. 결과 적재 직후 자동으로 PENDING bets 정산.
+    sched.add_job(
+        run_settle_bets,
+        IntervalTrigger(minutes=10),
+        id="mal.settle_bets",
+        **common,
     )
     # 3시간 주기
     sched.add_job(
@@ -141,6 +151,13 @@ def main() -> None:
         id="mal.sync_horse_ratings",
         **common,
     )
+    # 전날 경주결과·배당·매출 누락 보정 — 22:00 sync 실패/KRA 지연 대비 다음날 07:30 재수집.
+    sched.add_job(
+        run_sync_yesterday_catchup,
+        CronTrigger(hour=7, minute=30),
+        id="mal.sync_yesterday_catchup",
+        **common,
+    )
     sched.add_job(
         run_sync_races_today,
         CronTrigger(hour=22, minute=0),
@@ -195,10 +212,12 @@ def main() -> None:
         "mal.sync_horses_refresh": run_sync_horses_refresh,
         "mal.sync_horse_ratings": run_sync_horse_ratings,
         "mal.sync_races_today": run_sync_races_today,
+        "mal.sync_yesterday_catchup": run_sync_yesterday_catchup,
         "mal.sync_race_info": run_sync_race_info,
         "mal.sync_race_dividends": run_sync_race_dividends,
         "mal.sync_race_sales": run_sync_race_sales,
         "mal.chunked_dividends_backfill": run_chunked_dividends_backfill,
+        "mal.settle_bets": run_settle_bets,
     }
 
     def _trigger_poll() -> None:

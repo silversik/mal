@@ -25,6 +25,9 @@ services:
       # 카카오 OAuth (선택) — 없으면 로그인만 막힘, 앱은 기동.
       AUTH_KAKAO_ID: ${MAL_AUTH_KAKAO_ID:-}
       AUTH_KAKAO_SECRET: ${MAL_AUTH_KAKAO_SECRET:-}
+      # 모의배팅 정산 — crawler 가 /api/internal/settle 호출 시 X-Crawler-Secret 검증.
+      # 양쪽 컨테이너 같은 값 (timing-safe equal).
+      CRAWLER_SECRET: ${CRAWLER_SECRET:?set in /srv/stack/.env}
     ports:
       - "127.0.0.1:4000:4000"
     networks: [appnet]
@@ -44,6 +47,8 @@ services:
     environment:
       DATABASE_URL: ${MAL_DATABASE_URL:?set in /srv/stack/.env}
       CRAWLER_SECRET: ${CRAWLER_SECRET:?set in /srv/stack/.env}
+      # 모의배팅 정산 — appnet 내부 DNS 로 mal-web 호출 (4000 = compose 의 PORT).
+      MAL_WEB_INTERNAL_URL: ${MAL_WEB_INTERNAL_URL:-http://mal-web:4000}
       DASHBOARD_URL: ${DASHBOARD_URL:-http://crawler-dashboard:3100}
       # KRA OpenAPI / KRBC YouTube — src/config.py 가 KRA_SERVICE_KEY · YOUTUBE_API_KEY 를
       # os.environ 로 직접 읽는다. `*_FILE` 패턴은 앱에서 파싱 코드가 없어서 무효였음 —

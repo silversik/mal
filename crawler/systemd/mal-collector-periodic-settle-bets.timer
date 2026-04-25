@@ -1,0 +1,11 @@
+[Unit]
+Description=mal.kr — settle_bets (10분 주기, 모의배팅 정산 트리거)
+
+[Timer]
+OnCalendar=*-*-* *:0/10:00 Asia/Seoul
+Unit=mal-collector@periodic-settle-bets.service
+Persistent=true
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

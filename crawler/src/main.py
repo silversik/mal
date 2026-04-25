@@ -16,6 +16,7 @@ import typer
 from .clients.horse_detail import HorseDetailClient
 from .jobs.periodic import (
     run_chunked_dividends_backfill,
+    run_settle_bets,
     run_sync_horse_rank_changes,
     run_sync_horse_ratings,
     run_sync_horses_backfill,
@@ -29,6 +30,7 @@ from .jobs.periodic import (
     run_sync_race_plan,
     run_sync_race_sales,
     run_sync_races_today,
+    run_sync_yesterday_catchup,
     run_sync_trainers,
     run_sync_videos,
     run_sync_videos_backfill,
@@ -228,6 +230,13 @@ def cmd_periodic_races_today() -> None:
     """[scheduled] sync_races_today — tracked run."""
     n = run_sync_races_today()
     typer.echo(f"upserted {n} race result rows")
+
+
+@app.command("periodic-races-yesterday")
+def cmd_periodic_races_yesterday() -> None:
+    """[scheduled] sync_yesterday_catchup — 전날 경주결과·배당·매출 누락 보정 (07:30 KST)."""
+    n = run_sync_yesterday_catchup()
+    typer.echo(f"catchup upserted {n} rows for yesterday")
 
 
 @app.command("periodic-jockeys")
@@ -506,6 +515,13 @@ def cmd_periodic_horse_ratings() -> None:
     """[scheduled] sync_horse_ratings — 주간 레이팅 공시."""
     n = run_sync_horse_ratings()
     typer.echo(f"upserted {n} horse_rating rows")
+
+
+@app.command("periodic-settle-bets")
+def cmd_periodic_settle_bets() -> None:
+    """[scheduled] settle_bets — 모의배팅 정산 트리거 (Next.js 호출)."""
+    n = run_settle_bets()
+    typer.echo(f"settled+void {n} bets")
 
 
 @app.command("register-dashboard-jobs")
