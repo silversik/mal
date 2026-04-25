@@ -17,16 +17,26 @@ function makePool(): Pool {
   });
 }
 
-// Reuse a single pool across hot-reloads in dev.
-export const pool: Pool = global.__mal_pgPool ?? makePool();
-if (process.env.NODE_ENV !== "production") {
-  global.__mal_pgPool = pool;
+// Lazy 초기화 — 모듈 import 만으로 pool 을 만들지 않아 단위테스트에서 DB
+// 의존성을 회피한다. 첫 query() 호출 시점에 비로소 connection 시도.
+export function getPool(): Pool {
+  if (!global.__mal_pgPool) global.__mal_pgPool = makePool();
+  return global.__mal_pgPool;
 }
+
+// 호환용 — 기존 코드가 `import { pool }` 으로 직접 참조. getPool() 로 단순 위임.
+export const pool: Pool = new Proxy({} as Pool, {
+  get(_t, prop) {
+    const target = getPool() as unknown as Record<PropertyKey, unknown>;
+    const v = target[prop];
+    return typeof v === "function" ? (v as (...a: unknown[]) => unknown).bind(target) : v;
+  },
+});
 
 export async function query<T = unknown>(
   text: string,
   params?: unknown[],
 ): Promise<T[]> {
-  const res = await pool.query(text, params as never[]);
+  const res = await getPool().query(text, params as never[]);
   return res.rows as T[];
 }
