@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { auth } from "@/auth";
 import { RaceDatePicker } from "@/components/race-date-picker";
 import { VenueIcon } from "@/components/venue-icon";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { getUserBalance } from "@/lib/balances";
+import { getRaceBetState } from "@/lib/bets";
 import {
   Table,
   TableBody,
@@ -37,6 +40,8 @@ import {
   type RacePoolSales,
 } from "@/lib/race_pool_sales";
 import { getRaceVideo, youtubeEmbedUrl, youtubeWatchUrl } from "@/lib/videos";
+
+import { BetForm } from "./bet-form";
 
 // KRBC 채널(UCsIvYoihIg37E96LkG-XHAw)의 라이브 URL — 방송 중이면 현재 스트림으로 자동 리다이렉트.
 const KRBC_LIVE_URL = "https://www.youtube.com/channel/UCsIvYoihIg37E96LkG-XHAw/live";
@@ -178,13 +183,26 @@ export default async function RacesPage({
         null
       : null;
 
-  const [entriesResult, raceVideo, syncedAt, comboDividends, poolSales] = selectedRace
+  const session = await auth();
+  const userId = session?.user?.id ?? null;
+
+  const [
+    entriesResult,
+    raceVideo,
+    syncedAt,
+    comboDividends,
+    poolSales,
+    betState,
+    userBalance,
+  ] = selectedRace
     ? await Promise.all([
         getRaceEntries(currentDate, selectedRace.meet, selectedRace.race_no),
         getRaceVideo(currentDate, selectedRace.meet, selectedRace.race_no),
         getRaceDataSyncedAt(currentDate, selectedRace.meet, selectedRace.race_no),
         getRaceComboDividends(currentDate, selectedRace.meet, selectedRace.race_no),
         getRacePoolSales(currentDate, selectedRace.meet, selectedRace.race_no),
+        getRaceBetState(currentDate, selectedRace.meet, selectedRace.race_no),
+        userId ? getUserBalance(userId) : Promise.resolve(null),
       ])
     : [
         { phase: "post" as const, entries: [] },
@@ -192,6 +210,8 @@ export default async function RacesPage({
         null,
         [] as RaceComboDividend[],
         [] as RacePoolSales[],
+        null,
+        null,
       ];
   const entries = entriesResult.entries;
   const entriesPhase = entriesResult.phase;
@@ -573,6 +593,20 @@ export default async function RacesPage({
                 출전 정보가 없습니다.
               </CardContent>
             </Card>
+          )}
+
+          {betState && (
+            <BetForm
+              raceDate={currentDate}
+              meet={selectedRace.meet}
+              raceNo={selectedRace.race_no}
+              entries={entries
+                .filter((e): e is typeof e & { chul_no: number } => e.chul_no != null)
+                .map((e) => ({ chul_no: e.chul_no, horse_name: e.horse_name }))}
+              state={betState}
+              loggedIn={!!userId}
+              balanceP={userBalance?.balance_p ?? null}
+            />
           )}
 
           {comboDividends.length > 0 && (
