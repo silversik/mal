@@ -2,25 +2,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { type BetPool } from "@/lib/bet_combinations";
 import {
   type BetSummary,
   getUserBets,
 } from "@/lib/bets";
+import { POOL_LABEL, POOL_STYLE } from "@/lib/pool_style";
 
 export const metadata = {
   title: "베팅 내역 · mal.kr",
-};
-
-const POOL_LABEL: Record<string, string> = {
-  WIN: "단승",
-  PLC: "연승",
-  QNL: "복승",
-  QPL: "쌍승식",
-  EXA: "쌍승",
-  TRI: "삼복승",
-  TLA: "삼쌍승",
 };
 
 const KIND_LABEL: Record<string, string> = {
@@ -130,9 +121,14 @@ export default async function MyBetsPage() {
                       )}
                     </div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-grey">
-                      <Badge variant="outline" className="text-[10px] font-semibold">
-                        {POOL_LABEL[bet.pool] ?? bet.pool}
-                      </Badge>
+                      <span
+                        className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${
+                          POOL_STYLE[bet.pool as BetPool]?.chip ??
+                          "border-foreground/15 bg-foreground/5 text-foreground/70"
+                        }`}
+                      >
+                        {POOL_LABEL[bet.pool as BetPool] ?? bet.pool}
+                      </span>
                       <span>{KIND_LABEL[bet.bet_kind] ?? bet.bet_kind}</span>
                       <span>·</span>
                       <span>

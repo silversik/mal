@@ -12,24 +12,18 @@ import {
   type BetKind,
   type BetPool,
 } from "@/lib/bet_combinations";
+import { POOL_LABEL, POOL_STYLE } from "@/lib/pool_style";
 
 import { placeBetAction } from "./bet-actions";
-
-const POOL_LABEL: Record<BetPool, string> = {
-  WIN: "단승",
-  PLC: "연승",
-  QNL: "복승",
-  QPL: "쌍승식",
-  EXA: "쌍승",
-  TRI: "삼복승",
-  TLA: "삼쌍승",
-};
 
 const KIND_LABEL: Record<BetKind, string> = {
   STRAIGHT: "일반",
   BOX: "박스",
   FORMATION: "포메이션",
 };
+
+const DAILY_LIMIT_P = 750_000;
+const TICKET_LIMIT_P = 100_000;
 
 const ERROR_LABEL: Record<string, string> = {
   AUTH_REQUIRED: "로그인이 필요합니다",
@@ -54,19 +48,22 @@ export type BetFormProps = {
   state: "pre" | "locked" | "finished";
   loggedIn: boolean;
   balanceP: bigint | null; // 비로그인 시 null
+  /** 오늘 KST 기준 누적 베팅 (VOID 제외) — 1일 한도 시각화 */
+  dailyTotalP: bigint | null;
 };
 
 const ALL_POOLS: BetPool[] = ["WIN", "PLC", "QNL", "QPL", "EXA", "TRI", "TLA"];
 const UNIT_OPTIONS_P = [100, 500, 1_000, 5_000, 10_000, 50_000, 100_000];
 
 export function BetForm(props: BetFormProps) {
-  const { entries, state, loggedIn, balanceP } = props;
+  const { entries, state, loggedIn, balanceP, dailyTotalP } = props;
   const [pool, setPool] = useState<BetPool>("WIN");
   const [kind, setKind] = useState<BetKind>("STRAIGHT");
   // 슬롯별 선택. STRAIGHT/BOX 는 slot[0] 만 사용. FORMATION 은 SLOTS[pool] 만큼.
   const [slotSelections, setSlotSelections] = useState<number[][]>([[]]);
   const [unitP, setUnitP] = useState<number>(100);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const slotsCount = SLOTS[pool];
@@ -85,12 +82,14 @@ export function BetForm(props: BetFormProps) {
     setKind(newKind);
     resetSelections(p, newKind);
     setResultMsg(null);
+    setConfirming(false);
   }
 
   function changeKind(k: BetKind) {
     setKind(k);
     resetSelections(pool, k);
     setResultMsg(null);
+    setConfirming(false);
   }
 
   function toggleHorse(slotIdx: number, chulNo: number) {
@@ -103,6 +102,7 @@ export function BetForm(props: BetFormProps) {
       arr.sort((a, b) => a - b);
       return next;
     });
+    setConfirming(false);
   }
 
   // 미리보기 계산
@@ -129,19 +129,33 @@ export function BetForm(props: BetFormProps) {
 
   const comboCount = preview?.length ?? 0;
   const totalP = comboCount * unitP;
-  const overTicketLimit = totalP > 100_000;
+  const overTicketLimit = totalP > TICKET_LIMIT_P;
   const overBalance = balanceP != null && BigInt(totalP) > balanceP;
+  const dailyUsedP = Number(dailyTotalP ?? BigInt(0));
+  const dailyAfterP = dailyUsedP + totalP;
+  const overDailyLimit = dailyAfterP > DAILY_LIMIT_P;
+  const dailyPctUsed = Math.min(100, (dailyUsedP / DAILY_LIMIT_P) * 100);
+  const dailyPctPlanned = Math.min(
+    100,
+    Math.max(0, ((dailyAfterP - dailyUsedP) / DAILY_LIMIT_P) * 100),
+  );
   const canSubmit =
     loggedIn &&
     state === "pre" &&
     comboCount > 0 &&
     !overTicketLimit &&
     !overBalance &&
+    !overDailyLimit &&
     !isPending;
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!canSubmit) return;
+    // 1단계: 미확인 → 확인 버튼으로 전환만.
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
     const fd = new FormData();
     fd.set("raceDate", props.raceDate);
     fd.set("meet", props.meet);
@@ -170,6 +184,7 @@ export function BetForm(props: BetFormProps) {
             `오류: ${result.error}${result.detail ? ` (${result.detail})` : ""}`,
         );
       }
+      setConfirming(false);
     });
   }
 
@@ -207,22 +222,26 @@ export function BetForm(props: BetFormProps) {
             </span>
           </div>
 
-          {/* 풀 선택 */}
+          {/* 풀 선택 — 풀별 컬러 (활성시 채움, 비활성은 풀 컬러 인디케이터) */}
           <div className="flex flex-wrap gap-1.5">
-            {ALL_POOLS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => changePool(p)}
-                className={`rounded-md border px-2.5 py-1 text-xs transition ${
-                  pool === p
-                    ? "border-primary bg-primary text-white"
-                    : "border-border bg-background hover:bg-muted"
-                }`}
-              >
-                {POOL_LABEL[p]}
-              </button>
-            ))}
+            {ALL_POOLS.map((p) => {
+              const sty = POOL_STYLE[p];
+              const isActive = pool === p;
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => changePool(p)}
+                  className={`rounded-md border px-2.5 py-1 text-xs font-semibold transition ${
+                    isActive
+                      ? sty.active
+                      : "border-border bg-background hover:bg-muted"
+                  }`}
+                >
+                  {POOL_LABEL[p]}
+                </button>
+              );
+            })}
           </div>
 
           {/* kind 선택 — 1슬롯 풀(WIN/PLC) 은 STRAIGHT 만 */}
@@ -303,6 +322,38 @@ export function BetForm(props: BetFormProps) {
             ))}
           </div>
 
+          {/* 1일 한도 진행바 — 누적(밝게) + 이번 베팅 가산분(연하게 같은 톤) */}
+          <div className="space-y-1 pt-2">
+            <div className="flex items-baseline justify-between text-[11px] text-muted-foreground">
+              <span>오늘 누적</span>
+              <span className="font-mono tabular-nums">
+                {dailyUsedP.toLocaleString()}
+                {totalP > 0 && (
+                  <span className={overDailyLimit ? "text-destructive" : "text-primary/70"}>
+                    {" "}
+                    + {totalP.toLocaleString()}
+                  </span>
+                )}
+                <span className="opacity-60"> / {DAILY_LIMIT_P.toLocaleString()} P</span>
+              </span>
+            </div>
+            <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="absolute left-0 top-0 h-full bg-primary/70 transition-all"
+                style={{ width: `${dailyPctUsed}%` }}
+              />
+              <div
+                className={`absolute top-0 h-full transition-all ${
+                  overDailyLimit ? "bg-destructive/60" : "bg-primary/30"
+                }`}
+                style={{
+                  left: `${dailyPctUsed}%`,
+                  width: `${dailyPctPlanned}%`,
+                }}
+              />
+            </div>
+          </div>
+
           {/* 미리보기 + 제출 */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -318,10 +369,29 @@ export function BetForm(props: BetFormProps) {
               {overBalance && (
                 <span className="text-destructive">잔액 부족</span>
               )}
+              {overDailyLimit && !overTicketLimit && (
+                <span className="text-destructive">1일 한도 초과</span>
+              )}
             </div>
-            <Button type="submit" size="sm" disabled={!canSubmit}>
-              {isPending ? "구매 중..." : "베팅 확정"}
-            </Button>
+            <div className="flex items-center gap-2">
+              {confirming && !isPending && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setConfirming(false)}
+                >
+                  취소
+                </Button>
+              )}
+              <Button type="submit" size="sm" disabled={!canSubmit}>
+                {isPending
+                  ? "구매 중..."
+                  : confirming
+                    ? `정말 ${totalP.toLocaleString()}P 베팅`
+                    : "베팅 확정"}
+              </Button>
+            </div>
           </div>
 
           {resultMsg && (

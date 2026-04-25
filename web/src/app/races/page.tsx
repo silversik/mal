@@ -6,7 +6,7 @@ import { RaceDatePicker } from "@/components/race-date-picker";
 import { VenueIcon } from "@/components/venue-icon";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { getUserBalance } from "@/lib/balances";
+import { getDailyBetTotalP, getUserBalance } from "@/lib/balances";
 import { getRaceBetState } from "@/lib/bets";
 import {
   Table,
@@ -186,6 +186,14 @@ export default async function RacesPage({
   const session = await auth();
   const userId = session?.user?.id ?? null;
 
+  // 1일 한도 표시용 — KST 기준 오늘 (선택된 race_date 가 아니라 *현재* 일자가 한도 단위).
+  const todayKst = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+
   const [
     entriesResult,
     raceVideo,
@@ -194,6 +202,7 @@ export default async function RacesPage({
     poolSales,
     betState,
     userBalance,
+    dailyTotalP,
   ] = selectedRace
     ? await Promise.all([
         getRaceEntries(currentDate, selectedRace.meet, selectedRace.race_no),
@@ -203,6 +212,7 @@ export default async function RacesPage({
         getRacePoolSales(currentDate, selectedRace.meet, selectedRace.race_no),
         getRaceBetState(currentDate, selectedRace.meet, selectedRace.race_no),
         userId ? getUserBalance(userId) : Promise.resolve(null),
+        userId ? getDailyBetTotalP(userId, todayKst) : Promise.resolve(null),
       ])
     : [
         { phase: "post" as const, entries: [] },
@@ -210,6 +220,7 @@ export default async function RacesPage({
         null,
         [] as RaceComboDividend[],
         [] as RacePoolSales[],
+        null,
         null,
         null,
       ];
@@ -606,6 +617,7 @@ export default async function RacesPage({
               state={betState}
               loggedIn={!!userId}
               balanceP={userBalance?.balance_p ?? null}
+              dailyTotalP={dailyTotalP}
             />
           )}
 
