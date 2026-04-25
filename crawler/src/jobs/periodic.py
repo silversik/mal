@@ -250,5 +250,22 @@ def run_settle_bets() -> int:
     races = int(payload.get("races", 0) or 0)
     settled = int(payload.get("bets_settled", 0) or 0)
     void = int(payload.get("bets_void", 0) or 0)
+    voided_races = payload.get("voided_races") or []
     log.info("settle_bets_done", races=races, bets_settled=settled, bets_void=void)
+
+    # VOID 발생 시 Telegram 알림 — 운영자가 odds 누락 race 즉시 인지하도록.
+    # 정산은 race 당 1회만 카운트되므로(race_settlements PK 가드) 중복 알림 없음.
+    if void > 0 and voided_races:
+        from crawler_core.client import notify_telegram
+
+        lines = [
+            f"- {v.get('race_date')} {v.get('meet')} {v.get('race_no')}R · {v.get('bets_void')}건"
+            for v in voided_races[:10]
+        ]
+        more = "" if len(voided_races) <= 10 else f"\n... 외 {len(voided_races) - 10}건"
+        notify_telegram(
+            "모의배팅 정산 VOID",
+            f"odds 누락으로 환급 처리:\n" + "\n".join(lines) + more,
+        )
+
     return settled + void

@@ -402,11 +402,24 @@ async function settleSingleBet(
   });
 }
 
+export type VoidedRaceSummary = {
+  race_date: string;
+  meet: string;
+  race_no: number;
+  bets_void: number;
+};
+
 // 정산 잡 진입점 — 결과 있는 race 중 race_settlements 에 없는 것들 모두 처리.
 //   각 race 는 별도 트랜잭션이라 부분 실패해도 나머지는 정산.
+//   voided_races 는 odds 누락으로 환급 처리된 race — Telegram 알림 후보.
 export async function settlePendingForFinishedRaces(
   limit = 50,
-): Promise<{ races: number; bets_settled: number; bets_void: number }> {
+): Promise<{
+  races: number;
+  bets_settled: number;
+  bets_void: number;
+  voided_races: VoidedRaceSummary[];
+}> {
   const rows = await query<{
     race_date: string;
     meet: string;
@@ -430,14 +443,23 @@ export async function settlePendingForFinishedRaces(
   let races = 0;
   let bets_settled = 0;
   let bets_void = 0;
+  const voided_races: VoidedRaceSummary[] = [];
   for (const r of rows) {
     const result = await settleRace(r.race_date, r.meet, r.race_no);
     if (result.ok) {
       races++;
       bets_settled += result.bets_settled;
       bets_void += result.bets_void;
+      if (result.bets_void > 0) {
+        voided_races.push({
+          race_date: r.race_date,
+          meet: r.meet,
+          race_no: r.race_no,
+          bets_void: result.bets_void,
+        });
+      }
     }
   }
-  return { races, bets_settled, bets_void };
+  return { races, bets_settled, bets_void, voided_races };
 }
 
