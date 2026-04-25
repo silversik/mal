@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { auth, signOut } from "@/auth";
+import { claimAttendanceBonus } from "@/lib/balances";
 import {
   deleteUser,
   updateNickname,
@@ -44,4 +45,21 @@ export async function deleteAccountAction() {
 
 export async function logoutAction() {
   await signOut({ redirectTo: "/" });
+}
+
+// 마이페이지 "출석 보너스" 카드 클릭 → 같은 KST 일자 1회만 적립 (10,000P).
+export async function claimAttendanceBonusAction() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
+  const result = await claimAttendanceBonus(session.user.id);
+  revalidatePath("/me");
+  revalidatePath("/", "layout"); // 헤더 BalanceChip 갱신.
+  if (result.alreadyClaimed) {
+    redirect("/me?attendance=already");
+  }
+  if (!result.ok) {
+    redirect("/me?attendance=error");
+  }
+  redirect("/me?attendance=ok");
 }
