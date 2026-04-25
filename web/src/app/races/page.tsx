@@ -252,150 +252,58 @@ export default async function RacesPage({
         <UpcomingStakesPanel date={currentDate} stakes={plannedForDate} />
       )}
 
-      {/* ── 경마장 컬럼 그리드 ── */}
+      {/* ── 라운드 필터 ── */}
       {activeMeets.length > 0 && (
-        <div
-          className={`grid gap-4 ${
-            activeMeets.length === 1
-              ? "max-w-sm grid-cols-1"
-              : activeMeets.length === 2
-                ? "grid-cols-2"
-                : "grid-cols-1 md:grid-cols-3"
-          }`}
-        >
+        <div className="mb-6 space-y-2">
           {activeMeets.map((meet) => {
             const meetRaces = byMeet[meet];
-            const sampleRace = meetRaces[0];
-            const trackInfo = [sampleRace.track_type, sampleRace.track_condition]
-              .filter(Boolean)
-              .join(" · ");
+            const status =
+              currentDate < today
+                ? "종료"
+                : currentDate === today
+                  ? "진행중"
+                  : "예정";
 
             return (
-              <div
-                key={meet}
-                className="overflow-hidden rounded-xl border bg-card shadow-sm"
-              >
-                {/* 컬럼 헤더 */}
-                <div className="border-b bg-primary/5 px-4 py-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-primary">
-                      <VenueIcon meet={meet} size={18} />
-                      <h2 className="text-base font-bold">{meet}</h2>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {meetRaces.length}경기
-                    </span>
-                  </div>
-                  {trackInfo && (
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      주로: {trackInfo}
-                    </p>
-                  )}
+              <div key={meet} className="flex items-center gap-2">
+                <div className="flex w-16 shrink-0 items-center gap-1 text-xs font-semibold text-foreground">
+                  <VenueIcon meet={meet} size={13} />
+                  <span>{meet}</span>
                 </div>
-
-                {/* 라운드 목록 */}
-                <div className="divide-y divide-border/50">
+                <div className="h-4 w-px shrink-0 bg-border" />
+                <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
                   {meetRaces.map((r) => {
                     const stakes = isStakesRace(r);
-                    const status =
-                      currentDate < today
-                        ? "종료"
-                        : currentDate === today
-                          ? "진행중"
-                          : "예정";
                     const isSelected =
                       selectedRace?.meet === r.meet &&
                       selectedRace?.race_no === r.race_no;
                     const href = `/races?date=${currentDate}&venue=${encodeURIComponent(r.meet)}&race=${r.race_no}`;
 
                     return (
-                      <Link key={r.id} href={href} className="block">
+                      <Link key={r.id} href={href} className="shrink-0">
                         <div
                           className={[
-                            "flex items-start gap-3 px-4 py-2.5 transition",
+                            "flex h-9 w-9 flex-col items-center justify-center rounded-md border transition",
                             isSelected
-                              ? "bg-primary/8"
-                              : "hover:bg-muted/50",
+                              ? "border-primary bg-primary text-white shadow-sm"
+                              : stakes
+                                ? "border-champagne-gold/60 bg-champagne-gold/10 text-champagne-gold hover:bg-champagne-gold/20"
+                                : status === "종료"
+                                  ? "border-border bg-card text-muted-foreground hover:bg-muted"
+                                  : "border-border bg-card text-foreground hover:bg-muted",
                             stakes && status === "진행중" && !isSelected
-                              ? "bg-champagne-gold/6"
+                              ? "animate-pulse"
                               : "",
                           ]
                             .filter(Boolean)
                             .join(" ")}
                         >
-                          {/* 라운드 배지 */}
-                          <div
-                            className={[
-                              "flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-md text-white",
-                              isSelected
-                                ? "bg-primary shadow-sm"
-                                : stakes
-                                  ? "bg-champagne-gold"
-                                  : status === "종료"
-                                    ? "bg-slate-400"
-                                    : "bg-primary/80",
-                              stakes && status === "진행중"
-                                ? "animate-pulse"
-                                : "",
-                            ]
-                              .filter(Boolean)
-                              .join(" ")}
-                          >
-                            <span className="text-sm font-bold leading-none">
-                              {r.race_no}
-                            </span>
-                            <span className="text-[9px] leading-none opacity-70">
-                              R
-                            </span>
-                          </div>
-
-                          {/* 경주 정보 */}
-                          <div className="min-w-0 flex-1">
-                            {/* 시각 */}
-                            {r.start_time && (
-                              <div className="mb-0.5 font-mono text-[11px] font-semibold text-muted-foreground tabular-nums">
-                                {r.start_time}
-                              </div>
-                            )}
-                            <div
-                              className={`truncate text-sm font-semibold leading-snug ${
-                                stakes
-                                  ? "text-champagne-gold"
-                                  : isSelected
-                                    ? "text-primary"
-                                    : ""
-                              }`}
-                            >
-                              {r.race_name ?? `${r.race_no}라운드`}
-                            </div>
-                            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                              {r.distance && <span>{r.distance}m</span>}
-                              {r.entry_count && (
-                                <>
-                                  <span className="opacity-40">·</span>
-                                  <span>{r.entry_count}두</span>
-                                </>
-                              )}
-                              {r.grade && (
-                                <>
-                                  <span className="opacity-40">·</span>
-                                  <span
-                                    className={
-                                      stakes
-                                        ? "font-bold text-champagne-gold"
-                                        : ""
-                                    }
-                                  >
-                                    {r.grade}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-
-                          {isSelected && (
-                            <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                          )}
+                          <span className="text-xs font-bold leading-none">
+                            {r.race_no}
+                          </span>
+                          <span className="text-[8px] leading-none opacity-60">
+                            R
+                          </span>
                         </div>
                       </Link>
                     );

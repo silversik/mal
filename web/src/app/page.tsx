@@ -11,7 +11,9 @@ import { getRecentPosts, type CommunityPost } from "@/lib/posts";
 import {
   getNextRaceDayRaces,
   getRecentRaceDaysRaces,
+  getRaceDayCard,
   type RaceInfo,
+  type RaceCardEntry,
 } from "@/lib/races";
 import {
   getUpcomingStakesFromPlans,
@@ -44,7 +46,8 @@ function isStakesRace(r: RaceInfo): boolean {
 }
 
 export default async function Home() {
-  const todayDate = new Date().toISOString().slice(0, 10);
+  // KST(UTC+9) 기준 오늘 날짜 — toISOString()은 UTC 반환이라 자정~9시 사이 날짜가 틀림.
+  const todayDate = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const [
     recentDayRaces,
     horses,
@@ -62,6 +65,21 @@ export default async function Home() {
     getLatestNews(3),
     getRecentPosts(5),
   ]);
+
+  // 오늘 경기가 있으면 경마장별 라운드 카드(출전/결과) 로드.
+  const isRaceToday = nextDayRaces[0]?.race_date === todayDate;
+  const todayMeets = isRaceToday
+    ? MEET_ORDER.filter((m) => nextDayRaces.some((r) => r.meet === m))
+    : [];
+  const todayCards = await Promise.all(
+    todayMeets.map((meet) =>
+      getRaceDayCard(todayDate, meet).then((c) => ({
+        meet,
+        phase: c.phase,
+        byRace: c.byRace,
+      })),
+    ),
+  );
 
   /*
    * "다음 진행 예정 경기": 가장 가까운 개최일(오늘 포함)의 경주 중 대상/G/L 경주를 우선,
@@ -159,6 +177,27 @@ export default async function Home() {
       </section>
 
       <main className="mx-auto w-full max-w-6xl px-6 py-20">
+        {/* 오늘의 경주 — 경기 있는 날만 노출 */}
+        {todayCards.length > 0 && (
+          <Section
+            title={`오늘의 경주 ${todayCards[0]?.phase === "post" ? "· 결과" : "· 출전표"}`}
+            href={`/races?date=${todayDate}`}
+          >
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {todayCards.map(({ meet, phase, byRace }) => (
+                <TodayMeetCard
+                  key={meet}
+                  meet={meet}
+                  date={todayDate}
+                  races={nextDayRaces.filter((r) => r.meet === meet)}
+                  byRace={byRace}
+                  phase={phase}
+                />
+              ))}
+            </div>
+          </Section>
+        )}
+
         {/* 경기 */}
         <Section title="최근 주요 경기" href="/races">
           {recentGroups.length === 0 ? (
@@ -529,6 +568,109 @@ function EmptyCard({ children }: { children: React.ReactNode }) {
   return (
     <div className="border-2 border-dashed border-primary/10 rounded-xl py-20 text-center">
       <p className="text-slate-grey italic font-serif">{children}</p>
+    </div>
+  );
+}
+
+/* ── 오늘의 경주 카드 ──────────────────────────────────── */
+
+function TodayMeetCard({
+  meet,
+  date,
+  races,
+  byRace,
+  phase,
+}: {
+  meet: string;
+  date: string;
+  races: RaceInfo[];
+  byRace: Map<number, RaceCardEntry[]>;
+  phase: "pre" | "post";
+}) {
+  return (
+    <div className="royal-card overflow-hidden">
+      <div className="flex items-center justify-between border-b border-primary/10 bg-primary/5 px-5 py-3">
+        <div className="flex items-center gap-2">
+          <VenueIcon meet={meet} size={16} />
+          <span className="text-sm font-semibold">{meet}</span>
+          <span className="text-xs text-slate-grey">{races.length}경주</span>
+        </div>
+        <Badge
+          variant="outline"
+          className={`border text-[11px] ${
+            phase === "post"
+              ? "border-primary/20 bg-muted text-slate-grey"
+              : "border-champagne-gold/40 bg-champagne-gold/10 text-champagne-gold"
+          }`}
+        >
+          {phase === "post" ? "결과" : "출전표"}
+        </Badge>
+      </div>
+
+      <div className="divide-y divide-primary/5">
+        {races.map((race) => {
+          const entries = byRace.get(race.race_no) ?? [];
+          const href = `/races?date=${date}&venue=${encodeURIComponent(meet)}&race=${race.race_no}`;
+          return (
+            <div key={race.race_no} className="px-4 py-2.5">
+              <div className="mb-1.5 flex items-center gap-2">
+                <Link href={href}>
+                  <span className="flex h-6 w-9 items-center justify-center rounded bg-primary/10 text-[11px] font-bold text-primary tabular-nums hover:bg-primary/20">
+                    {race.race_no}R
+                  </span>
+                </Link>
+                {race.race_name && (
+                  <span className="text-xs font-medium text-muted-foreground truncate">
+                    {race.race_name}
+                  </span>
+                )}
+                {race.distance && (
+                  <span className="ml-auto shrink-0 font-mono text-[11px] text-muted-foreground">
+                    {race.distance}m
+                  </span>
+                )}
+              </div>
+              {entries.length > 0 ? (
+                <table className="w-full text-xs">
+                  <tbody>
+                    {entries.map((e, i) => (
+                      <tr key={i} className={i % 2 === 0 ? "" : "bg-muted/30"}>
+                        <td className="w-6 py-0.5 text-center font-mono font-bold tabular-nums text-muted-foreground">
+                          {phase === "post"
+                            ? (e.rank != null ? (
+                                e.rank <= 3 ? (
+                                  <span className={`font-bold ${e.rank === 1 ? "text-primary" : ""}`}>{e.rank}</span>
+                                ) : (
+                                  <span>{e.rank}</span>
+                                )
+                              ) : "-")
+                            : (e.chul_no ?? "-")}
+                        </td>
+                        <td className="py-0.5 pl-1.5 font-medium">
+                          <Link
+                            href={`/horse/${e.horse_no}`}
+                            className="hover:text-primary hover:underline"
+                          >
+                            {e.horse_name}
+                          </Link>
+                        </td>
+                        <td className="py-0.5 pl-1 text-muted-foreground">
+                          {e.jockey_name ?? "-"}
+                        </td>
+                        <td className="py-0.5 pl-1 text-right font-mono tabular-nums text-muted-foreground">
+                          {e.win_rate ? `${Number(e.win_rate).toFixed(1)}` : ""}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <span className="text-xs text-muted-foreground">출전 정보 없음</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

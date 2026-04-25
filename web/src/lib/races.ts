@@ -305,6 +305,74 @@ export async function getRaceEntries(
   return { phase: "pre", entries: pre };
 }
 
+export type RaceCardEntry = {
+  race_no: number;
+  phase: "pre" | "post";
+  rank: number | null;
+  chul_no: number | null;
+  horse_no: string;
+  horse_name: string;
+  jockey_name: string | null;
+  win_rate: string | null;
+};
+
+/**
+ * 특정 날짜·경마장의 모든 경주에 대한 출전 요약 (말·기수·단승배당).
+ * 메인 페이지 "오늘의 경주" 카드용 배치 쿼리.
+ * race_results(post) 우선, 없으면 race_entries(pre) 로 폴백.
+ */
+export async function getRaceDayCard(
+  raceDate: string,
+  meet: string,
+): Promise<{ phase: "pre" | "post"; byRace: Map<number, RaceCardEntry[]> }> {
+  // 결과 확정 여부 판단: meet+date 에 race_results 가 1건이라도 있으면 post.
+  const postRows = await query<RaceCardEntry & { race_no: number }>(
+    `SELECT r.race_no,
+            r.rank,
+            (r.raw->>'chulNo')::int AS chul_no,
+            r.horse_no, h.horse_name,
+            r.jockey_name,
+            d.win_rate::text AS win_rate
+       FROM race_results r
+       JOIN horses h ON h.horse_no = r.horse_no
+       LEFT JOIN race_dividends d
+              ON d.race_date = r.race_date AND d.meet = r.meet
+             AND d.race_no = r.race_no AND d.horse_no = (r.raw->>'chulNo')
+      WHERE r.race_date = $1::date AND r.meet = $2
+      ORDER BY r.race_no, r.rank NULLS LAST`,
+    [raceDate, meet],
+  );
+  if (postRows.length > 0) {
+    const byRace = new Map<number, RaceCardEntry[]>();
+    for (const row of postRows) {
+      const arr = byRace.get(row.race_no) ?? [];
+      arr.push({ ...row, phase: "post" });
+      byRace.set(row.race_no, arr);
+    }
+    return { phase: "post", byRace };
+  }
+
+  const preRows = await query<RaceCardEntry & { race_no: number }>(
+    `SELECT e.race_no,
+            NULL::int AS rank,
+            e.chul_no,
+            e.horse_no, e.horse_name,
+            e.jockey_name,
+            NULL::text AS win_rate
+       FROM race_entries e
+      WHERE e.race_date = $1::date AND e.meet = $2
+      ORDER BY e.race_no, e.chul_no NULLS LAST`,
+    [raceDate, meet],
+  );
+  const byRace = new Map<number, RaceCardEntry[]>();
+  for (const row of preRows) {
+    const arr = byRace.get(row.race_no) ?? [];
+    arr.push({ ...row, phase: "pre" });
+    byRace.set(row.race_no, arr);
+  }
+  return { phase: preRows.length > 0 ? "pre" : "post", byRace };
+}
+
 /**
  * 해당 경주의 출전표/성적이 크롤러에 의해 가장 최근에 수집/갱신된 시각.
  * `race_results.created_at` 은 per-row 삽입 시각이므로 MAX 를 "마지막 동기화"
