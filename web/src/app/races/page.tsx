@@ -618,6 +618,7 @@ export default async function RacesPage({
               loggedIn={!!userId}
               balanceP={userBalance?.balance_p ?? null}
               dailyTotalP={dailyTotalP}
+              startTime={selectedRace.start_time ?? null}
             />
           )}
 
