@@ -19,6 +19,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from crawler_core import client as dash
 
 from .jobs.periodic import (
+    run_audit_combo_dividends,
     run_chunked_dividends_backfill,
     run_settle_bets,
     run_sync_horse_rank_changes,
@@ -192,6 +193,13 @@ def main() -> None:
         id="mal.sync_videos_backfill",
         **common,
     )
+    # 모의배팅 복식 배당 누락 자가진단(23:10) — 결과·배당 백필 완료 후, 어제 race 점검.
+    sched.add_job(
+        run_audit_combo_dividends,
+        CronTrigger(hour=23, minute=10),
+        id="mal.audit_combo_dividends",
+        **common,
+    )
 
     # 대시보드 "지금 실행" 트리거 폴링 — 15초마다 pending_trigger 확인해서 즉시 실행.
     # 각 job id 는 위 add_job 의 id 와 동일 key 를 사용 (대시보드 UI 와 1:1).
@@ -218,6 +226,7 @@ def main() -> None:
         "mal.sync_race_sales": run_sync_race_sales,
         "mal.chunked_dividends_backfill": run_chunked_dividends_backfill,
         "mal.settle_bets": run_settle_bets,
+        "mal.audit_combo_dividends": run_audit_combo_dividends,
     }
 
     def _trigger_poll() -> None:

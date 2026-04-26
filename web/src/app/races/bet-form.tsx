@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
   type BetPool,
 } from "@/lib/bet_combinations";
 import { POOL_LABEL, POOL_STYLE } from "@/lib/pool_style";
+import { computeCutoffMs } from "@/lib/race_cutoff";
 
 import { placeBetAction } from "./bet-actions";
 
@@ -50,13 +51,34 @@ export type BetFormProps = {
   balanceP: bigint | null; // 비로그인 시 null
   /** 오늘 KST 기준 누적 베팅 (VOID 제외) — 1일 한도 시각화 */
   dailyTotalP: bigint | null;
+  /** races.start_time (HH:MM, KST). null 이면 자정 KST fallback. 카운트다운/마감 판정용 보조값. */
+  startTime: string | null;
 };
+
+// 24h 이상 남았으면 카운트다운 노이즈 — 표시 생략.
+const COUNTDOWN_VISIBLE_MS = 24 * 60 * 60 * 1000;
+
+function formatRemaining(ms: number): string {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  if (totalSec >= 3600) {
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    return `마감까지 ${h}시간 ${m}분`;
+  }
+  if (totalSec >= 60) {
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `마감까지 ${m}:${String(s).padStart(2, "0")}`;
+  }
+  return `마감 ${totalSec}초 전`;
+}
 
 const ALL_POOLS: BetPool[] = ["WIN", "PLC", "QNL", "QPL", "EXA", "TRI", "TLA"];
 const UNIT_OPTIONS_P = [100, 500, 1_000, 5_000, 10_000, 50_000, 100_000];
 
 export function BetForm(props: BetFormProps) {
-  const { entries, state, loggedIn, balanceP, dailyTotalP } = props;
+  const { entries, state, loggedIn, balanceP, dailyTotalP, raceDate, startTime } =
+    props;
   const [pool, setPool] = useState<BetPool>("WIN");
   const [kind, setKind] = useState<BetKind>("STRAIGHT");
   // 슬롯별 선택. STRAIGHT/BOX 는 slot[0] 만 사용. FORMATION 은 SLOTS[pool] 만큼.
@@ -139,9 +161,29 @@ export function BetForm(props: BetFormProps) {
     100,
     Math.max(0, ((dailyAfterP - dailyUsedP) / DAILY_LIMIT_P) * 100),
   );
+  // 마감 카운트다운 — UX 보조용. 서버 측 진실원은 placeBetAction 의 getRaceLockState.
+  // SSR 안전을 위해 초기값은 cutoffMs 그대로 (잔여 0 으로 잠깐 보이기보다 깜빡임 회피).
+  const cutoffMs = useMemo(
+    () => computeCutoffMs(raceDate, startTime),
+    [raceDate, startTime],
+  );
+  const [now, setNow] = useState<number>(() => cutoffMs);
+  useEffect(() => {
+    if (state !== "pre") return;
+    setNow(Date.now()); // 마운트 시점 1회 동기화
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [state]);
+  const remainingMs = cutoffMs - now;
+  const reachedCutoff = state === "pre" && remainingMs <= 0;
+  const showCountdown =
+    state === "pre" && remainingMs > 0 && remainingMs <= COUNTDOWN_VISIBLE_MS;
+  const urgentCountdown = remainingMs <= 5 * 60 * 1000; // 5분 미만 강조
+
   const canSubmit =
     loggedIn &&
     state === "pre" &&
+    !reachedCutoff &&
     comboCount > 0 &&
     !overTicketLimit &&
     !overBalance &&
@@ -215,12 +257,31 @@ export function BetForm(props: BetFormProps) {
     <Card className="mt-6">
       <CardContent className="py-5">
         <form onSubmit={onSubmit} className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">모의배팅</h3>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold">모의배팅</h3>
+              {showCountdown && (
+                <span
+                  className={`rounded-md border px-1.5 py-0.5 text-[11px] font-mono tabular-nums ${
+                    urgentCountdown
+                      ? "border-destructive/40 bg-destructive/10 text-destructive"
+                      : "border-border bg-muted/40 text-muted-foreground"
+                  }`}
+                >
+                  {formatRemaining(remainingMs)}
+                </span>
+              )}
+            </div>
             <span className="text-xs text-muted-foreground">
               잔액 {balanceP?.toLocaleString() ?? "-"} P
             </span>
           </div>
+
+          {reachedCutoff && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+              마감되었습니다. 새로고침하면 결과가 반영됩니다.
+            </div>
+          )}
 
           {/* 풀 선택 — 풀별 컬러 (활성시 채움, 비활성은 풀 컬러 인디케이터) */}
           <div className="flex flex-wrap gap-1.5">

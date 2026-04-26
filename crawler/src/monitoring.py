@@ -154,6 +154,11 @@ JOB_CATALOG: dict[str, dict] = {
         "description": "모의배팅 정산 — 결과 확정된 경주의 PENDING bets → /api/internal/settle",
         "expected_interval_sec": 600,  # 10min
     },
+    "mal.audit_combo_dividends": {
+        "category": "mock_betting",
+        "description": "복식 배당 누락 자가진단 — 어제 결과 확정 race 중 race_combo_dividends 0건 탐지",
+        "expected_interval_sec": 86400,  # daily
+    },
 }
 
 _registered: set[str] = set()
