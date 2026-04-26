@@ -269,3 +269,56 @@ def run_settle_bets() -> int:
         )
 
     return settled + void
+
+
+@track_job("mal.audit_combo_dividends")
+def run_audit_combo_dividends() -> int:
+    """복식 배당 누락 자가진단 — 어제 결과 확정 race 중 race_combo_dividends 0건 탐지.
+
+    `run_settle_bets` 가 odds 누락을 발견했을 때는 이미 VOID 환급이 발생한 뒤다.
+    이 잡은 그 *전*에 데이터 무결성 결함을 찾아 운영자에게 알린다.
+
+    반환: 누락 race 개수 (대시보드 rows_upserted 표시용).
+    """
+    from sqlalchemy import text
+
+    from ..db import session_scope
+
+    sql = text(
+        """
+        WITH finished AS (
+          SELECT DISTINCT r.race_date, r.meet, r.race_no
+            FROM races r
+            JOIN race_results rr USING (race_date, meet, race_no)
+           WHERE r.race_date = ((NOW() AT TIME ZONE 'Asia/Seoul')::date - 1)
+             AND rr.rank IS NOT NULL
+        )
+        SELECT f.race_date, f.meet, f.race_no
+          FROM finished f
+          LEFT JOIN race_combo_dividends c USING (race_date, meet, race_no)
+         GROUP BY f.race_date, f.meet, f.race_no
+        HAVING COUNT(c.*) = 0
+         ORDER BY f.meet, f.race_no
+        """
+    )
+    with session_scope() as session:
+        rows = session.execute(sql).all()
+
+    missing = len(rows)
+    log.info("audit_combo_dividends_done", missing_races=missing)
+
+    if missing > 0:
+        from crawler_core.client import notify_telegram
+
+        lines = [
+            f"- {r.race_date} {r.meet} {r.race_no}R" for r in rows[:10]
+        ]
+        more = "" if missing <= 10 else f"\n... 외 {missing - 10}건"
+        notify_telegram(
+            "모의배팅 배당 누락 감지",
+            "어제 결과 확정 race 중 race_combo_dividends 0건:\n"
+            + "\n".join(lines)
+            + more,
+        )
+
+    return missing
