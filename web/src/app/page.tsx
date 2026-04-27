@@ -1,8 +1,10 @@
 import Link from "next/link";
 
-import { ChatWidget } from "@/components/chat-widget";
 import { HorseAvatar } from "@/components/horse-avatar";
 import { VenueIcon } from "@/components/venue-icon";
+import { TodayMeetCard } from "@/components/today-meet-card";
+import { EmptyState } from "@/components/empty-state";
+import { WinRateBar } from "@/components/win-rate-bar";
 import { Badge } from "@/components/ui/badge";
 import { getRecentHorses, type Horse } from "@/lib/horses";
 import { getAllJockeys, type Jockey } from "@/lib/jockeys";
@@ -13,7 +15,6 @@ import {
   getRecentRaceDaysRaces,
   getRaceDayCard,
   type RaceInfo,
-  type RaceCardEntry,
 } from "@/lib/races";
 import {
   getUpcomingStakesFromPlans,
@@ -76,7 +77,8 @@ export default async function Home() {
       getRaceDayCard(todayDate, meet).then((c) => ({
         meet,
         phase: c.phase,
-        byRace: c.byRace,
+        // Map is not serializable for Client Components — convert to plain object.
+        byRace: Object.fromEntries(c.byRace),
       })),
     ),
   );
@@ -126,16 +128,16 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen">
-      <section className="relative overflow-hidden border-b border-primary/5 bg-primary px-6 py-16 text-white">
+      <section className="relative overflow-hidden border-b border-primary/5 bg-primary px-6 py-10 md:py-16 text-white">
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/carbon-fibre.png")' }}></div>
-        <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-8 lg:grid-cols-4">
-          <div className="lg:col-span-3">
+        <div className="relative mx-auto max-w-6xl">
+          <div>
             <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
               <div>
                 <Badge variant="outline" className="mb-3 border-champagne-gold text-champagne-gold">
                   {heroStatus === "진행중" ? "LIVE" : useStakesFallback ? "UPCOMING" : "NEXT"} · {heroDate ?? todayDate}
                 </Badge>
-                <h1 className="font-serif text-3xl font-bold tracking-tight text-sand-ivory md:text-4xl">
+                <h1 className="font-serif text-2xl font-bold tracking-tight text-sand-ivory md:text-4xl">
                   {nextStatus === "진행중"
                     ? "진행중인 경기"
                     : useStakesFallback
@@ -152,9 +154,11 @@ export default async function Home() {
             </div>
 
             {featureRaces.length === 0 && !useStakesFallback ? (
-              <div className="rounded-xl border border-white/10 bg-white/5 p-12 text-center">
-                <p className="font-medium text-white/60">예정된 경기가 없습니다.</p>
-              </div>
+              <EmptyState
+                title="예정된 경기가 없습니다."
+                description="경기 일정을 확인해 보세요."
+                variant="dark"
+              />
             ) : useStakesFallback ? (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 {fallbackStakes.map((s) => (
@@ -169,19 +173,16 @@ export default async function Home() {
               </div>
             )}
           </div>
-
-          <div className="lg:col-span-1">
-            <ChatWidget />
-          </div>
         </div>
       </section>
 
-      <main className="mx-auto w-full max-w-6xl px-6 py-20">
+      <main className="mx-auto w-full max-w-6xl px-6 py-12">
         {/* 오늘의 경주 — 경기 있는 날만 노출 */}
         {todayCards.length > 0 && (
           <Section
             title={`오늘의 경주 ${todayCards[0]?.phase === "post" ? "· 결과" : "· 출전표"}`}
             href={`/races?date=${todayDate}`}
+            tier="l1"
           >
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               {todayCards.map(({ meet, phase, byRace }) => (
@@ -199,9 +200,9 @@ export default async function Home() {
         )}
 
         {/* 경기 */}
-        <Section title="최근 주요 경기" href="/races">
+        <Section title="최근 주요 경기" href="/races" tier="l1">
           {recentGroups.length === 0 ? (
-            <EmptyCard>적재된 경기가 없습니다.</EmptyCard>
+            <EmptyState title="적재된 경기가 없습니다." description="크롤러가 데이터를 수집하면 표시됩니다." />
           ) : (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               {recentGroups.map((g) => (
@@ -214,7 +215,7 @@ export default async function Home() {
         {/* 뉴스 미리보기 */}
         <Section title="뉴스" href="/news">
           {news.length === 0 ? (
-            <EmptyCard>아직 수집된 공지가 없습니다.</EmptyCard>
+            <EmptyState title="아직 수집된 공지가 없습니다." />
           ) : (
             <div className="divide-y divide-primary/5 rounded-lg border border-primary/5 bg-white">
               {news.map((n) => (
@@ -227,7 +228,7 @@ export default async function Home() {
         {/* 커뮤니티 최근 글 */}
         <Section title="커뮤니티 최근 글" href="/board">
           {recentPosts.length === 0 ? (
-            <EmptyCard>아직 작성된 글이 없습니다.</EmptyCard>
+            <EmptyState title="아직 작성된 글이 없습니다." />
           ) : (
             <div className="divide-y divide-primary/5 rounded-lg border border-primary/5 bg-white">
               {recentPosts.map((p) => (
@@ -239,7 +240,7 @@ export default async function Home() {
 
         {/* 마필 & 기수 레이아웃 */}
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
-          <Section title="최근 등록 마필" href="/horses">
+          <Section title="최근 등록 마필" href="/horses" tier="l3">
             <div className="space-y-4">
               {horses.map((h) => (
                 <HorseRow key={h.horse_no} horse={h} />
@@ -247,7 +248,7 @@ export default async function Home() {
             </div>
           </Section>
 
-          <Section title="TOP 기수 랭킹" href="/jockeys">
+          <Section title="TOP 기수 랭킹" href="/jockeys" tier="l3">
             <div className="space-y-4">
               {jockeys.map((j) => (
                 <JockeyRow key={j.jk_no} jockey={j} />
@@ -262,21 +263,40 @@ export default async function Home() {
 
 /* ── Section wrapper ──────────────────────────────────── */
 
+const SECTION_TIER = {
+  l1: {
+    section: "mb-12",
+    header: "mb-5 border-b-2 border-primary/15 pb-2",
+    h2: "font-serif text-3xl font-bold text-primary",
+  },
+  l2: {
+    section: "mb-10",
+    header: "mb-5 border-b border-primary/10 pb-2",
+    h2: "font-serif text-xl font-semibold text-primary",
+  },
+  l3: {
+    section: "mb-8",
+    header: "mb-4 border-b border-primary/8 pb-2",
+    h2: "text-sm font-bold uppercase tracking-widest text-slate-grey",
+  },
+} as const;
+
 function Section({
   title,
   href,
+  tier = "l2",
   children,
 }: {
   title: string;
   href: string;
+  tier?: "l1" | "l2" | "l3";
   children: React.ReactNode;
 }) {
+  const t = SECTION_TIER[tier];
   return (
-    <section className="mb-16">
-      <div className="mb-6 flex items-end justify-between border-b border-primary/10 pb-2">
-        <h2 className="font-serif text-2xl font-bold text-primary">
-          {title}
-        </h2>
+    <section className={t.section}>
+      <div className={`flex items-end justify-between ${t.header}`}>
+        <h2 className={t.h2}>{title}</h2>
         <Link
           href={href}
           className="text-sm font-semibold text-slate-grey transition hover:text-secondary"
@@ -511,8 +531,8 @@ function JockeyRow({ jockey }: { jockey: Jockey }) {
             <div className="text-xs text-slate-grey font-semibold uppercase tracking-wider">{jockey.meet} 기수</div>
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-sm font-bold text-dirt-brown">{jockey.win_rate}%</div>
+        <div className="min-w-[60px]">
+          <WinRateBar rate={jockey.win_rate} />
         </div>
       </div>
     </Link>
@@ -564,113 +584,4 @@ function NewsRow({ item }: { item: NewsItem }) {
   );
 }
 
-function EmptyCard({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="border-2 border-dashed border-primary/10 rounded-xl py-20 text-center">
-      <p className="text-slate-grey italic font-serif">{children}</p>
-    </div>
-  );
-}
 
-/* ── 오늘의 경주 카드 ──────────────────────────────────── */
-
-function TodayMeetCard({
-  meet,
-  date,
-  races,
-  byRace,
-  phase,
-}: {
-  meet: string;
-  date: string;
-  races: RaceInfo[];
-  byRace: Map<number, RaceCardEntry[]>;
-  phase: "pre" | "post";
-}) {
-  return (
-    <div className="royal-card overflow-hidden">
-      <div className="flex items-center justify-between border-b border-primary/10 bg-primary/5 px-5 py-3">
-        <div className="flex items-center gap-2">
-          <VenueIcon meet={meet} size={16} />
-          <span className="text-sm font-semibold">{meet}</span>
-          <span className="text-xs text-slate-grey">{races.length}경주</span>
-        </div>
-        <Badge
-          variant="outline"
-          className={`border text-[11px] ${
-            phase === "post"
-              ? "border-primary/20 bg-muted text-slate-grey"
-              : "border-champagne-gold/40 bg-champagne-gold/10 text-champagne-gold"
-          }`}
-        >
-          {phase === "post" ? "결과" : "출전표"}
-        </Badge>
-      </div>
-
-      <div className="divide-y divide-primary/5">
-        {races.map((race) => {
-          const entries = byRace.get(race.race_no) ?? [];
-          const href = `/races?date=${date}&venue=${encodeURIComponent(meet)}&race=${race.race_no}`;
-          return (
-            <div key={race.race_no} className="px-4 py-2.5">
-              <div className="mb-1.5 flex items-center gap-2">
-                <Link href={href}>
-                  <span className="flex h-6 w-9 items-center justify-center rounded bg-primary/10 text-[11px] font-bold text-primary tabular-nums hover:bg-primary/20">
-                    {race.race_no}R
-                  </span>
-                </Link>
-                {race.race_name && (
-                  <span className="text-xs font-medium text-muted-foreground truncate">
-                    {race.race_name}
-                  </span>
-                )}
-                {race.distance && (
-                  <span className="ml-auto shrink-0 font-mono text-[11px] text-muted-foreground">
-                    {race.distance}m
-                  </span>
-                )}
-              </div>
-              {entries.length > 0 ? (
-                <table className="w-full text-xs">
-                  <tbody>
-                    {entries.map((e, i) => (
-                      <tr key={i} className={i % 2 === 0 ? "" : "bg-muted/30"}>
-                        <td className="w-6 py-0.5 text-center font-mono font-bold tabular-nums text-muted-foreground">
-                          {phase === "post"
-                            ? (e.rank != null ? (
-                                e.rank <= 3 ? (
-                                  <span className={`font-bold ${e.rank === 1 ? "text-primary" : ""}`}>{e.rank}</span>
-                                ) : (
-                                  <span>{e.rank}</span>
-                                )
-                              ) : "-")
-                            : (e.chul_no ?? "-")}
-                        </td>
-                        <td className="py-0.5 pl-1.5 font-medium">
-                          <Link
-                            href={`/horse/${e.horse_no}`}
-                            className="hover:text-primary hover:underline"
-                          >
-                            {e.horse_name}
-                          </Link>
-                        </td>
-                        <td className="py-0.5 pl-1 text-muted-foreground">
-                          {e.jockey_name ?? "-"}
-                        </td>
-                        <td className="py-0.5 pl-1 text-right font-mono tabular-nums text-muted-foreground">
-                          {e.win_rate ? `${Number(e.win_rate).toFixed(1)}` : ""}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <span className="text-xs text-muted-foreground">출전 정보 없음</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}

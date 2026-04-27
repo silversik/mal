@@ -44,7 +44,12 @@ function formatTime(iso: string): string {
   return m ? `${m[1]}:${m[2]}` : "";
 }
 
-export function ChatWidget() {
+interface ChatWidgetProps {
+  onClose?: () => void;
+  className?: string;
+}
+
+export function ChatWidget({ onClose, className }: ChatWidgetProps = {}) {
   const [room, setRoom] = useState<Room>("전체");
   const [postRoom, setPostRoom] = useState<Exclude<Room, "전체">>("서울");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -142,7 +147,7 @@ export function ChatWidget() {
   );
 
   return (
-    <div className="flex h-full min-h-[420px] flex-col rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm">
+    <div className={`flex h-full min-h-[420px] flex-col rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm ${className ?? ""}`}>
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="relative flex size-2">
@@ -153,9 +158,24 @@ export function ChatWidget() {
             경마 채팅
           </span>
         </div>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">
-          Beta
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">
+            Beta
+          </span>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="채팅 닫기"
+              className="text-white/40 transition hover:text-white/80"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 방 선택 탭 */}

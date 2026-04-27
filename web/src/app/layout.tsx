@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono, Playfair_Display, Noto_Serif_KR } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Navbar } from "@/components/navbar";
+import { FloatingChat } from "@/components/floating-chat";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -40,6 +41,7 @@ export default function RootLayout({
         <main className="flex-1">
           {children}
         </main>
+        <FloatingChat />
       </body>
       <GoogleAnalytics gaId="G-N9EQPNFPR7" />
     </html>
