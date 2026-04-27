@@ -18,6 +18,7 @@ export type FamNode = {
   birthYear?: string | null;
   country?: string | null;
   isCurrent?: boolean;
+  dam_name?: string | null; // full-sibling check
 };
 
 export interface FamilyTreeDiagramProps {
@@ -103,6 +104,16 @@ export function FamilyTreeDiagram({
   /* ── Bus Y levels ───────────────────────────────────────── */
   const kidBusY    = (Y1 + NH + Y2) / 2;
   const parentBusY = (Y0 + NH + Y1) / 2;
+  // Mother elbows run at a slightly higher Y so they don't merge with the father bus line
+  const damElbowY  = Y1 + NH + (Y2 - Y1 - NH) * 0.35;
+
+  /* ── Full sibling detection ──────────────────────────────── */
+  // Full siblings share both sire AND dam with the current horse
+  const currentDamName = current.dam_name ?? null;
+  const fullChildIdxs = kids
+    .map((k, i) => ({ k, i }))
+    .filter(({ k }) => k.isCurrent || (currentDamName != null && k.dam_name === currentDamName))
+    .map(({ i }) => i);
 
   /* ── Helpers ────────────────────────────────────────────── */
   const go = (node: FamNode) => {
@@ -202,13 +213,14 @@ export function FamilyTreeDiagram({
             );
           })()}
 
-          {/* Dam → current horse only */}
-          {dam && (
+          {/* Dam → all full children (current + full siblings share same dam) */}
+          {dam && fullChildIdxs.map((i) => (
             <path
-              d={`M${dcx},${Y1 + NH} V${kidBusY} H${kidCX(cIdx) + dx} V${Y2}`}
+              key={`dam-${i}`}
+              d={`M${dcx},${Y1 + NH} V${damElbowY} H${kidCX(i) + dx} V${Y2}`}
               stroke="#fbcfe8"
             />
-          )}
+          ))}
 
           {/* Sire parents → sire */}
           {sire && ss_cx != null && sd_cx != null && (

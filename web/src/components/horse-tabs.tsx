@@ -118,6 +118,7 @@ function horseToFamNode(h: Horse, isCurrent = false): FamNode {
     gender: sexToGender(h.sex),
     birthYear: h.birth_date?.slice(0, 4) ?? null,
     country: h.country,
+    dam_name: h.dam_name,
     isCurrent,
   };
 }
