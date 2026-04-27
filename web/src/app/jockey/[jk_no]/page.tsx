@@ -12,6 +12,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getJockeyByNo, getRecentRacesByJockey, type Jockey } from "@/lib/jockeys";
+import { getVideosForRaces, raceKey, type RaceKey } from "@/lib/videos";
+import { youtubeWatchUrl } from "@/lib/video-helpers";
 
 export default async function JockeyDetailPage({
   params,
@@ -23,6 +25,7 @@ export default async function JockeyDetailPage({
   if (!jockey) notFound();
 
   const recentRaces = await getRecentRacesByJockey(jockey.jk_name, 20);
+  const videoMap = await getVideosForRaces(recentRaces);
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
@@ -57,6 +60,7 @@ export default async function JockeyDetailPage({
                   <TableHead className="text-right">착순</TableHead>
                   <TableHead>마명</TableHead>
                   <TableHead className="text-right">기록</TableHead>
+                  <TableHead className="w-8"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -64,6 +68,10 @@ export default async function JockeyDetailPage({
                   const raceHref =
                     r.race_date && r.meet && r.race_no
                       ? `/races?date=${r.race_date}&venue=${encodeURIComponent(r.meet)}&race=${r.race_no}`
+                      : null;
+                  const video =
+                    r.race_date && r.meet && r.race_no
+                      ? videoMap.get(raceKey(r.race_date, r.meet, r.race_no))
                       : null;
                   return (
                   <TableRow key={r.id}>
@@ -101,6 +109,19 @@ export default async function JockeyDetailPage({
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums">
                       {r.record_time ?? "-"}
+                    </TableCell>
+                    <TableCell>
+                      {video && (
+                        <a
+                          href={youtubeWatchUrl(video.video_id)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="YouTube에서 경주 영상 보기"
+                          className="inline-flex items-center justify-center text-[#FF0000] opacity-70 transition hover:opacity-100"
+                        >
+                          <YoutubeIcon />
+                        </a>
+                      )}
                     </TableCell>
                   </TableRow>
                   );
@@ -161,5 +182,13 @@ function JockeyProfileCard({ jockey }: { jockey: Jockey }) {
         </dl>
       </CardContent>
     </Card>
+  );
+}
+
+function YoutubeIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+    </svg>
   );
 }

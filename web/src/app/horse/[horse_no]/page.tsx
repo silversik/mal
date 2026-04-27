@@ -38,6 +38,8 @@ import {
   type HorseRankChange,
 } from "@/lib/horse_rank_changes";
 import { RatingSparkline } from "@/components/rating-sparkline";
+import { getVideosForRaces, raceKey, type RaceKey } from "@/lib/videos";
+import { youtubeWatchUrl } from "@/lib/video-helpers";
 
 type JockeyMap = Record<string, string>; // jk_name → jk_no
 
@@ -70,9 +72,10 @@ export default async function HorseDetailPage({
     getHorseRankChanges(horse_no, 10),
   ]);
 
-  const jockeyMap = await buildJockeyMap(
-    results.map((r) => r.jockey_name).filter((n): n is string => n !== null),
-  );
+  const [jockeyMap, videoMap] = await Promise.all([
+    buildJockeyMap(results.map((r) => r.jockey_name).filter((n): n is string => n !== null)),
+    getVideosForRaces(results),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
@@ -95,7 +98,7 @@ export default async function HorseDetailPage({
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           최근 경주 기록
         </h2>
-        <RaceResultsTable results={results} jockeyMap={jockeyMap} />
+        <RaceResultsTable results={results} jockeyMap={jockeyMap} videoMap={videoMap} />
       </section>
 
       {rankChanges.length > 0 && (
@@ -275,9 +278,11 @@ function ProfileCard({
 function RaceResultsTable({
   results,
   jockeyMap,
+  videoMap,
 }: {
   results: RaceResult[];
   jockeyMap: JockeyMap;
+  videoMap: Map<RaceKey, { video_id: string }>;
 }) {
   if (results.length === 0) {
     return (
@@ -308,6 +313,7 @@ function RaceResultsTable({
             <TableHead className="text-right">마체중</TableHead>
             <TableHead>기수</TableHead>
             <TableHead>조교사</TableHead>
+            <TableHead className="w-8"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -315,6 +321,10 @@ function RaceResultsTable({
             const raceHref =
               r.race_date && r.meet && r.race_no
                 ? `/races?date=${r.race_date}&venue=${encodeURIComponent(r.meet)}&race=${r.race_no}`
+                : null;
+            const video =
+              r.race_date && r.meet && r.race_no
+                ? videoMap.get(raceKey(r.race_date, r.meet, r.race_no))
                 : null;
             return (
             <TableRow key={r.id}>
@@ -368,6 +378,19 @@ function RaceResultsTable({
                   )
                 ) : (
                   "-"
+                )}
+              </TableCell>
+              <TableCell>
+                {video && (
+                  <a
+                    href={youtubeWatchUrl(video.video_id)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="YouTube에서 경주 영상 보기"
+                    className="inline-flex items-center justify-center text-[#FF0000] opacity-70 transition hover:opacity-100"
+                  >
+                    <YoutubeIcon />
+                  </a>
                 )}
               </TableCell>
             </TableRow>
@@ -433,5 +456,13 @@ function RankChangesTable({ changes }: { changes: HorseRankChange[] }) {
         </TableBody>
       </Table>
     </Card>
+  );
+}
+
+function YoutubeIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+    </svg>
   );
 }
