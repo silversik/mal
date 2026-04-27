@@ -76,6 +76,60 @@ export async function getRecentHorses(limit = 20): Promise<Horse[]> {
   );
 }
 
+export type RecentWinner = Horse & {
+  last_win_date: string;
+  last_win_meet: string | null;
+  win_count: number;
+};
+
+/** 가장 최근 1착 기록 기준으로 마필을 내림차순 반환. win_count는 race_results 집계값. */
+export async function getRecentWinners(limit = 6): Promise<RecentWinner[]> {
+  return query<RecentWinner>(
+    `SELECT ${HORSE_COLUMNS},
+            lw.last_win_date,
+            lw.last_win_meet,
+            lw.win_count
+       FROM (
+         SELECT DISTINCT ON (rr.horse_no)
+                rr.horse_no,
+                to_char(rr.race_date, 'YYYY-MM-DD') AS last_win_date,
+                rr.meet                              AS last_win_meet,
+                cnt.win_count
+           FROM race_results rr
+           JOIN (
+                 SELECT horse_no, COUNT(*) AS win_count
+                   FROM race_results
+                  WHERE rank = 1
+                  GROUP BY horse_no
+                ) cnt ON cnt.horse_no = rr.horse_no
+          WHERE rr.rank = 1
+          ORDER BY rr.horse_no, rr.race_date DESC
+       ) lw
+       JOIN horses h ON h.horse_no = lw.horse_no
+       LEFT JOIN owners o ON o.ow_no = COALESCE(h.ow_no, h.raw->>'owNo')
+      ORDER BY lw.last_win_date DESC
+      LIMIT $1`,
+    [limit],
+  );
+}
+
+export type HorseSort = "latest" | "wins";
+
+/** /horses 페이지용 정렬 지원 쿼리. */
+export async function getHorsesSorted(sort: HorseSort = "latest", limit = 60): Promise<Horse[]> {
+  const order =
+    sort === "wins"
+      ? "h.first_place_count DESC, h.total_race_count DESC, h.created_at DESC"
+      : "h.created_at DESC";
+  return query<Horse>(
+    `SELECT ${HORSE_COLUMNS}
+       FROM ${HORSE_FROM}
+      ORDER BY ${order}
+      LIMIT $1`,
+    [limit],
+  );
+}
+
 export async function getRaceResultsForHorse(
   horseNo: string,
   limit = 10,

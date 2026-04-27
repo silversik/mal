@@ -6,7 +6,7 @@ import { TodayMeetCard } from "@/components/today-meet-card";
 import { EmptyState } from "@/components/empty-state";
 import { WinRateBar } from "@/components/win-rate-bar";
 import { Badge } from "@/components/ui/badge";
-import { getRecentHorses, type Horse } from "@/lib/horses";
+import { getRecentWinners, type RecentWinner } from "@/lib/horses";
 import { getAllJockeys, type Jockey } from "@/lib/jockeys";
 import { getLatestNews, type NewsItem } from "@/lib/news";
 import { getRecentPosts, type CommunityPost } from "@/lib/posts";
@@ -59,7 +59,7 @@ export default async function Home() {
     recentPosts,
   ] = await Promise.all([
     getRecentRaceDaysRaces(2),
-    getRecentHorses(6),
+    getRecentWinners(6),
     getAllJockeys(6),
     getNextRaceDayRaces(),
     getUpcomingStakesFromPlans(6),
@@ -240,7 +240,7 @@ export default async function Home() {
 
         {/* 마필 & 기수 레이아웃 */}
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
-          <Section title="최근 등록 마필" href="/horses" tier="l3">
+          <Section title="최근 승리 마필" href="/horses?sort=wins" tier="l3">
             <div className="space-y-4">
               {horses.map((h) => (
                 <HorseRow key={h.horse_no} horse={h} />
@@ -499,7 +499,7 @@ function RaceDayGroupCard({ group }: { group: RaceDayGroup }) {
   );
 }
 
-function HorseRow({ horse }: { horse: Horse }) {
+function HorseRow({ horse }: { horse: RecentWinner }) {
   return (
     <Link href={`/horse/${horse.horse_no}`}>
       <div className="flex items-center justify-between p-4 bg-white border border-primary/5 rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
@@ -507,11 +507,18 @@ function HorseRow({ horse }: { horse: Horse }) {
           <HorseAvatar coatColor={horse.coat_color} size={40} />
           <div>
             <div className="font-bold group-hover:text-primary transition-colors">{horse.horse_name}</div>
-            <div className="text-xs text-slate-grey uppercase tracking-wider font-semibold">{horse.country} · {horse.sex}</div>
+            <div className="text-xs text-slate-grey uppercase tracking-wider font-semibold">
+              {horse.country} · {horse.sex}
+            </div>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-xs font-bold text-slate-grey">NO.{horse.horse_no}</div>
+          <div className="text-xs font-semibold text-champagne-gold">
+            {horse.win_count}승
+          </div>
+          <div className="text-[11px] font-mono text-muted-foreground">
+            {horse.last_win_date}
+          </div>
         </div>
       </div>
     </Link>
