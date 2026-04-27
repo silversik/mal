@@ -1,22 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import {
   HorseAvatar,
   coatColorLabel,
   normalizeCharacteristics,
 } from "@/components/horse-avatar";
-import { PedigreeDialog } from "@/components/pedigree-dialog";
+import { HorseTabs } from "@/components/horse-tabs";
 import { query } from "@/lib/db";
 import {
   getHorseByNo,
@@ -24,8 +16,6 @@ import {
   getRaceResultsForHorse,
   getSiblings,
   type Horse,
-  type PedigreeNode,
-  type RaceResult,
 } from "@/lib/horses";
 import {
   getLatestRating,
@@ -35,13 +25,11 @@ import {
 } from "@/lib/horse_ratings";
 import {
   getHorseRankChanges,
-  type HorseRankChange,
 } from "@/lib/horse_rank_changes";
 import { RatingSparkline } from "@/components/rating-sparkline";
-import { getVideosForRaces, raceKey, type RaceKey } from "@/lib/videos";
-import { youtubeWatchUrl } from "@/lib/video-helpers";
+import { getVideosForRaces, raceKey } from "@/lib/videos";
 
-type JockeyMap = Record<string, string>; // jk_name → jk_no
+type JockeyMap = Record<string, string>;
 
 async function buildJockeyMap(names: string[]): Promise<JockeyMap> {
   const unique = [...new Set(names.filter(Boolean))];
@@ -89,67 +77,33 @@ export default async function HorseDetailPage({
 
       <ProfileCard
         horse={horse}
-        pedigree={pedigree}
         rating={rating}
         ratingHistory={ratingHistory}
       />
 
-      <section className="mt-10">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          최근 경주 기록
-        </h2>
-        <RaceResultsTable results={results} jockeyMap={jockeyMap} videoMap={videoMap} />
-      </section>
-
-      {rankChanges.length > 0 && (
-        <section className="mt-10">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            등급변동 이력
-          </h2>
-          <RankChangesTable changes={rankChanges} />
-        </section>
-      )}
-
-      {siblings.length > 0 && (
-        <section className="mt-10">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            형제마{" "}
-            <Badge variant="outline" className="ml-1 font-normal">
-              父 {horse.sire_name}
-            </Badge>
-          </h2>
-          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {siblings.map((s) => (
-              <li key={s.horse_no}>
-                <Link href={`/horse/${s.horse_no}`}>
-                  <Card className="transition hover:border-primary/40 hover:shadow-sm">
-                    <CardContent className="p-3">
-                      <div className="font-medium">{s.horse_name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {s.sex} · {s.birth_date}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <div className="mt-10">
+        <HorseTabs
+          horse={horse}
+          results={results}
+          jockeyMap={jockeyMap}
+          videoEntries={[...videoMap.entries()].map(([k, v]) => [k, { video_id: v.video_id }])}
+          rankChanges={rankChanges}
+          pedigree={pedigree}
+          siblings={siblings}
+        />
+      </div>
     </main>
   );
 }
 
-/* ── Profile Card ─────────────────────────────────────── */
+/* ── Profile Card ─────────────────────────────────────────── */
 
 function ProfileCard({
   horse,
-  pedigree,
   rating,
   ratingHistory,
 }: {
   horse: Horse;
-  pedigree: PedigreeNode | null;
   rating: HorseRating | null;
   ratingHistory: HorseRatingPoint[];
 }) {
@@ -210,27 +164,22 @@ function ProfileCard({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <HorseAvatar
-              coatColor={horse.coat_color}
-              characteristics={horse.characteristics}
-              size={96}
-            />
-            <div>
-              <CardTitle className="text-4xl font-bold tracking-tight">
-                {horse.horse_name}
-              </CardTitle>
-              {coatColorLabel(horse.coat_color) && (
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  모색: {coatColorLabel(horse.coat_color)}
-                </p>
-              )}
-            </div>
+        <div className="flex items-start gap-4">
+          <HorseAvatar
+            coatColor={horse.coat_color}
+            characteristics={horse.characteristics}
+            size={96}
+          />
+          <div>
+            <CardTitle className="text-4xl font-bold tracking-tight">
+              {horse.horse_name}
+            </CardTitle>
+            {coatColorLabel(horse.coat_color) && (
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                모색: {coatColorLabel(horse.coat_color)}
+              </p>
+            )}
           </div>
-          {pedigree && (
-            <PedigreeDialog data={pedigree} rootName={horse.horse_name} />
-          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -270,199 +219,5 @@ function ProfileCard({
         )}
       </CardContent>
     </Card>
-  );
-}
-
-/* ── Race Results Table ───────────────────────────────── */
-
-function RaceResultsTable({
-  results,
-  jockeyMap,
-  videoMap,
-}: {
-  results: RaceResult[];
-  jockeyMap: JockeyMap;
-  videoMap: Map<RaceKey, { video_id: string }>;
-}) {
-  if (results.length === 0) {
-    return (
-      <Card className="border-dashed">
-        <CardContent className="py-8 text-center text-sm text-muted-foreground">
-          경주 기록이 아직 적재되지 않았습니다.
-          <br />
-          <span className="text-xs">
-            경주성적정보 API 활용신청 후{" "}
-            <code className="rounded bg-muted px-1">crawler</code> 의
-            race-result 수집 잡을 실행하세요.
-          </span>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>일자</TableHead>
-            <TableHead>경마장</TableHead>
-            <TableHead className="text-right">경주</TableHead>
-            <TableHead className="text-right">착순</TableHead>
-            <TableHead className="text-right">기록</TableHead>
-            <TableHead className="text-right">마체중</TableHead>
-            <TableHead>기수</TableHead>
-            <TableHead>조교사</TableHead>
-            <TableHead className="w-8"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {results.map((r) => {
-            const raceHref =
-              r.race_date && r.meet && r.race_no
-                ? `/races?date=${r.race_date}&venue=${encodeURIComponent(r.meet)}&race=${r.race_no}`
-                : null;
-            const video =
-              r.race_date && r.meet && r.race_no
-                ? videoMap.get(raceKey(r.race_date, r.meet, r.race_no))
-                : null;
-            return (
-            <TableRow key={r.id}>
-              <TableCell className="font-mono text-xs">{r.race_date}</TableCell>
-              <TableCell>{r.meet ?? "-"}</TableCell>
-              <TableCell className="text-right">
-                {raceHref ? (
-                  <Link href={raceHref} className="text-primary hover:underline">
-                    {r.race_no}R
-                  </Link>
-                ) : (
-                  `${r.race_no}R`
-                )}
-              </TableCell>
-              <TableCell className="text-right font-semibold">
-                <RankBadge rank={r.rank} />
-              </TableCell>
-              <TableCell className="text-right font-mono tabular-nums">
-                {r.record_time ?? "-"}
-              </TableCell>
-              <TableCell className="text-right font-mono tabular-nums">
-                {r.weight ?? "-"}
-              </TableCell>
-              <TableCell>
-                {r.jockey_name ? (
-                  jockeyMap[r.jockey_name] ? (
-                    <Link
-                      href={`/jockey/${jockeyMap[r.jockey_name]}`}
-                      className="text-primary hover:underline"
-                    >
-                      {r.jockey_name}
-                    </Link>
-                  ) : (
-                    r.jockey_name
-                  )
-                ) : (
-                  "-"
-                )}
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                {r.trainer_name ? (
-                  r.trainer_no ? (
-                    <Link
-                      href={`/trainer/${r.trainer_no}`}
-                      className="text-primary hover:underline"
-                    >
-                      {r.trainer_name}
-                    </Link>
-                  ) : (
-                    r.trainer_name
-                  )
-                ) : (
-                  "-"
-                )}
-              </TableCell>
-              <TableCell>
-                {video && (
-                  <a
-                    href={youtubeWatchUrl(video.video_id)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="YouTube에서 경주 영상 보기"
-                    className="inline-flex items-center justify-center text-[#FF0000] opacity-70 transition hover:opacity-100"
-                  >
-                    <YoutubeIcon />
-                  </a>
-                )}
-              </TableCell>
-            </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </Card>
-  );
-}
-
-function RankBadge({ rank }: { rank: number | null }) {
-  if (rank === null) return <span className="text-muted-foreground">-</span>;
-  if (rank === 1)
-    return <Badge className="bg-primary text-primary-foreground">1</Badge>;
-  if (rank <= 3) return <Badge variant="secondary">{rank}</Badge>;
-  return <span>{rank}</span>;
-}
-
-/* ── Rank Changes Table ───────────────────────────────── */
-
-function RankChangesTable({ changes }: { changes: HorseRankChange[] }) {
-  return (
-    <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>적용일</TableHead>
-            <TableHead>이전 등급</TableHead>
-            <TableHead></TableHead>
-            <TableHead>변경 등급</TableHead>
-            <TableHead className="text-muted-foreground">혈통</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {changes.map((c) => (
-            <TableRow key={c.st_date}>
-              <TableCell className="font-mono text-xs">{c.st_date}</TableCell>
-              <TableCell>
-                {c.before_rank ? (
-                  <Badge variant="outline" className="font-normal">
-                    {c.before_rank}
-                  </Badge>
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </TableCell>
-              <TableCell className="text-muted-foreground">→</TableCell>
-              <TableCell>
-                {c.after_rank ? (
-                  <Badge variant="secondary" className="font-normal">
-                    {c.after_rank}
-                  </Badge>
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </TableCell>
-              <TableCell className="text-xs text-muted-foreground">
-                {c.blood ?? "-"}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Card>
-  );
-}
-
-function YoutubeIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-    </svg>
   );
 }
