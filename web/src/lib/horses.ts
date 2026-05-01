@@ -46,16 +46,76 @@ const HORSE_FROM = `
     LEFT JOIN owners o ON o.ow_no = COALESCE(h.ow_no, h.raw->>'owNo')
 `;
 
-export async function searchHorsesByName(name: string, limit = 30): Promise<Horse[]> {
-  if (!name.trim()) return [];
-  return query<Horse>(
+export type HorseSearchMode = "name" | "year" | "age";
+
+export type HorseSearchHit = {
+  mode: HorseSearchMode;
+  /** 매칭한 출생년도 — mode='year'|'age' 일 때만 채움. 표시용 힌트. */
+  birthYear?: number;
+  rows: Horse[];
+};
+
+/**
+ * 마필 검색 — 입력 형태에 따라 자동 분기.
+ *  - "2016", "2020" 등 4자리 연도   → 출생년도 일치
+ *  - "5", "5세", "5살" 등 1~2자리   → 통상 나이 (당해년도 - 출생년도)
+ *  - 그 외                          → 마명 부분일치 (ILIKE)
+ */
+export async function searchHorses(q: string, limit = 60): Promise<HorseSearchHit> {
+  const trimmed = q.trim();
+  if (!trimmed) return { mode: "name", rows: [] };
+
+  const yearMatch = trimmed.match(/^(19|20)\d{2}$/);
+  if (yearMatch) {
+    const year = Number(trimmed);
+    const rows = await query<Horse>(
+      `SELECT ${HORSE_COLUMNS}
+         FROM ${HORSE_FROM}
+        WHERE EXTRACT(YEAR FROM h.birth_date) = $1
+        ORDER BY h.horse_name
+        LIMIT $2`,
+      [year, limit],
+    );
+    return { mode: "year", birthYear: year, rows };
+  }
+
+  const ageMatch = trimmed.match(/^(\d{1,2})\s*(세|살)?$/);
+  if (ageMatch) {
+    const age = Number(ageMatch[1]);
+    if (age >= 1 && age <= 30) {
+      const birthYear = new Date().getFullYear() - age;
+      const rows = await query<Horse>(
+        `SELECT ${HORSE_COLUMNS}
+           FROM ${HORSE_FROM}
+          WHERE EXTRACT(YEAR FROM h.birth_date) = $1
+          ORDER BY h.horse_name
+          LIMIT $2`,
+        [birthYear, limit],
+      );
+      return { mode: "age", birthYear, rows };
+    }
+  }
+
+  const rows = await query<Horse>(
     `SELECT ${HORSE_COLUMNS}
        FROM ${HORSE_FROM}
       WHERE h.horse_name ILIKE $1
       ORDER BY h.horse_name
       LIMIT $2`,
-    [`%${name.trim()}%`, limit],
+    [`%${trimmed}%`, limit],
   );
+  return { mode: "name", rows };
+}
+
+/** @deprecated use {@link searchHorses}. */
+export async function searchHorsesByName(name: string, limit = 30): Promise<Horse[]> {
+  const hit = await searchHorses(name, limit);
+  return hit.rows;
+}
+
+export async function countAllHorses(): Promise<number> {
+  const rows = await query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM horses`);
+  return Number(rows[0]?.count ?? 0);
 }
 
 export async function getHorseByNo(horseNo: string): Promise<Horse | null> {

@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  countAllHorses,
   getHorsesSorted,
-  searchHorsesByName,
+  searchHorses,
   type Horse,
   type HorseSort,
 } from "@/lib/horses";
@@ -28,9 +29,12 @@ export default async function HorsesPage({
   const queryStr = q.trim();
   const activeSort: HorseSort = sort === "wins" ? "wins" : "latest";
 
-  const horses = queryStr
-    ? await searchHorsesByName(queryStr, 60)
-    : await getHorsesSorted(activeSort, 60);
+  const [searchHit, horses, totalCount] = await Promise.all([
+    queryStr ? searchHorses(queryStr, 60) : Promise.resolve(null),
+    queryStr ? Promise.resolve<Horse[]>([]) : getHorsesSorted(activeSort, 60),
+    countAllHorses(),
+  ]);
+  const resultRows: Horse[] = searchHit ? searchHit.rows : horses;
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-12">
@@ -43,7 +47,12 @@ export default async function HorsesPage({
       </Link>
 
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-primary">마필</h1>
+        <div className="flex items-baseline gap-3">
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-primary">마필</h1>
+          <span className="text-sm text-muted-foreground tabular-nums">
+            등록 {totalCount.toLocaleString()}마리
+          </span>
+        </div>
 
         {/* Sort toggle — only when not searching */}
         {!queryStr && (
@@ -71,24 +80,36 @@ export default async function HorsesPage({
           name="q"
           type="search"
           defaultValue={queryStr}
-          placeholder="마명으로 검색 (예: 황홀한질주자마)"
+          placeholder="마명·년생·나이로 검색 (예: 장오름 / 2016 / 8세)"
           className="h-12 max-w-md rounded-xl px-4 text-base shadow-sm"
         />
       </form>
 
-      {queryStr && (
+      {queryStr && searchHit && (
         <p className="mb-4 text-sm text-muted-foreground">
-          검색 결과 <Badge variant="secondary">{horses.length}건</Badge>
+          {searchHit.mode === "year" && (
+            <>
+              <Badge variant="outline" className="mr-2">{searchHit.birthYear}년생</Badge>
+            </>
+          )}
+          {searchHit.mode === "age" && (
+            <>
+              <Badge variant="outline" className="mr-2">
+                {Number(queryStr.match(/^(\d{1,2})/)?.[1])}세 ({searchHit.birthYear}년생)
+              </Badge>
+            </>
+          )}
+          검색 결과 <Badge variant="secondary">{resultRows.length}건</Badge>
         </p>
       )}
 
-      {horses.length === 0 ? (
+      {resultRows.length === 0 ? (
         <EmptyState
           title={queryStr ? "검색 결과가 없습니다." : "적재된 마필이 없습니다."}
         />
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {horses.map((h) => (
+          {resultRows.map((h) => (
             <HorseCard key={h.horse_no} horse={h} showWins={!queryStr && activeSort === "wins"} />
           ))}
         </div>
