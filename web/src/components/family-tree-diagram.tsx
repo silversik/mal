@@ -1,13 +1,14 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 /* ── Constants ────────────────────────────────────────────── */
-const NW = 120; // node width
-const NH = 40;  // node height
-const HG = 14;  // horizontal gap
-const VG = 60;  // vertical gap between generations
-const GP_OFF = NW * 0.62 + HG / 2; // horizontal offset from parent to grandparent
+const NW = 120;
+const NH = 40;
+const HG = 14;
+const VG = 60;
+const GP_OFF = NW * 0.62 + HG / 2;
 
 /* ── Types ────────────────────────────────────────────────── */
 export type FamNode = {
@@ -18,7 +19,14 @@ export type FamNode = {
   birthYear?: string | null;
   country?: string | null;
   isCurrent?: boolean;
-  dam_name?: string | null; // full-sibling check
+  dam_name?: string | null;
+};
+
+type PopupState = {
+  node: FamNode;
+  // position in SVG coordinate space (left edge, top edge of node)
+  svgX: number;
+  svgY: number;
 };
 
 export interface FamilyTreeDiagramProps {
@@ -44,6 +52,21 @@ export function FamilyTreeDiagram({
   siblings,
 }: FamilyTreeDiagramProps) {
   const router = useRouter();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [popup, setPopup] = useState<PopupState | null>(null);
+
+  // Close popup on outside click
+  useEffect(() => {
+    if (!popup) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-popup]") && !target.closest("[data-node]")) {
+        setPopup(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [popup]);
 
   /* ── Build children row ─────────────────────────────────── */
   const all = [...siblings, current].sort((a, b) =>
@@ -60,23 +83,18 @@ export function FamilyTreeDiagram({
   const step = NW + HG;
 
   /* ── Y levels ───────────────────────────────────────────── */
-  const Y0 = 0;             // grandparents
-  const Y1 = NH + VG;       // parents
-  const Y2 = 2 * (NH + VG); // children
+  const Y0 = 0;
+  const Y1 = NH + VG;
+  const Y2 = 2 * (NH + VG);
 
-  /* ── X positions ────────────────────────────────────────── */
-  // center-x of child at index i
   const kidCX = (i: number) => i * step + NW / 2;
 
-  // Sire: centered over all children
   const sireCX = N === 1 ? kidCX(0) : (kidCX(0) + kidCX(N - 1)) / 2;
 
-  // Dam: above current horse — push right if too close to sire
   const MIN_SEP = NW + 2 * GP_OFF + HG;
   let damCX = kidCX(cIdx);
   if (Math.abs(damCX - sireCX) < MIN_SEP) damCX = sireCX + MIN_SEP;
 
-  // Grandparent centers
   const ss_cx = sire_sire ? sireCX - GP_OFF : null;
   const sd_cx = sire_dam  ? sireCX + GP_OFF : null;
   const ds_cx = dam_sire  ? damCX  - GP_OFF : null;
@@ -84,16 +102,11 @@ export function FamilyTreeDiagram({
 
   /* ── SVG dimensions ─────────────────────────────────────── */
   const xs = [
-    kidCX(0) - NW / 2,
-    kidCX(N - 1) + NW / 2,
-    sire     ? sireCX - NW / 2 : NW / 2,
-    sire     ? sireCX + NW / 2 : NW / 2,
-    dam      ? damCX  - NW / 2 : 0,
-    dam      ? damCX  + NW / 2 : 0,
-    ss_cx != null ? ss_cx - NW / 2 : 0,
-    sd_cx != null ? sd_cx + NW / 2 : 0,
-    ds_cx != null ? ds_cx - NW / 2 : 0,
-    dd_cx != null ? dd_cx + NW / 2 : 0,
+    kidCX(0) - NW / 2, kidCX(N - 1) + NW / 2,
+    sire ? sireCX - NW / 2 : NW / 2, sire ? sireCX + NW / 2 : NW / 2,
+    dam  ? damCX  - NW / 2 : 0,      dam  ? damCX  + NW / 2 : 0,
+    ss_cx != null ? ss_cx - NW / 2 : 0, sd_cx != null ? sd_cx + NW / 2 : 0,
+    ds_cx != null ? ds_cx - NW / 2 : 0, dd_cx != null ? dd_cx + NW / 2 : 0,
   ];
   const minX = Math.min(...xs) - 12;
   const maxX = Math.max(...xs) + 12;
@@ -104,22 +117,24 @@ export function FamilyTreeDiagram({
   /* ── Bus Y levels ───────────────────────────────────────── */
   const kidBusY    = (Y1 + NH + Y2) / 2;
   const parentBusY = (Y0 + NH + Y1) / 2;
-  // Mother elbows run at a slightly higher Y so they don't merge with the father bus line
   const damElbowY  = Y1 + NH + (Y2 - Y1 - NH) * 0.35;
 
   /* ── Full sibling detection ──────────────────────────────── */
-  // Full siblings share both sire AND dam with the current horse
   const currentDamName = current.dam_name ?? null;
   const fullChildIdxs = kids
     .map((k, i) => ({ k, i }))
     .filter(({ k }) => k.isCurrent || (currentDamName != null && k.dam_name === currentDamName))
     .map(({ i }) => i);
 
-  /* ── Helpers ────────────────────────────────────────────── */
-  const go = (node: FamNode) => {
-    if (node.horse_no && !node.isCurrent) router.push(`/horse/${node.horse_no}`);
+  /* ── Node interaction ───────────────────────────────────── */
+  const handleNodeClick = (node: FamNode, svgNodeX: number, svgNodeY: number) => {
+    if (!node.horse_no || node.isCurrent) return;
+    setPopup((prev) =>
+      prev?.node.id === node.id ? null : { node, svgX: svgNodeX, svgY: svgNodeY },
+    );
   };
 
+  /* ── Node visuals ───────────────────────────────────────── */
   const fillOf = (n: FamNode) => {
     if (n.isCurrent) return "#fefce8";
     if (n.gender === "Male") return "#eff6ff";
@@ -128,51 +143,41 @@ export function FamilyTreeDiagram({
   };
   const strokeOf = (n: FamNode) => {
     if (n.isCurrent) return "#ca8a04";
+    if (popup?.node.id === n.id) return "#ca8a04"; // highlight selected
     if (n.gender === "Male") return "#60a5fa";
     if (n.gender === "Female") return "#f472b6";
     return "#a1a1aa";
   };
 
-  /* Node renderer */
+  /* Node SVG element */
   const Node = ({ node, cx, y }: { node: FamNode; cx: number; y: number }) => {
     const x = cx + dx - NW / 2;
     const clickable = !!node.horse_no && !node.isCurrent;
     return (
       <g
+        data-node="1"
         transform={`translate(${x},${y})`}
         style={{ cursor: clickable ? "pointer" : "default" }}
-        onClick={() => clickable && go(node)}
+        onClick={() => clickable && handleNodeClick(node, x, y)}
       >
         <rect
-          width={NW}
-          height={NH}
-          rx={5}
+          width={NW} height={NH} rx={5}
           fill={fillOf(node)}
           stroke={strokeOf(node)}
-          strokeWidth={node.isCurrent ? 2.5 : 1}
+          strokeWidth={node.isCurrent || popup?.node.id === node.id ? 2.5 : 1}
         />
         {node.isCurrent && (
-          <rect
-            x={1.5} y={1.5} width={NW - 3} height={NH - 3}
-            rx={4} fill="none"
-            stroke="#fbbf24" strokeWidth={1} strokeDasharray="3,2"
-          />
+          <rect x={1.5} y={1.5} width={NW - 3} height={NH - 3}
+            rx={4} fill="none" stroke="#fbbf24" strokeWidth={1} strokeDasharray="3,2" />
         )}
-        <text
-          x={8} y={NH / 2 - 1} dy="-0.18em"
-          fontSize={12}
-          fontWeight={node.isCurrent ? 700 : 600}
-          fill="#111827"
-          style={{ userSelect: "none" }}
-        >
+        <text x={8} y={NH / 2 - 1} dy="-0.18em"
+          fontSize={12} fontWeight={node.isCurrent ? 700 : 600} fill="#111827"
+          style={{ userSelect: "none" }}>
           {trunc(node.name, 9)}
         </text>
         {(node.country || node.birthYear) && (
-          <text
-            x={8} y={NH / 2 - 1} dy="1.0em"
-            fontSize={9.5} fill="#6b7280"
-            style={{ userSelect: "none" }}
-          >
+          <text x={8} y={NH / 2 - 1} dy="1.0em"
+            fontSize={9.5} fill="#6b7280" style={{ userSelect: "none" }}>
             {[node.country, node.birthYear].filter(Boolean).join(" · ")}
           </text>
         )}
@@ -180,18 +185,37 @@ export function FamilyTreeDiagram({
     );
   };
 
-  /* ── Connection lines ───────────────────────────────────── */
+  /* ── Popup position (DOM-space) ─────────────────────────── */
+  // Convert SVG coords → container-relative px for absolute positioning
+  const getPopupStyle = (): React.CSSProperties => {
+    if (!popup || !containerRef.current) return { display: "none" };
+    const svgEl = containerRef.current.querySelector("svg");
+    if (!svgEl) return { display: "none" };
+    const svgRect = svgEl.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const scale = svgRect.width / svgW;
+    const nodeLeft = popup.svgX * scale + (svgRect.left - containerRect.left);
+    const nodeTop  = popup.svgY * scale + (svgRect.top  - containerRect.top);
+    // try to place popup below node; flip up if near bottom
+    const popupH = 120;
+    const spaceBelow = containerRect.height - (nodeTop + NH * scale);
+    const top = spaceBelow > popupH + 8
+      ? nodeTop + NH * scale + 6
+      : nodeTop - popupH - 6;
+    return {
+      position: "absolute",
+      top,
+      left: Math.max(4, nodeLeft),
+      zIndex: 20,
+    };
+  };
+
   const scx = sireCX + dx;
   const dcx = damCX + dx;
 
   return (
-    <div className="overflow-x-auto rounded-lg border bg-muted/20 p-3">
-      <svg
-        width={svgW}
-        height={svgH}
-        viewBox={`0 0 ${svgW} ${svgH}`}
-        style={{ display: "block" }}
-      >
+    <div ref={containerRef} className="relative overflow-x-auto rounded-lg border bg-muted/20 p-3">
+      <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} style={{ display: "block" }}>
         <g fill="none" strokeWidth={1.25}>
           {/* Sire → bus → all children */}
           {sire && N > 0 && (() => {
@@ -202,24 +226,20 @@ export function FamilyTreeDiagram({
                 <line x1={scx} y1={Y1 + NH} x2={scx} y2={kidBusY} stroke="#93c5fd" />
                 <line x1={lcx} y1={kidBusY} x2={rcx} y2={kidBusY} stroke="#93c5fd" />
                 {kids.map((_, i) => (
-                  <line
-                    key={i}
+                  <line key={i}
                     x1={kidCX(i) + dx} y1={kidBusY}
                     x2={kidCX(i) + dx} y2={Y2}
-                    stroke="#93c5fd"
-                  />
+                    stroke="#93c5fd" />
                 ))}
               </>
             );
           })()}
 
-          {/* Dam → all full children (current + full siblings share same dam) */}
+          {/* Dam → all full children */}
           {dam && fullChildIdxs.map((i) => (
-            <path
-              key={`dam-${i}`}
+            <path key={`dam-${i}`}
               d={`M${dcx},${Y1 + NH} V${damElbowY} H${kidCX(i) + dx} V${Y2}`}
-              stroke="#fbcfe8"
-            />
+              stroke="#fbcfe8" />
           ))}
 
           {/* Sire parents → sire */}
@@ -265,34 +285,62 @@ export function FamilyTreeDiagram({
         {sire && <Node node={sire} cx={sireCX} y={Y1} />}
         {dam  && <Node node={dam}  cx={damCX}  y={Y1} />}
 
-        {/* Children row */}
+        {/* Children */}
         {kids.map((kid, i) => (
           <Node key={kid.id} node={kid} cx={kidCX(i)} y={Y2} />
         ))}
 
-        {/* +N more indicators */}
+        {/* +N indicators */}
         {extraBefore > 0 && (
-          <text
-            x={kidCX(0) + dx - NW / 2 - 6}
-            y={Y2 + NH / 2 + 4}
-            textAnchor="end" fontSize={10} fill="#9ca3af"
-          >
-            +{extraBefore}
-          </text>
+          <text x={kidCX(0) + dx - NW / 2 - 6} y={Y2 + NH / 2 + 4}
+            textAnchor="end" fontSize={10} fill="#9ca3af">+{extraBefore}</text>
         )}
         {extraAfter > 0 && (
-          <text
-            x={kidCX(N - 1) + dx + NW / 2 + 6}
-            y={Y2 + NH / 2 + 4}
-            fontSize={10} fill="#9ca3af"
-          >
-            +{extraAfter}
-          </text>
+          <text x={kidCX(N - 1) + dx + NW / 2 + 6} y={Y2 + NH / 2 + 4}
+            fontSize={10} fill="#9ca3af">+{extraAfter}</text>
         )}
       </svg>
 
+      {/* ── Node popup ──────────────────────────────────────── */}
+      {popup && (
+        <div
+          data-popup="1"
+          style={getPopupStyle()}
+          className="w-52 rounded-lg border bg-background shadow-lg"
+        >
+          <div className="p-3">
+            <div className="mb-1 flex items-start justify-between gap-2">
+              <span className="text-sm font-semibold leading-tight">{popup.node.name}</span>
+              <button
+                onClick={() => setPopup(null)}
+                className="mt-0.5 text-muted-foreground hover:text-foreground text-xs leading-none"
+                aria-label="닫기"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {popup.node.gender === "Male" ? "수·거" : popup.node.gender === "Female" ? "암" : ""}
+              {popup.node.country && ` · ${popup.node.country}`}
+              {popup.node.birthYear && ` · ${popup.node.birthYear}년생`}
+            </p>
+          </div>
+          <div className="border-t px-3 pb-3 pt-2">
+            <button
+              onClick={() => {
+                setPopup(null);
+                router.push(`/horse/${popup.node.horse_no}`);
+              }}
+              className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:opacity-90"
+            >
+              말 상세 보기 →
+            </button>
+          </div>
+        </div>
+      )}
+
       <p className="mt-1.5 text-[11px] text-muted-foreground">
-        노드 클릭 → 말 상세 · 파란선 = 父계 · 분홍선 = 母계
+        노드 클릭 → 미리보기 팝업 · 파란선 = 父계 · 분홍선 = 母계
       </p>
     </div>
   );

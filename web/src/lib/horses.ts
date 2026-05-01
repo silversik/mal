@@ -274,10 +274,9 @@ export async function getPedigree(
     childrenMap.set(r.parent_horse_no, slot);
   }
 
-  let stubCounter = 0;
-  const stub = (name: string, side: "sire" | "dam"): PedigreeNode => ({
-    id: `__stub_${stubCounter++}`,
-    horse_no: null,
+  const stub = (name: string, side: "sire" | "dam", no?: string | null): PedigreeNode => ({
+    id: no ?? `__stub_${name}`,
+    horse_no: no ?? null,
     name,
     gender: side === "sire" ? "Male" : "Female",
     country: null,
@@ -303,12 +302,12 @@ export async function getPedigree(
       sire: kids?.sire
         ? build(kids.sire, "sire")
         : row.sire_name
-          ? stub(row.sire_name, "sire")
+          ? stub(row.sire_name, "sire", row.sire_no)
           : null,
       dam: kids?.dam
         ? build(kids.dam, "dam")
         : row.dam_name
-          ? stub(row.dam_name, "dam")
+          ? stub(row.dam_name, "dam", row.dam_no)
           : null,
     };
   };
