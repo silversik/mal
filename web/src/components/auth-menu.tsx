@@ -4,6 +4,7 @@ import { auth, signOut } from "@/auth";
 import { getUserById } from "@/lib/users";
 
 import { BalanceChip } from "./balance-chip";
+import { NotificationsBell } from "./notifications-bell";
 
 // 우측 상단 로그인/로그아웃 영역.
 // 로그인 상태면 닉네임(없으면 OAuth 이름) + 로그아웃, 아니면 LOGIN 버튼.
@@ -18,6 +19,7 @@ export async function AuthMenu() {
     return (
       <div className="flex items-center gap-3">
         <BalanceChip />
+        <NotificationsBell />
         <Link
           href="/me"
           className="hidden text-xs font-semibold text-slate-grey transition hover:text-primary md:inline"
