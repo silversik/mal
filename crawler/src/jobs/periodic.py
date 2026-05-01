@@ -24,6 +24,7 @@ from .sync_jockeys import sync_all_jockeys
 from .sync_jockey_changes import sync_recent as sync_jockey_changes_recent
 from .sync_owners import sync_all_owners
 from .sync_trainers import sync_all_trainers
+from .sync_favorite_notifications import build_favorite_notifications
 from .sync_news import sync_news
 from .sync_race_entries import sync_upcoming as sync_upcoming_race_entries
 from .sync_race_info import backfill_races_metadata
@@ -322,3 +323,14 @@ def run_audit_combo_dividends() -> int:
         )
 
     return missing
+
+
+@track_job("mal.build_favorite_notifications")
+def run_build_favorite_notifications() -> int:
+    """즐겨찾기 마필이 다음 경기 출주 확정되면 인앱 알림(notifications) 1건 INSERT.
+
+    매칭 소스는 `race_entries` (출주표) — sync_race_entries(3시간 주기) 가
+    새 entries 를 적재하면 본 잡이 1시간 이내로 알림을 만든다. dedup_key 로
+    같은 (user, race) 조합은 두 번 INSERT 되지 않음.
+    """
+    return build_favorite_notifications()

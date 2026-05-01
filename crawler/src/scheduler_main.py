@@ -20,6 +20,7 @@ from crawler_core import client as dash
 
 from .jobs.periodic import (
     run_audit_combo_dividends,
+    run_build_favorite_notifications,
     run_chunked_dividends_backfill,
     run_settle_bets,
     run_sync_horse_rank_changes,
@@ -200,6 +201,13 @@ def main() -> None:
         id="mal.audit_combo_dividends",
         **common,
     )
+    # 즐겨찾기 마필 출주 → 인앱 알림 — sync_race_entries(3h) 보다 자주 회전.
+    sched.add_job(
+        run_build_favorite_notifications,
+        IntervalTrigger(hours=1),
+        id="mal.build_favorite_notifications",
+        **common,
+    )
 
     # 대시보드 "지금 실행" 트리거 폴링 — 15초마다 pending_trigger 확인해서 즉시 실행.
     # 각 job id 는 위 add_job 의 id 와 동일 key 를 사용 (대시보드 UI 와 1:1).
@@ -227,6 +235,7 @@ def main() -> None:
         "mal.chunked_dividends_backfill": run_chunked_dividends_backfill,
         "mal.settle_bets": run_settle_bets,
         "mal.audit_combo_dividends": run_audit_combo_dividends,
+        "mal.build_favorite_notifications": run_build_favorite_notifications,
     }
 
     def _trigger_poll() -> None:

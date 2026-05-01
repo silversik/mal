@@ -159,6 +159,11 @@ JOB_CATALOG: dict[str, dict] = {
         "description": "복식 배당 누락 자가진단 — 어제 결과 확정 race 중 race_combo_dividends 0건 탐지",
         "expected_interval_sec": 86400,  # daily
     },
+    "mal.build_favorite_notifications": {
+        "category": "notifications",
+        "description": "즐겨찾기 마필 다음 경기 출주 → 인앱 알림 적재",
+        "expected_interval_sec": 3600,  # hourly — sync_race_entries(3h) 보다 자주 회전
+    },
 }
 
 _registered: set[str] = set()
