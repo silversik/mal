@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Playfair_Display, Noto_Serif_KR } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import { BetaBanner } from "@/components/beta-banner";
 import { Navbar } from "@/components/navbar";
 import { FloatingChat } from "@/components/floating-chat";
 import "./globals.css";
@@ -37,6 +38,7 @@ export default function RootLayout({
       className={`${geistMono.variable} ${playfair.variable} ${notoSerif.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <BetaBanner />
         <Navbar />
         <main className="flex-1">
           {children}
