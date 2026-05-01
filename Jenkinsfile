@@ -101,6 +101,29 @@ pipeline {
 
     post {
         success { echo "[mal] deployed ✔" }
-        failure { echo "[mal] FAILED" }
+        failure {
+            echo "[mal] FAILED"
+            // Telegram 알림 — credentials 'telegram-bot-token' / 'telegram-chat-id' 등록 필요.
+            // 미등록 시 stage 자체는 silent skip 으로 빌드 결과 변경 X (이미 failure 상태).
+            script {
+                try {
+                    withCredentials([
+                        string(credentialsId: 'telegram-bot-token', variable: 'TG_TOKEN'),
+                        string(credentialsId: 'telegram-chat-id', variable: 'TG_CHAT'),
+                    ]) {
+                        sh '''
+                            MSG="🚨 *mal* build #${BUILD_NUMBER} FAILED\\n${BUILD_URL}"
+                            curl -fsS --max-time 10 -X POST \
+                                "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+                                -H "Content-Type: application/json" \
+                                -d "{\\"chat_id\\":\\"${TG_CHAT}\\",\\"text\\":\\"${MSG}\\",\\"parse_mode\\":\\"Markdown\\"}" \
+                                || echo "[warn] telegram notify failed"
+                        '''
+                    }
+                } catch (err) {
+                    echo "[warn] telegram credentials not configured — skipping alert"
+                }
+            }
+        }
     }
 }
