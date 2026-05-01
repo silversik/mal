@@ -111,7 +111,7 @@ function NewsRow({ item }: { item: NewsItem }) {
           )}
           <span>{formatKstDate(item.published_at)}</span>
           <span>·</span>
-          <span>한국마사회(KRA)</span>
+          <span>{item.source || "네이버 뉴스"}</span>
         </div>
       </div>
 
@@ -237,10 +237,6 @@ function EmptyState() {
     <Card className="border-dashed">
       <CardContent className="py-10 text-center text-sm text-muted-foreground">
         아직 수집된 항목이 없습니다.
-        <br />
-        <code className="mt-2 inline-block text-xs">
-          uv run python -m src.main sync-news && uv run python -m src.main sync-videos
-        </code>
       </CardContent>
     </Card>
   );
