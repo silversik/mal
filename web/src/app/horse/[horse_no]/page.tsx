@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,7 +48,23 @@ export default async function HorseDetailPage({
 }) {
   const { horse_no } = await params;
   const horse = await getHorseByNo(horse_no);
-  if (!horse) notFound();
+  if (!horse) {
+    return (
+      <main className="mx-auto w-full max-w-4xl px-6 py-12">
+        <Link
+          href="/"
+          className="group mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"
+        >
+          <span className="transition group-hover:-translate-x-0.5">&larr;</span>
+          메인으로
+        </Link>
+        <div className="mt-20 text-center">
+          <p className="text-2xl font-bold">{horse_no}</p>
+          <p className="mt-2 text-muted-foreground">이 말의 상세 데이터가 아직 수집되지 않았습니다.</p>
+        </div>
+      </main>
+    );
+  }
 
   const [results, siblings, pedigree, rating, ratingHistory, rankChanges] = await Promise.all([
     getRaceResultsForHorse(horse_no, 10),
@@ -112,8 +127,6 @@ function ProfileCard({
     ["성별", horse.sex ?? "-"],
     ["생년월일", horse.birth_date ?? "-"],
     ["산지", horse.country ?? "-"],
-    ["父마", horse.sire_name ?? "-"],
-    ["母마", horse.dam_name ?? "-"],
     [
       "마주",
       horse.owner_name && horse.ow_no ? (

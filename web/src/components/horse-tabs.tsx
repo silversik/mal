@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,11 +30,6 @@ interface HorseTabsProps {
   siblings: Horse[];
 }
 
-const TABS = [
-  { id: "races" as const, label: "경주 기록" },
-  { id: "pedigree" as const, label: "혈통 & 가족" },
-];
-
 export function HorseTabs({
   horse,
   results,
@@ -45,54 +39,27 @@ export function HorseTabs({
   pedigree,
   siblings,
 }: HorseTabsProps) {
-  const [tab, setTab] = useState<"races" | "pedigree">("races");
   const videoMap = new Map<RaceKey, { video_id: string }>(videoEntries);
 
   return (
-    <div>
-      {/* Tab bar */}
-      <div className="flex border-b">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`px-5 py-3 text-sm font-medium transition-colors ${
-              tab === t.id
-                ? "border-b-2 border-primary text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+    <div className="space-y-10">
+      <div>
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          가족 관계
+        </h2>
+        <FamilyTreeDiagram
+          current={horseToFamNode(horse, true)}
+          sire={pedigree?.sire  ? pedToFamNode(pedigree.sire)  : null}
+          dam={pedigree?.dam   ? pedToFamNode(pedigree.dam)   : null}
+          sire_sire={pedigree?.sire?.sire ? pedToFamNode(pedigree.sire.sire) : null}
+          sire_dam={pedigree?.sire?.dam  ? pedToFamNode(pedigree.sire.dam)  : null}
+          dam_sire={pedigree?.dam?.sire  ? pedToFamNode(pedigree.dam.sire)  : null}
+          dam_dam={pedigree?.dam?.dam   ? pedToFamNode(pedigree.dam.dam)   : null}
+          siblings={siblings.map(sibToFamNode)}
+        />
       </div>
-
-      {/* Tab: 경주 기록 */}
-      {tab === "races" && (
-        <div className="mt-8 space-y-10">
-          <RaceResultsSection results={results} jockeyMap={jockeyMap} videoMap={videoMap} />
-          {rankChanges.length > 0 && <RankChangesSection changes={rankChanges} />}
-        </div>
-      )}
-
-      {/* Tab: 혈통 & 가족 */}
-      {tab === "pedigree" && (
-        <div className="mt-8">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            가족 관계
-          </h2>
-          <FamilyTreeDiagram
-            current={horseToFamNode(horse, true)}
-            sire={pedigree?.sire  ? pedToFamNode(pedigree.sire)  : null}
-            dam={pedigree?.dam   ? pedToFamNode(pedigree.dam)   : null}
-            sire_sire={pedigree?.sire?.sire ? pedToFamNode(pedigree.sire.sire) : null}
-            sire_dam={pedigree?.sire?.dam  ? pedToFamNode(pedigree.sire.dam)  : null}
-            dam_sire={pedigree?.dam?.sire  ? pedToFamNode(pedigree.dam.sire)  : null}
-            dam_dam={pedigree?.dam?.dam   ? pedToFamNode(pedigree.dam.dam)   : null}
-            siblings={siblings.map(sibToFamNode)}
-          />
-        </div>
-      )}
+      <RaceResultsSection results={results} jockeyMap={jockeyMap} videoMap={videoMap} />
+      {rankChanges.length > 0 && <RankChangesSection changes={rankChanges} />}
     </div>
   );
 }
