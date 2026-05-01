@@ -27,10 +27,11 @@ class Settings:
     kra_key_jockey_change: str
     kra_key_race_sales: str
     kra_key_horse_rank_change: str
-    kra_rss_url: str
     youtube_api_key: str
     youtube_krbc_channel_id: str
     kra_chulma_operation: str
+    naver_search_client_id: str
+    naver_search_client_secret: str
     telegram_bot_token: str
     telegram_chat_id: str
     log_level: str
@@ -73,16 +74,16 @@ class Settings:
             kra_key_horse_rank_change=os.environ.get(
                 "KRA_SERVICE_KEY_HORSE_RANK_CHANGE", default_key
             ),
-            kra_rss_url=os.environ.get(
-                "KRA_RSS_URL",
-                "http://board.kra.co.kr/down/KRAFile_per_BoardNo/135/rss.xml",
-            ),
             youtube_api_key=os.environ.get("YOUTUBE_API_KEY", ""),
             # KRBC 한국마사회 경마방송 — UC...로 시작하는 채널 ID를 .env에 박아둘 것.
             # 미설정 시 채널 핸들 lookup이 추가 호출 1회를 소비하므로 운영시엔 항상 지정.
             youtube_krbc_channel_id=os.environ.get("YOUTUBE_KRBC_CHANNEL_ID", ""),
             # 출전표 API26_2 의 operation 이름 — Swagger 확인 후 설정. 비어있으면 job skip.
             kra_chulma_operation=os.environ.get("KRA_CHULMA_OPERATION", ""),
+            # 네이버 검색 OpenAPI — https://developers.naver.com/apps. 둘 다 있어야
+            # sync_naver_news 가 동작. 미설정 시 잡 skip.
+            naver_search_client_id=os.environ.get("NAVER_SEARCH_CLIENT_ID", ""),
+            naver_search_client_secret=os.environ.get("NAVER_SEARCH_CLIENT_SECRET", ""),
             # 실패/stale 알림용 Telegram 봇. 둘 다 채워져야 전송, 아니면 조용히 skip.
             # BotFather 로 봇 생성 → getUpdates 로 chat_id 확인.
             telegram_bot_token=os.environ.get("TELEGRAM_BOT_TOKEN", ""),

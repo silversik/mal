@@ -45,8 +45,8 @@ R = TypeVar("R")
 # 추가 job 은 이 dict 에 한 줄만 넣고 periodic.py / main.py 에서 @track_job("mal.<name>") 사용.
 JOB_CATALOG: dict[str, dict] = {
     "mal.sync_news": {
-        "category": "rss",
-        "description": "KRA 공지/뉴스 RSS",
+        "category": "naver_search",
+        "description": "네이버 뉴스 검색 (경마/한국마사회/렛츠런파크)",
         "expected_interval_sec": 1800,  # 30min
     },
     "mal.sync_videos": {

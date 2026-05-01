@@ -25,7 +25,7 @@ from .sync_jockey_changes import sync_recent as sync_jockey_changes_recent
 from .sync_owners import sync_all_owners
 from .sync_trainers import sync_all_trainers
 from .sync_favorite_notifications import build_favorite_notifications
-from .sync_news import sync_news
+from .sync_naver_news import sync_naver_news
 from .sync_race_entries import sync_upcoming as sync_upcoming_race_entries
 from .sync_race_info import backfill_races_metadata
 from .sync_race_plan import sync_current_year as sync_current_race_plan
@@ -41,7 +41,12 @@ log = get_logger(__name__)
 
 @track_job("mal.sync_news")
 def run_sync_news() -> int:
-    return sync_news()
+    """네이버 뉴스 검색 기반 마사회/경마 보도 수집.
+
+    이전엔 KRA 공식 RSS 를 끌어왔으나, 외부 언론 기사 다양성을 위해 네이버 검색
+    API 로 교체. job_key 는 동일 — 대시보드 이력/감시 룰을 그대로 사용한다.
+    """
+    return sync_naver_news()
 
 
 @track_job("mal.sync_videos")

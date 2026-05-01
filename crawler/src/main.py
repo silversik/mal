@@ -37,7 +37,7 @@ from .jobs.periodic import (
 )
 from .jobs.sync_horses import backfill_missing_raw, sync_by_name, sync_by_no, upsert_horses
 from .jobs.sync_jockeys import sync_all_jockeys
-from .jobs.sync_news import smoke_news, sync_news
+from .jobs.sync_naver_news import sync_naver_news
 from .jobs.sync_race_info import sync_races_by_year
 from .jobs.sync_races import sync_date, sync_date_all_meets
 from .jobs.sync_videos import smoke_videos, sync_videos
@@ -158,26 +158,9 @@ def cmd_smoke() -> None:
 
 @app.command("sync-news")
 def cmd_sync_news() -> None:
-    """Fetch KRA RSS 공지/뉴스 and upsert into `kra_news`."""
-    n = sync_news()
+    """Fetch 네이버 뉴스 검색 (경마/마사회) and upsert into `kra_news`."""
+    n = sync_naver_news()
     typer.echo(f"upserted {n} news rows")
-
-
-@app.command("smoke-news")
-def cmd_smoke_news(
-    limit: int = typer.Option(3, help="표시할 항목 수"),
-) -> None:
-    """Fetch RSS once and print parsed items (no DB write)."""
-    items = smoke_news()
-    if not items:
-        typer.echo("no items returned (304 Not Modified or empty feed)")
-        raise typer.Exit(code=1)
-    typer.echo(f"OK — got {len(items)} item(s)")
-    for it in items[:limit]:
-        typer.echo(
-            f"  · [{it.published_at:%Y-%m-%d %H:%M %Z}] {it.title[:60]} "
-            f"(category={it.category}, summary_len={len(it.summary or '')})"
-        )
 
 
 @app.command("sync-videos")
