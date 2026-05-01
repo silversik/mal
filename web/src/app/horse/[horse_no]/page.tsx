@@ -170,6 +170,7 @@ function ProfileCard({
     ["성별", horse.sex ?? "-"],
     ["생년월일", horse.birth_date ?? "-"],
     ["산지", horse.country ?? "-"],
+    ["모색", coatColorLabel(horse.coat_color) ?? "-"],
     [
       "마주",
       horse.owner_name && horse.ow_no ? (
@@ -217,6 +218,8 @@ function ProfileCard({
 
   const characteristics = normalizeCharacteristics(horse.characteristics);
 
+  const hasRatingTrend = ratingHistory.filter((p) => p.rating4 !== null).length >= 2;
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -226,16 +229,19 @@ function ProfileCard({
             characteristics={horse.characteristics}
             size={96}
           />
-          <div>
+          <div className="min-w-0 flex-1">
             <CardTitle className="text-4xl font-bold tracking-tight">
               {horse.horse_name}
             </CardTitle>
-            {coatColorLabel(horse.coat_color) && (
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                모색: {coatColorLabel(horse.coat_color)}
-              </p>
-            )}
           </div>
+          {hasRatingTrend && (
+            <div className="hidden shrink-0 sm:block">
+              <div className="mb-1 text-right text-[10px] uppercase tracking-wider text-muted-foreground">
+                레이팅 추이
+              </div>
+              <RatingSparkline points={ratingHistory} />
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -249,8 +255,8 @@ function ProfileCard({
             </div>
           ))}
         </dl>
-        {ratingHistory.filter((p) => p.rating4 !== null).length >= 2 && (
-          <div className="mt-5 border-t pt-4">
+        {hasRatingTrend && (
+          <div className="mt-5 border-t pt-4 sm:hidden">
             <div className="text-xs uppercase tracking-wider text-muted-foreground">
               레이팅 추이
             </div>
