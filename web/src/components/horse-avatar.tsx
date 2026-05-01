@@ -6,10 +6,9 @@
  *   - 유성/소유성/난유성/성        → 이마 흰별 (크기가 다름)
  *   - 비량백/비량세백/단비량세백   → 콧등 세로 흰줄
  *   - 비백/비세백/비소백/단비소백  → 코끝 흰 반점
- *
- * 다리 마킹(좌전장백 등)이나 가마(cowlick) 는 실루엣에 드러나지 않으므로
- * 아바타에서는 생략하고 상세페이지에서 텍스트 배지로 노출한다.
  */
+
+import { useId } from "react";
 
 type CoatPalette = {
   body: string;
@@ -18,21 +17,21 @@ type CoatPalette = {
 };
 
 const COAT_PALETTES: Record<string, CoatPalette> = {
-  갈색:   { body: "#8B5E3C", mane: "#2C1810", bg: "#F5EDE4" }, // bay
-  밤색:   { body: "#8B3A00", mane: "#3D1A00", bg: "#F5E8DF" }, // chestnut
-  흑갈색: { body: "#4A2E1C", mane: "#1A0F08", bg: "#EDE5DD" }, // dark bay
-  흑색:   { body: "#2A2A2A", mane: "#111111", bg: "#E8E8E8" }, // black
-  회색:   { body: "#7A8C96", mane: "#37474F", bg: "#ECF0F2" }, // gray
-  백색:   { body: "#B0A090", mane: "#7A6A5A", bg: "#F5F2EE" }, // white (beige so it shows)
-  청색:   { body: "#4A6370", mane: "#263238", bg: "#E8EEF1" }, // blue roan
-  월모:   { body: "#A85C4A", mane: "#5E2E24", bg: "#F3E5E0" }, // red roan
-  얼룩:   { body: "#8B5E3C", mane: "#F4EDE4", bg: "#F2EAE0" }, // piebald (spotted)
+  갈색:   { body: "#7A5030", mane: "#2E1508", bg: "#F4EDE2" }, // bay
+  밤색:   { body: "#7A3200", mane: "#3A1400", bg: "#F4E6DA" }, // chestnut
+  흑갈색: { body: "#3C2416", mane: "#180C06", bg: "#ECE4DA" }, // dark bay
+  흑색:   { body: "#242424", mane: "#0E0E0E", bg: "#E8E8E6" }, // black
+  회색:   { body: "#6E8090", mane: "#344048", bg: "#ECF0F2" }, // gray
+  백색:   { body: "#A09080", mane: "#6A5A4A", bg: "#F5F0EA" }, // white
+  청색:   { body: "#3E5A68", mane: "#22323C", bg: "#E6EEF2" }, // blue roan
+  월모:   { body: "#A05040", mane: "#562820", bg: "#F2E2DC" }, // red roan
+  얼룩:   { body: "#7A5030", mane: "#EDE4D6", bg: "#F0E8DC" }, // piebald
 };
 
 const DEFAULT_PALETTE: CoatPalette = {
-  body: "#7A6050",
-  mane: "#3D2B1F",
-  bg: "#F0EBE5",
+  body: "#6C5040",
+  mane: "#362018",
+  bg: "#F0E8E0",
 };
 
 function getPalette(coatColor: string | null | undefined): CoatPalette {
@@ -56,15 +55,11 @@ export function normalizeCharacteristics(
 }
 
 type FaceMarkings = {
-  /** 이마의 흰별 — 반지름 (없으면 0) */
   starRadius: number;
-  /** 콧등 세로 흰줄 — 너비 (없으면 0) */
   stripeWidth: number;
-  /** 코끝 흰반점 — 반지름 (없으면 0) */
   nosePatch: number;
 };
 
-/** 특징 토큰 → 얼굴 마킹 형태. 없으면 모두 0. */
 function parseFaceMarkings(tokens: string[]): FaceMarkings {
   const has = (needle: string) => tokens.some((t) => t.includes(needle));
 
@@ -95,13 +90,14 @@ interface HorseAvatarProps {
 }
 
 /**
- * 플랫 기하학 말 아이콘 (오른쪽 방향).
+ * 고전 메달리온 스타일 말 아바타 (오른쪽 방향).
  *
  * 구성:
- *   원(배경)
- *   사다리꼴(목) + 삼각형(갈기)
- *   둥근 직사각형(머리/주둥이) + 삼각형×2(귀) + 삼각형(정수리 갈기)
- *   원(눈·콧구멍·유성·비백) + 사각형(비량백·입)
+ *   원(배경) + 이중 테두리 링
+ *   곡선 경로(목 + 머리 실루엣)
+ *   갈기(목 뒤 유선형) + 앞머리(poll 갈기)
+ *   귀 안쪽(bg 하이라이트)
+ *   눈·콧구멍·마킹(유성·비량백·비백)
  */
 export function HorseAvatar({
   coatColor,
@@ -109,11 +105,13 @@ export function HorseAvatar({
   size = 40,
   className = "",
 }: HorseAvatarProps) {
+  const uid = useId();
+  const clipId = `hc${uid.replace(/[^a-z0-9]/gi, "")}`;
+
   const p = getPalette(coatColor);
   const tokens = normalizeCharacteristics(characteristics);
   const marks = parseFaceMarkings(tokens);
   const whiteMark = "#F8F4EE";
-
   const label = [coatColor, ...tokens].filter(Boolean).join(" · ") || "말";
 
   return (
@@ -125,60 +123,80 @@ export function HorseAvatar({
       className={className}
       aria-label={label}
     >
+      <defs>
+        <clipPath id={clipId}>
+          <circle cx="20" cy="20" r="19.5" />
+        </clipPath>
+      </defs>
+
       {/* 배경 원 */}
-      <circle cx="20" cy="20" r="20" fill={p.bg} />
+      <circle cx="20" cy="20" r="19.5" fill={p.bg} />
 
-      {/* 갈기 (목 뒤 삼각형) — 본체 뒤에 깔림 */}
-      <polygon points="4,17 11,13 8,40 3,40" fill={p.mane} />
-
-      {/* 목 (사다리꼴) */}
-      <polygon points="10,16 16,14 17,40 7,40" fill={p.body} />
-
-      {/* 머리 + 주둥이 (가로 둥근 사각형) */}
-      <rect x="12" y="10" width="24" height="14" rx="4" ry="4" fill={p.body} />
-
-      {/* 뒷귀 (삼각형) */}
-      <polygon points="14.5,10 17,2.5 19.5,10" fill={p.body} />
-      {/* 앞귀 (삼각형) */}
-      <polygon points="22.5,10 25,2.5 27.5,10" fill={p.body} />
-
-      {/* 귀 안쪽 (더 작은 삼각형, 배경색으로 파낸 느낌) */}
-      <polygon points="16,8.5 17,4.5 18,8.5" fill={p.bg} />
-      <polygon points="24,8.5 25,4.5 26,8.5" fill={p.bg} />
-
-      {/* 정수리 앞머리 (작은 삼각형) */}
-      <polygon points="19,10 20.5,13 22,10" fill={p.mane} />
-
-      {/* 콧등 흰줄 (비량백) — 둥근 사각형 */}
-      {marks.stripeWidth > 0 && (
-        <rect
-          x={22}
-          y={11 - marks.stripeWidth / 2 + 1.2}
-          width={12}
-          height={marks.stripeWidth}
-          rx={marks.stripeWidth / 2}
-          fill={whiteMark}
+      <g clipPath={`url(#${clipId})`}>
+        {/* 갈기 — 목 뒤 그림자 */}
+        <path
+          fill={p.mane}
+          opacity="0.85"
+          d="M 10,22 C 5,24 3,29 5,35 L 9,39 L 10,36 C 9,31 11,27 11,23 Z"
         />
-      )}
 
-      {/* 이마 흰별 (유성/성) — 원 */}
-      {marks.starRadius > 0 && (
-        <circle cx="18.5" cy="15.5" r={marks.starRadius} fill={whiteMark} />
-      )}
+        {/* 목 + 머리 실루엣 (베지어 곡선) */}
+        <path
+          fill={p.body}
+          d="M 9,37
+             C 7,30 9,22 15,17
+             C 17,14 17,10 16,5
+             L 18,2 L 22,9
+             C 24,9 27,12 30,16
+             C 33,20 36,23 37,27
+             C 38,30 37,33 35,34
+             C 32,35 29,34 26,32
+             C 22,30 18,30 15,33
+             C 12,35 10,38 9,37 Z"
+        />
 
-      {/* 코끝 흰반점 (비백) — 원 */}
-      {marks.nosePatch > 0 && (
-        <circle cx="33" cy="19.5" r={marks.nosePatch} fill={whiteMark} />
-      )}
+        {/* 앞머리 갈기 */}
+        <path
+          fill={p.mane}
+          d="M 16,5 C 12,3 12,1 15,1 C 17,1 18,3 16,5 Z"
+        />
 
-      {/* 눈 (원) */}
-      <circle cx="27" cy="15" r="1.3" fill={p.mane} />
+        {/* 귀 안쪽 하이라이트 */}
+        <polygon points="18,4 19.5,2 21,8" fill={p.bg} opacity="0.6" />
 
-      {/* 콧구멍 (원) */}
-      <circle cx="33" cy="20" r="0.85" fill={p.mane} />
+        {/* 유성 마킹 */}
+        {marks.starRadius > 0 && (
+          <circle cx="22" cy="14" r={marks.starRadius * 0.75} fill={whiteMark} />
+        )}
 
-      {/* 입 (가로 둥근 사각형) */}
-      <rect x="28.5" y="21.6" width="5.5" height="1" rx="0.5" fill={p.mane} opacity="0.5" />
+        {/* 비량백 마킹 — 콧등 세로선 */}
+        {marks.stripeWidth > 0 && (
+          <rect
+            x="30"
+            y="19"
+            width={marks.stripeWidth * 0.85}
+            height="8"
+            rx={marks.stripeWidth * 0.42}
+            transform="rotate(35 31 23)"
+            fill={whiteMark}
+          />
+        )}
+
+        {/* 비백 마킹 */}
+        {marks.nosePatch > 0 && (
+          <circle cx="36" cy="28" r={marks.nosePatch * 0.85} fill={whiteMark} />
+        )}
+
+        {/* 눈 */}
+        <ellipse cx="28" cy="16" rx="1.5" ry="1.2" fill={p.mane} />
+
+        {/* 콧구멍 */}
+        <ellipse cx="36" cy="28" rx="1.2" ry="0.85" fill={p.mane} />
+      </g>
+
+      {/* 메달리온 이중 테두리 */}
+      <circle cx="20" cy="20" r="19" fill="none" stroke={p.mane} strokeWidth="0.9" opacity="0.3" />
+      <circle cx="20" cy="20" r="17.5" fill="none" stroke={p.mane} strokeWidth="0.4" opacity="0.2" />
     </svg>
   );
 }
