@@ -15,7 +15,7 @@ import { FamilyTreeDiagram, type FamNode } from "@/components/family-tree-diagra
 import type { PedigreeNode } from "@/lib/horses";
 import type { RaceResult, Horse } from "@/lib/horses";
 import type { HorseRankChange } from "@/lib/horse_rank_changes";
-import { youtubeWatchUrl } from "@/lib/video-helpers";
+import { youtubeSearchUrl, youtubeWatchUrl } from "@/lib/video-helpers";
 
 type JockeyMap = Record<string, string>;
 type RaceKey = string;
@@ -58,7 +58,12 @@ export function HorseTabs({
           siblings={siblings.map(sibToFamNode)}
         />
       </div>
-      <RaceResultsSection results={results} jockeyMap={jockeyMap} videoMap={videoMap} />
+      <RaceResultsSection
+        horseName={horse.horse_name}
+        results={results}
+        jockeyMap={jockeyMap}
+        videoMap={videoMap}
+      />
       {rankChanges.length > 0 && <RankChangesSection changes={rankChanges} />}
     </div>
   );
@@ -104,10 +109,12 @@ function sexToGender(sex: string | null): FamNode["gender"] {
 /* ── 경주 기록 ──────────────────────────────────────────── */
 
 function RaceResultsSection({
+  horseName,
   results,
   jockeyMap,
   videoMap,
 }: {
+  horseName: string;
   results: RaceResult[];
   jockeyMap: JockeyMap;
   videoMap: Map<RaceKey, { video_id: string }>;
@@ -205,7 +212,7 @@ function RaceResultsSection({
                       )}
                     </TableCell>
                     <TableCell>
-                      {video && (
+                      {video ? (
                         <a
                           href={youtubeWatchUrl(video.video_id)}
                           target="_blank"
@@ -215,7 +222,20 @@ function RaceResultsSection({
                         >
                           <YoutubeIcon />
                         </a>
-                      )}
+                      ) : r.race_date && r.meet && r.race_no ? (
+                        <a
+                          href={youtubeSearchUrl(
+                            `${horseName} ${r.race_date} ${r.meet} ${r.race_no}R 경마`,
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="YouTube에서 이 경주 영상 검색"
+                          title="YouTube 검색"
+                          className="inline-flex items-center justify-center text-muted-foreground/60 transition hover:text-[#FF0000]"
+                        >
+                          <YoutubeSearchIcon />
+                        </a>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 );
@@ -295,6 +315,22 @@ function YoutubeIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+    </svg>
+  );
+}
+
+/** 영상 매칭이 없는 경주에 노출. YouTube 로고 위에 작은 돋보기 오버레이. */
+function YoutubeSearchIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"
+      />
+      <g stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round">
+        <circle cx="18.5" cy="18.5" r="2.6" fill="white" />
+        <path d="M20.6 20.6 L23 23" />
+      </g>
     </svg>
   );
 }

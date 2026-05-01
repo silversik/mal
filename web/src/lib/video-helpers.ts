@@ -24,6 +24,11 @@ export function youtubeEmbedUrl(videoId: string): string {
   return `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1`;
 }
 
+/** kra_videos 매칭이 없을 때, 사용자가 직접 검색해볼 수 있도록 YouTube 검색 페이지 URL 생성. */
+export function youtubeSearchUrl(query: string): string {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+}
+
 export function formatDuration(sec: number | null): string {
   if (!sec || sec <= 0) return "";
   const h = Math.floor(sec / 3600);
