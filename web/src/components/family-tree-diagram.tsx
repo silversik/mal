@@ -214,8 +214,46 @@ export function FamilyTreeDiagram({
   const dcx = damCX + dx;
 
   return (
-    <div ref={containerRef} className="relative overflow-x-auto rounded-lg border bg-muted/20 p-3">
-      <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} style={{ display: "block" }}>
+    <div
+      ref={containerRef}
+      className="relative cursor-grab overflow-x-auto rounded-lg border bg-muted/20 p-3 active:cursor-grabbing select-none"
+      onPointerDown={(e) => {
+        // 노드/팝업 클릭은 드래그가 아니므로 패스.
+        const target = e.target as HTMLElement;
+        if (target.closest("[data-node]") || target.closest("[data-popup]")) return;
+        const el = containerRef.current;
+        if (!el) return;
+        const startX = e.clientX;
+        const startScroll = el.scrollLeft;
+        const pid = e.pointerId;
+        try { el.setPointerCapture(pid); } catch {}
+        let moved = false;
+        const onMove = (ev: PointerEvent) => {
+          const dx2 = ev.clientX - startX;
+          if (Math.abs(dx2) > 3) moved = true;
+          el.scrollLeft = startScroll - dx2;
+        };
+        const onUp = () => {
+          el.removeEventListener("pointermove", onMove);
+          el.removeEventListener("pointerup", onUp);
+          el.removeEventListener("pointercancel", onUp);
+          try { el.releasePointerCapture(pid); } catch {}
+          // 드래그가 발생했다면 직후 클릭 이벤트 1회 무시 (텍스트 선택/팝업 방지).
+          if (moved) {
+            const blockClick = (ev: MouseEvent) => {
+              ev.stopPropagation();
+              ev.preventDefault();
+              el.removeEventListener("click", blockClick, true);
+            };
+            el.addEventListener("click", blockClick, true);
+          }
+        };
+        el.addEventListener("pointermove", onMove);
+        el.addEventListener("pointerup", onUp);
+        el.addEventListener("pointercancel", onUp);
+      }}
+    >
+      <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} style={{ display: "block", touchAction: "pan-y" }}>
         <g fill="none" strokeWidth={1.25}>
           {/* Sire → bus → all children */}
           {sire && N > 0 && (() => {
