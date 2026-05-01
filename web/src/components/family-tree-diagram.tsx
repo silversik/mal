@@ -216,7 +216,7 @@ export function FamilyTreeDiagram({
   return (
     <div
       ref={containerRef}
-      className="relative cursor-grab overflow-x-auto rounded-lg border bg-muted/20 p-3 active:cursor-grabbing select-none"
+      className="relative cursor-grab overflow-x-auto rounded-lg border bg-white p-3 active:cursor-grabbing select-none"
       onPointerDown={(e) => {
         // 노드/팝업 클릭은 드래그가 아니므로 패스.
         const target = e.target as HTMLElement;
