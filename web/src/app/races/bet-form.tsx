@@ -38,6 +38,7 @@ const ERROR_LABEL: Record<string, string> = {
   TICKET_LIMIT_EXCEEDED: "1매 한도(100,000P)를 초과합니다",
   DAILY_LIMIT_EXCEEDED: "1일 한도(750,000P)를 초과합니다",
   INSUFFICIENT_FUNDS: "잔액이 부족합니다",
+  RATE_LIMITED: "잠시 후 다시 시도하세요 (베팅 빈도 제한)",
 };
 
 export type BetFormProps = {

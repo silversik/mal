@@ -13,13 +13,18 @@ import type {
   BetPool,
   SelectionInput,
 } from "@/lib/bet_combinations";
+import { betRateLimiter } from "@/lib/rate_limit";
 
 const POOLS: BetPool[] = ["WIN", "PLC", "QNL", "QPL", "EXA", "TRI", "TLA"];
 const KINDS: BetKind[] = ["STRAIGHT", "BOX", "FORMATION"];
 
 export type PlaceBetActionResult =
   | { ok: true; betId: string; comboCount: number; totalAmountP: string }
-  | { ok: false; error: PlaceBetError | "AUTH_REQUIRED" | "BAD_INPUT"; detail?: string };
+  | {
+      ok: false;
+      error: PlaceBetError | "AUTH_REQUIRED" | "BAD_INPUT" | "RATE_LIMITED";
+      detail?: string;
+    };
 
 function parsePool(v: unknown): BetPool | null {
   return typeof v === "string" && (POOLS as string[]).includes(v)
@@ -60,6 +65,10 @@ export async function placeBetAction(
 ): Promise<PlaceBetActionResult> {
   const session = await auth();
   if (!session?.user?.id) return { ok: false, error: "AUTH_REQUIRED" };
+
+  if (betRateLimiter.check(session.user.id) === "RATE_LIMITED") {
+    return { ok: false, error: "RATE_LIMITED" };
+  }
 
   const raceDate = String(formData.get("raceDate") ?? "");
   const meet = String(formData.get("meet") ?? "");
