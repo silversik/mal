@@ -1,13 +1,16 @@
 import Link from "next/link";
 
+import { auth } from "@/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { FavoriteHorseButton } from "@/components/favorite-horse-button";
 import {
   HorseAvatar,
   coatColorLabel,
   normalizeCharacteristics,
 } from "@/components/horse-avatar";
 import { HorseTabs } from "@/components/horse-tabs";
+import { isHorseFavorited } from "@/lib/favorite_horses";
 import { query } from "@/lib/db";
 import {
   getChildrenByParentNo,
@@ -109,13 +112,17 @@ export default async function HorseDetailPage({
     );
   }
 
-  const [results, siblings, pedigree, rating, ratingHistory, rankChanges] = await Promise.all([
+  const session = await auth();
+  const userId = session?.user?.id ?? null;
+
+  const [results, siblings, pedigree, rating, ratingHistory, rankChanges, favorited] = await Promise.all([
     getRaceResultsForHorse(horse_no, 10),
     getSiblings(horse.sire_name, horse_no),
     getPedigree(horse_no, 4),
     getLatestRating(horse_no),
     getRatingHistory(horse_no, 52),
     getHorseRankChanges(horse_no, 10),
+    userId ? isHorseFavorited(userId, horse_no) : Promise.resolve(false),
   ]);
 
   const [jockeyMap, videoMap] = await Promise.all([
@@ -137,6 +144,8 @@ export default async function HorseDetailPage({
         horse={horse}
         rating={rating}
         ratingHistory={ratingHistory}
+        favorited={favorited}
+        loggedIn={!!userId}
       />
 
       <div className="mt-10">
@@ -160,10 +169,14 @@ function ProfileCard({
   horse,
   rating,
   ratingHistory,
+  favorited,
+  loggedIn,
 }: {
   horse: Horse;
   rating: HorseRating | null;
   ratingHistory: HorseRatingPoint[];
+  favorited: boolean;
+  loggedIn: boolean;
 }) {
   const fields: Array<[string, React.ReactNode]> = [
     ["마번", <span className="font-mono" key="no">{horse.horse_no}</span>],
@@ -221,9 +234,15 @@ function ProfileCard({
   const hasRatingTrend = ratingHistory.filter((p) => p.rating4 !== null).length >= 2;
 
   return (
-    <Card>
+    <Card className="relative">
+      <FavoriteHorseButton
+        horseNo={horse.horse_no}
+        initialFavorited={favorited}
+        loggedIn={loggedIn}
+        className="absolute right-3 top-3"
+      />
       <CardHeader className="pb-2">
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-4 pr-10">
           <HorseAvatar
             coatColor={horse.coat_color}
             characteristics={horse.characteristics}
