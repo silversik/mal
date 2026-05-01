@@ -14,6 +14,8 @@ import {
 import { getJockeyByNo, getRecentRacesByJockey, type Jockey } from "@/lib/jockeys";
 import { getVideosForRaces, raceKey, type RaceKey } from "@/lib/videos";
 import { youtubeWatchUrl } from "@/lib/video-helpers";
+import { WinRateBar } from "@/components/win-rate-bar";
+import { RecentFormDots } from "@/components/recent-form-dots";
 
 export default async function JockeyDetailPage({
   params,
@@ -38,6 +40,12 @@ export default async function JockeyDetailPage({
       </Link>
 
       <JockeyProfileCard jockey={jockey} />
+
+      {recentRaces.length > 0 && (
+        <div className="mt-4 px-1">
+          <RecentFormDots ranks={recentRaces.map((r) => r.rank)} />
+        </div>
+      )}
 
       <section className="mt-10">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -136,7 +144,6 @@ export default async function JockeyDetailPage({
 }
 
 function JockeyProfileCard({ jockey }: { jockey: Jockey }) {
-  const winPct = jockey.win_rate ? `${jockey.win_rate}%` : "-";
   const fields: Array<[string, React.ReactNode]> = [
     ["기수번호", <span className="font-mono" key="no">{jockey.jk_no}</span>],
     ["소속", jockey.meet ?? "-"],
@@ -159,7 +166,7 @@ function JockeyProfileCard({ jockey }: { jockey: Jockey }) {
       "2착 / 3착",
       `${jockey.second_place_count} / ${jockey.third_place_count}`,
     ],
-    ["승률", winPct],
+    ["승률", <WinRateBar key="wr" rate={jockey.win_rate} layout="inline" />],
   ];
 
   return (

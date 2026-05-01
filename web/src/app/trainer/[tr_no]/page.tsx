@@ -16,6 +16,8 @@ import {
   getTrainerByNo,
   type Trainer,
 } from "@/lib/trainers";
+import { WinRateBar } from "@/components/win-rate-bar";
+import { RecentFormDots } from "@/components/recent-form-dots";
 
 export default async function TrainerDetailPage({
   params,
@@ -39,6 +41,12 @@ export default async function TrainerDetailPage({
       </Link>
 
       <TrainerProfileCard trainer={trainer} />
+
+      {recentRaces.length > 0 && (
+        <div className="mt-4 px-1">
+          <RecentFormDots ranks={recentRaces.map((r) => r.rank)} />
+        </div>
+      )}
 
       <section className="mt-10">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -121,7 +129,6 @@ export default async function TrainerDetailPage({
 }
 
 function TrainerProfileCard({ trainer }: { trainer: Trainer }) {
-  const winPct = trainer.win_rate ? `${trainer.win_rate}%` : "-";
   const fields: Array<[string, React.ReactNode]> = [
     ["조교사번호", <span className="font-mono" key="no">{trainer.tr_no}</span>],
     ["소속", trainer.meet ?? "-"],
@@ -144,7 +151,7 @@ function TrainerProfileCard({ trainer }: { trainer: Trainer }) {
       "2착 / 3착",
       `${trainer.second_place_count} / ${trainer.third_place_count}`,
     ],
-    ["승률", winPct],
+    ["승률", <WinRateBar key="wr" rate={trainer.win_rate} layout="inline" />],
   ];
 
   return (
