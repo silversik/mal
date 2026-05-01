@@ -10,6 +10,7 @@ import {
 import { HorseTabs } from "@/components/horse-tabs";
 import { query } from "@/lib/db";
 import {
+  getChildrenByParentNo,
   getHorseByNo,
   getPedigree,
   getRaceResultsForHorse,
@@ -49,6 +50,9 @@ export default async function HorseDetailPage({
   const { horse_no } = await params;
   const horse = await getHorseByNo(horse_no);
   if (!horse) {
+    // 미수집 마필이라도 다른 horses 의 sire_no/dam_no 에 등록돼 있을 수 있다.
+    // 자식 목록을 보여주면 stub 부모 노드 클릭 흐름이 의미를 가진다.
+    const children = await getChildrenByParentNo(horse_no, 30);
     return (
       <main className="mx-auto w-full max-w-4xl px-6 py-12">
         <Link
@@ -58,10 +62,49 @@ export default async function HorseDetailPage({
           <span className="transition group-hover:-translate-x-0.5">&larr;</span>
           메인으로
         </Link>
-        <div className="mt-20 text-center">
+        <div className="mt-12 text-center">
           <p className="text-2xl font-bold">{horse_no}</p>
-          <p className="mt-2 text-muted-foreground">이 말의 상세 데이터가 아직 수집되지 않았습니다.</p>
+          <p className="mt-2 text-muted-foreground">
+            이 말의 상세 데이터가 아직 수집되지 않았습니다.
+          </p>
         </div>
+        {children.length > 0 && (
+          <div className="mt-12">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              이 마필을 부모로 둔 마필 ({children.length})
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {children.map((c) => (
+                <Link
+                  key={c.horse_no}
+                  href={`/horse/${c.horse_no}`}
+                  className="group flex items-center gap-3 rounded-lg border bg-card p-3 transition hover:border-primary/50 hover:bg-accent/30"
+                >
+                  <HorseAvatar
+                    coatColor={c.coat_color}
+                    characteristics={normalizeCharacteristics(c.characteristics)}
+                    size={36}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium group-hover:text-primary">
+                      {c.horse_name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {[c.country, c.sex, c.birth_date?.slice(0, 4)]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  </div>
+                  {c.first_place_count > 0 && (
+                    <Badge variant="secondary" className="shrink-0">
+                      1착 {c.first_place_count}
+                    </Badge>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
     );
   }

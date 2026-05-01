@@ -150,6 +150,24 @@ export async function getRaceResultsForHorse(
   );
 }
 
+/**
+ * 주어진 horse_no 를 sire_no 또는 dam_no 로 가진 마필(자식) 목록.
+ * DB 미수집 부모 페이지에서 "이 마필을 부모로 둔 자식들" 표시용.
+ */
+export async function getChildrenByParentNo(
+  parentNo: string,
+  limit = 30,
+): Promise<Horse[]> {
+  return query<Horse>(
+    `SELECT ${HORSE_COLUMNS}
+       FROM ${HORSE_FROM}
+      WHERE h.sire_no = $1 OR h.dam_no = $1
+      ORDER BY h.birth_date DESC NULLS LAST
+      LIMIT $2`,
+    [parentNo, limit],
+  );
+}
+
 export async function getSiblings(sireName: string | null, excludeHorseNo: string): Promise<Horse[]> {
   if (!sireName) return [];
   return query<Horse>(
