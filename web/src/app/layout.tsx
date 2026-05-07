@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Playfair_Display, Noto_Serif_KR } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import { Toaster } from "sonner";
 import { BetaBanner } from "@/components/beta-banner";
 import { Navbar } from "@/components/navbar";
 import { FloatingChat } from "@/components/floating-chat";
@@ -44,6 +45,7 @@ export default function RootLayout({
           {children}
         </main>
         <FloatingChat />
+        <Toaster position="top-center" richColors />
       </body>
       <GoogleAnalytics gaId="G-N9EQPNFPR7" />
     </html>
