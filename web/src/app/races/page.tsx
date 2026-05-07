@@ -479,10 +479,12 @@ export default async function RacesPage({
                 </div>
               )}
               <Card>
-              <Table>
+              <div className="relative overflow-x-auto rounded-[inherit]">
+                <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-background to-transparent md:hidden" />
+              <Table className="min-w-[580px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-14 text-center">
+                    <TableHead className="sticky left-0 z-10 w-14 bg-background text-center">
                       {entriesPhase === "pre" ? "출전" : "착순"}
                     </TableHead>
                     <TableHead>마명</TableHead>
@@ -521,7 +523,7 @@ export default async function RacesPage({
                 <TableBody>
                   {entries.map((e, i) => (
                     <TableRow key={i}>
-                      <TableCell className="text-center font-semibold">
+                      <TableCell className="sticky left-0 z-10 bg-background text-center font-semibold">
                         {entriesPhase === "pre" ? (
                           <span className="font-mono text-sm tabular-nums text-muted-foreground">
                             {e.chul_no ?? "-"}
@@ -596,6 +598,7 @@ export default async function RacesPage({
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </Card>
             </>
           ) : (
