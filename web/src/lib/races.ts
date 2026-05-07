@@ -136,6 +136,45 @@ export async function getRecentRaceDaysRaces(days = 2): Promise<RaceInfo[]> {
   );
 }
 
+export type TopFinisher = {
+  race_date: string;
+  meet: string;
+  race_no: number;
+  rank: number;
+  horse_no: string;
+  horse_name: string;
+  jockey_name: string | null;
+};
+
+/**
+ * 최근 N개 경기일의 모든 경주에 대해 1·2·3착 마필을 한 번의 쿼리로 조회.
+ * 홈 화면 "최근 경기" 탭에서 라운드별 입상권을 한꺼번에 그리는 데 사용.
+ */
+export async function getRecentTopFinishers(days = 4): Promise<TopFinisher[]> {
+  return query<TopFinisher>(
+    `WITH recent_days AS (
+       SELECT DISTINCT race_date
+         FROM races
+        WHERE race_date < CURRENT_DATE
+        ORDER BY race_date DESC
+        LIMIT $1
+     )
+     SELECT r.race_date::text AS race_date,
+            r.meet,
+            r.race_no,
+            r.rank,
+            r.horse_no,
+            h.horse_name,
+            r.jockey_name
+       FROM race_results r
+       JOIN horses h ON h.horse_no = r.horse_no
+      WHERE r.race_date IN (SELECT race_date FROM recent_days)
+        AND r.rank IN (1, 2, 3)
+      ORDER BY r.race_date DESC, r.meet, r.race_no, r.rank`,
+    [days],
+  );
+}
+
 export async function getFutureRaces(limit = 90, meet?: string): Promise<RaceInfo[]> {
   if (meet) {
     return query<RaceInfo>(
