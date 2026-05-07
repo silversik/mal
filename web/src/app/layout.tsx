@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { BetaBanner } from "@/components/beta-banner";
 import { Navbar } from "@/components/navbar";
 import { FloatingChat } from "@/components/floating-chat";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -41,9 +42,10 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <BetaBanner />
         <Navbar />
-        <main className="flex-1">
+        <main className="flex-1 pb-16 md:pb-0">
           {children}
         </main>
+        <MobileBottomNav />
         <FloatingChat />
         <Toaster position="top-center" richColors />
       </body>
