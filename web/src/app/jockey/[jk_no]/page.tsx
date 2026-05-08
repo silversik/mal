@@ -1,3 +1,5 @@
+import { cache } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -17,13 +19,36 @@ import { youtubeWatchUrl } from "@/lib/video-helpers";
 import { WinRateBar } from "@/components/win-rate-bar";
 import { RecentFormDots } from "@/components/recent-form-dots";
 
+const fetchJockey = cache(getJockeyByNo);
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ jk_no: string }> },
+): Promise<Metadata> {
+  const { jk_no } = await params;
+  const jockey = await fetchJockey(jk_no);
+  if (!jockey) return { title: "기수 정보 없음", robots: { index: false } };
+  const winRate = jockey.win_rate ? `${jockey.win_rate}%` : "-";
+  const description = `${jockey.jk_name} 기수 (${jockey.meet ?? ""}) — 통산 ${jockey.total_race_count}전 ${jockey.first_place_count}·${jockey.second_place_count}·${jockey.third_place_count}, 승률 ${winRate}. 최근 기승 기록.`;
+  return {
+    title: `${jockey.jk_name} · 기수 프로필`,
+    description,
+    alternates: { canonical: `/jockey/${jk_no}` },
+    openGraph: {
+      type: "profile",
+      title: `${jockey.jk_name} · 기수 프로필`,
+      description,
+      url: `/jockey/${jk_no}`,
+    },
+  };
+}
+
 export default async function JockeyDetailPage({
   params,
 }: {
   params: Promise<{ jk_no: string }>;
 }) {
   const { jk_no } = await params;
-  const jockey = await getJockeyByNo(jk_no);
+  const jockey = await fetchJockey(jk_no);
   if (!jockey) notFound();
 
   const recentRaces = await getRecentRacesByJockey(jockey.jk_name, 20);

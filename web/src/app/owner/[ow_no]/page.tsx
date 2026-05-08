@@ -1,3 +1,5 @@
+import { cache } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -16,13 +18,36 @@ import {
   type Owner,
 } from "@/lib/owners";
 
+const fetchOwner = cache(getOwnerByNo);
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ ow_no: string }> },
+): Promise<Metadata> {
+  const { ow_no } = await params;
+  const owner = await fetchOwner(ow_no);
+  if (!owner) return { title: "마주 정보 없음", robots: { index: false } };
+  const winRate = owner.win_rate ? `${owner.win_rate}%` : "-";
+  const description = `${owner.ow_name} 마주 (${owner.meet ?? ""}) — 보유마 통산 ${owner.total_race_count}전 ${owner.first_place_count}·${owner.second_place_count}·${owner.third_place_count}, 승률 ${winRate}. 보유마 목록.`;
+  return {
+    title: `${owner.ow_name} · 마주 프로필`,
+    description,
+    alternates: { canonical: `/owner/${ow_no}` },
+    openGraph: {
+      type: "profile",
+      title: `${owner.ow_name} · 마주 프로필`,
+      description,
+      url: `/owner/${ow_no}`,
+    },
+  };
+}
+
 export default async function OwnerDetailPage({
   params,
 }: {
   params: Promise<{ ow_no: string }>;
 }) {
   const { ow_no } = await params;
-  const owner = await getOwnerByNo(ow_no);
+  const owner = await fetchOwner(ow_no);
   if (!owner) notFound();
 
   const horses = await getHorsesByOwner(ow_no, 50);
