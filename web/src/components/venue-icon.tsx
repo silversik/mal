@@ -12,6 +12,25 @@ interface VenueIconProps {
   className?: string;
 }
 
+/** 경마장별 대표 색상 */
+export const VENUE_COLOR: Record<string, string> = {
+  서울: "#2563EB",
+  제주: "#16A34A",
+  부경: "#EA580C",
+};
+
+/** 아이콘 없이 경마장 색상만 표시하는 작은 원 */
+export function VenueDot({ meet, size = 10, className = "" }: VenueIconProps) {
+  const color = VENUE_COLOR[meet] ?? "#94A3B8";
+  return (
+    <span
+      className={`inline-block shrink-0 rounded-full ${className}`}
+      style={{ width: size, height: size, backgroundColor: color }}
+      aria-label={meet}
+    />
+  );
+}
+
 export function VenueIcon({ meet, size = 20, className = "" }: VenueIconProps) {
   const props = {
     width: size,

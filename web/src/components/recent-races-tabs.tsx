@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 
-import { VenueIcon } from "@/components/venue-icon";
+import { VENUE_COLOR, VenueDot } from "@/components/venue-icon";
 import type { RaceInfo, TopFinisher } from "@/lib/races";
 import type { VideoItem } from "@/lib/video-helpers";
 
@@ -96,7 +96,7 @@ function MobileView({
                   : "border-transparent text-slate-grey hover:text-primary"
               }`}
             >
-              <VenueIcon meet={m} size={14} className="opacity-70" />
+              <VenueDot meet={m} size={8} />
               {m}
               <span className={`text-[11px] font-mono tabular-nums ${active ? "text-primary/70" : "text-slate-grey/60"}`}>
                 {byMeet[m].length}
@@ -194,7 +194,7 @@ function MeetScrollRow({
   return (
     <div>
       <div className="mb-3 flex items-center gap-2">
-        <VenueIcon meet={meet} size={16} className="opacity-70" />
+        <VenueDot meet={meet} size={10} />
         <h3 className="text-base font-bold text-primary">{meet}</h3>
         <span className="font-mono text-xs text-slate-grey/70 tabular-nums">{list.length}</span>
       </div>
@@ -265,8 +265,20 @@ function RecentRaceCard({
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/5 to-primary/10">
-            <VenueIcon meet={r.meet} size={40} className="opacity-30" />
+          <div
+            className="flex h-full w-full items-center justify-center"
+            style={{
+              background: `radial-gradient(circle at 60% 40%, ${VENUE_COLOR[r.meet] ?? "#94A3B8"}22 0%, ${VENUE_COLOR[r.meet] ?? "#94A3B8"}08 70%)`,
+            }}
+          >
+            <span
+              className="rounded-full opacity-20"
+              style={{
+                width: 48,
+                height: 48,
+                backgroundColor: VENUE_COLOR[r.meet] ?? "#94A3B8",
+              }}
+            />
           </div>
         )}
         {/* 라운드 뱃지 — 오버레이만 */}
