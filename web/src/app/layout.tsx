@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Playfair_Display, Noto_Serif_KR } from "next/font/google";
+import Script from "next/script";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Toaster } from "sonner";
 import { BetaBanner } from "@/components/beta-banner";
@@ -27,6 +28,7 @@ const notoSerif = Noto_Serif_KR({
 export const metadata: Metadata = {
   title: "mal.kr — 경마 데이터 아카이브",
   description: "한국마사회 공공데이터 기반 경마 데이터 시각화 서비스",
+  other: { "google-adsense-account": "ca-pub-7113131922880460" },
 };
 
 export default function RootLayout({
@@ -50,6 +52,13 @@ export default function RootLayout({
         <Toaster position="top-center" richColors />
       </body>
       <GoogleAnalytics gaId="G-N9EQPNFPR7" />
+      <Script
+        id="google-adsense"
+        async
+        strategy="afterInteractive"
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7113131922880460"
+        crossOrigin="anonymous"
+      />
     </html>
   );
 }
