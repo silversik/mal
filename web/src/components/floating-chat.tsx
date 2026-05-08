@@ -59,7 +59,7 @@ export function FloatingChat() {
         onClick={toggle}
         aria-label={open ? "채팅 닫기" : "채팅 열기"}
         className={[
-          "fixed bottom-6 right-6 z-50",
+          "fixed bottom-24 right-6 z-50 md:bottom-6",
           "flex h-14 w-14 items-center justify-center rounded-full shadow-lg",
           "bg-primary text-sand-ivory transition-all duration-200",
           "hover:scale-105 hover:shadow-xl active:scale-95",
