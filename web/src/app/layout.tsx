@@ -3,7 +3,6 @@ import { Geist_Mono, Playfair_Display, Noto_Serif_KR } from "next/font/google";
 import Script from "next/script";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Toaster } from "sonner";
-import { BetaBanner } from "@/components/beta-banner";
 import { Navbar } from "@/components/navbar";
 import { FloatingChat } from "@/components/floating-chat";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
@@ -87,7 +86,6 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <SiteJsonLd />
-        <BetaBanner />
         <Navbar />
         <main className="flex-1 pb-16 md:pb-0">
           {children}
