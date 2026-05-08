@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import { toggleFavoriteAction } from "@/app/horse/[horse_no]/actions";
 
@@ -33,6 +34,13 @@ export function FavoriteHorseButton({
       try {
         const r = await toggleFavoriteAction(horseNo);
         setFavorited(r.favorited);
+        if (r.favorited) {
+          toast.success("즐겨찾기에 추가됐습니다", {
+            description: "출주 시 알림을 드립니다 ★",
+          });
+        } else {
+          toast("즐겨찾기에서 제거됐습니다");
+        }
       } catch {
         // server action redirect 는 throw 로 흐름 종료 — 상태 롤백 불필요.
       }

@@ -1,18 +1,19 @@
 import Link from "next/link";
 
-import { HorseAvatar } from "@/components/horse-avatar";
+import { HorseMark } from "@/components/brand/logo";
+import { coatBodyHex, coatBgHex } from "@/components/horse-avatar";
 import { VenueIcon } from "@/components/venue-icon";
 import { TodayMeetCard } from "@/components/today-meet-card";
 import { EmptyState } from "@/components/empty-state";
 import { WinRateBar } from "@/components/win-rate-bar";
+import { RecentRacesSwiper } from "@/components/recent-races-swiper";
 import { Badge } from "@/components/ui/badge";
 import { getRecentWinners, type RecentWinner } from "@/lib/horses";
 import { getAllJockeys, type Jockey } from "@/lib/jockeys";
-import { getLatestNews, type NewsItem } from "@/lib/news";
-import { getRecentPosts, type CommunityPost } from "@/lib/posts";
 import {
   getNextRaceDayRaces,
   getRecentRaceDaysRaces,
+  getRecentTopFinishers,
   getRaceDayCard,
   type RaceInfo,
 } from "@/lib/races";
@@ -20,6 +21,7 @@ import {
   getUpcomingStakesFromPlans,
   type UpcomingStake,
 } from "@/lib/race_plans";
+import { getVideosForRaces, raceKey } from "@/lib/videos";
 
 function getRaceStatus(raceDate: string): "예정" | "진행중" | "종료" {
   const today = new Date().toISOString().slice(0, 10);
@@ -27,12 +29,6 @@ function getRaceStatus(raceDate: string): "예정" | "진행중" | "종료" {
   if (raceDate === today) return "진행중";
   return "예정";
 }
-
-const STATUS_STYLE = {
-  종료: "bg-muted text-slate-grey border-slate-grey/20",
-  진행중: "bg-dirt-brown/10 text-dirt-brown border-dirt-brown/30 animate-pulse",
-  예정: "bg-champagne-gold text-white border-champagne-gold shadow-sm",
-} as const;
 
 const MEET_ORDER = ["서울", "제주", "부경"] as const;
 
@@ -51,21 +47,25 @@ export default async function Home() {
   const todayDate = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const [
     recentDayRaces,
+    recentTopFinishers,
     horses,
     jockeys,
     nextDayRaces,
     upcomingStakes,
-    news,
-    recentPosts,
   ] = await Promise.all([
-    getRecentRaceDaysRaces(2),
-    getRecentWinners(6),
-    getAllJockeys(6),
+    getRecentRaceDaysRaces(4), // 최근 4개 경기일
+    getRecentTopFinishers(4),  // 1·2·3착 (배치)
+    getRecentWinners(8),       // 8마리로 강화
+    getAllJockeys(8),          // 8명으로 강화
     getNextRaceDayRaces(),
     getUpcomingStakesFromPlans(6),
-    getLatestNews(3),
-    getRecentPosts(5),
   ]);
+
+  // 영상 썸네일 배치 조회 — 최근 경기 카드용
+  const videosMapRaw = await getVideosForRaces(
+    recentDayRaces.map((r) => ({ race_date: r.race_date, meet: r.meet, race_no: r.race_no })),
+  );
+  const videos = Array.from(videosMapRaw.entries()).map(([k, v]) => ({ key: k, video: v }));
 
   // 오늘 경기가 있으면 경마장별 라운드 카드(출전/결과) 로드.
   const isRaceToday = nextDayRaces[0]?.race_date === todayDate;
@@ -77,25 +77,13 @@ export default async function Home() {
       getRaceDayCard(todayDate, meet).then((c) => ({
         meet,
         phase: c.phase,
-        // Map is not serializable for Client Components — convert to plain object.
         byRace: Object.fromEntries(c.byRace),
       })),
     ),
   );
 
-  /*
-   * "다음 진행 예정 경기": 가장 가까운 개최일(오늘 포함)의 경주 중 대상/G/L 경주를 우선,
-   * 등급 메타데이터가 없으면 경마장별 마지막 경주(일반적으로 메인 경주)로 대체.
-   * KRA 공공API(racedetailresult)가 등급·경주명을 제공하지 않아서 생기는 갭.
-   *
-   * races 테이블에 미래 일자가 아직 없는 평일에는 race_plans(API40) 의 예정된
-   * 대상경주를 폴백으로 노출한다 — 일정 자체가 비어있는 건 아니므로 "없음" 으로
-   * 보이는 것을 방지.
-   */
   const nextRaceDate = nextDayRaces[0]?.race_date ?? null;
-  const nextStatus = nextRaceDate
-    ? getRaceStatus(nextRaceDate)
-    : null;
+  const nextStatus = nextRaceDate ? getRaceStatus(nextRaceDate) : null;
   const detectedStakes = nextDayRaces.filter(isStakesRace);
   const featureRaces =
     detectedStakes.length > 0
@@ -107,7 +95,6 @@ export default async function Home() {
           return meetRaces.slice(0, 1);
         });
 
-  // 폴백: races 가 비어있을 때만 race_plans 의 가장 가까운 일자만 뽑아 노출.
   const useStakesFallback = featureRaces.length === 0 && upcomingStakes.length > 0;
   const fallbackDate = useStakesFallback ? upcomingStakes[0].race_date : null;
   const fallbackStakes = useStakesFallback
@@ -120,11 +107,11 @@ export default async function Home() {
     ? `/races?date=${heroDate}`
     : `/races?date=${todayDate}`;
 
-  /*
-   * "최근 주요 경기": 최근 개최일 × 경마장 단위로 묶어서 라운드 버튼 형태로 노출.
-   * 날짜 내림차순 → 경마장 정렬 순서 유지.
-   */
-  const recentGroups = groupByDateAndMeet(recentDayRaces);
+  // 영상 라이브러리에서 raceKey 형식 사용 — 클라이언트로 전달용으로 변환.
+  // (videos 배열의 key 는 RaceKey 타입이지만 직렬화 위해 string)
+  const videoEntries = videos.map((v) => ({ key: String(v.key), video: v.video }));
+  // raceKey 사용 형식 일치 확인용 — recent-races-tabs.tsx 에서 같은 포맷으로 검색.
+  void raceKey;
 
   return (
     <div className="min-h-screen">
@@ -199,59 +186,33 @@ export default async function Home() {
           </Section>
         )}
 
-        {/* 경기 */}
-        <Section title="최근 주요 경기" href="/races" tier="l1">
-          {recentGroups.length === 0 ? (
+        {/* 경기 — 탭 인터페이스 + 썸네일 + 1·2·3착 */}
+        <Section title="최근 경기" href="/races" tier="l1">
+          {recentDayRaces.length === 0 ? (
             <EmptyState title="적재된 경기가 없습니다." description="크롤러가 데이터를 수집하면 표시됩니다." />
           ) : (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {recentGroups.map((g) => (
-                <RaceDayGroupCard key={`${g.date}-${g.meet}`} group={g} />
-              ))}
-            </div>
+            <RecentRacesSwiper
+              races={recentDayRaces}
+              finishers={recentTopFinishers}
+              videos={videoEntries}
+            />
           )}
         </Section>
 
-        {/* 뉴스 미리보기 */}
-        <Section title="뉴스" href="/news">
-          {news.length === 0 ? (
-            <EmptyState title="아직 수집된 공지가 없습니다." />
-          ) : (
-            <div className="divide-y divide-primary/5 rounded-lg border border-primary/5 bg-white">
-              {news.map((n) => (
-                <NewsRow key={n.id} item={n} />
-              ))}
-            </div>
-          )}
-        </Section>
-
-        {/* 커뮤니티 최근 글 */}
-        <Section title="커뮤니티 최근 글" href="/board">
-          {recentPosts.length === 0 ? (
-            <EmptyState title="아직 작성된 글이 없습니다." />
-          ) : (
-            <div className="divide-y divide-primary/5 rounded-lg border border-primary/5 bg-white">
-              {recentPosts.map((p) => (
-                <PostRow key={p.id} post={p} />
-              ))}
-            </div>
-          )}
-        </Section>
-
-        {/* 마필 & 기수 레이아웃 */}
-        <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
-          <Section title="최근 승리 마필" href="/horses?sort=wins" tier="l3">
-            <div className="space-y-4">
+        {/* 마필 & 기수 — 강화된 레이아웃 */}
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
+          <Section title="최근 승리 마필" href="/horses?sort=wins" tier="l1">
+            <div className="space-y-2">
               {horses.map((h) => (
                 <HorseRow key={h.horse_no} horse={h} />
               ))}
             </div>
           </Section>
 
-          <Section title="TOP 기수 랭킹" href="/jockeys" tier="l3">
-            <div className="space-y-4">
-              {jockeys.map((j) => (
-                <JockeyRow key={j.jk_no} jockey={j} />
+          <Section title="TOP 기수 랭킹" href="/jockeys" tier="l1">
+            <div className="space-y-2">
+              {jockeys.map((j, i) => (
+                <JockeyRow key={j.jk_no} jockey={j} rank={i + 1} />
               ))}
             </div>
           </Section>
@@ -400,123 +361,31 @@ function StakesPlanCard({ stake }: { stake: UpcomingStake }) {
   );
 }
 
-type RaceDayGroup = {
-  date: string;
-  meet: string;
-  races: RaceInfo[];
+const RANK_BADGE_STYLE: Record<number, string> = {
+  1: "bg-champagne-gold text-primary",
+  2: "bg-slate-400 text-white",
+  3: "bg-amber-700 text-white",
 };
-
-function groupByDateAndMeet(races: RaceInfo[]): RaceDayGroup[] {
-  const map = new Map<string, RaceDayGroup>();
-  for (const race of races) {
-    const key = `${race.race_date}__${race.meet}`;
-    let group = map.get(key);
-    if (!group) {
-      group = { date: race.race_date, meet: race.meet, races: [] };
-      map.set(key, group);
-    }
-    group.races.push(race);
-  }
-  const meetRank = (m: string) => {
-    const idx = MEET_ORDER.indexOf(m as (typeof MEET_ORDER)[number]);
-    return idx === -1 ? MEET_ORDER.length : idx;
-  };
-  return Array.from(map.values())
-    .map((g) => ({
-      ...g,
-      races: [...g.races].sort((a, b) => a.race_no - b.race_no),
-    }))
-    .sort((a, b) => {
-      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
-      return meetRank(a.meet) - meetRank(b.meet);
-    });
-}
-
-function RaceDayGroupCard({ group }: { group: RaceDayGroup }) {
-  const status = getRaceStatus(group.date);
-  const stakes = group.races.filter(isStakesRace);
-  return (
-    <div className="royal-card overflow-hidden">
-      <div className="flex items-center justify-between border-b border-primary/10 bg-primary/5 px-5 py-3">
-        <div className="flex items-center gap-2">
-          <VenueIcon meet={group.meet} size={16} />
-          <span className="font-semibold text-sm">{group.meet}</span>
-          <span className="font-mono text-xs text-slate-grey tabular-nums">
-            {group.date}
-          </span>
-        </div>
-        <Badge variant="outline" className={`border ${STATUS_STYLE[status]}`}>
-          {status}
-        </Badge>
-      </div>
-
-      {stakes.length > 0 && (
-        <ul className="divide-y divide-primary/5 border-b border-primary/5">
-          {stakes.map((r) => (
-            <li key={r.id}>
-              <Link
-                href={`/races?date=${r.race_date}&venue=${encodeURIComponent(r.meet)}&race=${r.race_no}`}
-                className="flex items-center gap-2 px-5 py-2 transition hover:bg-champagne-gold/5"
-              >
-                <span className="flex h-6 w-8 shrink-0 items-center justify-center rounded bg-champagne-gold text-[11px] font-bold text-white tabular-nums">
-                  {r.race_no}R
-                </span>
-                <span className="min-w-0 flex-1 truncate text-sm font-semibold text-champagne-gold">
-                  {r.race_name ?? `${r.race_no}라운드`}
-                </span>
-                {r.grade && (
-                  <span className="shrink-0 text-[10px] font-bold uppercase text-champagne-gold/80">
-                    {r.grade}
-                  </span>
-                )}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className="flex flex-wrap gap-1.5 p-5">
-        {group.races.map((r) => {
-          const isStakes = isStakesRace(r);
-          return (
-            <Link
-              key={r.id}
-              href={`/races?date=${r.race_date}&venue=${encodeURIComponent(r.meet)}&race=${r.race_no}`}
-              title={r.race_name ?? `${r.race_no}라운드`}
-              className={[
-                "flex h-9 min-w-9 items-center justify-center rounded-md border px-2 text-xs font-bold tabular-nums transition",
-                isStakes
-                  ? "border-champagne-gold/40 bg-champagne-gold/10 text-champagne-gold hover:bg-champagne-gold/20"
-                  : "border-primary/10 bg-white text-primary hover:border-primary/30 hover:bg-primary/5",
-              ].join(" ")}
-            >
-              {r.race_no}R
-            </Link>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 function HorseRow({ horse }: { horse: RecentWinner }) {
   return (
     <Link href={`/horse/${horse.horse_no}`}>
-      <div className="flex items-center justify-between p-4 bg-white border border-primary/5 rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
-        <div className="flex items-center gap-4">
-          <HorseAvatar coatColor={horse.coat_color} size={40} />
-          <div>
-            <div className="font-bold group-hover:text-primary transition-colors">{horse.horse_name}</div>
-            <div className="text-xs text-slate-grey uppercase tracking-wider font-semibold">
-              {horse.country} · {horse.sex}
-            </div>
+      <div className="flex items-center gap-3 p-3 bg-white border border-primary/5 rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
+        <HorseMark
+          size={40}
+          radius={8}
+          badgeFill={coatBgHex(horse.coat_color)}
+          markFill={coatBodyHex(horse.coat_color)}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="font-bold truncate group-hover:text-primary transition-colors">{horse.horse_name}</div>
+          <div className="text-[11px] text-slate-grey uppercase tracking-wider font-semibold">
+            {horse.country} · {horse.sex}
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-xs font-semibold text-champagne-gold">
-            {horse.win_count}승
-          </div>
-          <div className="text-[11px] font-mono text-muted-foreground">
+        <div className="text-right shrink-0">
+          <div className="text-sm font-bold text-primary">{horse.win_count}승</div>
+          <div className="text-[10px] font-mono text-muted-foreground">
             {horse.last_win_date}
           </div>
         </div>
@@ -525,70 +394,28 @@ function HorseRow({ horse }: { horse: RecentWinner }) {
   );
 }
 
-function JockeyRow({ jockey }: { jockey: Jockey }) {
+function JockeyRow({ jockey, rank }: { jockey: Jockey; rank: number }) {
   return (
     <Link href={`/jockey/${jockey.jk_no}`}>
-      <div className="flex items-center justify-between p-4 bg-white border border-primary/5 rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-primary rounded flex items-center justify-center font-bold text-champagne-gold shadow-inner border border-white/10 uppercase">
-            {jockey.jk_name.slice(0, 1)}
-          </div>
-          <div>
-            <div className="font-bold group-hover:text-primary transition-colors">{jockey.jk_name}</div>
-            <div className="text-xs text-slate-grey font-semibold uppercase tracking-wider">{jockey.meet} 기수</div>
-          </div>
+      <div className="flex items-center gap-3 p-3 bg-white border border-primary/5 rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
+        <span
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-mono text-xs font-bold tabular-nums ${
+            RANK_BADGE_STYLE[rank] ?? "bg-muted text-foreground"
+          }`}
+        >
+          {rank}
+        </span>
+        <div className="w-10 h-10 shrink-0 bg-primary rounded flex items-center justify-center font-bold text-champagne-gold shadow-inner border border-white/10 uppercase">
+          {jockey.jk_name.slice(0, 1)}
         </div>
-        <div className="min-w-[60px]">
+        <div className="min-w-0 flex-1">
+          <div className="font-bold truncate group-hover:text-primary transition-colors">{jockey.jk_name}</div>
+          <div className="text-[11px] text-slate-grey font-semibold uppercase tracking-wider">{jockey.meet} 기수</div>
+        </div>
+        <div className="min-w-[70px] shrink-0">
           <WinRateBar rate={jockey.win_rate} />
         </div>
       </div>
     </Link>
   );
 }
-
-function PostRow({ post }: { post: CommunityPost }) {
-  return (
-    <Link
-      href={`/board/${post.id}`}
-      className="block first:rounded-t-lg last:rounded-b-lg"
-    >
-      <div className="group flex items-center justify-between gap-4 px-4 py-2.5 transition-colors hover:bg-muted/50">
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold transition-colors group-hover:text-primary">
-            {post.title}
-          </div>
-          <div className="mt-0.5 text-xs text-slate-grey">
-            {post.author_name ?? "익명"}
-          </div>
-        </div>
-        <div className="shrink-0 font-mono text-xs text-slate-grey tabular-nums">
-          {post.created_at.slice(0, 10)}
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-function NewsRow({ item }: { item: NewsItem }) {
-  return (
-    <a
-      href={item.link}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block first:rounded-t-lg last:rounded-b-lg"
-    >
-      <div className="group flex items-center justify-between gap-4 px-4 py-2.5 transition-colors hover:bg-muted/50">
-        <div className="min-w-0 flex-1">
-          <div className="font-semibold text-sm group-hover:text-primary transition-colors line-clamp-1">
-            {item.title}
-          </div>
-        </div>
-        <div className="text-xs text-slate-grey font-mono shrink-0">
-          {item.published_at.slice(0, 10)}
-        </div>
-      </div>
-    </a>
-  );
-}
-
-

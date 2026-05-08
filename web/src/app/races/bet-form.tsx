@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,16 @@ const KIND_LABEL: Record<BetKind, string> = {
   STRAIGHT: "일반",
   BOX: "박스",
   FORMATION: "포메이션",
+};
+
+const POOL_DESC: Record<BetPool, string> = {
+  WIN: "1착 맞추기",
+  PLC: "3착 안에 들기 (5마리 이상)",
+  QNL: "1·2착 조합 — 순서 무관",
+  QPL: "3착 안에 드는 두 마리",
+  EXA: "1·2착 정확히",
+  TRI: "1·2·3착 조합 — 순서 무관",
+  TLA: "1·2·3착 정확히",
 };
 
 const DAILY_LIMIT_P = 750_000;
@@ -215,17 +226,18 @@ export function BetForm(props: BetFormProps) {
     startTransition(async () => {
       const result = await placeBetAction(fd);
       if (result.ok) {
-        setResultMsg(
-          `구매 완료! ${result.comboCount}조합 × ${unitP.toLocaleString()}P = ${Number(
-            result.totalAmountP,
-          ).toLocaleString()}P 차감.`,
-        );
+        const msg = `구매 완료! ${result.comboCount}조합 × ${unitP.toLocaleString()}P = ${Number(
+          result.totalAmountP,
+        ).toLocaleString()}P 차감.`;
+        setResultMsg(msg);
+        toast.success("베팅 완료", { description: msg });
         resetSelections(pool, kind);
       } else {
-        setResultMsg(
+        const errMsg =
           ERROR_LABEL[result.error] ??
-            `오류: ${result.error}${result.detail ? ` (${result.detail})` : ""}`,
-        );
+          `오류: ${result.error}${result.detail ? ` (${result.detail})` : ""}`;
+        setResultMsg(errMsg);
+        toast.error(errMsg);
       }
       setConfirming(false);
     });
@@ -284,29 +296,35 @@ export function BetForm(props: BetFormProps) {
             </div>
           )}
 
-          {/* 풀 선택 — 풀별 컬러 (활성시 채움, 비활성은 풀 컬러 인디케이터) */}
-          <div className="flex flex-wrap gap-1.5">
-            {ALL_POOLS.map((p) => {
-              const sty = POOL_STYLE[p];
-              const isActive = pool === p;
-              return (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => changePool(p)}
-                  className={`rounded-md border px-2.5 py-1 text-xs font-semibold transition ${
-                    isActive
-                      ? sty.active
-                      : "border-border bg-background hover:bg-muted"
-                  }`}
-                >
-                  {POOL_LABEL[p]}
-                </button>
-              );
-            })}
+          {/* ① 풀 선택 */}
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">① 풀 선택</p>
+            <div className="flex flex-wrap gap-1.5">
+              {ALL_POOLS.map((p) => {
+                const sty = POOL_STYLE[p];
+                const isActive = pool === p;
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => changePool(p)}
+                    className={`rounded-md border px-2.5 py-1 text-xs font-semibold transition ${
+                      isActive
+                        ? sty.active
+                        : "border-border bg-background hover:bg-muted"
+                    }`}
+                  >
+                    {POOL_LABEL[p]}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted-foreground">{POOL_DESC[pool]}</p>
           </div>
 
-          {/* kind 선택 — 1슬롯 풀(WIN/PLC) 은 STRAIGHT 만 */}
+          {/* ② 배팅 방식 — 1슬롯 풀(WIN/PLC) 은 STRAIGHT 만 */}
+          <div className="space-y-1.5">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">② 배팅 방식</p>
           <div className="flex gap-1.5">
             {(SLOTS[pool] === 1
               ? (["STRAIGHT"] as BetKind[])
@@ -326,7 +344,11 @@ export function BetForm(props: BetFormProps) {
               </button>
             ))}
           </div>
+          </div>
 
+          {/* ③ 말 선택 · 금액 */}
+          <div className="space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">③ 말 선택 · 금액</p>
           {/* 마번 그리드 — STRAIGHT/BOX: 1슬롯, FORMATION: SLOTS[pool] 슬롯 */}
           <div className="space-y-2">
             {Array.from({ length: kind === "FORMATION" ? slotsCount : 1 }).map(
@@ -382,6 +404,7 @@ export function BetForm(props: BetFormProps) {
                 {u.toLocaleString()}P
               </button>
             ))}
+          </div>
           </div>
 
           {/* 1일 한도 진행바 — 누적(밝게) + 이번 베팅 가산분(연하게 같은 톤) */}
