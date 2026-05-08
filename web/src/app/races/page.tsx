@@ -47,7 +47,7 @@ import {
   POOL_DISPLAY_ORDER,
   type RacePoolSales,
 } from "@/lib/race_pool_sales";
-import { getRaceVideo, youtubeEmbedUrl, youtubeWatchUrl } from "@/lib/videos";
+import { getRaceVideo, youtubeEmbedUrl } from "@/lib/videos";
 
 import { BetForm } from "./bet-form";
 
@@ -425,28 +425,16 @@ export default async function RacesPage({
                     KRBC 라이브
                   </a>
                 )}
-                {raceVideo ? (
+                {!raceVideo && ytSearchUrl && (
                   <a
-                    href={youtubeWatchUrl(raceVideo.video_id)}
+                    href={ytSearchUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-md bg-[#FF0000]/10 px-3 py-1.5 text-xs font-medium text-[#FF0000] transition hover:bg-[#FF0000]/20"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-[#FF0000]/30 px-3 py-1.5 text-xs font-medium text-[#FF0000] transition hover:bg-[#FF0000]/10"
                   >
                     <YoutubeIcon />
-                    경주 영상 보기
+                    유튜브에서 검색
                   </a>
-                ) : (
-                  ytSearchUrl && (
-                    <a
-                      href={ytSearchUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-md border border-[#FF0000]/30 px-3 py-1.5 text-xs font-medium text-[#FF0000] transition hover:bg-[#FF0000]/10"
-                    >
-                      <YoutubeIcon />
-                      유튜브에서 검색
-                    </a>
-                  )
                 )}
               </div>
             )}
