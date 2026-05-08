@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AgeSelect } from "./age-select";
 import { HorseMark } from "@/components/brand/logo";
 import { coatBgHex, coatBodyHex } from "@/lib/coat";
 import { EmptyState } from "@/components/empty-state";
@@ -12,6 +13,7 @@ import {
   getHorsesSorted,
   searchHorses,
   type Horse,
+  type HorseAgeBucket,
   type HorseSort,
 } from "@/lib/horses";
 
@@ -22,25 +24,30 @@ export const metadata: Metadata = {
   alternates: { canonical: "/horses" },
 };
 
-type SearchParams = { q?: string; sort?: string };
+type SearchParams = { q?: string; sort?: string; age?: string };
 
 const SORT_OPTIONS: { value: HorseSort; label: string }[] = [
-  { value: "latest", label: "등록순" },
   { value: "wins",   label: "우승순" },
+  { value: "latest", label: "등록순" },
 ];
+
+function isAgeBucket(v: string | undefined): v is HorseAgeBucket {
+  return v === "under5" || v === "under10" || v === "over11";
+}
 
 export default async function HorsesPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const { q = "", sort = "latest" } = await searchParams;
+  const { q = "", sort, age } = await searchParams;
   const queryStr = q.trim();
-  const activeSort: HorseSort = sort === "wins" ? "wins" : "latest";
+  const activeSort: HorseSort = sort === "latest" ? "latest" : "wins";
+  const activeAge: HorseAgeBucket = isAgeBucket(age) ? age : "under5";
 
   const [searchHit, horses, totalCount] = await Promise.all([
     queryStr ? searchHorses(queryStr, 60) : Promise.resolve(null),
-    queryStr ? Promise.resolve<Horse[]>([]) : getHorsesSorted(activeSort, 60),
+    queryStr ? Promise.resolve<Horse[]>([]) : getHorsesSorted(activeSort, activeAge, 60),
     countAllHorses(),
   ]);
   const resultRows: Horse[] = searchHit ? searchHit.rows : horses;
@@ -63,22 +70,25 @@ export default async function HorsesPage({
           </span>
         </div>
 
-        {/* Sort toggle — only when not searching */}
+        {/* Sort toggle + age filter — only when not searching */}
         {!queryStr && (
-          <div className="flex items-center gap-1 rounded-lg border border-primary/10 bg-white p-1">
-            {SORT_OPTIONS.map(({ value, label }) => (
-              <Link
-                key={value}
-                href={`/horses?sort=${value}`}
-                className={`rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
-                  activeSort === value
-                    ? "bg-primary text-sand-ivory shadow-sm"
-                    : "text-slate-grey hover:text-primary"
-                }`}
-              >
-                {label}
-              </Link>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1 rounded-lg border border-primary/10 bg-white p-1">
+              {SORT_OPTIONS.map(({ value, label }) => (
+                <Link
+                  key={value}
+                  href={`/horses?sort=${value}&age=${activeAge}`}
+                  className={`rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
+                    activeSort === value
+                      ? "bg-primary text-sand-ivory shadow-sm"
+                      : "text-slate-grey hover:text-primary"
+                  }`}
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
+            <AgeSelect activeAge={activeAge} activeSort={activeSort} />
           </div>
         )}
       </div>
