@@ -1,0 +1,13 @@
+[Unit]
+Description=mal.kr — sync_races_live (매시 정각 10~21시 KST, 실시간 결과·배당)
+
+[Timer]
+# 경기 진행 중 매시간 결과/배당 갱신. 비경기일이면 0건 반환이라 무해.
+# 단일 22:00 sync_races_today 잡 실패 시 그날 결과가 통째로 비는 사고를 방지.
+OnCalendar=*-*-* 10..21:00:00 Asia/Seoul
+Unit=mal-collector@periodic-races-live.service
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

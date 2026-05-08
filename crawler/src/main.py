@@ -29,6 +29,7 @@ from .jobs.periodic import (
     run_sync_race_info,
     run_sync_race_plan,
     run_sync_race_sales,
+    run_sync_races_live,
     run_sync_races_today,
     run_sync_yesterday_catchup,
     run_sync_trainers,
@@ -213,6 +214,13 @@ def cmd_periodic_races_today() -> None:
     """[scheduled] sync_races_today — tracked run."""
     n = run_sync_races_today()
     typer.echo(f"upserted {n} race result rows")
+
+
+@app.command("periodic-races-live")
+def cmd_periodic_races_live() -> None:
+    """[scheduled] sync_races_live — 매시 정각 10~21시 KST 실시간 결과·배당."""
+    n = run_sync_races_live()
+    typer.echo(f"live upserted {n} rows")
 
 
 @app.command("periodic-races-yesterday")
