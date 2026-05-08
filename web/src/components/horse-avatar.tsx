@@ -39,6 +39,14 @@ function getPalette(coatColor: string | null | undefined): CoatPalette {
   return COAT_PALETTES[coatColor.trim()] ?? DEFAULT_PALETTE;
 }
 
+export function coatBodyHex(coatColor: string | null | undefined): string {
+  return getPalette(coatColor).body;
+}
+
+export function coatBgHex(coatColor: string | null | undefined): string {
+  return getPalette(coatColor).bg;
+}
+
 /** 특징 배열을 flat 한 토큰 배열로 정규화 (쉼표 분리 + 공백 제거). */
 export function normalizeCharacteristics(
   raw: string[] | null | undefined,

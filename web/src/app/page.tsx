@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-import { HorseAvatar } from "@/components/horse-avatar";
+import { HorseMark } from "@/components/brand/logo";
+import { coatBodyHex, coatBgHex } from "@/components/horse-avatar";
 import { VenueIcon } from "@/components/venue-icon";
 import { TodayMeetCard } from "@/components/today-meet-card";
 import { EmptyState } from "@/components/empty-state";
@@ -361,7 +362,7 @@ function StakesPlanCard({ stake }: { stake: UpcomingStake }) {
 }
 
 const RANK_BADGE_STYLE: Record<number, string> = {
-  1: "bg-champagne-gold text-white",
+  1: "bg-champagne-gold text-primary",
   2: "bg-slate-400 text-white",
   3: "bg-amber-700 text-white",
 };
@@ -370,7 +371,12 @@ function HorseRow({ horse }: { horse: RecentWinner }) {
   return (
     <Link href={`/horse/${horse.horse_no}`}>
       <div className="flex items-center gap-3 p-3 bg-white border border-primary/5 rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
-        <HorseAvatar coatColor={horse.coat_color} size={40} />
+        <HorseMark
+          size={40}
+          radius={8}
+          badgeFill={coatBgHex(horse.coat_color)}
+          markFill={coatBodyHex(horse.coat_color)}
+        />
         <div className="min-w-0 flex-1">
           <div className="font-bold truncate group-hover:text-primary transition-colors">{horse.horse_name}</div>
           <div className="text-[11px] text-slate-grey uppercase tracking-wider font-semibold">
@@ -378,7 +384,7 @@ function HorseRow({ horse }: { horse: RecentWinner }) {
           </div>
         </div>
         <div className="text-right shrink-0">
-          <div className="text-sm font-bold text-champagne-gold">{horse.win_count}승</div>
+          <div className="text-sm font-bold text-primary">{horse.win_count}승</div>
           <div className="text-[10px] font-mono text-muted-foreground">
             {horse.last_win_date}
           </div>
