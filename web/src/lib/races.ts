@@ -82,7 +82,7 @@ export async function getUpcomingRaces(limit = 60, meet?: string): Promise<RaceI
     return query<RaceInfo>(
       `SELECT ${RACE_COLUMNS}
          FROM races
-        WHERE race_date >= CURRENT_DATE AND meet = $1
+        WHERE race_date >= (now() AT TIME ZONE 'Asia/Seoul')::date AND meet = $1
         ORDER BY race_date ASC, race_no
         LIMIT $2`,
       [meet, limit],
@@ -91,7 +91,7 @@ export async function getUpcomingRaces(limit = 60, meet?: string): Promise<RaceI
   return query<RaceInfo>(
     `SELECT ${RACE_COLUMNS}
        FROM races
-      WHERE race_date >= CURRENT_DATE
+      WHERE race_date >= (now() AT TIME ZONE 'Asia/Seoul')::date
       ORDER BY race_date ASC, meet, race_no
       LIMIT $1`,
     [limit],
@@ -108,7 +108,7 @@ export async function getNextRaceDayRaces(): Promise<RaceInfo[]> {
     `SELECT ${RACE_COLUMNS}
        FROM races
       WHERE race_date = (
-        SELECT MIN(race_date) FROM races WHERE race_date >= CURRENT_DATE
+        SELECT MIN(race_date) FROM races WHERE race_date >= (now() AT TIME ZONE 'Asia/Seoul')::date
       )
       ORDER BY meet, race_no`,
     [],
@@ -124,7 +124,7 @@ export async function getRecentRaceDaysRaces(days = 2): Promise<RaceInfo[]> {
     `WITH recent_days AS (
        SELECT DISTINCT race_date
          FROM races
-        WHERE race_date < CURRENT_DATE
+        WHERE race_date < (now() AT TIME ZONE 'Asia/Seoul')::date
         ORDER BY race_date DESC
         LIMIT $1
      )
@@ -155,7 +155,7 @@ export async function getRecentTopFinishers(days = 4): Promise<TopFinisher[]> {
     `WITH recent_days AS (
        SELECT DISTINCT race_date
          FROM races
-        WHERE race_date < CURRENT_DATE
+        WHERE race_date < (now() AT TIME ZONE 'Asia/Seoul')::date
         ORDER BY race_date DESC
         LIMIT $1
      )
@@ -180,7 +180,7 @@ export async function getFutureRaces(limit = 90, meet?: string): Promise<RaceInf
     return query<RaceInfo>(
       `SELECT ${RACE_COLUMNS}
          FROM races
-        WHERE race_date > CURRENT_DATE AND meet = $1
+        WHERE race_date > (now() AT TIME ZONE 'Asia/Seoul')::date AND meet = $1
         ORDER BY race_date ASC, race_no
         LIMIT $2`,
       [meet, limit],
@@ -189,7 +189,7 @@ export async function getFutureRaces(limit = 90, meet?: string): Promise<RaceInf
   return query<RaceInfo>(
     `SELECT ${RACE_COLUMNS}
        FROM races
-      WHERE race_date > CURRENT_DATE
+      WHERE race_date > (now() AT TIME ZONE 'Asia/Seoul')::date
       ORDER BY race_date ASC, meet, race_no
       LIMIT $1`,
     [limit],
