@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import { Navbar } from "@/components/navbar";
 import { FloatingChat } from "@/components/floating-chat";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { HorseMarkSymbolDefs } from "@/components/brand/logo";
 import { SiteJsonLd } from "@/components/seo/site-jsonld";
 import "./globals.css";
 
@@ -86,6 +87,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <SiteJsonLd />
+        <HorseMarkSymbolDefs />
         <Navbar />
         <main className="flex-1 pb-16 md:pb-0">
           {children}
