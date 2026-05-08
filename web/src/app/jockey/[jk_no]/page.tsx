@@ -18,6 +18,7 @@ import { getVideosForRaces, raceKey, type RaceKey } from "@/lib/videos";
 import { youtubeWatchUrl } from "@/lib/video-helpers";
 import { WinRateBar } from "@/components/win-rate-bar";
 import { RecentFormDots } from "@/components/recent-form-dots";
+import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
 
 const fetchJockey = cache(getJockeyByNo);
 
@@ -56,6 +57,13 @@ export default async function JockeyDetailPage({
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
+      <BreadcrumbJsonLd
+        items={[
+          { name: "홈", url: "/" },
+          { name: "기수", url: "/jockeys" },
+          { name: jockey.jk_name, url: `/jockey/${jk_no}` },
+        ]}
+      />
       <Link
         href="/"
         className="group mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"

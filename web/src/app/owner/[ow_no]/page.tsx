@@ -17,6 +17,7 @@ import {
   getOwnerByNo,
   type Owner,
 } from "@/lib/owners";
+import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
 
 const fetchOwner = cache(getOwnerByNo);
 
@@ -54,6 +55,13 @@ export default async function OwnerDetailPage({
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
+      <BreadcrumbJsonLd
+        items={[
+          { name: "홈", url: "/" },
+          { name: "마주", url: "/horses" },
+          { name: owner.ow_name, url: `/owner/${ow_no}` },
+        ]}
+      />
       <Link
         href="/"
         className="group mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"

@@ -32,6 +32,7 @@ import {
   getHorseRankChanges,
 } from "@/lib/horse_rank_changes";
 import { RatingSparkline } from "@/components/rating-sparkline";
+import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
 import { getVideosForRaces, raceKey } from "@/lib/videos";
 
 // generateMetadata 와 페이지 본체가 같은 horse_no 를 두 번 호출하므로 cache 로 한 번만 실행.
@@ -169,6 +170,13 @@ export default async function HorseDetailPage({
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
+      <BreadcrumbJsonLd
+        items={[
+          { name: "홈", url: "/" },
+          { name: "마필", url: "/horses" },
+          { name: horse.horse_name, url: `/horse/${horse_no}` },
+        ]}
+      />
       <Link
         href="/"
         className="group mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"

@@ -7,6 +7,7 @@ import { BetaBanner } from "@/components/beta-banner";
 import { Navbar } from "@/components/navbar";
 import { FloatingChat } from "@/components/floating-chat";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { SiteJsonLd } from "@/components/seo/site-jsonld";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -85,6 +86,7 @@ export default function RootLayout({
       className={`${geistMono.variable} ${playfair.variable} ${notoSerif.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <SiteJsonLd />
         <BetaBanner />
         <Navbar />
         <main className="flex-1 pb-16 md:pb-0">

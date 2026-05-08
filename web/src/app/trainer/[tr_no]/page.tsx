@@ -20,6 +20,7 @@ import {
 } from "@/lib/trainers";
 import { WinRateBar } from "@/components/win-rate-bar";
 import { RecentFormDots } from "@/components/recent-form-dots";
+import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
 
 const fetchTrainer = cache(getTrainerByNo);
 
@@ -57,6 +58,13 @@ export default async function TrainerDetailPage({
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
+      <BreadcrumbJsonLd
+        items={[
+          { name: "홈", url: "/" },
+          { name: "조교사", url: "/jockeys" },
+          { name: trainer.tr_name, url: `/trainer/${tr_no}` },
+        ]}
+      />
       <Link
         href="/"
         className="group mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"
