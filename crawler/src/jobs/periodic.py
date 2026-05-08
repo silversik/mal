@@ -91,8 +91,18 @@ def run_sync_yesterday_catchup() -> int:
 
     결과 적재 직후 모의배팅 정산도 즉시 트리거 — 10분 주기 잡을 기다리지 않도록.
     정산 실패해도 catchup 자체는 성공으로 본다 (정산 잡이 다음 cycle 에 재시도).
+
+    Invariant fail-loud: catchup 후에도 어제 race_entries(출전표)는 있는데
+    race_results 가 0건이면 RuntimeError. 5/8 사고처럼 22:00 sync_races_today
+    잡 자체가 안 돌거나 sync_races_live 도 등록 안 된 채로 race day 결과가
+    통째로 비는 상황을 즉시 감지. KRA 발표 지연(드물게)도 포함되지만, 사람이
+    인지하고 sync-race-date 수동 재시도 판단이 필요한 상황이라 알림이 맞다.
     """
     from datetime import timedelta
+    from sqlalchemy import text
+
+    from ..db import session_scope
+
     yesterday = date.today() - timedelta(days=1)
     races = sync_date_all_meets(yesterday)
     dividends = sync_dividends_all_meets(yesterday)
@@ -102,6 +112,28 @@ def run_sync_yesterday_catchup() -> int:
     except Exception as e:  # noqa: BLE001
         log.warning("yesterday_catchup_settle_failed", err=str(e))
     log.info("yesterday_catchup_done", date=str(yesterday), races=races, dividends=dividends, sales=sales)
+
+    with session_scope() as s:
+        row = s.execute(
+            text(
+                """
+                SELECT
+                  (SELECT COUNT(*) FROM race_entries
+                    WHERE race_date = :d) AS entries,
+                  (SELECT COUNT(*) FROM race_results
+                    WHERE race_date = :d AND rank IS NOT NULL) AS results
+                """
+            ),
+            {"d": yesterday},
+        ).one()
+    if row.entries > 0 and row.results == 0:
+        raise RuntimeError(
+            f"yesterday_catchup_incomplete: {yesterday} 출전표 {row.entries}건 "
+            f"있는데 결과 0건. 22:00 KST sync_races_today 미실행 또는 KRA 발표 "
+            f"지연 가능성 — `python -m src.main sync-race-date {yesterday}` 또는 "
+            f"대시보드에서 sync_yesterday_catchup 재실행 필요."
+        )
+
     return races + dividends + sales
 
 
