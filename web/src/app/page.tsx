@@ -5,7 +5,7 @@ import { VenueIcon } from "@/components/venue-icon";
 import { TodayMeetCard } from "@/components/today-meet-card";
 import { EmptyState } from "@/components/empty-state";
 import { WinRateBar } from "@/components/win-rate-bar";
-import { RecentRacesTabs } from "@/components/recent-races-tabs";
+import { RecentRacesSwiper } from "@/components/recent-races-swiper";
 import { Badge } from "@/components/ui/badge";
 import { getRecentWinners, type RecentWinner } from "@/lib/horses";
 import { getAllJockeys, type Jockey } from "@/lib/jockeys";
@@ -190,7 +190,7 @@ export default async function Home() {
           {recentDayRaces.length === 0 ? (
             <EmptyState title="적재된 경기가 없습니다." description="크롤러가 데이터를 수집하면 표시됩니다." />
           ) : (
-            <RecentRacesTabs
+            <RecentRacesSwiper
               races={recentDayRaces}
               finishers={recentTopFinishers}
               videos={videoEntries}
