@@ -6,11 +6,13 @@ import { auth } from "@/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FavoriteHorseButton } from "@/components/favorite-horse-button";
+import { HorseMark } from "@/components/brand/logo";
 import {
-  HorseAvatar,
+  coatBgHex,
+  coatBodyHex,
   coatColorLabel,
   normalizeCharacteristics,
-} from "@/components/horse-avatar";
+} from "@/lib/coat";
 import { HorseTabs } from "@/components/horse-tabs";
 import { isHorseFavorited } from "@/lib/favorite_horses";
 import { query } from "@/lib/db";
@@ -121,10 +123,11 @@ export default async function HorseDetailPage({
                   href={`/horse/${c.horse_no}`}
                   className="group flex items-center gap-3 rounded-lg border bg-card p-3 transition hover:border-primary/50 hover:bg-accent/30"
                 >
-                  <HorseAvatar
-                    coatColor={c.coat_color}
-                    characteristics={normalizeCharacteristics(c.characteristics)}
+                  <HorseMark
                     size={36}
+                    radius={6}
+                    badgeFill={coatBgHex(c.coat_color)}
+                    markFill={coatBodyHex(c.coat_color)}
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium group-hover:text-primary">
@@ -288,10 +291,11 @@ function ProfileCard({
       />
       <CardHeader className="pb-2">
         <div className="flex items-start gap-4 pr-10">
-          <HorseAvatar
-            coatColor={horse.coat_color}
-            characteristics={horse.characteristics}
+          <HorseMark
             size={96}
+            radius={12}
+            badgeFill={coatBgHex(horse.coat_color)}
+            markFill={coatBodyHex(horse.coat_color)}
           />
           <div className="min-w-0 flex-1">
             <CardTitle className="text-4xl font-bold tracking-tight">
