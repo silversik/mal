@@ -26,6 +26,7 @@ const notoSerif = Noto_Serif_KR({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://mal.kr"),
   title: "mal.kr — 경마 데이터 아카이브",
   description: "한국마사회 공공데이터 기반 경마 데이터 시각화 서비스",
   other: { "google-adsense-account": "ca-pub-7113131922880460" },
