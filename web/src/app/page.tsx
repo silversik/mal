@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 
 import { HorseMark } from "@/components/brand/logo";
@@ -8,20 +9,21 @@ import { EmptyState } from "@/components/empty-state";
 import { WinRateBar } from "@/components/win-rate-bar";
 import { RecentRacesSwiper } from "@/components/recent-races-swiper";
 import { Badge } from "@/components/ui/badge";
-import { getRecentWinners, type RecentWinner } from "@/lib/horses";
-import { getAllJockeys, type Jockey } from "@/lib/jockeys";
+import { type RecentWinner } from "@/lib/horses";
+import { type Jockey } from "@/lib/jockeys";
+import { type RaceInfo } from "@/lib/races";
+import { type UpcomingStake } from "@/lib/race_plans";
+import { raceKey } from "@/lib/videos";
 import {
-  getNextRaceDayRaces,
-  getRecentRaceDaysRaces,
-  getRecentTopFinishers,
-  getRaceDayCard,
-  type RaceInfo,
-} from "@/lib/races";
-import {
-  getUpcomingStakesFromPlans,
-  type UpcomingStake,
-} from "@/lib/race_plans";
-import { getVideosForRaces, raceKey } from "@/lib/videos";
+  cachedAllJockeys,
+  cachedNextRaceDayRaces,
+  cachedRaceDayCard,
+  cachedRecentRaceDaysRaces,
+  cachedRecentTopFinishers,
+  cachedRecentWinners,
+  cachedUpcomingStakes,
+  cachedVideosForRaces,
+} from "@/lib/home_data";
 
 function getRaceStatus(raceDate: string): "예정" | "진행중" | "종료" {
   const today = new Date().toISOString().slice(0, 10);
@@ -42,45 +44,51 @@ function isStakesRace(r: RaceInfo): boolean {
   );
 }
 
-export default async function Home() {
+function todayKST(): string {
   // KST(UTC+9) 기준 오늘 날짜 — toISOString()은 UTC 반환이라 자정~9시 사이 날짜가 틀림.
-  const todayDate = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const [
-    recentDayRaces,
-    recentTopFinishers,
-    horses,
-    jockeys,
-    nextDayRaces,
-    upcomingStakes,
-  ] = await Promise.all([
-    getRecentRaceDaysRaces(4), // 최근 4개 경기일
-    getRecentTopFinishers(4),  // 1·2·3착 (배치)
-    getRecentWinners(8),       // 8마리로 강화
-    getAllJockeys(8),          // 8명으로 강화
-    getNextRaceDayRaces(),
-    getUpcomingStakesFromPlans(6),
+  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+/* ── Page shell — Suspense boundaries만 렌더 ─────────────── */
+
+export default function Home() {
+  const todayDate = todayKST();
+  return (
+    <div className="min-h-screen">
+      <Suspense fallback={<HeroSkeleton todayDate={todayDate} />}>
+        <HeroSection todayDate={todayDate} />
+      </Suspense>
+
+      <main className="mx-auto w-full max-w-6xl px-6 py-12">
+        <Suspense fallback={null}>
+          <TodayMeetSection todayDate={todayDate} />
+        </Suspense>
+
+        <Suspense fallback={<SwiperSkeleton />}>
+          <RecentRacesSection />
+        </Suspense>
+
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
+          <Suspense fallback={<RowsSkeleton title="최근 승리 마필" href="/horses?sort=wins" />}>
+            <RecentWinnersSection />
+          </Suspense>
+
+          <Suspense fallback={<RowsSkeleton title="TOP 기수 랭킹" href="/jockeys" />}>
+            <TopJockeysSection />
+          </Suspense>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+/* ── Hero ────────────────────────────────────────────── */
+
+async function HeroSection({ todayDate }: { todayDate: string }) {
+  const [nextDayRaces, upcomingStakes] = await Promise.all([
+    cachedNextRaceDayRaces(),
+    cachedUpcomingStakes(6),
   ]);
-
-  // 영상 썸네일 배치 조회 — 최근 경기 카드용
-  const videosMapRaw = await getVideosForRaces(
-    recentDayRaces.map((r) => ({ race_date: r.race_date, meet: r.meet, race_no: r.race_no })),
-  );
-  const videos = Array.from(videosMapRaw.entries()).map(([k, v]) => ({ key: k, video: v }));
-
-  // 오늘 경기가 있으면 경마장별 라운드 카드(출전/결과) 로드.
-  const isRaceToday = nextDayRaces[0]?.race_date === todayDate;
-  const todayMeets = isRaceToday
-    ? MEET_ORDER.filter((m) => nextDayRaces.some((r) => r.meet === m))
-    : [];
-  const todayCards = await Promise.all(
-    todayMeets.map((meet) =>
-      getRaceDayCard(todayDate, meet).then((c) => ({
-        meet,
-        phase: c.phase,
-        byRace: Object.fromEntries(c.byRace),
-      })),
-    ),
-  );
 
   const nextRaceDate = nextDayRaces[0]?.race_date ?? null;
   const nextStatus = nextRaceDate ? getRaceStatus(nextRaceDate) : null;
@@ -107,118 +115,213 @@ export default async function Home() {
     ? `/races?date=${heroDate}`
     : `/races?date=${todayDate}`;
 
-  // 영상 라이브러리에서 raceKey 형식 사용 — 클라이언트로 전달용으로 변환.
-  // (videos 배열의 key 는 RaceKey 타입이지만 직렬화 위해 string)
-  const videoEntries = videos.map((v) => ({ key: String(v.key), video: v.video }));
-  // raceKey 사용 형식 일치 확인용 — recent-races-tabs.tsx 에서 같은 포맷으로 검색.
+  return (
+    <section className="relative overflow-hidden border-b border-primary/5 bg-primary px-6 py-10 md:py-16 text-white">
+      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/carbon-fibre.png")' }}></div>
+      <div className="relative mx-auto max-w-6xl">
+        <div>
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <Badge variant="outline" className="mb-3 border-champagne-gold text-champagne-gold">
+                {heroStatus === "진행중" ? "LIVE" : useStakesFallback ? "UPCOMING" : "NEXT"} · {heroDate ?? todayDate}
+              </Badge>
+              <h1 className="font-serif text-2xl font-bold tracking-tight text-sand-ivory md:text-4xl">
+                {nextStatus === "진행중"
+                  ? "진행중인 경기"
+                  : useStakesFallback
+                    ? "다가오는 대상경주"
+                    : "다음 진행 예정 경기"}
+              </h1>
+            </div>
+            <Link
+              href={useStakesFallback ? "/races/schedule" : nextDayHref}
+              className="text-sm font-semibold text-champagne-gold transition hover:text-white"
+            >
+              더보기 &rarr;
+            </Link>
+          </div>
+
+          {featureRaces.length === 0 && !useStakesFallback ? (
+            <EmptyState
+              title="예정된 경기가 없습니다."
+              description="경기 일정을 확인해 보세요."
+              variant="dark"
+            />
+          ) : useStakesFallback ? (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              {fallbackStakes.map((s) => (
+                <StakesPlanCard key={s.id} stake={s} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              {featureRaces.map((r) => (
+                <BannerRaceCard key={r.id} race={r} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── 오늘의 경주 (개최일에만) ─────────────────────────── */
+
+async function TodayMeetSection({ todayDate }: { todayDate: string }) {
+  const nextDayRaces = await cachedNextRaceDayRaces();
+  const isRaceToday = nextDayRaces[0]?.race_date === todayDate;
+  if (!isRaceToday) return null;
+
+  const todayMeets = MEET_ORDER.filter((m) => nextDayRaces.some((r) => r.meet === m));
+  const todayCards = await Promise.all(
+    todayMeets.map((meet) =>
+      cachedRaceDayCard(todayDate, meet).then((c) => ({
+        meet,
+        phase: c.phase,
+        byRace: Object.fromEntries(c.byRace),
+      })),
+    ),
+  );
+
+  if (todayCards.length === 0) return null;
+
+  return (
+    <Section
+      title={`오늘의 경주 ${todayCards[0]?.phase === "post" ? "· 결과" : "· 출전표"}`}
+      href={`/races?date=${todayDate}`}
+      tier="l1"
+    >
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {todayCards.map(({ meet, phase, byRace }) => (
+          <TodayMeetCard
+            key={meet}
+            meet={meet}
+            date={todayDate}
+            races={nextDayRaces.filter((r) => r.meet === meet)}
+            byRace={byRace}
+            phase={phase}
+          />
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+/* ── 최근 경기 (스와이퍼) ─────────────────────────────── */
+
+async function RecentRacesSection() {
+  const [recentDayRaces, recentTopFinishers] = await Promise.all([
+    cachedRecentRaceDaysRaces(4),
+    cachedRecentTopFinishers(4),
+  ]);
+
+  const videos = await cachedVideosForRaces(
+    recentDayRaces.map((r) => ({ race_date: r.race_date, meet: r.meet, race_no: r.race_no })),
+  );
+  const videoEntries = videos.map(([k, v]) => ({ key: String(k), video: v }));
   void raceKey;
 
   return (
-    <div className="min-h-screen">
-      <section className="relative overflow-hidden border-b border-primary/5 bg-primary px-6 py-10 md:py-16 text-white">
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/carbon-fibre.png")' }}></div>
-        <div className="relative mx-auto max-w-6xl">
-          <div>
-            <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <Badge variant="outline" className="mb-3 border-champagne-gold text-champagne-gold">
-                  {heroStatus === "진행중" ? "LIVE" : useStakesFallback ? "UPCOMING" : "NEXT"} · {heroDate ?? todayDate}
-                </Badge>
-                <h1 className="font-serif text-2xl font-bold tracking-tight text-sand-ivory md:text-4xl">
-                  {nextStatus === "진행중"
-                    ? "진행중인 경기"
-                    : useStakesFallback
-                      ? "다가오는 대상경주"
-                      : "다음 진행 예정 경기"}
-                </h1>
-              </div>
-              <Link
-                href={useStakesFallback ? "/races/schedule" : nextDayHref}
-                className="text-sm font-semibold text-champagne-gold transition hover:text-white"
-              >
-                더보기 &rarr;
-              </Link>
-            </div>
+    <Section title="최근 경기" href="/races" tier="l1">
+      {recentDayRaces.length === 0 ? (
+        <EmptyState title="적재된 경기가 없습니다." description="크롤러가 데이터를 수집하면 표시됩니다." />
+      ) : (
+        <RecentRacesSwiper
+          races={recentDayRaces}
+          finishers={recentTopFinishers}
+          videos={videoEntries}
+        />
+      )}
+    </Section>
+  );
+}
 
-            {featureRaces.length === 0 && !useStakesFallback ? (
-              <EmptyState
-                title="예정된 경기가 없습니다."
-                description="경기 일정을 확인해 보세요."
-                variant="dark"
-              />
-            ) : useStakesFallback ? (
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                {fallbackStakes.map((s) => (
-                  <StakesPlanCard key={s.id} stake={s} />
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                {featureRaces.map((r) => (
-                  <BannerRaceCard key={r.id} race={r} />
-                ))}
-              </div>
-            )}
+/* ── 최근 승리 마필 ──────────────────────────────────── */
+
+async function RecentWinnersSection() {
+  const horses = await cachedRecentWinners(8);
+  return (
+    <Section title="최근 승리 마필" href="/horses?sort=wins" tier="l1">
+      <div className="space-y-2">
+        {horses.map((h) => (
+          <HorseRow key={h.horse_no} horse={h} />
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+/* ── TOP 기수 랭킹 ──────────────────────────────────── */
+
+async function TopJockeysSection() {
+  const jockeys = await cachedAllJockeys(8);
+  return (
+    <Section title="TOP 기수 랭킹" href="/jockeys" tier="l1">
+      <div className="space-y-2">
+        {jockeys.map((j, i) => (
+          <JockeyRow key={j.jk_no} jockey={j} rank={i + 1} />
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+/* ── Skeleton fallbacks ───────────────────────────────── */
+
+function HeroSkeleton({ todayDate }: { todayDate: string }) {
+  return (
+    <section className="relative overflow-hidden border-b border-primary/5 bg-primary px-6 py-10 md:py-16 text-white">
+      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/carbon-fibre.png")' }}></div>
+      <div className="relative mx-auto max-w-6xl">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="mb-3 inline-block rounded border border-champagne-gold/40 px-2 py-0.5 text-[10px] text-champagne-gold/70">
+              · {todayDate}
+            </div>
+            <div className="h-9 w-72 animate-pulse rounded bg-white/10 md:h-12 md:w-96" />
           </div>
         </div>
-      </section>
-
-      <main className="mx-auto w-full max-w-6xl px-6 py-12">
-        {/* 오늘의 경주 — 경기 있는 날만 노출 */}
-        {todayCards.length > 0 && (
-          <Section
-            title={`오늘의 경주 ${todayCards[0]?.phase === "post" ? "· 결과" : "· 출전표"}`}
-            href={`/races?date=${todayDate}`}
-            tier="l1"
-          >
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              {todayCards.map(({ meet, phase, byRace }) => (
-                <TodayMeetCard
-                  key={meet}
-                  meet={meet}
-                  date={todayDate}
-                  races={nextDayRaces.filter((r) => r.meet === meet)}
-                  byRace={byRace}
-                  phase={phase}
-                />
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {/* 경기 — 탭 인터페이스 + 썸네일 + 1·2·3착 */}
-        <Section title="최근 경기" href="/races" tier="l1">
-          {recentDayRaces.length === 0 ? (
-            <EmptyState title="적재된 경기가 없습니다." description="크롤러가 데이터를 수집하면 표시됩니다." />
-          ) : (
-            <RecentRacesSwiper
-              races={recentDayRaces}
-              finishers={recentTopFinishers}
-              videos={videoEntries}
-            />
-          )}
-        </Section>
-
-        {/* 마필 & 기수 — 강화된 레이아웃 */}
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
-          <Section title="최근 승리 마필" href="/horses?sort=wins" tier="l1">
-            <div className="space-y-2">
-              {horses.map((h) => (
-                <HorseRow key={h.horse_no} horse={h} />
-              ))}
-            </div>
-          </Section>
-
-          <Section title="TOP 기수 랭킹" href="/jockeys" tier="l1">
-            <div className="space-y-2">
-              {jockeys.map((j, i) => (
-                <JockeyRow key={j.jk_no} jockey={j} rank={i + 1} />
-              ))}
-            </div>
-          </Section>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-40 animate-pulse rounded-xl border border-white/10 bg-white/5" />
+          ))}
         </div>
-      </main>
-    </div>
+      </div>
+    </section>
+  );
+}
+
+function SwiperSkeleton() {
+  return (
+    <section className="mb-12">
+      <div className="mb-5 flex items-end justify-between border-b-2 border-primary/15 pb-2">
+        <h2 className="font-serif text-3xl font-bold text-primary">최근 경기</h2>
+      </div>
+      <div className="flex gap-3 overflow-hidden sm:gap-4">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-56 w-[55%] shrink-0 animate-pulse rounded-xl border border-primary/8 bg-white sm:w-48" />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RowsSkeleton({ title, href }: { title: string; href: string }) {
+  return (
+    <Section title={title} href={href} tier="l1">
+      <div className="space-y-2">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 rounded-lg border border-primary/5 bg-white p-3">
+            <div className="h-10 w-10 shrink-0 animate-pulse rounded bg-muted" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+              <div className="h-3 w-20 animate-pulse rounded bg-muted/70" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </Section>
   );
 }
 
