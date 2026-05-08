@@ -98,13 +98,6 @@ export default async function HorseDetailPage({
     const children = await getChildrenByParentNo(horse_no, 30);
     return (
       <main className="mx-auto w-full max-w-4xl px-6 py-12">
-        <Link
-          href="/"
-          className="group mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"
-        >
-          <span className="transition group-hover:-translate-x-0.5">&larr;</span>
-          메인으로
-        </Link>
         <div className="mt-12 text-center">
           <p className="text-2xl font-bold">{horse_no}</p>
           <p className="mt-2 text-muted-foreground">
@@ -180,13 +173,6 @@ export default async function HorseDetailPage({
           { name: horse.horse_name, url: `/horse/${horse_no}` },
         ]}
       />
-      <Link
-        href="/"
-        className="group mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"
-      >
-        <span className="transition group-hover:-translate-x-0.5">&larr;</span>
-        메인으로
-      </Link>
 
       <ProfileCard
         horse={horse}
