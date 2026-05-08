@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { SafeImage } from "@/components/safe-image";
@@ -7,6 +8,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { countNews, getLatestNews, type NewsItem } from "@/lib/news";
 import { countVideos, getLatestVideos } from "@/lib/videos";
 import type { VideoItem } from "@/lib/video-helpers";
+
+export const metadata: Metadata = {
+  title: "뉴스 · 영상",
+  description:
+    "한국 경마 뉴스와 KRBC 경주 영상 피드 — 최신 소식과 하이라이트를 한눈에.",
+  alternates: { canonical: "/news" },
+};
 
 type FeedItem =
   | { kind: "news"; published_at: string; data: NewsItem }

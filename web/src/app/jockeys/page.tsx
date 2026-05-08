@@ -1,9 +1,17 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getAllJockeys, searchJockeysByName, type Jockey } from "@/lib/jockeys";
+
+export const metadata: Metadata = {
+  title: "기수 검색",
+  description:
+    "한국 경마 기수 명단 — 통산 출전·1·2·3착·승률을 기수명/소속별로 검색.",
+  alternates: { canonical: "/jockeys" },
+};
 
 type SearchParams = { q?: string };
 

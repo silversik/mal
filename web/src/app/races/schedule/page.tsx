@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,13 @@ import {
   type RacePlan,
   type Tier,
 } from "@/lib/race_plans";
+
+export const metadata: Metadata = {
+  title: "대상경주 일정",
+  description:
+    "한국마사회 대상경주(G1·G2·G3·L·특별) 연간 일정 — 경마장·등급별 스테이크 캘린더.",
+  alternates: { canonical: "/races/schedule" },
+};
 
 type SearchParams = { year?: string; meet?: string; tier?: string };
 
