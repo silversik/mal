@@ -144,7 +144,7 @@ function HorseCard({ horse, showWins }: { horse: Horse; showWins: boolean }) {
                   {horse.horse_name}
                 </span>
                 {showWins && horse.first_place_count > 0 && (
-                  <span className="shrink-0 text-xs font-bold text-champagne-gold">
+                  <span className="shrink-0 text-xs font-bold text-gold-ink">
                     {horse.first_place_count}승
                   </span>
                 )}

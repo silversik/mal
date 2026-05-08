@@ -39,7 +39,7 @@ export function TodayMeetCard({ meet, date, races, byRace, phase }: TodayMeetCar
           className={`border text-[11px] ${
             phase === "post"
               ? "border-primary/20 bg-muted text-slate-grey"
-              : "border-champagne-gold/40 bg-champagne-gold/10 text-champagne-gold"
+              : "border-champagne-gold/40 bg-champagne-gold/10 text-gold-ink"
           }`}
         >
           {phase === "post" ? "결과" : "출전표"}
