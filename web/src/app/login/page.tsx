@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export const metadata = {
   title: "로그인",
+  robots: { index: false, follow: false },
 };
 
 // 로그인 / 회원가입 통합 페이지.

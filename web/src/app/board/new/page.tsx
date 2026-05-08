@@ -8,6 +8,7 @@ import { createPostAction } from "./actions";
 
 export const metadata = {
   title: "새 글 쓰기 · 자유게시판",
+  robots: { index: false, follow: false },
 };
 
 type SearchParams = { error?: string };
