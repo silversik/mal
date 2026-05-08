@@ -30,7 +30,7 @@ const ATTENDANCE_LABEL: Record<string, { ok: boolean; msg: string }> = {
 };
 
 export const metadata = {
-  title: "마이페이지 · mal.kr",
+  title: "마이페이지",
 };
 
 type SearchParams = {

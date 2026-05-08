@@ -4,7 +4,7 @@ import { auth, signIn } from "@/auth";
 import { Card, CardContent } from "@/components/ui/card";
 
 export const metadata = {
-  title: "로그인 · mal.kr",
+  title: "로그인",
 };
 
 // 로그인 / 회원가입 통합 페이지.

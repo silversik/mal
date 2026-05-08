@@ -7,7 +7,7 @@ import { CONTENT_MAX, TITLE_MAX } from "@/lib/posts";
 import { createPostAction } from "./actions";
 
 export const metadata = {
-  title: "새 글 쓰기 · 자유게시판 · mal.kr",
+  title: "새 글 쓰기 · 자유게시판",
 };
 
 type SearchParams = { error?: string };

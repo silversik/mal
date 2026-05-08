@@ -5,7 +5,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { countPosts, listPosts, type CommunityPost } from "@/lib/posts";
 
 export const metadata = {
-  title: "자유게시판 · mal.kr",
+  title: "자유게시판",
+  description: "mal.kr 자유게시판 — 경마 팬 커뮤니티 글타래.",
+  alternates: { canonical: "/board" },
 };
 
 const PAGE_SIZE = 20;

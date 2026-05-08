@@ -12,8 +12,21 @@ export async function generateMetadata({
 }) {
   const { id } = await params;
   const post = await getPost(Number(id));
+  if (!post) return { title: "글", robots: { index: false } };
+  const excerpt = post.content.slice(0, 140).replace(/\s+/g, " ").trim();
   return {
-    title: post ? `${post.title} · 자유게시판 · mal.kr` : "글 · mal.kr",
+    title: `${post.title} · 자유게시판`,
+    description: excerpt || `${post.title} — mal.kr 자유게시판 글.`,
+    alternates: { canonical: `/board/${post.id}` },
+    openGraph: {
+      type: "article",
+      title: post.title,
+      description: excerpt || undefined,
+      url: `/board/${post.id}`,
+      publishedTime: post.created_at,
+      modifiedTime: post.updated_at,
+      authors: post.author_name ? [post.author_name] : undefined,
+    },
   };
 }
 
