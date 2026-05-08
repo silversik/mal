@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { HorseMark } from "@/components/brand/logo";
-import { coatBodyHex, coatBgHex } from "@/components/horse-avatar";
+import { coatBodyHex, coatBgHex } from "@/lib/coat";
 import { VenueIcon } from "@/components/venue-icon";
 import { TodayMeetCard } from "@/components/today-meet-card";
 import { EmptyState } from "@/components/empty-state";
