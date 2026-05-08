@@ -52,9 +52,17 @@ def _find_missing(days_back: int, limit: int) -> list[dict[str, Any]]:
 
 
 def backfill_missing_race_videos(
-    *, days_back: int = 30, limit: int = 50
+    *, days_back: int = 365, limit: int = 50
 ) -> int:
     """매칭 안 된 최근 `days_back` 일 경주를 YouTube search 로 찾아 upsert.
+
+    days_back=365 — 30일 윈도우(이전 default)는 영구 누락을 방치한다.
+    sync_videos 가 uploads playlist head 만 max_results=20 으로 가져오는
+    구조라 race day 영상 폭주(~30개) 시 일부가 head 에서 밀려 적재 누락되는
+    케이스가 있고, 그 backstop 이 backfill 의 search. 30일 초과한 경기는
+    매칭 시도 자체가 안 돼 영광의월드(0047231) 처럼 1년치 영상이 통째로
+    비는 사례 발생. LIMIT=50 + ORDER DESC 라 quota(50 × 100 = 5000 units/day,
+    한도 10000) 안에서 매일 회전 처리 — ~30일 후 1년치 누락 cover.
 
     Returns: upsert 된 영상 수 (정확히 매칭된 경주 수와 같지 않을 수 있음 —
     search 가 제목만 반환 후 fetch_videos 로 상세 조회 시 race_date 파싱 실패로
