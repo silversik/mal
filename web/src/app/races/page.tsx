@@ -480,7 +480,6 @@ export default async function RacesPage({
               )}
               <Card>
               <div className="relative overflow-x-auto rounded-[inherit]">
-                <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-background to-transparent md:hidden" />
               <Table className="min-w-[580px]">
                 <TableHeader>
                   <TableRow>
