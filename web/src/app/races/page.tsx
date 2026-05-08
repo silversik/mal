@@ -39,7 +39,7 @@ import {
   POOL_DISPLAY_ORDER,
   type RacePoolSales,
 } from "@/lib/race_pool_sales";
-import { getRaceVideo, youtubeEmbedUrl, youtubeWatchUrl } from "@/lib/videos";
+import { getRaceVideo, youtubeWatchUrl } from "@/lib/videos";
 
 import { BetForm } from "./bet-form";
 
@@ -51,16 +51,6 @@ type SearchParams = { date?: string; venue?: string; race?: string };
 const MEET_ORDER = ["서울", "제주", "부경"] as const;
 
 /* ── date helpers ────────────────────────────────────────── */
-
-function offsetDate(dateStr: string, days: number): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const dt = new Date(y, m - 1, d + days);
-  return [
-    dt.getFullYear(),
-    String(dt.getMonth() + 1).padStart(2, "0"),
-    String(dt.getDate()).padStart(2, "0"),
-  ].join("-");
-}
 
 /**
  * 정렬된 YYYY-MM-DD 리스트(`raceDates`)에서 기준일의 바로 이전/다음
@@ -269,13 +259,16 @@ export default async function RacesPage({
         )}
       </div>
 
-      {/* ── 경기 없음 ── */}
+      {/* ── 경기 없음 — CTA + 다가오는 대상경주 미리보기 ── */}
       {activeMeets.length === 0 && plannedForDate.length === 0 && (
-        <Card className="border-dashed">
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            {formatDateLabel(currentDate)}에는 경기 기록이 없습니다.
-          </CardContent>
-        </Card>
+        <EmptyDayPanel
+          currentDate={currentDate}
+          prevDate={prevDate}
+          nextDate={nextDate}
+          upcoming={upcomingAll
+            .filter((s) => s.race_date > currentDate)
+            .slice(0, 3)}
+        />
       )}
 
       {/* ── 예정된 대상경주 (races 미적재 상태) ── */}
@@ -283,10 +276,10 @@ export default async function RacesPage({
         <UpcomingStakesPanel date={currentDate} stakes={plannedForDate} />
       )}
 
-      {/* ── 라운드 필터 ── */}
+      {/* ── 라운드 레일 (경기장별) ── */}
       {activeMeets.length > 0 && (
-        <div className="mb-6 space-y-2">
-          {activeMeets.map((meet) => {
+        <div className="mb-6 overflow-hidden rounded-xl border bg-card shadow-sm">
+          {activeMeets.map((meet, mi) => {
             const meetRaces = byMeet[meet];
             const status =
               currentDate < today
@@ -294,15 +287,29 @@ export default async function RacesPage({
                 : currentDate === today
                   ? "진행중"
                   : "예정";
+            const statusClass =
+              status === "종료"
+                ? "text-muted-foreground"
+                : status === "진행중"
+                  ? "text-[#FF0000]"
+                  : "text-champagne-gold";
 
             return (
-              <div key={meet} className="flex items-center gap-2">
-                <div className="flex w-16 shrink-0 items-center gap-1 text-xs font-semibold text-foreground">
-                  <VenueIcon meet={meet} size={13} />
+              <div
+                key={meet}
+                className={[
+                  "flex items-center gap-3 px-3 py-2 sm:px-4",
+                  mi > 0 ? "border-t" : "",
+                ].join(" ")}
+              >
+                <div className="flex w-[88px] shrink-0 items-center gap-1.5 whitespace-nowrap text-[13px] font-bold">
+                  <VenueIcon meet={meet} size={14} />
                   <span>{meet}</span>
+                  <span className={`text-[10px] font-semibold ${statusClass}`}>
+                    · {status}
+                  </span>
                 </div>
-                <div className="h-4 w-px shrink-0 bg-border" />
-                <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
+                <div className="flex flex-1 gap-1.5 overflow-x-auto scrollbar-hide">
                   {meetRaces.map((r) => {
                     const stakes = isStakesRace(r);
                     const isSelected =
@@ -311,31 +318,54 @@ export default async function RacesPage({
                     const href = `/races?date=${currentDate}&venue=${encodeURIComponent(r.meet)}&race=${r.race_no}`;
 
                     return (
-                      <Link key={r.id} href={href} className="shrink-0">
-                        <div
-                          className={[
-                            "flex h-9 w-9 flex-col items-center justify-center rounded-md border transition",
-                            isSelected
-                              ? "border-primary bg-primary text-white shadow-sm"
-                              : stakes
-                                ? "border-champagne-gold/60 bg-champagne-gold/10 text-champagne-gold hover:bg-champagne-gold/20"
-                                : status === "종료"
-                                  ? "border-border bg-card text-muted-foreground hover:bg-muted"
-                                  : "border-border bg-card text-foreground hover:bg-muted",
-                            stakes && status === "진행중" && !isSelected
-                              ? "animate-pulse"
-                              : "",
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                        >
-                          <span className="text-xs font-bold leading-none">
-                            {r.race_no}
+                      <Link
+                        key={r.id}
+                        href={href}
+                        className="relative flex h-[42px] min-w-[60px] flex-1 flex-col items-center justify-center rounded-lg border transition"
+                        style={
+                          isSelected
+                            ? {
+                                borderColor: "var(--primary)",
+                                background: "var(--primary)",
+                                color: "#fff",
+                                boxShadow: "0 2px 6px -2px rgba(139,90,60,0.4)",
+                              }
+                            : stakes
+                              ? {
+                                  borderColor:
+                                    "color-mix(in srgb, var(--color-champagne-gold) 50%, transparent)",
+                                  background:
+                                    "color-mix(in srgb, var(--color-champagne-gold) 12%, transparent)",
+                                  color: "var(--color-champagne-gold)",
+                                }
+                              : {
+                                  borderColor: "var(--border)",
+                                  background: "var(--card)",
+                                  color:
+                                    status === "종료"
+                                      ? "var(--muted-foreground)"
+                                      : "var(--foreground)",
+                                }
+                        }
+                      >
+                        <span className="text-[13px] font-bold leading-none">
+                          {r.race_no}R
+                        </span>
+                        {r.start_time && (
+                          <span className="mt-1 font-mono text-[10px] leading-none tabular-nums opacity-70">
+                            {r.start_time}
                           </span>
-                          <span className="text-[8px] leading-none opacity-60">
-                            R
+                        )}
+                        {stakes && !isSelected && (
+                          <span className="absolute right-1 top-0.5 text-[9px] font-extrabold leading-none">
+                            ★
                           </span>
-                        </div>
+                        )}
+                        {stakes &&
+                          status === "진행중" &&
+                          !isSelected && (
+                            <span className="absolute inset-0 animate-pulse rounded-lg ring-1 ring-champagne-gold/40" />
+                          )}
                       </Link>
                     );
                   })}
@@ -348,124 +378,18 @@ export default async function RacesPage({
 
       {/* ── 선택된 경기 상세 ── */}
       {selectedRace && (
-        <section className="mt-8">
-          <div className="mb-4 flex flex-wrap items-center gap-3 border-t pt-8">
-            <div className="flex h-10 w-10 flex-col items-center justify-center rounded-md bg-primary text-white">
-              <span className="text-sm font-bold leading-none">
-                {selectedRace.race_no}
-              </span>
-              <span className="text-[9px] leading-none opacity-70">R</span>
-            </div>
-            <h2 className="text-xl font-bold">
-              {selectedRace.race_name ?? `${selectedRace.race_no}라운드`}
-            </h2>
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <VenueIcon meet={selectedRace.meet} size={14} className="opacity-60" />
-              <span>{selectedRace.meet}</span>
-            </div>
-            <span className="font-mono text-sm text-muted-foreground">
-              {currentDate}
-            </span>
-            {selectedRace.start_time && (
-              <span className="font-mono text-sm font-semibold tabular-nums text-muted-foreground">
-                {selectedRace.start_time}
-              </span>
-            )}
-            {selectedRace.distance && (
-              <span className="text-sm text-muted-foreground">
-                {selectedRace.distance}m
-              </span>
-            )}
-            {selectedRace.grade && (
-              <Badge
-                variant="secondary"
-                className={`font-normal ${
-                  isStakesRace(selectedRace)
-                    ? "border-champagne-gold/40 bg-champagne-gold/10 text-champagne-gold"
-                    : ""
-                }`}
-              >
-                {selectedRace.grade}
-              </Badge>
-            )}
-            {selectedRace.track_condition && (
-              <span className="text-sm text-muted-foreground">
-                주로: {selectedRace.track_condition}
-              </span>
-            )}
-            {selectedRace && (
-              <div className="ml-auto flex items-center gap-2">
-                {syncedAt && (
-                  <span
-                    className="text-[11px] text-muted-foreground/70 tabular-nums"
-                    title={`데이터 수집 시각: ${syncedAt}`}
-                  >
-                    업데이트 {formatSyncedAt(syncedAt)}
-                  </span>
-                )}
-                {isToday && (
-                  <a
-                    href={KRBC_LIVE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-md bg-[#FF0000] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#CC0000]"
-                  >
-                    <span className="relative flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-                    </span>
-                    KRBC 라이브
-                  </a>
-                )}
-                {raceVideo ? (
-                  <a
-                    href={youtubeWatchUrl(raceVideo.video_id)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-md bg-[#FF0000]/10 px-3 py-1.5 text-xs font-medium text-[#FF0000] transition hover:bg-[#FF0000]/20"
-                  >
-                    <YoutubeIcon />
-                    경주 영상 보기
-                  </a>
-                ) : (
-                  ytSearchUrl && (
-                    <a
-                      href={ytSearchUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-md border border-[#FF0000]/30 px-3 py-1.5 text-xs font-medium text-[#FF0000] transition hover:bg-[#FF0000]/10"
-                    >
-                      <YoutubeIcon />
-                      유튜브에서 검색
-                    </a>
-                  )
-                )}
-              </div>
-            )}
-          </div>
-
-          {raceVideo && (
-            <div className="mb-6 overflow-hidden rounded-xl border bg-card shadow-sm">
-              <div className="aspect-video w-full bg-black">
-                <iframe
-                  src={youtubeEmbedUrl(raceVideo.video_id)}
-                  title={raceVideo.title}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="h-full w-full"
-                />
-              </div>
-              <div className="px-4 py-3 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">{raceVideo.title}</span>
-                {raceVideo.channel_title && (
-                  <>
-                    <span className="mx-1.5 opacity-40">·</span>
-                    {raceVideo.channel_title}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
+        <section className="mt-6">
+          <RaceHeaderCard
+            race={selectedRace}
+            currentDate={currentDate}
+            isToday={isToday}
+            isStakes={isStakesRace(selectedRace)}
+            syncedAtFormatted={syncedAt ? formatSyncedAt(syncedAt) : null}
+            syncedAtRaw={syncedAt}
+            videoId={raceVideo?.video_id ?? null}
+            videoTitle={raceVideo?.title ?? null}
+            ytSearchUrl={ytSearchUrl}
+          />
 
           {entries.length > 0 ? (
             <>
@@ -659,35 +583,36 @@ function PoolSalesSection({ rows }: { rows: RacePoolSales[] }) {
   return (
     <div className="mt-6">
       <div className="mb-3 flex items-baseline justify-between">
-        <h3 className="text-sm font-semibold text-muted-foreground">풀별 매출</h3>
+        <h3 className="text-sm font-semibold text-muted-foreground">
+          풀별 매출 · 배당
+        </h3>
         <span className="text-xs text-muted-foreground tabular-nums">
-          총 매출 <strong className="text-foreground">{formatAmount(String(total))}</strong>
+          총{" "}
+          <strong className="text-foreground">{formatAmount(String(total))}</strong>
         </span>
       </div>
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-16">풀</TableHead>
-              <TableHead className="text-right">매출액</TableHead>
-              <TableHead>인기순위 (배당률)</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sorted.map((r) => (
-              <TableRow key={r.pool}>
-                <TableCell className="font-semibold">{r.pool}</TableCell>
-                <TableCell className="text-right font-mono tabular-nums">
-                  {formatAmount(r.amount)}
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {r.odds_summary ?? "-"}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+        {sorted.map((r, i) => (
+          <div
+            key={r.pool}
+            className={[
+              "grid items-center gap-3 px-4 py-3 text-sm",
+              "grid-cols-[44px_1fr_auto]",
+              i < sorted.length - 1 ? "border-b" : "",
+            ].join(" ")}
+          >
+            <span className="text-[11px] font-extrabold tracking-wider text-champagne-gold">
+              {r.pool}
+            </span>
+            <span className="truncate font-mono text-xs tabular-nums text-muted-foreground">
+              {r.odds_summary ?? "-"}
+            </span>
+            <span className="font-mono text-sm font-bold tabular-nums">
+              {formatAmount(r.amount)}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -775,32 +700,94 @@ function ComboDividendsSection({ rows }: { rows: RaceComboDividend[] }) {
       <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
         복식 배당
       </h3>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {activePools.map((pool) => {
           const items = byPool.get(pool) ?? [];
+          const ordered = POOL_ORDERED[pool];
           return (
-            <Card key={pool}>
-              <div className="border-b bg-muted/40 px-4 py-2 text-xs font-semibold tracking-wide text-muted-foreground">
-                {POOL_LABEL[pool]}{" "}
-                <span className="ml-1 font-mono opacity-70">{pool}</span>
+            <div
+              key={pool}
+              className="overflow-hidden rounded-xl border bg-card shadow-sm"
+            >
+              <div className="flex items-baseline justify-between border-b border-champagne-gold/20 bg-champagne-gold/8 px-3 py-2">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-[12px] font-extrabold tracking-wider text-champagne-gold">
+                    {POOL_LABEL[pool]}
+                  </span>
+                  <span className="font-mono text-[10px] text-champagne-gold/70">
+                    {pool}
+                  </span>
+                </div>
+                <span className="text-[10px] text-muted-foreground">
+                  {ordered ? "착순 일치" : "조합"}
+                </span>
               </div>
               <div className="divide-y divide-border/40">
                 {items.map((d, i) => (
-                  <div
+                  <ComboRow
                     key={`${pool}-${i}`}
-                    className="flex items-center justify-between px-4 py-1.5 text-xs"
-                  >
-                    <span className="truncate">{formatCombo(d)}</span>
-                    <span className="ml-2 shrink-0 font-mono tabular-nums font-semibold">
-                      {formatOdds(d.odds)}
-                    </span>
-                  </div>
+                    d={d}
+                    ordered={ordered}
+                    rank={i + 1}
+                  />
                 ))}
               </div>
-            </Card>
+            </div>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/** 복식배당 한 줄 — 마번 칩 + (→ / ·) 구분자 + 마명 + 우측 배당 */
+function ComboRow({
+  d,
+  ordered,
+  rank,
+}: {
+  d: RaceComboDividend;
+  ordered: boolean;
+  rank: number;
+}) {
+  const horses: { no: string; name: string | null }[] = [
+    { no: d.horse_no_1, name: d.horse_name_1 },
+    { no: d.horse_no_2, name: d.horse_name_2 },
+  ];
+  if (d.horse_no_3) {
+    horses.push({ no: d.horse_no_3, name: d.horse_name_3 });
+  }
+  const sep = ordered ? "→" : "·";
+  return (
+    <div className="grid grid-cols-[1fr_auto] items-center gap-3 px-3 py-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1">
+        <span
+          className="mr-1 text-[10px] font-bold tabular-nums text-muted-foreground/80"
+          aria-hidden
+        >
+          {rank}
+        </span>
+        {horses.map((h, i) => (
+          <span key={i} className="flex items-center gap-1 min-w-0">
+            {i > 0 && (
+              <span className="text-[11px] text-muted-foreground/70">
+                {sep}
+              </span>
+            )}
+            <span className="inline-flex h-[18px] min-w-[20px] items-center justify-center rounded bg-muted px-1 font-mono text-[10px] font-bold tabular-nums">
+              {h.no}
+            </span>
+            {h.name && (
+              <span className="truncate text-[12px] font-medium">
+                {h.name}
+              </span>
+            )}
+          </span>
+        ))}
+      </div>
+      <span className="shrink-0 font-mono text-[13px] font-bold tabular-nums">
+        {formatOdds(d.odds)}
+      </span>
     </div>
   );
 }
@@ -924,4 +911,361 @@ function YoutubeIcon() {
       <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
     </svg>
   );
+}
+
+/* ── 경기 헤더 카드 ──────────────────────────────────────── */
+/**
+ * 출전표/결과 위에 올라가는 메달리언 카드.
+ * 디자인 요점: 메달리언(R번호) + 제목·메타 + 우측 데이터 갱신 시각 + 우측 영상 썸네일.
+ *
+ * 영상 썸네일 우선순위: race_video > KRBC 라이브(오늘) > 유튜브 검색 폴백.
+ * 라이브 상태는 KRBC 채널의 LIVE 페이지(자동 리다이렉트)로 빠지므로 썸네일에는
+ * `LIVE` 배지만 표시한다. 검색 폴백은 썸네일 대신 텍스트 링크.
+ */
+function RaceHeaderCard({
+  race,
+  currentDate,
+  isToday,
+  isStakes,
+  syncedAtFormatted,
+  syncedAtRaw,
+  videoId,
+  videoTitle,
+  ytSearchUrl,
+}: {
+  race: RaceInfo;
+  currentDate: string;
+  isToday: boolean;
+  isStakes: boolean;
+  syncedAtFormatted: string | null;
+  syncedAtRaw: string | null;
+  videoId: string | null;
+  videoTitle: string | null;
+  ytSearchUrl: string | null;
+}) {
+  const showLiveThumb = isToday && !videoId;
+  const showVideoThumb = !!videoId;
+  const hasThumb = showVideoThumb || showLiveThumb;
+
+  const thumbHref = videoId ? youtubeWatchUrl(videoId) : KRBC_LIVE_URL;
+  // KRBC 채널 라이브 페이지는 thumbnail 이미지가 채널 정책상 핫링크 차단되는 경우가
+  // 있어 빈 검정 박스로 폴백. 영상 ID 가 있으면 ytimg CDN 의 mqdefault 사용.
+  const thumbImg = videoId
+    ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`
+    : null;
+
+  return (
+    <div
+      className={[
+        "mb-5 rounded-xl border bg-card shadow-sm",
+        "px-4 py-4 sm:px-6 sm:py-5",
+      ].join(" ")}
+    >
+      <div
+        className={[
+          "grid items-center gap-4",
+          hasThumb
+            ? "grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_auto_auto]"
+            : "grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_auto]",
+        ].join(" ")}
+      >
+        {/* Race-number medallion */}
+        <div
+          className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl text-white shadow-md sm:h-16 sm:w-16"
+          style={{
+            background: isStakes
+              ? "linear-gradient(135deg, var(--color-champagne-gold), #B8962E)"
+              : "linear-gradient(135deg, var(--primary), #6E4631)",
+          }}
+        >
+          <span className="text-2xl font-extrabold leading-none tracking-tight sm:text-[26px]">
+            {race.race_no}
+          </span>
+          <span className="mt-1 text-[9px] tracking-[0.1em] opacity-80">
+            RACE
+          </span>
+        </div>
+
+        {/* Title + meta */}
+        <div className="min-w-0">
+          <div className="mb-1.5 flex flex-wrap items-center gap-2">
+            {isStakes && race.grade && (
+              <span className="rounded border border-champagne-gold/40 bg-champagne-gold/10 px-1.5 py-0.5 text-[10px] font-extrabold tracking-wider text-champagne-gold">
+                {race.grade} 대상경주
+              </span>
+            )}
+            {!isStakes && race.grade && (
+              <Badge variant="secondary" className="font-normal">
+                {race.grade}
+              </Badge>
+            )}
+            <span className="venue-chip inline-flex items-center gap-1.5 text-xs font-semibold">
+              <VenueIcon meet={race.meet} size={13} />
+              {race.meet}
+            </span>
+          </div>
+          <h2 className="truncate text-lg font-extrabold tracking-tight sm:text-xl">
+            {race.race_name ?? `${race.race_no}라운드`}
+          </h2>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-muted-foreground tabular-nums">
+            <span className="font-mono">📅 {currentDate}</span>
+            {race.start_time && (
+              <span className="font-mono font-semibold">
+                🕐 {race.start_time}
+              </span>
+            )}
+            {race.distance && <span>📏 {race.distance}m</span>}
+            {race.track_condition && <span>🌤 주로 {race.track_condition}</span>}
+          </div>
+        </div>
+
+        {/* Synced at + KRBC live (sm+) */}
+        <div className="col-span-2 flex flex-col items-end gap-1.5 sm:col-span-1">
+          {syncedAtFormatted && (
+            <span
+              className="text-[11px] tabular-nums text-muted-foreground/70"
+              title={
+                syncedAtRaw ? `데이터 수집 시각: ${syncedAtRaw}` : undefined
+              }
+            >
+              업데이트 {syncedAtFormatted}
+            </span>
+          )}
+          {!hasThumb && isToday && (
+            <a
+              href={KRBC_LIVE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md bg-[#FF0000] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#CC0000]"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+              </span>
+              KRBC 라이브
+            </a>
+          )}
+          {!hasThumb && !isToday && ytSearchUrl && (
+            <a
+              href={ytSearchUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md border border-[#FF0000]/30 px-3 py-1.5 text-xs font-medium text-[#FF0000] transition hover:bg-[#FF0000]/10"
+            >
+              <YoutubeIcon />
+              유튜브에서 검색
+            </a>
+          )}
+        </div>
+
+        {/* Right thumbnail link (video or live) */}
+        {hasThumb && (
+          <a
+            href={thumbHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={
+              showLiveThumb ? "KRBC 라이브 시청" : "경주 영상 보기"
+            }
+            title={videoTitle ?? (showLiveThumb ? "KRBC 라이브" : undefined)}
+            className={[
+              "relative col-span-2 block aspect-video w-full overflow-hidden rounded-lg bg-black sm:col-span-1 sm:w-[180px]",
+              showLiveThumb
+                ? "border border-[#FF0000]/40"
+                : "border border-border",
+            ].join(" ")}
+          >
+            {thumbImg ? (
+              <img
+                src={thumbImg}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-br from-[#1a0000] via-black to-[#1a0000]" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+            <span
+              className={[
+                "absolute left-1.5 top-1.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9.5px] font-extrabold tracking-wider text-white",
+                showLiveThumb ? "bg-[#FF0000]" : "bg-black/75",
+              ].join(" ")}
+            >
+              {showLiveThumb && (
+                <span className="relative inline-flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
+                </span>
+              )}
+              {showLiveThumb ? "LIVE" : "▶ 영상"}
+            </span>
+            <span className="absolute inset-0 flex items-center justify-center">
+              <span
+                className={[
+                  "flex h-7 w-9 items-center justify-center rounded-md",
+                  showLiveThumb ? "bg-[#FF0000]/90" : "bg-black/75",
+                ].join(" ")}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="white"
+                >
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </span>
+            </span>
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── 빈 날짜 패널 ────────────────────────────────────────── */
+/** "이 날은 경기가 없어요" — CTA(직전 결과 / 다음 출전표) + 다가오는 대상경주 미리보기. */
+function EmptyDayPanel({
+  currentDate,
+  prevDate,
+  nextDate,
+  upcoming,
+}: {
+  currentDate: string;
+  prevDate: string | null;
+  nextDate: string | null;
+  upcoming: UpcomingStake[];
+}) {
+  return (
+    <>
+      <div className="relative overflow-hidden rounded-2xl border bg-card px-6 py-12 text-center shadow-sm sm:px-12 sm:py-14">
+        {/* Decorative gold rings */}
+        <div
+          className="pointer-events-none absolute -right-32 -top-32 h-72 w-72 rounded-full border border-champagne-gold/20"
+          style={{
+            background:
+              "radial-gradient(circle at 30% 30%, rgba(212,175,55,0.10), transparent 60%)",
+          }}
+        />
+        <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full border border-champagne-gold/10" />
+
+        <div className="relative">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <svg
+              width="26"
+              height="26"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+          </div>
+          <h2 className="mb-2 text-xl font-extrabold tracking-tight sm:text-2xl">
+            이 날은 경기가 없어요
+          </h2>
+          <p className="mb-7 text-sm leading-relaxed text-muted-foreground">
+            {formatDateLabel(currentDate)}에는 등록된 경기가 없습니다.
+            <br />
+            가까운 경기일로 이동하거나, 다가오는 대상경주 일정을 확인해 보세요.
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-2.5">
+            {prevDate && (
+              <Link
+                href={`/races?date=${prevDate}`}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-bold text-white shadow-md transition hover:bg-primary/90"
+              >
+                ‹ {formatDateLabel(prevDate)} 결과 보기
+              </Link>
+            )}
+            {nextDate && (
+              <Link
+                href={`/races?date=${nextDate}`}
+                className="inline-flex items-center gap-2 rounded-lg border bg-card px-5 py-3 text-sm font-bold text-foreground transition hover:bg-muted"
+              >
+                {formatDateLabel(nextDate)} 출전표 ›
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {upcoming.length > 0 && (
+        <div className="mt-8">
+          <div className="mb-3 flex items-baseline justify-between">
+            <h3 className="text-sm font-bold tracking-tight text-muted-foreground">
+              다가오는 대상경주
+            </h3>
+            <Link
+              href="/races/schedule"
+              className="text-xs text-muted-foreground transition hover:text-primary"
+            >
+              전체 일정 →
+            </Link>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {upcoming.map((s) => (
+              <UpcomingStakeCard key={s.id} stake={s} today={currentDate} />
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function UpcomingStakeCard({
+  stake,
+  today,
+}: {
+  stake: UpcomingStake;
+  today: string;
+}) {
+  const display = stake.race_name.replace(/\s*\((G[123]|L|특)\)\s*/g, "").trim();
+  const days = daysBetween(today, stake.race_date);
+  const dLabel = days <= 0 ? "오늘" : `D-${days}`;
+  return (
+    <Link
+      href={`/races?date=${stake.race_date}`}
+      className="block rounded-xl border bg-card p-4 shadow-sm transition hover:bg-muted/40"
+    >
+      <div className="mb-2 flex items-center justify-between">
+        <span className="venue-chip inline-flex items-center gap-1.5 text-xs font-semibold">
+          <VenueIcon meet={stake.meet} size={13} />
+          {stake.meet}
+        </span>
+        {stake.tier && (
+          <span className="rounded bg-champagne-gold/15 px-1.5 py-0.5 text-[10px] font-extrabold tracking-wider text-champagne-gold">
+            {stake.tier}
+          </span>
+        )}
+      </div>
+      <div className="mb-1.5 truncate text-[15px] font-bold tracking-tight">
+        {display}
+      </div>
+      <div className="flex items-baseline justify-between text-xs text-muted-foreground tabular-nums">
+        <span>
+          {formatDateLabel(stake.race_date)}
+          {stake.distance ? ` · ${stake.distance}m` : ""}
+        </span>
+        <span className="font-bold text-primary">{dLabel}</span>
+      </div>
+    </Link>
+  );
+}
+
+/** 두 YYYY-MM-DD 사이의 일수 차이(정수). 같은 날이면 0. */
+function daysBetween(a: string, b: string): number {
+  const [ay, am, ad] = a.split("-").map(Number);
+  const [by, bm, bd] = b.split("-").map(Number);
+  const da = Date.UTC(ay, am - 1, ad);
+  const db = Date.UTC(by, bm - 1, bd);
+  return Math.round((db - da) / 86_400_000);
 }
