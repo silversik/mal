@@ -51,12 +51,15 @@ def run_sync_news() -> int:
 
 @track_job("mal.sync_videos")
 def run_sync_videos() -> int:
+    # 환경변수 미설정 시 silent skip(return 0) 하면 scraper_runs 가 success 로
+    # 기록되어 모니터링이 미수집 사고를 캐치하지 못한다 (mal.sync_race_entries
+    # 의 KRA_CHULMA_OPERATION 미설정으로 4/25 이후 race_entries 0건 사고 참고).
+    # 명시적 RuntimeError 로 전환하면 scraper_runs 가 failed 로 떨어져 즉시
+    # 대시보드에 빨간 신호로 보인다.
     if not settings.youtube_api_key or not settings.youtube_krbc_channel_id:
-        log.warning(
-            "sync_videos_skipped_missing_config",
-            reason="YOUTUBE_API_KEY / YOUTUBE_KRBC_CHANNEL_ID 미설정",
+        raise RuntimeError(
+            "YOUTUBE_API_KEY / YOUTUBE_KRBC_CHANNEL_ID 미설정 — .env 에 추가 필요"
         )
-        return 0
     return sync_videos(max_results=20)
 
 
@@ -125,12 +128,16 @@ def run_sync_race_plan() -> int:
 
 @track_job("mal.sync_race_entries")
 def run_sync_race_entries() -> int:
+    # 4/25 ~ 5/8 구간에서 KRA_CHULMA_OPERATION 가 빈 값이라 매 3시간마다
+    # success/0 으로 silent skip 되었고, race_entries 가 한 줄도 안 들어와
+    # "오늘의 경주"·"다음 진행 예정 경기" 섹션이 빈 채로 노출된 사고가 있었음.
+    # success/0 이라 모니터링이 캐치 못함 — 명시적 RuntimeError 로 전환해
+    # scraper_runs 에 failed 로 기록되도록.
     if not settings.kra_chulma_operation:
-        log.warning(
-            "sync_race_entries_skipped_missing_config",
-            reason="KRA_CHULMA_OPERATION 미설정 — Swagger 확인 후 .env 에 추가",
+        raise RuntimeError(
+            "KRA_CHULMA_OPERATION 미설정 — data.go.kr Swagger 의 API26_2 "
+            "operationId (예: entrySheet_2) 를 .env 에 추가하세요."
         )
-        return 0
     return sync_upcoming_race_entries(days_ahead=10)
 
 
