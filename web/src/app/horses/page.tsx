@@ -117,7 +117,7 @@ export default async function HorsesPage({
           title={queryStr ? "검색 결과가 없습니다." : "적재된 마필이 없습니다."}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {resultRows.map((h) => (
             <HorseCard key={h.horse_no} horse={h} showWins={!queryStr && activeSort === "wins"} />
           ))}
@@ -135,8 +135,8 @@ function HorseCard({ horse, showWins }: { horse: Horse; showWins: boolean }) {
 
   return (
     <Link href={`/horse/${horse.horse_no}`}>
-      <Card className="h-full transition hover:border-primary/40 hover:shadow-md hover:shadow-primary/5">
-        <CardContent className="p-4">
+      <Card className="h-full py-0 transition hover:border-primary/40 hover:shadow-md hover:shadow-primary/5">
+        <CardContent className="p-3">
           <div className="flex items-start gap-3">
             <HorseMark
               size={36}
