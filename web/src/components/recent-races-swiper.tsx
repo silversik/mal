@@ -10,10 +10,10 @@ import type { VideoItem } from "@/lib/video-helpers";
 const MEETS = ["서울", "제주", "부경"] as const;
 type Meet = (typeof MEETS)[number];
 
-const RANK_STYLE: Record<number, string> = {
-  1: "bg-champagne-gold text-white",
-  2: "bg-slate-400 text-white",
-  3: "bg-amber-700 text-white",
+const RANK_MEDAL: Record<number, string> = {
+  1: "🥇",
+  2: "🥈",
+  3: "🥉",
 };
 
 const MAX_DOTS = 8;
@@ -365,13 +365,12 @@ function RecentRaceCard({
           <div className="py-2 text-center text-[11px] text-slate-grey/70">결과 미확정</div>
         ) : (
           finishers.slice(0, 3).map((f) => (
-            <div key={f.rank} className="flex items-center gap-2 text-xs">
+            <div key={f.horse_no} className="flex items-center gap-2 text-xs">
               <span
-                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
-                  RANK_STYLE[f.rank] ?? "bg-muted text-foreground"
-                }`}
+                className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-sm leading-none"
+                aria-label={`${f.rank}위`}
               >
-                {f.rank}
+                {RANK_MEDAL[f.rank] ?? f.rank}
               </span>
               <span className="min-w-0 flex-1 truncate font-semibold text-foreground group-hover:text-primary">
                 {f.horse_name}
