@@ -1,6 +1,13 @@
 import type { MetadataRoute } from "next";
 import { query } from "@/lib/db";
 
+// Dockerfile 의 build 단계는 placeholder DATABASE_URL 로 실행되므로 sitemap 을
+// prerender 하면 SCRAM auth 에러로 빌드가 실패한다.  요청 시점에만 DB 를 친다.
+export const dynamic = "force-dynamic";
+// 크롤러가 자주 치지는 않으나 한 번 만들어 두면 1 시간 캐시.  (force-dynamic 일 때
+// revalidate 는 무시되지만, 향후 정책이 바뀌어도 의도가 코드에 남도록 명시.)
+export const revalidate = 3600;
+
 const SITE = "https://mal.kr";
 
 // 현재 규모(마필 ~수천, 기수/조교사/마주 ~수백, 게시글 N) 는 sitemap 1 개로 충분
