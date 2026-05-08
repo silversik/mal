@@ -106,7 +106,7 @@ export async function getUpcomingStakesFromPlans(
             COALESCE(prize_1st, (raw->>'chaksun1')::bigint) AS prize_1st
        FROM race_plans
       WHERE raw->>'pgDate' ~ '^[0-9]{8}$'
-        AND to_date(raw->>'pgDate','YYYYMMDD') >= CURRENT_DATE
+        AND to_date(raw->>'pgDate','YYYYMMDD') >= (NOW() AT TIME ZONE 'Asia/Seoul')::date
       ORDER BY to_date(raw->>'pgDate','YYYYMMDD'), meet, race_name
       LIMIT $1`,
     [limit],
