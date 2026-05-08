@@ -174,16 +174,36 @@ export async function getRecentWinners(limit = 6): Promise<RecentWinner[]> {
 }
 
 export type HorseSort = "latest" | "wins";
+export type HorseAgeBucket = "under5" | "under10" | "over11";
 
-/** /horses 페이지용 정렬 지원 쿼리. */
-export async function getHorsesSorted(sort: HorseSort = "latest", limit = 60): Promise<Horse[]> {
+function ageWhereClause(bucket: HorseAgeBucket): string {
+  // KRA 한국 마령은 만 나이 기준이 아닌 출생연도 기준 — 같은 해 출생은 동일 마령.
+  // 따라서 'EXTRACT(YEAR FROM age)' 보다 birth_date 범위 비교가 정확.
+  switch (bucket) {
+    case "under5":
+      return "h.birth_date >= (CURRENT_DATE - INTERVAL '5 years')";
+    case "under10":
+      return "h.birth_date >= (CURRENT_DATE - INTERVAL '10 years')";
+    case "over11":
+      return "h.birth_date <= (CURRENT_DATE - INTERVAL '11 years')";
+  }
+}
+
+/** /horses 페이지용 정렬 + 나이 필터 쿼리. */
+export async function getHorsesSorted(
+  sort: HorseSort = "wins",
+  ageBucket: HorseAgeBucket = "under5",
+  limit = 60,
+): Promise<Horse[]> {
   const order =
     sort === "wins"
       ? "h.first_place_count DESC, h.total_race_count DESC, h.created_at DESC"
       : "h.created_at DESC";
+  const where = `WHERE ${ageWhereClause(ageBucket)}`;
   return query<Horse>(
     `SELECT ${HORSE_COLUMNS}
        FROM ${HORSE_FROM}
+       ${where}
       ORDER BY ${order}
       LIMIT $1`,
     [limit],
