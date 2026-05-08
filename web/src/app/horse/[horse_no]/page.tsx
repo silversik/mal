@@ -1,3 +1,5 @@
+import { cache } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { auth } from "@/auth";
@@ -30,7 +32,43 @@ import {
   getHorseRankChanges,
 } from "@/lib/horse_rank_changes";
 import { RatingSparkline } from "@/components/rating-sparkline";
+import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
 import { getVideosForRaces, raceKey } from "@/lib/videos";
+
+// generateMetadata 와 페이지 본체가 같은 horse_no 를 두 번 호출하므로 cache 로 한 번만 실행.
+const fetchHorse = cache(getHorseByNo);
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ horse_no: string }> },
+): Promise<Metadata> {
+  const { horse_no } = await params;
+  const horse = await fetchHorse(horse_no);
+  if (!horse) {
+    return {
+      title: `마필 ${horse_no} (정보 없음)`,
+      description: "이 마필의 상세 데이터는 아직 수집되지 않았습니다.",
+      robots: { index: false, follow: true },
+      alternates: { canonical: `/horse/${horse_no}` },
+    };
+  }
+  const stats = `통산 ${horse.total_race_count}전 ${horse.first_place_count}승`;
+  const sex = horse.sex ?? "";
+  const country = horse.country ?? "";
+  const sire = horse.sire_name ?? "-";
+  const dam = horse.dam_name ?? "-";
+  const description = `${horse.horse_name} (${[country, sex].filter(Boolean).join("·")}) — ${stats}. 부 ${sire} / 모 ${dam}. 혈통·경주 기록·레이팅 추이.`;
+  return {
+    title: `${horse.horse_name} · 경주마 프로필`,
+    description,
+    alternates: { canonical: `/horse/${horse_no}` },
+    openGraph: {
+      type: "profile",
+      title: `${horse.horse_name} · 경주마 프로필`,
+      description,
+      url: `/horse/${horse_no}`,
+    },
+  };
+}
 
 type JockeyMap = Record<string, string>;
 
@@ -51,7 +89,7 @@ export default async function HorseDetailPage({
   params: Promise<{ horse_no: string }>;
 }) {
   const { horse_no } = await params;
-  const horse = await getHorseByNo(horse_no);
+  const horse = await fetchHorse(horse_no);
   if (!horse) {
     // 미수집 마필이라도 다른 horses 의 sire_no/dam_no 에 등록돼 있을 수 있다.
     // 자식 목록을 보여주면 stub 부모 노드 클릭 흐름이 의미를 가진다.
@@ -132,6 +170,13 @@ export default async function HorseDetailPage({
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
+      <BreadcrumbJsonLd
+        items={[
+          { name: "홈", url: "/" },
+          { name: "마필", url: "/horses" },
+          { name: horse.horse_name, url: `/horse/${horse_no}` },
+        ]}
+      />
       <Link
         href="/"
         className="group mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"

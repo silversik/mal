@@ -4,6 +4,11 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { listNotifications, markAllRead } from "@/lib/notifications";
 
+export const metadata = {
+  title: "알림",
+  robots: { index: false, follow: false },
+};
+
 export const dynamic = "force-dynamic";
 
 async function markAllReadAction() {

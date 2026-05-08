@@ -1,3 +1,5 @@
+import { cache } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -18,6 +20,30 @@ import {
 } from "@/lib/trainers";
 import { WinRateBar } from "@/components/win-rate-bar";
 import { RecentFormDots } from "@/components/recent-form-dots";
+import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
+
+const fetchTrainer = cache(getTrainerByNo);
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ tr_no: string }> },
+): Promise<Metadata> {
+  const { tr_no } = await params;
+  const trainer = await fetchTrainer(tr_no);
+  if (!trainer) return { title: "조교사 정보 없음", robots: { index: false } };
+  const winRate = trainer.win_rate ? `${trainer.win_rate}%` : "-";
+  const description = `${trainer.tr_name} 조교사 (${trainer.meet ?? ""}) — 통산 ${trainer.total_race_count}전 ${trainer.first_place_count}·${trainer.second_place_count}·${trainer.third_place_count}, 승률 ${winRate}. 최근 출전 기록.`;
+  return {
+    title: `${trainer.tr_name} · 조교사 프로필`,
+    description,
+    alternates: { canonical: `/trainer/${tr_no}` },
+    openGraph: {
+      type: "profile",
+      title: `${trainer.tr_name} · 조교사 프로필`,
+      description,
+      url: `/trainer/${tr_no}`,
+    },
+  };
+}
 
 export default async function TrainerDetailPage({
   params,
@@ -25,13 +51,20 @@ export default async function TrainerDetailPage({
   params: Promise<{ tr_no: string }>;
 }) {
   const { tr_no } = await params;
-  const trainer = await getTrainerByNo(tr_no);
+  const trainer = await fetchTrainer(tr_no);
   if (!trainer) notFound();
 
   const recentRaces = await getRecentRacesByTrainer(trainer.tr_name, 20);
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-12">
+      <BreadcrumbJsonLd
+        items={[
+          { name: "홈", url: "/" },
+          { name: "조교사", url: "/jockeys" },
+          { name: trainer.tr_name, url: `/trainer/${tr_no}` },
+        ]}
+      />
       <Link
         href="/"
         className="group mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"

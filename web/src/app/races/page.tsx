@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = {
+  title: "경주 결과",
+  description:
+    "한국마사회 경주 결과 — 일자·경마장별 출전마, 기수, 조교사, 배당 데이터를 한 곳에서.",
+  alternates: { canonical: "/races" },
+};
 
 import { auth } from "@/auth";
 import { RaceDatePicker } from "@/components/race-date-picker";

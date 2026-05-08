@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { HorseAvatar } from "@/components/horse-avatar";
@@ -12,6 +13,13 @@ import {
   type Horse,
   type HorseSort,
 } from "@/lib/horses";
+
+export const metadata: Metadata = {
+  title: "마필 검색",
+  description:
+    "한국 경주마 데이터베이스 — 마명·출생연도·나이로 검색하고 통산 출전·우승·혈통을 한눈에.",
+  alternates: { canonical: "/horses" },
+};
 
 type SearchParams = { q?: string; sort?: string };
 

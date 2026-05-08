@@ -11,7 +11,8 @@ import {
 import { POOL_LABEL, POOL_STYLE } from "@/lib/pool_style";
 
 export const metadata = {
-  title: "베팅 내역 · mal.kr",
+  title: "베팅 내역",
+  robots: { index: false, follow: false },
 };
 
 const KIND_LABEL: Record<string, string> = {

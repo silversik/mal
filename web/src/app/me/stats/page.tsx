@@ -7,7 +7,8 @@ import { getUserBalance } from "@/lib/balances";
 import { getUserStats } from "@/lib/bets";
 
 export const metadata = {
-  title: "베팅 통계 · mal.kr",
+  title: "베팅 통계",
+  robots: { index: false, follow: false },
 };
 
 function fmtP(p: bigint): string {
