@@ -362,7 +362,7 @@ function RecentRaceCard({
 
       <div className="space-y-1 p-3">
         {finishers.length === 0 ? (
-          <div className="py-2 text-center text-[11px] text-slate-grey/70">결과 미확정</div>
+          <div className="py-2 text-center text-[11px] text-slate-grey/70">결과 수집 대기</div>
         ) : (
           finishers.slice(0, 3).map((f) => (
             <div key={f.horse_no} className="flex items-center gap-2 text-xs">
