@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { VenueIcon } from "@/components/venue-icon";
 import type { RaceInfo, TopFinisher } from "@/lib/races";
@@ -142,45 +142,97 @@ function DesktopView({
 }) {
   return (
     <div className="hidden space-y-8 md:block">
-      {MEETS.map((m) => {
-        const list = byMeet[m];
-        return (
-          <div key={m}>
-            <div className="mb-3 flex items-center gap-2">
-              <VenueIcon meet={m} size={16} className="opacity-70" />
-              <h3 className="text-base font-bold text-primary">{m}</h3>
-              <span className="font-mono text-xs text-slate-grey/70 tabular-nums">{list.length}</span>
-            </div>
+      {MEETS.map((m) => (
+        <MeetScrollRow
+          key={m}
+          meet={m}
+          list={byMeet[m]}
+          finishersMap={finishersMap}
+          videosMap={videosMap}
+        />
+      ))}
+    </div>
+  );
+}
 
-            {list.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-primary/10 py-6 text-center text-xs text-slate-grey">
-                최근 경기가 없습니다.
-              </div>
-            ) : (
-              <div className="relative">
-                <div className="-mx-2 overflow-x-auto px-2 scrollbar-hide" style={{ scrollSnapType: "x mandatory" }}>
-                  <div className="flex gap-4 pb-2">
-                    {list.map((r) => {
-                      const k = videoKey(r.race_date, r.meet, r.race_no);
-                      return (
-                        <div key={r.id} className="w-72 shrink-0" style={{ scrollSnapAlign: "start" }}>
-                          <RecentRaceCard
-                            race={r}
-                            finishers={finishersMap.get(k) ?? []}
-                            video={videosMap.get(k) ?? null}
-                          />
-                        </div>
-                      );
-                    })}
+function MeetScrollRow({
+  meet,
+  list,
+  finishersMap,
+  videosMap,
+}: {
+  meet: Meet;
+  list: RaceInfo[];
+  finishersMap: Map<string, TopFinisher[]>;
+  videosMap: Map<string, VideoItem>;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragScrollLeft = useRef(0);
+
+  const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    isDragging.current = true;
+    dragStartX.current = e.pageX - (scrollRef.current?.offsetLeft ?? 0);
+    dragScrollLeft.current = scrollRef.current?.scrollLeft ?? 0;
+    if (scrollRef.current) scrollRef.current.style.cursor = "grabbing";
+  };
+
+  const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging.current) return;
+    e.preventDefault();
+    const x = e.pageX - (scrollRef.current?.offsetLeft ?? 0);
+    const walk = (x - dragStartX.current) * 1.2;
+    if (scrollRef.current) scrollRef.current.scrollLeft = dragScrollLeft.current - walk;
+  };
+
+  const stopDrag = () => {
+    isDragging.current = false;
+    if (scrollRef.current) scrollRef.current.style.cursor = "grab";
+  };
+
+  return (
+    <div>
+      <div className="mb-3 flex items-center gap-2">
+        <VenueIcon meet={meet} size={16} className="opacity-70" />
+        <h3 className="text-base font-bold text-primary">{meet}</h3>
+        <span className="font-mono text-xs text-slate-grey/70 tabular-nums">{list.length}</span>
+      </div>
+
+      {list.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-primary/10 py-6 text-center text-xs text-slate-grey">
+          최근 경기가 없습니다.
+        </div>
+      ) : (
+        <div className="relative">
+          <div
+            ref={scrollRef}
+            className="-mx-2 overflow-x-auto px-2 scrollbar-hide"
+            style={{ scrollSnapType: "x mandatory", cursor: "grab", userSelect: "none" }}
+            onMouseDown={onMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={stopDrag}
+            onMouseLeave={stopDrag}
+          >
+            <div className="flex gap-4 pb-2">
+              {list.map((r) => {
+                const k = videoKey(r.race_date, r.meet, r.race_no);
+                return (
+                  <div key={r.id} className="w-72 shrink-0" style={{ scrollSnapAlign: "start" }}>
+                    <RecentRaceCard
+                      race={r}
+                      finishers={finishersMap.get(k) ?? []}
+                      video={videosMap.get(k) ?? null}
+                    />
                   </div>
-                </div>
-                {/* 우측 페이드 — 더 있다는 시각적 단서 */}
-                <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-background to-transparent" />
-              </div>
-            )}
+                );
+              })}
+            </div>
           </div>
-        );
-      })}
+          {/* 우측 페이드 — 더 있다는 시각적 단서 */}
+          <div className="pointer-events-none absolute inset-y-0 -right-2 w-14 bg-gradient-to-l from-background to-transparent" />
+        </div>
+      )}
     </div>
   );
 }
@@ -240,7 +292,7 @@ function RecentRaceCard({
           <div className="py-2 text-center text-[11px] text-slate-grey/70">결과 미확정</div>
         ) : (
           finishers.slice(0, 3).map((f) => (
-            <div key={f.rank} className="flex items-center gap-2 text-xs">
+            <div key={f.horse_no} className="flex items-center gap-2 text-xs">
               <span
                 className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
                   RANK_STYLE[f.rank] ?? "bg-muted text-foreground"
