@@ -206,3 +206,32 @@ export function coatColorLabel(coatColor: string | null | undefined): string | n
   if (!coatColor || coatColor === "-") return null;
   return coatColor.trim();
 }
+
+/**
+ * 모색 색상만 사용하는 심플 원형 아바타.
+ * SVG 없이 배경색 + border만으로 표현한다.
+ */
+export function HorseDot({
+  coatColor,
+  size = 40,
+  className = "",
+}: {
+  coatColor: string | null | undefined;
+  size?: number;
+  className?: string;
+}) {
+  const p = getPalette(coatColor);
+  return (
+    <span
+      className={`inline-flex shrink-0 rounded-full ${className}`}
+      style={{
+        width: size,
+        height: size,
+        backgroundColor: p.body,
+        boxShadow: `inset 0 -2px 4px ${p.mane}55`,
+        border: `2px solid ${p.mane}33`,
+      }}
+      aria-label={coatColor ?? "말"}
+    />
+  );
+}

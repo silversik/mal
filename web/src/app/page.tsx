@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { HorseAvatar } from "@/components/horse-avatar";
+import { HorseDot } from "@/components/horse-avatar";
 import { VenueIcon } from "@/components/venue-icon";
 import { TodayMeetCard } from "@/components/today-meet-card";
 import { EmptyState } from "@/components/empty-state";
@@ -370,7 +370,7 @@ function HorseRow({ horse }: { horse: RecentWinner }) {
   return (
     <Link href={`/horse/${horse.horse_no}`}>
       <div className="flex items-center gap-3 p-3 bg-white border border-primary/5 rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
-        <HorseAvatar coatColor={horse.coat_color} size={40} />
+        <HorseDot coatColor={horse.coat_color} size={40} />
         <div className="min-w-0 flex-1">
           <div className="font-bold truncate group-hover:text-primary transition-colors">{horse.horse_name}</div>
           <div className="text-[11px] text-slate-grey uppercase tracking-wider font-semibold">
