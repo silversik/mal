@@ -25,11 +25,18 @@ import {
   cachedVideosForRaces,
 } from "@/lib/home_data";
 
-function getRaceStatus(raceDate: string): "예정" | "진행중" | "종료" {
-  const today = new Date().toISOString().slice(0, 10);
-  if (raceDate < today) return "종료";
-  if (raceDate === today) return "진행중";
-  return "예정";
+function todayKST(): string {
+  // KST(UTC+9) 기준 오늘 날짜 — toISOString()은 UTC 반환이라 자정~9시 사이 날짜가 틀림.
+  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+// 같은 KST 날짜라도 결과가 모두 적재된 경기는 "종료" 로. has_results 는
+// races.ts 의 getNextRaceDayRaces 가 채워주는 per-race boolean.
+function getRaceStatus(race: Pick<RaceInfo, "race_date" | "has_results">): "예정" | "진행중" | "종료" {
+  const today = todayKST();
+  if (race.race_date < today) return "종료";
+  if (race.race_date > today) return "예정";
+  return race.has_results ? "종료" : "진행중";
 }
 
 const MEET_ORDER = ["서울", "제주", "부경"] as const;
@@ -42,11 +49,6 @@ function isStakesRace(r: RaceInfo): boolean {
         r.grade.includes("대상"))) ||
     (r.race_name && r.race_name.includes("대상"))
   );
-}
-
-function todayKST(): string {
-  // KST(UTC+9) 기준 오늘 날짜 — toISOString()은 UTC 반환이라 자정~9시 사이 날짜가 틀림.
-  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
 /* ── Page shell — Suspense boundaries만 렌더 ─────────────── */
@@ -90,8 +92,14 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
     cachedUpcomingStakes(6),
   ]);
 
-  const nextRaceDate = nextDayRaces[0]?.race_date ?? null;
-  const nextStatus = nextRaceDate ? getRaceStatus(nextRaceDate) : null;
+  const nextRaceRef = nextDayRaces[0] ?? null;
+  const nextRaceDate = nextRaceRef?.race_date ?? null;
+  // 같은 KST 날짜의 모든 경기 결과가 적재됐으면 그 날 전체를 "종료"로 본다.
+  const nextDayAllFinished =
+    nextDayRaces.length > 0 && nextDayRaces.every((r) => r.has_results);
+  const nextStatus = nextRaceRef
+    ? getRaceStatus({ ...nextRaceRef, has_results: nextDayAllFinished })
+    : null;
   const detectedStakes = nextDayRaces.filter(isStakesRace);
   const featureRaces =
     detectedStakes.length > 0
@@ -110,7 +118,10 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
     : [];
 
   const heroDate = nextRaceDate ?? fallbackDate;
-  const heroStatus = heroDate ? getRaceStatus(heroDate) : null;
+  // fallback(=race_plans 미래 대상경주)는 결과가 있을 수 없으므로 has_results=false.
+  const heroStatus = heroDate
+    ? getRaceStatus({ race_date: heroDate, has_results: nextDayAllFinished })
+    : null;
   const nextDayHref = heroDate
     ? `/races?date=${heroDate}`
     : `/races?date=${todayDate}`;
@@ -382,7 +393,7 @@ const BANNER_STATUS_STYLE = {
 } as const;
 
 function BannerRaceCard({ race }: { race: RaceInfo }) {
-  const status = getRaceStatus(race.race_date);
+  const status = getRaceStatus(race);
   const stakes = isStakesRace(race);
   const href = `/races?date=${race.race_date}&venue=${encodeURIComponent(race.meet)}&race=${race.race_no}`;
   return (

@@ -12,6 +12,9 @@ export type RaceInfo = {
   track_condition: string | null;
   entry_count: number | null;
   start_time: string | null;  // HH:MM 발주시각 (KRA API 수집 시 채워짐)
+  // 해당 경주에 race_results.rank 가 적재됐는지. "종료" 판정에 사용.
+  // 모든 RACE_COLUMNS 사용 쿼리에서 채워짐.
+  has_results: boolean;
 };
 
 export type RaceEntry = {
@@ -54,8 +57,18 @@ const RACE_COLUMNS = `
   id,
   to_char(race_date, 'YYYY-MM-DD') AS race_date,
   meet, race_no, race_name, distance, grade,
-  track_type, track_condition, entry_count, start_time
+  track_type, track_condition, entry_count, start_time,
+  EXISTS (SELECT 1 FROM race_results rr
+           WHERE rr.race_date = races.race_date
+             AND rr.meet = races.meet
+             AND rr.race_no = races.race_no
+             AND rr.rank IS NOT NULL) AS has_results
 `;
+
+// "오늘" 비교는 항상 KST. DB 기본 시간대(UTC)의 CURRENT_DATE 를 그대로 쓰면
+// 자정~9시(KST) 구간에 어제/오늘 경계가 어긋나 어제 끝난 경기가 "다음 경기"로
+// 잡히는 버그가 난다. 모든 race_date 비교는 이 헬퍼를 사용.
+const KST_TODAY = `(NOW() AT TIME ZONE 'Asia/Seoul')::date`;
 
 export async function getRecentRaces(limit = 20, meet?: string): Promise<RaceInfo[]> {
   if (meet) {
@@ -82,7 +95,7 @@ export async function getUpcomingRaces(limit = 60, meet?: string): Promise<RaceI
     return query<RaceInfo>(
       `SELECT ${RACE_COLUMNS}
          FROM races
-        WHERE race_date >= (now() AT TIME ZONE 'Asia/Seoul')::date AND meet = $1
+        WHERE race_date >= ${KST_TODAY} AND meet = $1
         ORDER BY race_date ASC, race_no
         LIMIT $2`,
       [meet, limit],
@@ -91,7 +104,7 @@ export async function getUpcomingRaces(limit = 60, meet?: string): Promise<RaceI
   return query<RaceInfo>(
     `SELECT ${RACE_COLUMNS}
        FROM races
-      WHERE race_date >= (now() AT TIME ZONE 'Asia/Seoul')::date
+      WHERE race_date >= ${KST_TODAY}
       ORDER BY race_date ASC, meet, race_no
       LIMIT $1`,
     [limit],
@@ -108,7 +121,7 @@ export async function getNextRaceDayRaces(): Promise<RaceInfo[]> {
     `SELECT ${RACE_COLUMNS}
        FROM races
       WHERE race_date = (
-        SELECT MIN(race_date) FROM races WHERE race_date >= (now() AT TIME ZONE 'Asia/Seoul')::date
+        SELECT MIN(race_date) FROM races WHERE race_date >= ${KST_TODAY}
       )
       ORDER BY meet, race_no`,
     [],
@@ -124,7 +137,7 @@ export async function getRecentRaceDaysRaces(days = 2): Promise<RaceInfo[]> {
     `WITH recent_days AS (
        SELECT DISTINCT race_date
          FROM races
-        WHERE race_date < (now() AT TIME ZONE 'Asia/Seoul')::date
+        WHERE race_date < ${KST_TODAY}
         ORDER BY race_date DESC
         LIMIT $1
      )
@@ -155,7 +168,7 @@ export async function getRecentTopFinishers(days = 4): Promise<TopFinisher[]> {
     `WITH recent_days AS (
        SELECT DISTINCT race_date
          FROM races
-        WHERE race_date < (now() AT TIME ZONE 'Asia/Seoul')::date
+        WHERE race_date < ${KST_TODAY}
         ORDER BY race_date DESC
         LIMIT $1
      )
@@ -180,7 +193,7 @@ export async function getFutureRaces(limit = 90, meet?: string): Promise<RaceInf
     return query<RaceInfo>(
       `SELECT ${RACE_COLUMNS}
          FROM races
-        WHERE race_date > (now() AT TIME ZONE 'Asia/Seoul')::date AND meet = $1
+        WHERE race_date > ${KST_TODAY} AND meet = $1
         ORDER BY race_date ASC, race_no
         LIMIT $2`,
       [meet, limit],
@@ -189,7 +202,7 @@ export async function getFutureRaces(limit = 90, meet?: string): Promise<RaceInf
   return query<RaceInfo>(
     `SELECT ${RACE_COLUMNS}
        FROM races
-      WHERE race_date > (now() AT TIME ZONE 'Asia/Seoul')::date
+      WHERE race_date > ${KST_TODAY}
       ORDER BY race_date ASC, meet, race_no
       LIMIT $1`,
     [limit],
