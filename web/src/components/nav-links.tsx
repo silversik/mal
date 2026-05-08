@@ -7,7 +7,6 @@ const NAV_LINKS = [
   { href: "/races", label: "경기" },
   { href: "/horses", label: "마필" },
   { href: "/jockeys", label: "기수" },
-  { href: "/news", label: "뉴스" },
   { href: "/board", label: "커뮤니티" },
 ] as const;
 

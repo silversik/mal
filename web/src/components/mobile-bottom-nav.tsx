@@ -49,7 +49,6 @@ const PRIMARY_ITEMS: NavItem[] = [
 ];
 
 const MORE_ITEMS = [
-  { href: "/news", label: "뉴스" },
   { href: "/board", label: "커뮤니티" },
   { href: "/notifications", label: "알림" },
   { href: "/me", label: "마이페이지" },
@@ -81,7 +80,7 @@ export function MobileBottomNav() {
           moreOpen ? "translate-y-0" : "translate-y-full"
         }`}
       >
-        <div className="grid grid-cols-4 divide-x divide-border">
+        <div className="grid grid-cols-3 divide-x divide-border">
           {MORE_ITEMS.map(({ href, label }) => (
             <Link
               key={href}
