@@ -486,7 +486,7 @@ export default async function RacesPage({
                   출전표 (경주 전 · 결과 미확정)
                 </div>
               )}
-              <Card>
+              <Card className="py-0">
               <div className="relative overflow-x-auto rounded-[inherit]">
               <Table className="min-w-[580px]">
                 <TableHeader>
