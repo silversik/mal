@@ -7,6 +7,7 @@ import { useState } from "react";
 type NavItem = { href: string; label: string; icon: React.ReactNode; exact?: boolean };
 
 import React from "react";
+import { HorseSilhouette } from "@/components/brand/logo";
 
 const PRIMARY_ITEMS: NavItem[] = [
   {
@@ -22,12 +23,7 @@ const PRIMARY_ITEMS: NavItem[] = [
   {
     href: "/horses",
     label: "마필",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M17 3c-.5 1.5-1.5 2-3 2h-2c-1 0-2 .5-2.5 1.5L8 8l-2 1-1 3h2l1-2 1 4H7l-1 4h3l1-3h3l1 3h3l-1-4h1l1-4-2-1-1-3c-.5-1-1.5-1.5-2.5-1.5" />
-        <path d="M17 3c1 0 2 .5 3 1.5" />
-      </svg>
-    ),
+    icon: <HorseSilhouette size={22} />,
   },
   {
     href: "/",
