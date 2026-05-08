@@ -131,11 +131,11 @@ function RaceResultsSection({
           </CardContent>
         </Card>
       ) : (
-        <Card>
+        <Card className="py-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>일자</TableHead>
+                <TableHead className="w-[88px]">영상</TableHead>
                 <TableHead>경마장</TableHead>
                 <TableHead className="text-right">경주</TableHead>
                 <TableHead className="text-right">착순</TableHead>
@@ -143,7 +143,6 @@ function RaceResultsSection({
                 <TableHead className="text-right">마체중</TableHead>
                 <TableHead>기수</TableHead>
                 <TableHead>조교사</TableHead>
-                <TableHead className="w-8"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -159,7 +158,46 @@ function RaceResultsSection({
                 const video = key ? videoMap.get(key) : null;
                 return (
                   <TableRow key={r.id}>
-                    <TableCell className="font-mono text-xs">{r.race_date}</TableCell>
+                    <TableCell className="py-1.5">
+                      {video ? (
+                        <a
+                          href={youtubeWatchUrl(video.video_id)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="YouTube에서 경주 영상 보기"
+                          title={`${r.race_date ?? ""} ${r.meet ?? ""} ${r.race_no ?? ""}R 영상`}
+                          className="group relative block h-[45px] w-20 overflow-hidden rounded bg-muted transition hover:opacity-90"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={`https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`}
+                            alt=""
+                            loading="lazy"
+                            className="h-full w-full object-cover"
+                          />
+                          <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#FF0000] text-white opacity-90 transition group-hover:opacity-100">
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M8 5v14l11-7z" />
+                              </svg>
+                            </span>
+                          </span>
+                        </a>
+                      ) : r.race_date && r.meet && r.race_no ? (
+                        <a
+                          href={youtubeSearchUrl(
+                            `${horseName} ${r.race_date} ${r.meet} ${r.race_no}R 경마`,
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="YouTube에서 이 경주 영상 검색"
+                          title="YouTube 검색"
+                          className="inline-flex h-[45px] w-20 items-center justify-center rounded border border-dashed border-muted-foreground/30 text-muted-foreground/60 transition hover:border-[#FF0000]/40 hover:text-[#FF0000]"
+                        >
+                          <YoutubeSearchIcon />
+                        </a>
+                      ) : null}
+                    </TableCell>
                     <TableCell>{r.meet ?? "-"}</TableCell>
                     <TableCell className="text-right">
                       {raceHref ? (
@@ -210,32 +248,6 @@ function RaceResultsSection({
                       ) : (
                         "-"
                       )}
-                    </TableCell>
-                    <TableCell>
-                      {video ? (
-                        <a
-                          href={youtubeWatchUrl(video.video_id)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label="YouTube에서 경주 영상 보기"
-                          className="inline-flex items-center justify-center text-[#FF0000] opacity-70 transition hover:opacity-100"
-                        >
-                          <YoutubeIcon />
-                        </a>
-                      ) : r.race_date && r.meet && r.race_no ? (
-                        <a
-                          href={youtubeSearchUrl(
-                            `${horseName} ${r.race_date} ${r.meet} ${r.race_no}R 경마`,
-                          )}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label="YouTube에서 이 경주 영상 검색"
-                          title="YouTube 검색"
-                          className="inline-flex items-center justify-center text-muted-foreground/60 transition hover:text-[#FF0000]"
-                        >
-                          <YoutubeSearchIcon />
-                        </a>
-                      ) : null}
                     </TableCell>
                   </TableRow>
                 );
@@ -309,14 +321,6 @@ function RankBadge({ rank }: { rank: number | null }) {
   if (rank === 1) return <Badge className="bg-primary text-primary-foreground">1</Badge>;
   if (rank <= 3) return <Badge variant="secondary">{rank}</Badge>;
   return <span>{rank}</span>;
-}
-
-function YoutubeIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-    </svg>
-  );
 }
 
 /** 영상 매칭이 없는 경주에 노출. YouTube 로고 위에 작은 돋보기 오버레이. */

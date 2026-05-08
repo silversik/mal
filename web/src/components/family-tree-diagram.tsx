@@ -218,6 +218,10 @@ export function FamilyTreeDiagram({
       ref={containerRef}
       className="relative cursor-grab overflow-x-auto rounded-lg border bg-white p-3 active:cursor-grabbing select-none"
       onPointerDown={(e) => {
+        // 터치는 native horizontal scroll 에 맡김 — 커스텀 핸들러는 mouse 전용.
+        // (이전에 pan-y touchAction + setPointerCapture 조합이 모바일 swipe 를
+        // 가로채면서 실제로는 좌우 드래그가 안 되던 문제가 있었음.)
+        if (e.pointerType !== "mouse") return;
         // 노드/팝업 클릭은 드래그가 아니므로 패스.
         const target = e.target as HTMLElement;
         if (target.closest("[data-node]") || target.closest("[data-popup]")) return;
@@ -253,7 +257,7 @@ export function FamilyTreeDiagram({
         el.addEventListener("pointercancel", onUp);
       }}
     >
-      <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} style={{ display: "block", touchAction: "pan-y" }}>
+      <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} style={{ display: "block", touchAction: "pan-x pan-y" }}>
         <g fill="none" strokeWidth={1.25}>
           {/* Sire → bus → all children */}
           {sire && N > 0 && (() => {
