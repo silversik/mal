@@ -270,7 +270,7 @@ export default async function RacesPage({
         {!isToday && (
           <Link
             href="/races"
-            className="shrink-0 rounded-lg border border-champagne-gold/60 bg-champagne-gold/10 px-3 py-1.5 text-sm font-medium text-champagne-gold transition hover:bg-champagne-gold/20 whitespace-nowrap"
+            className="shrink-0 rounded-lg border border-champagne-gold/60 bg-champagne-gold/10 px-3 py-1.5 text-sm font-medium text-gold-ink transition hover:bg-champagne-gold/20 whitespace-nowrap"
           >
             오늘
           </Link>
@@ -326,7 +326,7 @@ export default async function RacesPage({
                             isSelected
                               ? "border-primary bg-primary text-white shadow-sm"
                               : stakes
-                                ? "border-champagne-gold/60 bg-champagne-gold/10 text-champagne-gold hover:bg-champagne-gold/20"
+                                ? "border-champagne-gold/60 bg-champagne-gold/10 text-gold-ink hover:bg-champagne-gold/20"
                                 : status === "종료"
                                   ? "border-border bg-card text-muted-foreground hover:bg-muted"
                                   : "border-border bg-card text-foreground hover:bg-muted",
@@ -389,7 +389,7 @@ export default async function RacesPage({
                 variant="secondary"
                 className={`font-normal ${
                   isStakesRace(selectedRace)
-                    ? "border-champagne-gold/40 bg-champagne-gold/10 text-champagne-gold"
+                    ? "border-champagne-gold/40 bg-champagne-gold/10 text-gold-ink"
                     : ""
                 }`}
               >
@@ -478,7 +478,7 @@ export default async function RacesPage({
           {entries.length > 0 ? (
             <>
               {entriesPhase === "pre" && (
-                <div className="mb-3 inline-flex items-center gap-2 rounded-md border border-champagne-gold/40 bg-champagne-gold/10 px-3 py-1.5 text-xs font-medium text-champagne-gold">
+                <div className="mb-3 inline-flex items-center gap-2 rounded-md border border-champagne-gold/40 bg-champagne-gold/10 px-3 py-1.5 text-xs font-medium text-gold-ink">
                   <span className="relative flex h-2 w-2">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-champagne-gold opacity-60" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-champagne-gold" />
@@ -486,7 +486,7 @@ export default async function RacesPage({
                   출전표 (경주 전 · 결과 미확정)
                 </div>
               )}
-              <Card>
+              <Card className="py-0">
               <div className="relative overflow-x-auto rounded-[inherit]">
               <Table className="min-w-[580px]">
                 <TableHeader>
@@ -832,7 +832,7 @@ function UpcomingStakesPanel({
       <CardContent className="py-8">
         <div className="mb-4 flex items-baseline justify-between gap-3">
           <div>
-            <Badge className="mb-1 bg-champagne-gold text-white">예정</Badge>
+            <Badge className="mb-1 bg-champagne-gold text-primary">예정</Badge>
             <h2 className="text-base font-bold">
               {formatDateLabel(date)} 예정 대상경주
             </h2>
@@ -860,7 +860,7 @@ function UpcomingStakesPanel({
                   return (
                     <li key={s.id} className="flex items-center gap-2 px-3 py-2 text-sm">
                       {s.tier && (
-                        <span className="shrink-0 rounded bg-champagne-gold/20 px-1.5 py-0.5 text-[10px] font-bold text-champagne-gold">
+                        <span className="shrink-0 rounded bg-champagne-gold/20 px-1.5 py-0.5 text-[10px] font-bold text-gold-ink">
                           {s.tier}
                         </span>
                       )}

@@ -15,6 +15,30 @@ type HorseMarkProps = {
   className?: string;
 };
 
+// 한 페이지에 HorseMark 가 여러 개 노출돼도 path 데이터는 1번만 직렬화되도록
+// <symbol> 로 분리. layout.tsx 에 한 번 마운트되는 HorseMarkSymbolDefs 가
+// 정의를 제공하고, 각 HorseMark 는 <use href="#mal-horse-path" /> 로 참조.
+const HORSE_SYMBOL_ID = "mal-horse-path";
+
+export function HorseMarkSymbolDefs() {
+  return (
+    <svg
+      width="0"
+      height="0"
+      aria-hidden="true"
+      style={{ position: "absolute" }}
+    >
+      <defs>
+        <symbol id={HORSE_SYMBOL_ID} viewBox="0 0 128 106">
+          <g transform="matrix(0.8749897862672958,0,0,0.8749897862672958,20.001024189557,9.35420721006751)">
+            <path fillRule="evenodd" clipRule="evenodd" d={HORSE_PATH} />
+          </g>
+        </symbol>
+      </defs>
+    </svg>
+  );
+}
+
 export function HorseMark({
   badgeFill = "#fcdf68",
   markFill = "#1d334e",
@@ -31,12 +55,7 @@ export function HorseMark({
       className={className}
     >
       <rect width="128" height="106" rx={radius} ry={radius} fill={badgeFill} />
-      <g
-        transform="matrix(0.8749897862672958,0,0,0.8749897862672958,20.001024189557,9.35420721006751)"
-        fill={markFill}
-      >
-        <path fillRule="evenodd" clipRule="evenodd" d={HORSE_PATH} />
-      </g>
+      <use href={`#${HORSE_SYMBOL_ID}`} fill={markFill} />
     </svg>
   );
 }

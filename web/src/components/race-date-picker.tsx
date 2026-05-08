@@ -90,7 +90,7 @@ export function RaceDatePicker({
           modifiers={{ hasRace }}
           modifiersClassNames={{
             hasRace:
-              "font-bold text-champagne-gold after:absolute after:bottom-0.5 after:left-1/2 after:h-1 after:w-1 after:-translate-x-1/2 after:rounded-full after:bg-champagne-gold relative",
+              "font-bold text-gold-ink after:absolute after:bottom-0.5 after:left-1/2 after:h-1 after:w-1 after:-translate-x-1/2 after:rounded-full after:bg-champagne-gold relative",
           }}
           onSelect={(d) => {
             if (!d) return;

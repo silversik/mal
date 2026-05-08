@@ -202,7 +202,7 @@ function MeetSwiper({
               {races.map((r) => {
                 const k = videoKey(r.race_date, r.meet, r.race_no);
                 return (
-                  <div key={r.id} className="w-[80%] shrink-0 sm:w-72">
+                  <div key={r.id} className="w-[55%] shrink-0 sm:w-48">
                     <RecentRaceCard
                       race={r}
                       finishers={finishersMap.get(k) ?? []}
