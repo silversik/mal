@@ -374,7 +374,7 @@ function Section({
         <h2 className={t.h2}>{title}</h2>
         <Link
           href={href}
-          className="text-sm font-semibold text-slate-grey transition hover:text-secondary"
+          className="text-sm font-semibold text-slate-grey transition hover:text-primary"
         >
           더보기 &rarr;
         </Link>

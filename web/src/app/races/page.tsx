@@ -47,7 +47,7 @@ import {
   POOL_DISPLAY_ORDER,
   type RacePoolSales,
 } from "@/lib/race_pool_sales";
-import { getRaceVideo, youtubeEmbedUrl, youtubeWatchUrl } from "@/lib/videos";
+import { getRaceVideo, youtubeEmbedUrl } from "@/lib/videos";
 
 import { BetForm } from "./bet-form";
 
@@ -427,32 +427,20 @@ export default async function RacesPage({
                     KRBC 라이브
                   </a>
                 )}
-                {raceVideo ? (
+                {/* 시작 전 경기(미래/오늘 + phase=pre) 는 KRBC 영상이 존재할 수 없어
+                    검색해도 빈 결과 → 검색 버튼 자체를 숨김. 지난 경기인데 phase=pre
+                    (수집 지연) 또는 phase=post + 영상 매칭 누락 case 는 사용자가 직접
+                    검색해 영상을 찾을 수 있게 유지. */}
+                {!raceVideo && ytSearchUrl && !(entriesPhase === "pre" && currentDate >= today) && (
                   <a
-                    href={youtubeWatchUrl(raceVideo.video_id)}
+                    href={ytSearchUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-md bg-[#FF0000]/10 px-3 py-1.5 text-xs font-medium text-[#FF0000] transition hover:bg-[#FF0000]/20"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-[#FF0000]/30 px-3 py-1.5 text-xs font-medium text-[#FF0000] transition hover:bg-[#FF0000]/10"
                   >
                     <YoutubeIcon />
-                    경주 영상 보기
+                    유튜브에서 검색
                   </a>
-                ) : (
-                  // 시작 전 경기(미래/오늘 + phase=pre)는 KRBC 영상 자체가
-                  // 존재할 수 없으므로 검색 버튼 자체를 숨김. 지난 경기인데
-                  // phase=pre(수집 지연) 또는 phase=post(영상 매칭 누락) 인
-                  // case 는 사용자가 직접 검색해 영상을 찾을 수 있게 유지.
-                  ytSearchUrl && !(entriesPhase === "pre" && currentDate >= today) && (
-                    <a
-                      href={ytSearchUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-md border border-[#FF0000]/30 px-3 py-1.5 text-xs font-medium text-[#FF0000] transition hover:bg-[#FF0000]/10"
-                    >
-                      <YoutubeIcon />
-                      유튜브에서 검색
-                    </a>
-                  )
                 )}
               </div>
             )}
