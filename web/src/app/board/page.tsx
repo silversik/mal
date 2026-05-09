@@ -33,14 +33,6 @@ export default async function BoardPage({
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-10">
-      <Link
-        href="/"
-        className="group mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"
-      >
-        <span className="transition group-hover:-translate-x-0.5">&larr;</span>
-        메인으로
-      </Link>
-
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
           <h1 className="font-serif text-3xl font-bold tracking-tight text-primary">

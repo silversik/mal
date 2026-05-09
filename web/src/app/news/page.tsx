@@ -58,14 +58,6 @@ export default async function NewsPage({
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-10">
-      <Link
-        href="/"
-        className="group mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"
-      >
-        <span className="transition group-hover:-translate-x-0.5">&larr;</span>
-        메인으로
-      </Link>
-
       <h1 className="mb-6 text-3xl font-bold tracking-tight">뉴스</h1>
 
       {pageItems.length === 0 ? (
