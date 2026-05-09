@@ -101,8 +101,15 @@ JOB_CATALOG: dict[str, dict] = {
     },
     "mal.sync_race_info": {
         "category": "kra_openapi",
-        "description": "경주 메타(이름/거리/등급/주로) API187 백필",
-        "expected_interval_sec": 86400,
+        "description": "경주 메타(이름/거리/등급/주로/발주시각) API187 백필 — 05:30·22:30 KST 2회",
+        # 05:30 ↔ 22:30 KST 두 번 실행: 가장 긴 간격 17시간(61200s) → 18h 여유로 클램프.
+        "expected_interval_sec": 64800,
+    },
+    "mal.sync_race_today_meta": {
+        "category": "kra_openapi",
+        "description": "당일 발주시각·거리 HTML 크롤링 (race.kra.co.kr/seoulMain.do) — API187 빈 응답 fallback",
+        # 06~21시 매시 정각 → 1시간 간격. 안전여유 2h 클램프.
+        "expected_interval_sec": 7200,
     },
     "mal.sync_race_dividends": {
         "category": "kra_openapi",
