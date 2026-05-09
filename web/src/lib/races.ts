@@ -131,14 +131,24 @@ export async function getNextRaceDayRaces(): Promise<RaceInfo[]> {
 /**
  * 가장 최근 N개의 개최일에 속한 모든 경주를 반환 (최신일 먼저).
  * 메인 페이지에서 (날짜 × 경마장) 단위로 묶어 보여줄 때 사용.
+ *
+ * 오늘(KST)도 결과가 1건이라도 적재됐으면 포함 — 단순히 race_date < TODAY
+ * 로 자르면 오늘 경주가 끝나도 "최근 경기" 에 안 보여서 데이터가 누락된 것
+ * 처럼 느껴지는 사고가 있었다(2026-05-09). race_results.rank 가 채워진 날만
+ * "끝난 개최일" 로 본다.
  */
 export async function getRecentRaceDaysRaces(days = 2): Promise<RaceInfo[]> {
   return query<RaceInfo>(
     `WITH recent_days AS (
-       SELECT DISTINCT race_date
-         FROM races
-        WHERE race_date < ${KST_TODAY}
-        ORDER BY race_date DESC
+       SELECT DISTINCT r.race_date
+         FROM races r
+        WHERE r.race_date <= ${KST_TODAY}
+          AND EXISTS (
+            SELECT 1 FROM race_results rr
+             WHERE rr.race_date = r.race_date
+               AND rr.rank IS NOT NULL
+          )
+        ORDER BY r.race_date DESC
         LIMIT $1
      )
      SELECT ${RACE_COLUMNS}
@@ -166,10 +176,15 @@ export type TopFinisher = {
 export async function getRecentTopFinishers(days = 4): Promise<TopFinisher[]> {
   return query<TopFinisher>(
     `WITH recent_days AS (
-       SELECT DISTINCT race_date
-         FROM races
-        WHERE race_date < ${KST_TODAY}
-        ORDER BY race_date DESC
+       SELECT DISTINCT r.race_date
+         FROM races r
+        WHERE r.race_date <= ${KST_TODAY}
+          AND EXISTS (
+            SELECT 1 FROM race_results rr
+             WHERE rr.race_date = r.race_date
+               AND rr.rank IS NOT NULL
+          )
+        ORDER BY r.race_date DESC
         LIMIT $1
      )
      SELECT r.race_date::text AS race_date,
