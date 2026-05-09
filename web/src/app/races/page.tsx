@@ -776,31 +776,38 @@ function ComboDividendsSection({ rows }: { rows: RaceComboDividend[] }) {
       <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
         복식 배당
       </h3>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {activePools.map((pool) => {
-          const items = byPool.get(pool) ?? [];
-          return (
-            <Card key={pool}>
-              <div className="border-b bg-muted/40 px-4 py-2 text-xs font-semibold tracking-wide text-muted-foreground">
-                {POOL_LABEL[pool]}{" "}
-                <span className="ml-1 font-mono opacity-70">{pool}</span>
-              </div>
-              <div className="divide-y divide-border/40">
-                {items.map((d, i) => (
-                  <div
-                    key={`${pool}-${i}`}
-                    className="flex items-center justify-between px-4 py-1.5 text-xs"
-                  >
-                    <span className="truncate">{formatCombo(d)}</span>
-                    <span className="ml-2 shrink-0 font-mono tabular-nums font-semibold">
-                      {formatOdds(d.odds)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          );
-        })}
+      {/* 좌우 슬라이드 — 풀 종류가 많고 모바일에서 그리드로 펼치면 너무 길어지므로
+          가로 스크롤 + snap 으로 한 손 스와이프에 최적화. */}
+      <div className="-mx-4 overflow-x-auto px-4 scrollbar-hide sm:mx-0 sm:px-0">
+        <div className="flex snap-x snap-mandatory gap-4 pb-2">
+          {activePools.map((pool) => {
+            const items = byPool.get(pool) ?? [];
+            return (
+              <Card
+                key={pool}
+                className="w-[78%] shrink-0 snap-start py-0 sm:w-[46%] lg:w-[32%]"
+              >
+                <div className="border-b bg-muted/40 px-4 py-2 text-xs font-semibold tracking-wide text-muted-foreground">
+                  {POOL_LABEL[pool]}{" "}
+                  <span className="ml-1 font-mono opacity-70">{pool}</span>
+                </div>
+                <div className="divide-y divide-border/40">
+                  {items.map((d, i) => (
+                    <div
+                      key={`${pool}-${i}`}
+                      className="flex items-center justify-between px-4 py-1.5 text-xs"
+                    >
+                      <span className="truncate">{formatCombo(d)}</span>
+                      <span className="ml-2 shrink-0 font-mono tabular-nums font-semibold">
+                        {formatOdds(d.odds)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -911,11 +918,24 @@ function NavArrow({
   );
 }
 
+// 1·2·3위는 홈의 "TOP 기수 랭킹" 메달과 동일한 금/은/동 배지로 통일.
+const RANK_MEDAL_STYLE: Record<number, string> = {
+  1: "bg-champagne-gold text-primary",
+  2: "bg-slate-400 text-white",
+  3: "bg-amber-700 text-white",
+};
+
 function RankBadge({ rank }: { rank: number | null }) {
   if (rank === null) return <span className="text-muted-foreground">-</span>;
-  if (rank === 1)
-    return <Badge className="bg-primary text-primary-foreground">1</Badge>;
-  if (rank <= 3) return <Badge variant="secondary">{rank}</Badge>;
+  if (rank <= 3) {
+    return (
+      <span
+        className={`inline-flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-bold tabular-nums ${RANK_MEDAL_STYLE[rank]}`}
+      >
+        {rank}
+      </span>
+    );
+  }
   return <span>{rank}</span>;
 }
 

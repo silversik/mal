@@ -28,6 +28,7 @@ from .sync_favorite_notifications import build_favorite_notifications
 from .sync_naver_news import sync_naver_news
 from .sync_race_entries import sync_upcoming as sync_upcoming_race_entries
 from .sync_race_info import backfill_races_metadata
+from .sync_race_today_meta import sync_today_meta
 from .sync_race_plan import sync_current_year as sync_current_race_plan
 from .sync_race_dividends import sync_date_all_meets as sync_dividends_all_meets
 from .sync_race_sales import sync_date_all_meets as sync_race_sales_all_meets
@@ -175,8 +176,27 @@ def run_sync_race_entries() -> int:
 
 @track_job("mal.sync_race_info")
 def run_sync_race_info() -> int:
-    """API187 로 races 메타(이름/거리/등급/주로) 백필 — 22:30 KST."""
+    """API187 로 races 메타(이름/거리/등급/주로/발주시각) 백필 — 05:30·22:30 KST.
+
+    아침 실행은 당일 출주 시각·거리를 KRA 가 새벽에 publish 한 직후 가져와
+    홈 카로셀의 출전표에 반영하기 위함. 저녁 실행은 결과 확정(22:00) 직후
+    빈 메타가 있다면 추가 보정.
+
+    ⚠ 2026-05 현재 API187 은 빈 응답(items="")만 반환 — 실질 backfill 은
+    `sync_race_today_meta` (HTML 크롤링) 가 담당한다. KRA 가 API 를 복구하면
+    이 잡이 자동으로 다시 데이터를 받게 된다.
+    """
     return backfill_races_metadata()
+
+
+@track_job("mal.sync_race_today_meta")
+def run_sync_race_today_meta() -> int:
+    """race.kra.co.kr/seoulMain.do 크롤링으로 당일 발주시각·거리 backfill.
+
+    KRA OpenAPI API187 미응답 보완 fallback. 매 정각 실행 (06~21시) 으로
+    당일 모든 라운드의 메타가 races 테이블에 채워지도록 한다.
+    """
+    return sync_today_meta()
 
 
 @track_job("mal.sync_race_dividends")

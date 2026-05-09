@@ -36,6 +36,7 @@ from .jobs.periodic import (
     run_sync_race_info,
     run_sync_race_plan,
     run_sync_race_sales,
+    run_sync_race_today_meta,
     run_sync_races_live,
     run_sync_races_today,
     run_sync_trainers,
@@ -177,10 +178,22 @@ def main() -> None:
         **common,
     )
     # 결과 수집(22:00) 직후 메타 백필(22:30) — races.race_name/distance/grade/track_type 채움.
+    # 그리고 당일 아침(05:30) 한 번 더 — sync_race_plan(05:00) 다음에 실행해서 KRA 가
+    # 새벽에 갱신한 출주 시각·거리 정보를 출전표 노출 전에 races 테이블에 반영한다.
+    # ⚠ 2026-05 현재 API187 은 빈 응답. 실제 backfill 은 sync_race_today_meta (HTML).
     sched.add_job(
         run_sync_race_info,
-        CronTrigger(hour=22, minute=30),
+        CronTrigger(hour="5,22", minute=30),
         id="mal.sync_race_info",
+        **common,
+    )
+    # 당일 발주시각·거리 HTML 크롤링 — race.kra.co.kr/seoulMain.do 파싱. KRA OpenAPI
+    # API187 의 빈 응답을 보완하는 fallback. 06~21 매시 정각 5분.
+    # 새벽엔 KRA 페이지가 어제 데이터를 보여주는 시간대도 있어 06시 이후로 시작.
+    sched.add_job(
+        run_sync_race_today_meta,
+        CronTrigger(hour="6-21", minute=5),
+        id="mal.sync_race_today_meta",
         **common,
     )
     # 메타 백필 직후 확정배당율(22:45) — race_dividends 적재.
@@ -241,6 +254,7 @@ def main() -> None:
         "mal.sync_races_live": run_sync_races_live,
         "mal.sync_yesterday_catchup": run_sync_yesterday_catchup,
         "mal.sync_race_info": run_sync_race_info,
+        "mal.sync_race_today_meta": run_sync_race_today_meta,
         "mal.sync_race_dividends": run_sync_race_dividends,
         "mal.sync_race_sales": run_sync_race_sales,
         "mal.chunked_dividends_backfill": run_chunked_dividends_backfill,

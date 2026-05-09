@@ -29,6 +29,7 @@ from .jobs.periodic import (
     run_sync_race_info,
     run_sync_race_plan,
     run_sync_race_sales,
+    run_sync_race_today_meta,
     run_sync_races_live,
     run_sync_races_today,
     run_sync_yesterday_catchup,
@@ -313,6 +314,13 @@ def cmd_periodic_race_info() -> None:
     """[scheduled] sync_race_info — API187 메타 백필."""
     n = run_sync_race_info()
     typer.echo(f"backfilled {n} race metadata rows")
+
+
+@app.command("periodic-race-today-meta")
+def cmd_periodic_race_today_meta() -> None:
+    """[scheduled] sync_race_today_meta — seoulMain.do HTML 크롤링."""
+    n = run_sync_race_today_meta()
+    typer.echo(f"upserted {n} race meta rows")
 
 
 @app.command("periodic-videos-backfill")
