@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -64,14 +63,6 @@ export default async function JockeyDetailPage({
           { name: jockey.jk_name, url: `/jockey/${jk_no}` },
         ]}
       />
-      <Link
-        href="/"
-        className="group mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"
-      >
-        <span className="transition group-hover:-translate-x-0.5">&larr;</span>
-        메인으로
-      </Link>
-
       <JockeyProfileCard jockey={jockey} />
 
       {recentRaces.length > 0 && (
@@ -95,13 +86,13 @@ export default async function JockeyDetailPage({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>일자</TableHead>
-                  <TableHead>경마장</TableHead>
-                  <TableHead className="text-right">경주</TableHead>
-                  <TableHead className="text-right">착순</TableHead>
-                  <TableHead>마명</TableHead>
-                  <TableHead className="text-right">기록</TableHead>
-                  <TableHead className="w-8"></TableHead>
+                  <TableHead className="text-center">일자</TableHead>
+                  <TableHead className="text-center">경마장</TableHead>
+                  <TableHead className="text-center">경주</TableHead>
+                  <TableHead className="text-center">착순</TableHead>
+                  <TableHead className="text-center">마명</TableHead>
+                  <TableHead className="text-center">기록</TableHead>
+                  <TableHead className="w-12 text-center">영상</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -116,11 +107,11 @@ export default async function JockeyDetailPage({
                       : null;
                   return (
                   <TableRow key={r.id}>
-                    <TableCell className="font-mono text-xs">
+                    <TableCell className="text-center font-mono text-xs">
                       {r.race_date}
                     </TableCell>
-                    <TableCell>{r.meet ?? "-"}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-center">{r.meet ?? "-"}</TableCell>
+                    <TableCell className="text-center">
                       {raceHref ? (
                         <Link href={raceHref} className="text-primary hover:underline">
                           {r.race_no}R
@@ -129,18 +120,10 @@ export default async function JockeyDetailPage({
                         `${r.race_no}R`
                       )}
                     </TableCell>
-                    <TableCell className="text-right font-semibold">
-                      {r.rank === 1 ? (
-                        <Badge className="bg-primary text-primary-foreground">
-                          1
-                        </Badge>
-                      ) : r.rank !== null && r.rank <= 3 ? (
-                        <Badge variant="secondary">{r.rank}</Badge>
-                      ) : (
-                        (r.rank ?? "-")
-                      )}
+                    <TableCell className="text-center font-semibold">
+                      <RankBadge rank={r.rank} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       <Link
                         href={`/horse/${r.horse_no}`}
                         className="text-primary hover:underline"
@@ -148,11 +131,11 @@ export default async function JockeyDetailPage({
                         {r.horse_name}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">
+                    <TableCell className="text-center font-mono tabular-nums">
                       {r.record_time ?? "-"}
                     </TableCell>
-                    <TableCell>
-                      {video && (
+                    <TableCell className="text-center">
+                      {video ? (
                         <a
                           href={youtubeWatchUrl(video.video_id)}
                           target="_blank"
@@ -162,6 +145,8 @@ export default async function JockeyDetailPage({
                         >
                           <YoutubeIcon />
                         </a>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
                   </TableRow>
@@ -223,6 +208,27 @@ function JockeyProfileCard({ jockey }: { jockey: Jockey }) {
       </CardContent>
     </Card>
   );
+}
+
+// 1·2·3위는 홈의 "TOP 기수 랭킹" 메달과 동일한 금/은/동 원형 배지로 통일.
+const RANK_MEDAL_STYLE: Record<number, string> = {
+  1: "bg-champagne-gold text-primary",
+  2: "bg-slate-400 text-white",
+  3: "bg-amber-700 text-white",
+};
+
+function RankBadge({ rank }: { rank: number | null }) {
+  if (rank === null) return <span className="text-muted-foreground">-</span>;
+  if (rank <= 3) {
+    return (
+      <span
+        className={`inline-flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-bold tabular-nums ${RANK_MEDAL_STYLE[rank]}`}
+      >
+        {rank}
+      </span>
+    );
+  }
+  return <span>{rank}</span>;
 }
 
 function YoutubeIcon() {

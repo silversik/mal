@@ -65,14 +65,6 @@ export default async function TrainerDetailPage({
           { name: trainer.tr_name, url: `/trainer/${tr_no}` },
         ]}
       />
-      <Link
-        href="/"
-        className="group mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"
-      >
-        <span className="transition group-hover:-translate-x-0.5">&larr;</span>
-        메인으로
-      </Link>
-
       <TrainerProfileCard trainer={trainer} />
 
       {recentRaces.length > 0 && (

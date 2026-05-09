@@ -82,14 +82,6 @@ export default async function MePage({
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-10">
-      <Link
-        href="/"
-        className="group mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"
-      >
-        <span className="transition group-hover:-translate-x-0.5">&larr;</span>
-        메인으로
-      </Link>
-
       <h1 className="mb-2 font-serif text-3xl font-bold tracking-tight text-primary">
         마이페이지
       </h1>

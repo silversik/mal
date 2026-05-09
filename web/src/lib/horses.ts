@@ -215,10 +215,13 @@ export async function getRaceResultsForHorse(
   limit = 10,
 ): Promise<RaceResult[]> {
   return query<RaceResult>(
+    // record_time(NUMERIC) 은 KRA rcTime "1:22.4" 가 float() 파싱 실패로 NULL 인 경우가 많다.
+    // 표시용으로는 raw->>'rcTime' (이미 "M:SS.f" 형식) 을 우선 사용하고, 없을 때만 컬럼값.
     `SELECT rr.id, rr.horse_no,
             to_char(rr.race_date, 'YYYY-MM-DD') AS race_date,
             rr.meet, rr.race_no, rr.track_condition, rr.rank,
-            rr.record_time::text, rr.weight::text,
+            COALESCE(NULLIF(NULLIF(rr.raw->>'rcTime', '-'), ''), rr.record_time::text) AS record_time,
+            rr.weight::text,
             rr.jockey_name, rr.trainer_name,
             t.tr_no AS trainer_no
        FROM race_results rr

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,23 +41,20 @@ export function HorseTabs({
 }: HorseTabsProps) {
   const videoMap = new Map<RaceKey, { video_id: string }>(videoEntries);
 
+  const treeProps = {
+    current: horseToFamNode(horse, true),
+    sire: pedigree?.sire ? pedToFamNode(pedigree.sire) : null,
+    dam: pedigree?.dam ? pedToFamNode(pedigree.dam) : null,
+    sire_sire: pedigree?.sire?.sire ? pedToFamNode(pedigree.sire.sire) : null,
+    sire_dam: pedigree?.sire?.dam ? pedToFamNode(pedigree.sire.dam) : null,
+    dam_sire: pedigree?.dam?.sire ? pedToFamNode(pedigree.dam.sire) : null,
+    dam_dam: pedigree?.dam?.dam ? pedToFamNode(pedigree.dam.dam) : null,
+    siblings: siblings.map(sibToFamNode),
+  } as const;
+
   return (
     <div className="space-y-10">
-      <div>
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          가족 관계
-        </h2>
-        <FamilyTreeDiagram
-          current={horseToFamNode(horse, true)}
-          sire={pedigree?.sire  ? pedToFamNode(pedigree.sire)  : null}
-          dam={pedigree?.dam   ? pedToFamNode(pedigree.dam)   : null}
-          sire_sire={pedigree?.sire?.sire ? pedToFamNode(pedigree.sire.sire) : null}
-          sire_dam={pedigree?.sire?.dam  ? pedToFamNode(pedigree.sire.dam)  : null}
-          dam_sire={pedigree?.dam?.sire  ? pedToFamNode(pedigree.dam.sire)  : null}
-          dam_dam={pedigree?.dam?.dam   ? pedToFamNode(pedigree.dam.dam)   : null}
-          siblings={siblings.map(sibToFamNode)}
-        />
-      </div>
+      <PedigreeSection treeProps={treeProps} />
       <RaceResultsSection
         results={results}
         jockeyMap={jockeyMap}
@@ -64,6 +62,116 @@ export function HorseTabs({
       />
       {rankChanges.length > 0 && <RankChangesSection changes={rankChanges} />}
     </div>
+  );
+}
+
+/* ── 족보 ──────────────────────────────────────────────── */
+
+function PedigreeSection({
+  treeProps,
+}: {
+  treeProps: React.ComponentProps<typeof FamilyTreeDiagram>;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Esc 로 모달 닫기 + 모달 열려 있는 동안 body 스크롤 차단.
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpanded(false);
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [expanded]);
+
+  return (
+    <section>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          족보
+        </h2>
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-primary/40 hover:bg-accent"
+        >
+          <ExpandIcon />
+          크게 보기
+        </button>
+      </div>
+      <FamilyTreeDiagram {...treeProps} />
+
+      {expanded && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 sm:p-8"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setExpanded(false);
+          }}
+        >
+          <div className="relative max-h-[92vh] w-full max-w-6xl overflow-auto rounded-xl bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-4 py-3">
+              <h3 className="text-sm font-semibold">족보 (크게 보기)</h3>
+              <button
+                type="button"
+                onClick={() => setExpanded(false)}
+                aria-label="닫기"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+            <div className="p-4">
+              <FamilyTreeDiagram {...treeProps} responsive />
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ExpandIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="15 3 21 3 21 9" />
+      <polyline points="9 21 3 21 3 15" />
+      <line x1="21" y1="3" x2="14" y2="10" />
+      <line x1="3" y1="21" x2="10" y2="14" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
   );
 }
 
@@ -131,14 +239,14 @@ function RaceResultsSection({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[88px]">영상</TableHead>
-                <TableHead>경마장</TableHead>
-                <TableHead className="text-right">경주</TableHead>
-                <TableHead className="text-right">착순</TableHead>
-                <TableHead className="text-right">기록</TableHead>
-                <TableHead className="text-right">마체중</TableHead>
-                <TableHead>기수</TableHead>
-                <TableHead>조교사</TableHead>
+                <TableHead className="w-[88px] text-center">영상</TableHead>
+                <TableHead className="text-center">경마장</TableHead>
+                <TableHead className="text-center">경주</TableHead>
+                <TableHead className="text-center">착순</TableHead>
+                <TableHead className="text-center">기록</TableHead>
+                <TableHead className="text-center">마체중</TableHead>
+                <TableHead className="text-center">기수</TableHead>
+                <TableHead className="text-center">조교사</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -154,13 +262,13 @@ function RaceResultsSection({
                 const video = key ? videoMap.get(key) : null;
                 return (
                   <TableRow key={r.id}>
-                    <TableCell className="py-1.5">
+                    <TableCell className="py-1.5 text-center">
                       {raceHref ? (
                         <Link
                           href={raceHref}
                           aria-label={`${r.race_date ?? ""} ${r.meet ?? ""} ${r.race_no ?? ""}R 경주 페이지로 이동`}
                           title={`${r.race_date ?? ""} ${r.meet ?? ""} ${r.race_no ?? ""}R`}
-                          className="group relative block h-[45px] w-20 overflow-hidden rounded bg-muted transition hover:opacity-90"
+                          className="group relative mx-auto block h-[45px] w-20 overflow-hidden rounded bg-muted transition hover:opacity-90"
                         >
                           {video ? (
                             <>
@@ -187,8 +295,8 @@ function RaceResultsSection({
                         </Link>
                       ) : null}
                     </TableCell>
-                    <TableCell>{r.meet ?? "-"}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-center">{r.meet ?? "-"}</TableCell>
+                    <TableCell className="text-center">
                       {raceHref ? (
                         <Link href={raceHref} className="text-primary hover:underline">
                           {r.race_no}R
@@ -197,16 +305,16 @@ function RaceResultsSection({
                         `${r.race_no}R`
                       )}
                     </TableCell>
-                    <TableCell className="text-right font-semibold">
+                    <TableCell className="text-center font-semibold">
                       <RankBadge rank={r.rank} />
                     </TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">
+                    <TableCell className="text-center font-mono tabular-nums">
                       {r.record_time ?? "-"}
                     </TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">
+                    <TableCell className="text-center font-mono tabular-nums">
                       {r.weight ?? "-"}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       {r.jockey_name ? (
                         jockeyMap[r.jockey_name] ? (
                           <Link
@@ -222,7 +330,7 @@ function RaceResultsSection({
                         "-"
                       )}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-center text-muted-foreground">
                       {r.trainer_name ? (
                         r.trainer_no ? (
                           <Link
@@ -305,10 +413,24 @@ function RankChangesSection({ changes }: { changes: HorseRankChange[] }) {
 
 /* ── Helpers ─────────────────────────────────────────────── */
 
+// 1·2·3위는 홈의 "TOP 기수 랭킹" 메달과 동일한 금/은/동 원형 배지로 통일.
+const RANK_MEDAL_STYLE: Record<number, string> = {
+  1: "bg-champagne-gold text-primary",
+  2: "bg-slate-400 text-white",
+  3: "bg-amber-700 text-white",
+};
+
 function RankBadge({ rank }: { rank: number | null }) {
   if (rank === null) return <span className="text-muted-foreground">-</span>;
-  if (rank === 1) return <Badge className="bg-primary text-primary-foreground">1</Badge>;
-  if (rank <= 3) return <Badge variant="secondary">{rank}</Badge>;
+  if (rank <= 3) {
+    return (
+      <span
+        className={`inline-flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-bold tabular-nums ${RANK_MEDAL_STYLE[rank]}`}
+      >
+        {rank}
+      </span>
+    );
+  }
   return <span>{rank}</span>;
 }
 

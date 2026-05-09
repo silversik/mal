@@ -51,9 +51,6 @@ import { getRaceVideo, youtubeEmbedUrl } from "@/lib/videos";
 
 import { BetForm } from "./bet-form";
 
-// KRBC 채널(UCsIvYoihIg37E96LkG-XHAw)의 라이브 URL — 방송 중이면 현재 스트림으로 자동 리다이렉트.
-const KRBC_LIVE_URL = "https://www.youtube.com/channel/UCsIvYoihIg37E96LkG-XHAw/live";
-
 type SearchParams = { date?: string; venue?: string; race?: string };
 
 const MEET_ORDER = ["서울", "제주", "부경"] as const;
@@ -237,14 +234,6 @@ export default async function RacesPage({
   const entries = entriesResult.entries;
   const entriesPhase = entriesResult.phase;
 
-  // 크롤러 `sync_videos_backfill.format_race_title_query()` 와 동일한 포맷 — 수동 검색과
-  // 자동 백필이 같은 쿼리를 쓰도록 맞춤. 예) "(서울) 2026.02.28 1경주"
-  const ytSearchUrl = selectedRace
-    ? `https://www.youtube.com/results?search_query=${encodeURIComponent(
-        `(${selectedRace.meet}) ${currentDate.replaceAll("-", ".")} ${selectedRace.race_no}경주`,
-      )}`
-    : null;
-
   // 경기 있는 날만 순회하도록 raceDates 내에서 탐색. 인접 레이스데이가 없으면 null.
   const prevDate = findNearbyRaceDate(raceDates, currentDate, "prev");
   const nextDate = findNearbyRaceDate(raceDates, currentDate, "next");
@@ -295,7 +284,7 @@ export default async function RacesPage({
 
       {/* ── 라운드 필터 ── */}
       {activeMeets.length > 0 && (
-        <div className="mb-6 space-y-2">
+        <div className="mb-6 space-y-2 rounded-xl border bg-card p-3">
           {activeMeets.map((meet) => {
             const meetRaces = byMeet[meet];
             const status =
@@ -312,7 +301,7 @@ export default async function RacesPage({
                   <span>{meet}</span>
                 </div>
                 <div className="h-4 w-px shrink-0 bg-border" />
-                <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
+                <div className="flex flex-wrap gap-1.5">
                   {meetRaces.map((r) => {
                     const stakes = isStakesRace(r);
                     const isSelected =
@@ -324,14 +313,14 @@ export default async function RacesPage({
                       <Link key={r.id} href={href} className="shrink-0">
                         <div
                           className={[
-                            "flex h-9 w-9 flex-col items-center justify-center rounded-md border transition",
+                            "inline-flex h-8 min-w-9 items-center justify-center rounded-md border px-2 text-xs font-bold tabular-nums transition",
                             isSelected
                               ? "border-primary bg-primary text-white shadow-sm"
                               : stakes
                                 ? "border-champagne-gold/60 bg-champagne-gold/10 text-gold-ink hover:bg-champagne-gold/20"
                                 : status === "종료"
-                                  ? "border-border bg-card text-muted-foreground hover:bg-muted"
-                                  : "border-border bg-card text-foreground hover:bg-muted",
+                                  ? "border-border bg-background text-muted-foreground hover:bg-muted"
+                                  : "border-border bg-background text-foreground hover:bg-muted",
                             stakes && status === "진행중" && !isSelected
                               ? "animate-pulse"
                               : "",
@@ -339,12 +328,7 @@ export default async function RacesPage({
                             .filter(Boolean)
                             .join(" ")}
                         >
-                          <span className="text-xs font-bold leading-none">
-                            {r.race_no}
-                          </span>
-                          <span className="text-[8px] leading-none opacity-60">
-                            R
-                          </span>
+                          {r.race_no}R
                         </div>
                       </Link>
                     );
@@ -359,90 +343,26 @@ export default async function RacesPage({
       {/* ── 선택된 경기 상세 ── */}
       {selectedRace && (
         <section className="mt-8">
+          {/* 헤더 — 좌측: 경마장·라운드·거리 / 우측: 업데이트 시각. 그 외 메타(날짜·발주
+              시각·등급·주로·라이브/검색 버튼) 은 라운드 필터/달력 와 중복이라 제거. */}
           <div className="mb-4 flex flex-wrap items-center gap-3 border-t pt-8">
-            <div className="flex h-10 w-10 flex-col items-center justify-center rounded-md bg-primary text-white">
-              <span className="text-sm font-bold leading-none">
-                {selectedRace.race_no}
-              </span>
-              <span className="text-[9px] leading-none opacity-70">R</span>
-            </div>
-            <h2 className="text-xl font-bold">
-              {selectedRace.race_name ?? `${selectedRace.race_no}라운드`}
-            </h2>
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <VenueIcon meet={selectedRace.meet} size={14} className="opacity-60" />
+            <div className="flex items-center gap-1.5 text-base font-semibold text-foreground">
+              <VenueIcon meet={selectedRace.meet} size={16} className="opacity-70" />
               <span>{selectedRace.meet}</span>
             </div>
-            <span className="font-mono text-sm text-muted-foreground">
-              {currentDate}
-            </span>
-            {selectedRace.start_time && (
-              <span className="font-mono text-sm font-semibold tabular-nums text-muted-foreground">
-                {selectedRace.start_time}
-              </span>
-            )}
+            <h2 className="text-xl font-bold">{selectedRace.race_no}라운드</h2>
             {selectedRace.distance && (
               <span className="text-sm text-muted-foreground">
                 {selectedRace.distance}m
               </span>
             )}
-            {selectedRace.grade && (
-              <Badge
-                variant="secondary"
-                className={`font-normal ${
-                  isStakesRace(selectedRace)
-                    ? "border-champagne-gold/40 bg-champagne-gold/10 text-gold-ink"
-                    : ""
-                }`}
+            {syncedAt && (
+              <span
+                className="ml-auto text-[11px] text-muted-foreground/70 tabular-nums"
+                title={`데이터 수집 시각: ${syncedAt}`}
               >
-                {selectedRace.grade}
-              </Badge>
-            )}
-            {selectedRace.track_condition && (
-              <span className="text-sm text-muted-foreground">
-                주로: {selectedRace.track_condition}
+                업데이트 {formatSyncedAt(syncedAt)}
               </span>
-            )}
-            {selectedRace && (
-              <div className="ml-auto flex items-center gap-2">
-                {syncedAt && (
-                  <span
-                    className="text-[11px] text-muted-foreground/70 tabular-nums"
-                    title={`데이터 수집 시각: ${syncedAt}`}
-                  >
-                    업데이트 {formatSyncedAt(syncedAt)}
-                  </span>
-                )}
-                {isToday && (
-                  <a
-                    href={KRBC_LIVE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-md bg-[#FF0000] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#CC0000]"
-                  >
-                    <span className="relative flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-                    </span>
-                    KRBC 라이브
-                  </a>
-                )}
-                {/* 시작 전 경기(미래/오늘 + phase=pre) 는 KRBC 영상이 존재할 수 없어
-                    검색해도 빈 결과 → 검색 버튼 자체를 숨김. 지난 경기인데 phase=pre
-                    (수집 지연) 또는 phase=post + 영상 매칭 누락 case 는 사용자가 직접
-                    검색해 영상을 찾을 수 있게 유지. */}
-                {!raceVideo && ytSearchUrl && !(entriesPhase === "pre" && currentDate >= today) && (
-                  <a
-                    href={ytSearchUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-md border border-[#FF0000]/30 px-3 py-1.5 text-xs font-medium text-[#FF0000] transition hover:bg-[#FF0000]/10"
-                  >
-                    <YoutubeIcon />
-                    유튜브에서 검색
-                  </a>
-                )}
-              </div>
             )}
           </div>
 
@@ -456,15 +376,6 @@ export default async function RacesPage({
                   allowFullScreen
                   className="h-full w-full"
                 />
-              </div>
-              <div className="px-4 py-3 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">{raceVideo.title}</span>
-                {raceVideo.channel_title && (
-                  <>
-                    <span className="mx-1.5 opacity-40">·</span>
-                    {raceVideo.channel_title}
-                  </>
-                )}
               </div>
             </div>
           )}
@@ -488,7 +399,7 @@ export default async function RacesPage({
                     <TableHead className="sticky left-0 z-10 w-14 bg-background text-center">
                       {entriesPhase === "pre" ? "출전" : "착순"}
                     </TableHead>
-                    <TableHead>마명</TableHead>
+                    <TableHead className="text-center">마명</TableHead>
                     <TableHead className="text-center">기수</TableHead>
                     <TableHead className="text-center">조교사</TableHead>
                     <TableHead
@@ -498,27 +409,27 @@ export default async function RacesPage({
                       연령
                     </TableHead>
                     <TableHead
-                      className="hidden text-right sm:table-cell"
+                      className="hidden text-center sm:table-cell"
                       title="경주 시점의 말 레이팅"
                     >
                       레이팅
                     </TableHead>
                     <TableHead
-                      className="hidden text-right sm:table-cell"
+                      className="hidden text-center sm:table-cell"
                       title="부담중량 (핸디캡)"
                     >
                       부담
                     </TableHead>
-                    <TableHead className="text-right">기록</TableHead>
+                    <TableHead className="text-center">기록</TableHead>
                     <TableHead
-                      className="hidden text-right md:table-cell"
+                      className="hidden text-center md:table-cell"
                       title="1착과의 착차"
                     >
                       착차
                     </TableHead>
-                    <TableHead className="text-right">마체중</TableHead>
-                    <TableHead className="text-right">단승</TableHead>
-                    <TableHead className="text-right">연승</TableHead>
+                    <TableHead className="text-center">마체중</TableHead>
+                    <TableHead className="text-center">단승</TableHead>
+                    <TableHead className="text-center">연승</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -533,7 +444,7 @@ export default async function RacesPage({
                           <RankBadge rank={e.rank} />
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-center">
                         <Link
                           href={`/horse/${e.horse_no}`}
                           className="text-primary hover:underline"
@@ -543,7 +454,20 @@ export default async function RacesPage({
                       </TableCell>
                       <TableCell className="text-center text-muted-foreground">
                         <span className="inline-flex items-center gap-1">
-                          {e.jockey_name ?? "-"}
+                          {e.jockey_name ? (
+                            e.jockey_no ? (
+                              <Link
+                                href={`/jockey/${e.jockey_no}`}
+                                className="text-primary hover:underline"
+                              >
+                                {e.jockey_name}
+                              </Link>
+                            ) : (
+                              e.jockey_name
+                            )
+                          ) : (
+                            "-"
+                          )}
                           {e.jockey_changed_from && (
                             <JockeyChangeBadge
                               from={e.jockey_changed_from}
@@ -574,25 +498,25 @@ export default async function RacesPage({
                       <TableCell className="hidden text-center font-mono tabular-nums text-muted-foreground sm:table-cell">
                         {e.age ?? "-"}
                       </TableCell>
-                      <TableCell className="hidden text-right font-mono tabular-nums text-muted-foreground sm:table-cell">
+                      <TableCell className="hidden text-center font-mono tabular-nums text-muted-foreground sm:table-cell">
                         {e.hr_rating ?? "-"}
                       </TableCell>
-                      <TableCell className="hidden text-right font-mono tabular-nums text-muted-foreground sm:table-cell">
+                      <TableCell className="hidden text-center font-mono tabular-nums text-muted-foreground sm:table-cell">
                         {e.budam_weight ?? "-"}
                       </TableCell>
-                      <TableCell className="text-right font-mono tabular-nums">
+                      <TableCell className="text-center font-mono tabular-nums">
                         {e.record_time ?? "-"}
                       </TableCell>
-                      <TableCell className="hidden text-right font-mono tabular-nums text-muted-foreground md:table-cell">
+                      <TableCell className="hidden text-center font-mono tabular-nums text-muted-foreground md:table-cell">
                         {e.differ ?? "-"}
                       </TableCell>
-                      <TableCell className="text-right font-mono tabular-nums">
+                      <TableCell className="text-center font-mono tabular-nums">
                         {e.weight ?? "-"}
                       </TableCell>
-                      <TableCell className="text-right font-mono tabular-nums text-muted-foreground">
+                      <TableCell className="text-center font-mono tabular-nums text-muted-foreground">
                         {e.win_rate ?? "-"}
                       </TableCell>
-                      <TableCell className="text-right font-mono tabular-nums text-muted-foreground">
+                      <TableCell className="text-center font-mono tabular-nums text-muted-foreground">
                         {e.plc_rate ?? "-"}
                       </TableCell>
                     </TableRow>
@@ -939,10 +863,3 @@ function RankBadge({ rank }: { rank: number | null }) {
   return <span>{rank}</span>;
 }
 
-function YoutubeIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-    </svg>
-  );
-}

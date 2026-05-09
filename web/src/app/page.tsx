@@ -119,21 +119,10 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
       <section className="relative overflow-hidden border-b border-primary/5 bg-primary px-6 py-10 md:py-12 text-white">
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/carbon-fibre.png")' }}></div>
         <div className="relative mx-auto max-w-6xl">
-          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <Badge variant="outline" className="mb-3 border-champagne-gold text-champagne-gold">
-                {nextDayAllFinished ? "TODAY" : "LIVE"} · {todayDate}
-              </Badge>
-              <h1 className="font-serif text-2xl font-bold tracking-tight text-sand-ivory md:text-4xl">
-                {nextStatus === "진행중" ? "오늘의 경주 · 출전표" : "오늘의 경주 · 결과"}
-              </h1>
-            </div>
-            <Link
-              href={`/races?date=${todayDate}`}
-              className="text-sm font-semibold text-champagne-gold transition hover:text-white"
-            >
-              더보기 &rarr;
-            </Link>
+          <div className="mb-6">
+            <Badge variant="outline" className="border-champagne-gold text-champagne-gold">
+              {nextDayAllFinished ? "TODAY" : "LIVE"} · 오늘의 경주 · {todayDate}
+            </Badge>
           </div>
 
           <HeroTodayCarousel date={todayDate} meets={todayCards} />

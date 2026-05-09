@@ -61,7 +61,7 @@ JOB_CATALOG: dict[str, dict] = {
     },
     "mal.sync_races_live": {
         "category": "kra_openapi",
-        "description": "경기일 실시간 결과+배당 갱신 (매시간 10~21시 KST)",
+        "description": "경기일 실시간 결과+배당 갱신 (평일 10~21시 시간당 / 주말 10~22시 15분 간격)",
         "expected_interval_sec": 3600,
     },
     "mal.sync_yesterday_catchup": {

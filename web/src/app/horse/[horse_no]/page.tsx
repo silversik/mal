@@ -214,7 +214,7 @@ function ProfileCard({
 }) {
   const fields: Array<[string, React.ReactNode]> = [
     ["마번", <span className="font-mono" key="no">{horse.horse_no}</span>],
-    ["성별", horse.sex ?? "-"],
+    ["성별", <SexBadge key="sx" sex={horse.sex} />],
     ["생년월일", horse.birth_date ?? "-"],
     ["산지", horse.country ?? "-"],
     ["모색", coatColorLabel(horse.coat_color) ?? "-"],
@@ -246,25 +246,9 @@ function ProfileCard({
         <span className="text-muted-foreground">회</span>
       </span>,
     ],
-    [
-      "레이팅",
-      rating?.rating4 != null ? (
-        <span key="r" className="font-mono tabular-nums">
-          {rating.rating4}
-          {rating.rating1 != null && rating.rating1 !== rating.rating4 && (
-            <span className="ml-1 text-xs text-muted-foreground">
-              ({rating.rating1} → {rating.rating2} → {rating.rating3} → {rating.rating4})
-            </span>
-          )}
-        </span>
-      ) : (
-        "-"
-      ),
-    ],
   ];
 
   const characteristics = normalizeCharacteristics(horse.characteristics);
-
   const hasRatingTrend = ratingHistory.filter((p) => p.rating4 !== null).length >= 2;
 
   return (
@@ -288,14 +272,6 @@ function ProfileCard({
               {horse.horse_name}
             </CardTitle>
           </div>
-          {hasRatingTrend && (
-            <div className="hidden shrink-0 sm:block">
-              <div className="mb-1 text-right text-[10px] uppercase tracking-wider text-muted-foreground">
-                레이팅 추이
-              </div>
-              <RatingSparkline points={ratingHistory} />
-            </div>
-          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -308,32 +284,56 @@ function ProfileCard({
               <dd className="mt-0.5 text-sm font-medium">{value}</dd>
             </div>
           ))}
+          {/* 마지막 행: 레이팅 추이(좌, col-span-2) + 특징(우, col-span-2). 두 영역 모두 데이터 없으면 행 자체를 생략. */}
+          {hasRatingTrend && (
+            <div className="col-span-2">
+              <dt className="text-xs uppercase tracking-wider text-muted-foreground">
+                레이팅 추이
+              </dt>
+              <dd className="mt-1">
+                <RatingSparkline points={ratingHistory} />
+              </dd>
+            </div>
+          )}
+          {characteristics.length > 0 && (
+            <div className="col-span-2">
+              <dt className="text-xs uppercase tracking-wider text-muted-foreground">
+                특징
+              </dt>
+              <dd className="mt-1 flex flex-wrap gap-1.5">
+                {characteristics.map((c) => (
+                  <Badge key={c} variant="secondary" className="font-normal">
+                    {c}
+                  </Badge>
+                ))}
+              </dd>
+            </div>
+          )}
         </dl>
-        {hasRatingTrend && (
-          <div className="mt-5 border-t pt-4 sm:hidden">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">
-              레이팅 추이
-            </div>
-            <div className="mt-2">
-              <RatingSparkline points={ratingHistory} />
-            </div>
-          </div>
-        )}
-        {characteristics.length > 0 && (
-          <div className="mt-5 border-t pt-4">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">
-              특징
-            </div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {characteristics.map((c) => (
-                <Badge key={c} variant="secondary" className="font-normal">
-                  {c}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
+}
+
+/* ── Sex 표시 ─────────────────────────────────────────────── */
+// "수" → ♂(파랑), "암" → ♀(분홍), "거" → ♂(파랑) + (거).
+// horse.sex 는 "수4", "암3", "거6" 처럼 연령이 붙는 케이스도 있어 startsWith 비교.
+function SexBadge({ sex }: { sex: string | null }) {
+  if (!sex) return <span className="text-muted-foreground">-</span>;
+  const s = sex.trim();
+  if (s.startsWith("거")) {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <span aria-label="수말 (거세)" className="text-lg leading-none text-blue-500">♂</span>
+        <span className="text-xs text-muted-foreground">(거)</span>
+      </span>
+    );
+  }
+  if (s.startsWith("수")) {
+    return <span aria-label="수말" className="text-lg leading-none text-blue-500">♂</span>;
+  }
+  if (s.startsWith("암")) {
+    return <span aria-label="암말" className="text-lg leading-none text-pink-500">♀</span>;
+  }
+  return <span>{s}</span>;
 }

@@ -54,14 +54,6 @@ export default async function HorsesPage({
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-12">
-      <Link
-        href="/"
-        className="group mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"
-      >
-        <span className="transition group-hover:-translate-x-0.5">&larr;</span>
-        메인으로
-      </Link>
-
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div className="flex items-baseline gap-3">
           <h1 className="font-serif text-3xl font-bold tracking-tight text-primary">마필</h1>

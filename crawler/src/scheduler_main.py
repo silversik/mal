@@ -167,14 +167,22 @@ def main() -> None:
         id="mal.sync_races_today",
         **common,
     )
-    # 경기일 실시간 결과·배당 동기화 — 매시 정각 10~21시 KST.
+    # 경기일 실시간 결과·배당 동기화 — 평일은 시간당 backstop, 주말은 15분 간격.
     # 단일 22:00 sync_races_today 잡 실패 시 그날 결과가 통째로 비는 사고를
     # 방지하기 위한 in-day backstop. 비경기일이면 KRA API 가 0건 반환이라 무해.
+    # 주말은 race day 라 결과 확정이 마지막 경주 직후(보통 21:00~21:30 KST)에
+    # 몰리므로 22시까지 더 자주 갱신해 22:00 sync 전에도 홈에 반영되도록 한다.
     # `monitoring.py` 의 mal.sync_races_live job_key 와 1:1 대응.
     sched.add_job(
         run_sync_races_live,
-        CronTrigger(hour="10-21", minute=0),
+        CronTrigger(day_of_week="mon-fri", hour="10-21", minute=0),
         id="mal.sync_races_live",
+        **common,
+    )
+    sched.add_job(
+        run_sync_races_live,
+        CronTrigger(day_of_week="sat,sun", hour="10-22", minute="*/15"),
+        id="mal.sync_races_live_weekend",
         **common,
     )
     # 결과 수집(22:00) 직후 메타 백필(22:30) — races.race_name/distance/grade/track_type 채움.
