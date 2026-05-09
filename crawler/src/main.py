@@ -36,6 +36,7 @@ from .jobs.periodic import (
     run_sync_trainers,
     run_sync_videos,
     run_sync_videos_backfill,
+    run_sync_videos_bulk,
 )
 from .jobs.sync_horses import backfill_missing_raw, sync_by_name, sync_by_no, upsert_horses
 from .jobs.sync_jockeys import sync_all_jockeys
@@ -330,6 +331,13 @@ def cmd_periodic_videos_backfill() -> None:
     """[scheduled] sync_videos_backfill — 누락 경주 영상 search."""
     n = run_sync_videos_backfill()
     typer.echo(f"backfilled {n} video rows")
+
+
+@app.command("periodic-videos-bulk")
+def cmd_periodic_videos_bulk() -> None:
+    """[scheduled] sync_videos_bulk — KRBC 업로드 1년 walk 일괄 적재."""
+    n = run_sync_videos_bulk()
+    typer.echo(f"bulk-upserted {n} video rows")
 
 
 @app.command("periodic-race-dividends")

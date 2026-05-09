@@ -45,6 +45,7 @@ from .jobs.periodic import (
     run_sync_trainers,
     run_sync_videos,
     run_sync_videos_backfill,
+    run_sync_videos_bulk,
     run_sync_weather,
     run_sync_yesterday_catchup,
 )
@@ -253,6 +254,15 @@ def main() -> None:
         id="mal.audit_combo_dividends",
         **common,
     )
+    # KRBC 업로드 플레이리스트 1년 walk — 월 1회(매월 1일 04:00 KST) 일괄 적재.
+    # 영상 폭주(race day 30+ 영상)로 sync_videos head 에서 밀린 누락 영구 cover.
+    # 수동 "지금 실행" 트리거로도 호출 가능.
+    sched.add_job(
+        run_sync_videos_bulk,
+        CronTrigger(day=1, hour=4, minute=0),
+        id="mal.sync_videos_bulk",
+        **common,
+    )
     # 즐겨찾기 마필 출주 → 인앱 알림 — sync_race_entries(3h) 보다 자주 회전.
     sched.add_job(
         run_build_favorite_notifications,
@@ -276,6 +286,7 @@ def main() -> None:
         "mal.sync_news": run_sync_news,
         "mal.sync_videos": run_sync_videos,
         "mal.sync_videos_backfill": run_sync_videos_backfill,
+        "mal.sync_videos_bulk": run_sync_videos_bulk,
         "mal.sync_race_entries": run_sync_race_entries,
         "mal.sync_race_plan": run_sync_race_plan,
         "mal.sync_jockeys": run_sync_jockeys,
