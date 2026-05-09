@@ -38,6 +38,8 @@ export interface FamilyTreeDiagramProps {
   dam_sire?: FamNode | null;
   dam_dam?: FamNode | null;
   siblings: FamNode[];
+  /** true 이면 SVG 가 컨테이너 너비를 100% 채우도록 — "크게 보기" 모달용. */
+  responsive?: boolean;
 }
 
 /* ── Component ────────────────────────────────────────────── */
@@ -50,6 +52,7 @@ export function FamilyTreeDiagram({
   dam_sire,
   dam_dam,
   siblings,
+  responsive = false,
 }: FamilyTreeDiagramProps) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -257,7 +260,13 @@ export function FamilyTreeDiagram({
         el.addEventListener("pointercancel", onUp);
       }}
     >
-      <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} style={{ display: "block", touchAction: "pan-x pan-y" }}>
+      <svg
+        width={responsive ? "100%" : svgW}
+        height={responsive ? "auto" : svgH}
+        viewBox={`0 0 ${svgW} ${svgH}`}
+        preserveAspectRatio="xMidYMid meet"
+        style={{ display: "block", touchAction: "pan-x pan-y" }}
+      >
         <g fill="none" strokeWidth={1.25}>
           {/* Sire → bus → all children */}
           {sire && N > 0 && (() => {

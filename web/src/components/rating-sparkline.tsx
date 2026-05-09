@@ -12,21 +12,37 @@ type Props = {
 };
 
 /**
- * 경주마 레이팅(rating4 = 가장 최근 누적값) 의 시계열 스파크라인.
- * - 외부 차트 lib 없이 SVG <path> + <circle> 로 렌더.
- * - 호버 시 해당 시점의 snapshot_date / rating4 를 상단에 표시.
- * - 2점 미만이면 숨김 (차트로서 의미 없음).
+ * 경주마 레이팅 스파크라인.
+ *
+ * KRA 의 horse_ratings 한 행에는 rating1~rating4 4개 값이 들어 있고, 코멘트 기준
+ * "rating4 가 가장 최근, rating1 이 가장 오래된" 누적 4시점이다. snapshot_date 별로는
+ * 한 마필이 한동안 출주하지 않으면 4개 값이 그대로 반복돼 (예: 4/23·4/25·5/9 모두
+ * 67/60/58/63) — 기존엔 snapshot_date 축으로 rating4 만 점을 찍어서 차트가 평평하게
+ * 보이는 사고가 있었다. 사용자 기대는 "67 → 60 → 58 → 63 의 변동 곡선" 이므로 가장
+ * 최근 snapshot 의 rating1→rating4 4점을 시리즈로 사용한다. 4개 점 사이의 실제 일자
+ * 간격은 KRA 가 노출하지 않으므로 인덱스 기준 등간격으로 배치한다.
+ *
+ * 2점 미만(예: rating1·2 만 있고 3·4 가 NULL)이면 숨김.
  */
 export function RatingSparkline({ points, width = 240, height = 56 }: Props) {
   const [hover, setHover] = useState<number | null>(null);
 
-  const series = [...points]
+  const latest = [...points]
     .filter((p) => p.rating4 !== null)
-    .sort((a, b) => a.snapshot_date.localeCompare(b.snapshot_date));
+    .sort((a, b) => b.snapshot_date.localeCompare(a.snapshot_date))[0];
+
+  if (!latest) return null;
+
+  const series: { label: string; value: number }[] = [
+    { label: "R1", value: latest.rating1 as number },
+    { label: "R2", value: latest.rating2 as number },
+    { label: "R3", value: latest.rating3 as number },
+    { label: "R4", value: latest.rating4 as number },
+  ].filter((p): p is { label: string; value: number } => p.value !== null && p.value !== undefined);
 
   if (series.length < 2) return null;
 
-  const values = series.map((p) => p.rating4 as number);
+  const values = series.map((p) => p.value);
   const min = Math.min(...values);
   const max = Math.max(...values);
   const span = Math.max(1, max - min);
@@ -42,7 +58,7 @@ export function RatingSparkline({ points, width = 240, height = 56 }: Props) {
   const d = series
     .map((p, i) => {
       const x = xOf(i);
-      const y = yOf(p.rating4 as number);
+      const y = yOf(p.value);
       return `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
     })
     .join(" ");
@@ -53,9 +69,9 @@ export function RatingSparkline({ points, width = 240, height = 56 }: Props) {
   return (
     <div className="inline-flex flex-col items-start gap-1">
       <div className="text-[10px] text-muted-foreground tabular-nums">
-        {currentPoint.snapshot_date} · <strong className="text-foreground">{currentPoint.rating4}</strong>
-        {hover === null && values.length > 1 && (
-          <span className="ml-1 opacity-60">(최근)</span>
+        {currentPoint.label} · <strong className="text-foreground">{currentPoint.value}</strong>
+        {hover === null && (
+          <span className="ml-1 opacity-60">(최근 · {latest.snapshot_date})</span>
         )}
       </div>
       <svg
@@ -76,10 +92,10 @@ export function RatingSparkline({ points, width = 240, height = 56 }: Props) {
         />
         {series.map((p, i) => {
           const x = xOf(i);
-          const y = yOf(p.rating4 as number);
+          const y = yOf(p.value);
           const isActive = i === current;
           return (
-            <g key={p.snapshot_date}>
+            <g key={p.label}>
               {/* 호버 히트박스 — 얇은 세로 띠 */}
               <rect
                 x={x - innerW / (series.length * 2 || 1)}
