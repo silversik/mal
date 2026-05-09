@@ -4,7 +4,7 @@ import Link from "next/link";
 import { HorseMark } from "@/components/brand/logo";
 import { coatBodyHex, coatBgHex } from "@/lib/coat";
 import { VenueIcon } from "@/components/venue-icon";
-import { TodayMeetCard } from "@/components/today-meet-card";
+import { HeroTodayCarousel, type HeroMeetData } from "@/components/hero-today-carousel";
 import { EmptyState } from "@/components/empty-state";
 import { WinRateBar } from "@/components/win-rate-bar";
 import { RecentRacesSwiper } from "@/components/recent-races-swiper";
@@ -62,10 +62,6 @@ export default function Home() {
       </Suspense>
 
       <main className="mx-auto w-full max-w-6xl px-6 py-12">
-        <Suspense fallback={null}>
-          <TodayMeetSection todayDate={todayDate} />
-        </Suspense>
-
         <Suspense fallback={<SwiperSkeleton />}>
           <RecentRacesSection />
         </Suspense>
@@ -100,6 +96,52 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
   const nextStatus = nextRaceRef
     ? getRaceStatus({ ...nextRaceRef, has_results: nextDayAllFinished })
     : null;
+
+  // 오늘 경기가 있으면 배너에 출전표 슬라이드를 노출. 그 외(미래 일정/대상경주 fallback)는
+  // 기존의 banner card 그대로.
+  const isRaceToday = nextRaceDate === todayDate;
+
+  if (isRaceToday) {
+    const todayMeets = MEET_ORDER.filter((m) => nextDayRaces.some((r) => r.meet === m));
+    const todayCards: HeroMeetData[] = await Promise.all(
+      todayMeets.map(async (meet) => {
+        const c = await cachedRaceDayCard(todayDate, meet);
+        return {
+          meet,
+          phase: c.phase,
+          races: nextDayRaces.filter((r) => r.meet === meet),
+          byRace: Object.fromEntries(c.byRace),
+        };
+      }),
+    );
+
+    return (
+      <section className="relative overflow-hidden border-b border-primary/5 bg-primary px-6 py-10 md:py-12 text-white">
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/carbon-fibre.png")' }}></div>
+        <div className="relative mx-auto max-w-6xl">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <Badge variant="outline" className="mb-3 border-champagne-gold text-champagne-gold">
+                {nextDayAllFinished ? "TODAY" : "LIVE"} · {todayDate}
+              </Badge>
+              <h1 className="font-serif text-2xl font-bold tracking-tight text-sand-ivory md:text-4xl">
+                {nextStatus === "진행중" ? "오늘의 경주 · 출전표" : "오늘의 경주 · 결과"}
+              </h1>
+            </div>
+            <Link
+              href={`/races?date=${todayDate}`}
+              className="text-sm font-semibold text-champagne-gold transition hover:text-white"
+            >
+              더보기 &rarr;
+            </Link>
+          </div>
+
+          <HeroTodayCarousel date={todayDate} meets={todayCards} />
+        </div>
+      </section>
+    );
+  }
+
   const detectedStakes = nextDayRaces.filter(isStakesRace);
   const featureRaces =
     detectedStakes.length > 0
@@ -174,48 +216,6 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
         </div>
       </div>
     </section>
-  );
-}
-
-/* ── 오늘의 경주 (개최일에만) ─────────────────────────── */
-
-async function TodayMeetSection({ todayDate }: { todayDate: string }) {
-  const nextDayRaces = await cachedNextRaceDayRaces();
-  const isRaceToday = nextDayRaces[0]?.race_date === todayDate;
-  if (!isRaceToday) return null;
-
-  const todayMeets = MEET_ORDER.filter((m) => nextDayRaces.some((r) => r.meet === m));
-  const todayCards = await Promise.all(
-    todayMeets.map((meet) =>
-      cachedRaceDayCard(todayDate, meet).then((c) => ({
-        meet,
-        phase: c.phase,
-        byRace: Object.fromEntries(c.byRace),
-      })),
-    ),
-  );
-
-  if (todayCards.length === 0) return null;
-
-  return (
-    <Section
-      title={`오늘의 경주 ${todayCards[0]?.phase === "post" ? "· 결과" : "· 출전표"}`}
-      href={`/races?date=${todayDate}`}
-      tier="l1"
-    >
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {todayCards.map(({ meet, phase, byRace }) => (
-          <TodayMeetCard
-            key={meet}
-            meet={meet}
-            date={todayDate}
-            races={nextDayRaces.filter((r) => r.meet === meet)}
-            byRace={byRace}
-            phase={phase}
-          />
-        ))}
-      </div>
-    </Section>
   );
 }
 
