@@ -57,20 +57,26 @@ export async function getRaceComboDividends(
   raceNo: number,
 ): Promise<RaceComboDividend[]> {
   return query<RaceComboDividend>(
+    // chul_map 은 chul_no 1건당 정확히 1행이어야 함 — race_entries 와 race_results
+    // 양쪽에 같은 chul_no 가 있으면 (당일 경기 = 둘 다 적재) UNION ALL 이 중복을
+    // 만들어 LEFT JOIN m1·m2·m3 가 2x~8x 로 곱해지는 사고가 있었다 (5/9 EXA 72→288,
+    // TLA 84→672). DISTINCT ON 으로 chul_no 당 1행 보장, 결과 우선(prio=1).
     `WITH chul_map AS (
-        SELECT chul_no_text AS chul_no, horse_name
+        SELECT DISTINCT ON (chul_no_text)
+               chul_no_text AS chul_no, horse_name
           FROM (
-              SELECT chul_no::text AS chul_no_text, horse_name
-                FROM race_entries
-               WHERE race_date = $1 AND meet = $2 AND race_no = $3
-              UNION ALL
-              SELECT r.raw->>'chulNo' AS chul_no_text, h.horse_name
+              SELECT r.raw->>'chulNo' AS chul_no_text, h.horse_name, 1 AS prio
                 FROM race_results r
                 LEFT JOIN horses h ON h.horse_no = r.horse_no
                WHERE r.race_date = $1 AND r.meet = $2 AND r.race_no = $3
                  AND r.raw IS NOT NULL
+              UNION ALL
+              SELECT chul_no::text AS chul_no_text, horse_name, 2 AS prio
+                FROM race_entries
+               WHERE race_date = $1 AND meet = $2 AND race_no = $3
           ) u
          WHERE chul_no_text IS NOT NULL AND chul_no_text <> ''
+         ORDER BY chul_no_text, prio
      )
      SELECT
         d.pool,
