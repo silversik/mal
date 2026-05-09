@@ -254,13 +254,16 @@ export function BetForm(props: BetFormProps) {
     );
   }
 
-  if (state !== "pre") {
+  // 종료된 경주는 결과 표가 이미 페이지에 노출되므로 안내 카드를 숨긴다.
+  if (state === "finished") {
+    return null;
+  }
+
+  if (state === "locked") {
     return (
       <Card className="mt-6 border-dashed">
         <CardContent className="py-6 text-center text-sm text-muted-foreground">
-          {state === "locked"
-            ? "이 경주는 베팅이 마감되었습니다."
-            : "이미 종료된 경주입니다."}
+          이 경주는 베팅이 마감되었습니다.
         </CardContent>
       </Card>
     );
