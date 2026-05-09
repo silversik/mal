@@ -145,7 +145,9 @@ export default async function RacesPage({
   searchParams: Promise<SearchParams>;
 }) {
   const { date, venue, race } = await searchParams;
-  const today = new Date().toISOString().slice(0, 10);
+  // KST(UTC+9) 기준 오늘. UTC 자정~9시 사이에 어제로 잘못 잡혀 isToday 가
+  // 거짓 falsy → KRBC 라이브 버튼 미노출, 검색 버튼 노출 같은 표시 오류를 방지.
+  const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const currentDate = date ?? today;
   const isToday = currentDate === today;
 
@@ -425,7 +427,11 @@ export default async function RacesPage({
                     KRBC 라이브
                   </a>
                 )}
-                {!raceVideo && ytSearchUrl && (
+                {/* 시작 전 경기(미래/오늘 + phase=pre) 는 KRBC 영상이 존재할 수 없어
+                    검색해도 빈 결과 → 검색 버튼 자체를 숨김. 지난 경기인데 phase=pre
+                    (수집 지연) 또는 phase=post + 영상 매칭 누락 case 는 사용자가 직접
+                    검색해 영상을 찾을 수 있게 유지. */}
+                {!raceVideo && ytSearchUrl && !(entriesPhase === "pre" && currentDate >= today) && (
                   <a
                     href={ytSearchUrl}
                     target="_blank"

@@ -166,6 +166,16 @@ def main() -> None:
         id="mal.sync_races_today",
         **common,
     )
+    # 경기일 실시간 결과·배당 동기화 — 매시 정각 10~21시 KST.
+    # 단일 22:00 sync_races_today 잡 실패 시 그날 결과가 통째로 비는 사고를
+    # 방지하기 위한 in-day backstop. 비경기일이면 KRA API 가 0건 반환이라 무해.
+    # `monitoring.py` 의 mal.sync_races_live job_key 와 1:1 대응.
+    sched.add_job(
+        run_sync_races_live,
+        CronTrigger(hour="10-21", minute=0),
+        id="mal.sync_races_live",
+        **common,
+    )
     # 결과 수집(22:00) 직후 메타 백필(22:30) — races.race_name/distance/grade/track_type 채움.
     sched.add_job(
         run_sync_race_info,
@@ -228,6 +238,7 @@ def main() -> None:
         "mal.sync_horses_refresh": run_sync_horses_refresh,
         "mal.sync_horse_ratings": run_sync_horse_ratings,
         "mal.sync_races_today": run_sync_races_today,
+        "mal.sync_races_live": run_sync_races_live,
         "mal.sync_yesterday_catchup": run_sync_yesterday_catchup,
         "mal.sync_race_info": run_sync_race_info,
         "mal.sync_race_dividends": run_sync_race_dividends,

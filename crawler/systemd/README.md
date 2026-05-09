@@ -13,6 +13,7 @@ Ubuntu 에서 `mal-collector` 를 주기적으로 돌리기 위한 템플릿 서
 | `mal-collector-periodic-news.timer`           | `periodic-news`            | 30분               |
 | `mal-collector-periodic-videos.timer`         | `periodic-videos`          | 3시간              |
 | `mal-collector-periodic-races-today.timer`    | `periodic-races-today`     | 매일 22:00 KST     |
+| `mal-collector-periodic-races-live.timer`     | `periodic-races-live`      | 매시 10~21시 KST   |
 | `mal-collector-periodic-jockeys.timer`        | `periodic-jockeys`         | 매일 06:00 KST     |
 | `mal-collector-periodic-horses-backfill.timer`| `periodic-horses-backfill` | 매일 06:30 KST     |
 | `mal-collector-periodic-race-plan.timer`      | `periodic-race-plan`       | 매일 05:00 KST     |
@@ -58,6 +59,7 @@ sudo systemctl enable --now \
     mal-collector-periodic-news.timer \
     mal-collector-periodic-videos.timer \
     mal-collector-periodic-races-today.timer \
+    mal-collector-periodic-races-live.timer \
     mal-collector-periodic-jockeys.timer \
     mal-collector-periodic-horses-backfill.timer \
     mal-collector-periodic-race-plan.timer \
