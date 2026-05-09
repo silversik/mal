@@ -23,6 +23,7 @@ export type RaceEntry = {
   horse_no: string;
   horse_name: string;
   jockey_name: string | null;
+  jockey_no: string | null;   // jockeys 테이블 LEFT JOIN — 매칭 안 되면 null (이름만 표시)
   trainer_name: string | null;
   trainer_no: string | null;  // trainers 테이블 LEFT JOIN — 매칭 안 되면 null (raw text 만 표시)
   record_time: string | null; // phase='pre' 이면 null (아직 뛰지 않음)
@@ -132,10 +133,11 @@ export async function getNextRaceDayRaces(): Promise<RaceInfo[]> {
  * 가장 최근 N개의 개최일에 속한 모든 경주를 반환 (최신일 먼저).
  * 메인 페이지에서 (날짜 × 경마장) 단위로 묶어 보여줄 때 사용.
  *
- * 오늘(KST)도 결과가 1건이라도 적재됐으면 포함 — 단순히 race_date < TODAY
- * 로 자르면 오늘 경주가 끝나도 "최근 경기" 에 안 보여서 데이터가 누락된 것
- * 처럼 느껴지는 사고가 있었다(2026-05-09). race_results.rank 가 채워진 날만
- * "끝난 개최일" 로 본다.
+ * "끝난 개최일" 판정: 결과(rank) 가 1건 이상 적재됐거나, KRBC 영상이 1건 이상
+ * 등록된 날. 결과는 KRA OpenAPI(22:00 KST sync) 가 늦을 수 있어, 영상이 먼저
+ * 들어온 race day(예: 5/9 KRBC 라이브 후 결과 적재 전 시점) 도 즉시 "최근
+ * 경기" 에 노출하기 위함. 영상만 있는 카드는 입상마 빈 채로 노출되지만 직접
+ * 경기 페이지로 진입할 수 있다는 가치가 있음.
  */
 export async function getRecentRaceDaysRaces(days = 2): Promise<RaceInfo[]> {
   return query<RaceInfo>(
@@ -143,10 +145,16 @@ export async function getRecentRaceDaysRaces(days = 2): Promise<RaceInfo[]> {
        SELECT DISTINCT r.race_date
          FROM races r
         WHERE r.race_date <= ${KST_TODAY}
-          AND EXISTS (
-            SELECT 1 FROM race_results rr
-             WHERE rr.race_date = r.race_date
-               AND rr.rank IS NOT NULL
+          AND (
+            EXISTS (
+              SELECT 1 FROM race_results rr
+               WHERE rr.race_date = r.race_date
+                 AND rr.rank IS NOT NULL
+            )
+            OR EXISTS (
+              SELECT 1 FROM kra_videos v
+               WHERE v.race_date = r.race_date
+            )
           )
         ORDER BY r.race_date DESC
         LIMIT $1
@@ -306,9 +314,12 @@ export async function getRaceEntries(
     // 동명이인 가능하나 실데이터상 충돌 거의 없음 (trainers ~333명).
     `SELECT r.rank, (r.raw->>'chulNo')::int AS chul_no,
             r.horse_no, h.horse_name,
-            r.jockey_name, r.trainer_name,
+            r.jockey_name,
+            j.jk_no AS jockey_no,
+            r.trainer_name,
             t.tr_no AS trainer_no,
-            r.record_time::text, r.weight::text,
+            COALESCE(NULLIF(NULLIF(r.raw->>'rcTime', '-'), ''), r.record_time::text) AS record_time,
+            r.weight::text,
             d.win_rate::text AS win_rate,
             d.plc_rate::text AS plc_rate,
             r.raw->>'age' AS age,
@@ -321,6 +332,7 @@ export async function getRaceEntries(
             jc.weight_after::text AS jockey_weight_after
        FROM race_results r
        JOIN horses h ON h.horse_no = r.horse_no
+       LEFT JOIN jockeys j ON j.jk_name = r.jockey_name
        LEFT JOIN trainers t ON t.tr_name = r.trainer_name
        LEFT JOIN race_dividends d
               ON d.race_date = r.race_date
@@ -346,7 +358,9 @@ export async function getRaceEntries(
   const pre = await query<RaceEntry>(
     `SELECT NULL::int AS rank, e.chul_no,
             e.horse_no, e.horse_name,
-            e.jockey_name, e.trainer_name,
+            e.jockey_name,
+            j.jk_no AS jockey_no,
+            e.trainer_name,
             t.tr_no AS trainer_no,
             NULL::text AS record_time, e.weight::text,
             NULL::text AS win_rate, NULL::text AS plc_rate,
@@ -357,6 +371,7 @@ export async function getRaceEntries(
             jc.weight_before::text AS jockey_weight_before,
             jc.weight_after::text AS jockey_weight_after
        FROM race_entries e
+       LEFT JOIN jockeys j ON j.jk_name = e.jockey_name
        LEFT JOIN trainers t ON t.tr_name = e.trainer_name
        LEFT JOIN jockey_changes jc
               ON jc.race_date = e.race_date
