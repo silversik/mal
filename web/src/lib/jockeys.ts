@@ -70,11 +70,13 @@ export async function getRecentRacesByJockey(
   limit = 20,
 ): Promise<JockeyRaceResult[]> {
   return query<JockeyRaceResult>(
+    // record_time(NUMERIC) 은 KRA rcTime "1:22.4" 가 float() 파싱 실패로 NULL 인 경우가 많다.
+    // 표시용으로는 raw->>'rcTime' (이미 "M:SS.f" 형식) 을 우선 사용하고, 없을 때만 컬럼값.
     `SELECT r.id,
             to_char(r.race_date, 'YYYY-MM-DD') AS race_date,
             r.meet, r.race_no, r.rank,
             h.horse_name, h.horse_no,
-            r.record_time::text
+            COALESCE(NULLIF(NULLIF(r.raw->>'rcTime', '-'), ''), r.record_time::text) AS record_time
        FROM race_results r
        JOIN horses h ON h.horse_no = r.horse_no
       WHERE r.jockey_name = $1

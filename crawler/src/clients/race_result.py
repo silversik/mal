@@ -74,8 +74,21 @@ def _parse_int(value: Any) -> int | None:
 
 
 def _parse_number(value: Any) -> float | None:
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s or s == "-":
+        return None
+    # KRA rcTime 은 "1:22.4" (M:SS.f) 형식. 단순 float() 파싱은 실패해 record_time 이
+    # 통째로 NULL 로 적재되던 사고가 있었음. 분 부분이 있으면 초 단위로 환산.
+    if ":" in s:
+        try:
+            mins, secs = s.split(":", 1)
+            return int(mins) * 60 + float(secs)
+        except (TypeError, ValueError):
+            return None
     try:
-        return float(value)
+        return float(s)
     except (TypeError, ValueError):
         return None
 
