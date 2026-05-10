@@ -50,6 +50,7 @@ import {
 import { getRaceVideo, youtubeEmbedUrl } from "@/lib/videos";
 import { PoolSalesDonut } from "@/components/pool-sales-donut";
 import { RaceHorseCompare } from "@/components/race-horse-compare";
+import { PopularityVsResult } from "@/components/popularity-vs-result";
 import { getHorseCompareSummaries } from "@/lib/horses";
 
 import { BetForm } from "./bet-form";
@@ -563,6 +564,19 @@ export default async function RacesPage({
               dailyTotalP={dailyTotalP}
               startTime={selectedRace.start_time ?? null}
             />
+          )}
+
+          {entriesPhase === "post" && (
+            <div className="mt-6">
+              <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
+                인기 vs 결과
+              </h3>
+              <Card>
+                <CardContent className="p-4">
+                  <PopularityVsResult entries={entries} />
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {comboDividends.length > 0 && (
