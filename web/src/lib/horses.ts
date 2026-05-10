@@ -189,24 +189,42 @@ function ageWhereClause(bucket: HorseAgeBucket): string {
   }
 }
 
-/** /horses 페이지용 정렬 + 나이 필터 쿼리. */
+export type HorseSexFilter = "all" | "수" | "암" | "거";
+export type HorseCountryFilter = "all" | "domestic" | "foreign";
+
+/** /horses 페이지용 정렬 + 나이/성별/산지 필터 쿼리. */
 export async function getHorsesSorted(
   sort: HorseSort = "wins",
   ageBucket: HorseAgeBucket = "under5",
+  sexFilter: HorseSexFilter = "all",
+  countryFilter: HorseCountryFilter = "all",
   limit = 60,
 ): Promise<Horse[]> {
   const order =
     sort === "wins"
       ? "h.first_place_count DESC, h.total_race_count DESC, h.created_at DESC"
       : "h.created_at DESC";
-  const where = `WHERE ${ageWhereClause(ageBucket)}`;
+
+  const where: string[] = [ageWhereClause(ageBucket)];
+  const params: unknown[] = [limit];
+
+  if (sexFilter !== "all") {
+    params.push(`${sexFilter}%`);
+    where.push(`h.sex LIKE $${params.length}`);
+  }
+  if (countryFilter === "domestic") {
+    where.push(`h.country = '국내산'`);
+  } else if (countryFilter === "foreign") {
+    where.push(`(h.country IS NOT NULL AND h.country <> '국내산')`);
+  }
+
   return query<Horse>(
     `SELECT ${HORSE_COLUMNS}
        FROM ${HORSE_FROM}
-       ${where}
+       WHERE ${where.join(" AND ")}
       ORDER BY ${order}
       LIMIT $1`,
-    [limit],
+    params,
   );
 }
 

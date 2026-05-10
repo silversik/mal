@@ -14,6 +14,8 @@ import {
   searchHorses,
   type Horse,
   type HorseAgeBucket,
+  type HorseCountryFilter,
+  type HorseSexFilter,
   type HorseSort,
 } from "@/lib/horses";
 
@@ -24,7 +26,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/horses" },
 };
 
-type SearchParams = { q?: string; sort?: string; age?: string };
+type SearchParams = { q?: string; sort?: string; age?: string; sex?: string; origin?: string };
 
 const SORT_OPTIONS: { value: HorseSort; label: string }[] = [
   { value: "wins",   label: "우승순" },
@@ -35,19 +37,44 @@ function isAgeBucket(v: string | undefined): v is HorseAgeBucket {
   return v === "under5" || v === "under10" || v === "over11";
 }
 
+function isSexFilter(v: string | undefined): v is HorseSexFilter {
+  return v === "all" || v === "수" || v === "암" || v === "거";
+}
+
+function isCountryFilter(v: string | undefined): v is HorseCountryFilter {
+  return v === "all" || v === "domestic" || v === "foreign";
+}
+
+const SEX_OPTIONS: { value: HorseSexFilter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "수", label: "수" },
+  { value: "암", label: "암" },
+  { value: "거", label: "거" },
+];
+
+const COUNTRY_OPTIONS: { value: HorseCountryFilter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "domestic", label: "국내산" },
+  { value: "foreign", label: "외산" },
+];
+
 export default async function HorsesPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const { q = "", sort, age } = await searchParams;
+  const { q = "", sort, age, sex, origin } = await searchParams;
   const queryStr = q.trim();
   const activeSort: HorseSort = sort === "latest" ? "latest" : "wins";
   const activeAge: HorseAgeBucket = isAgeBucket(age) ? age : "under5";
+  const activeSex: HorseSexFilter = isSexFilter(sex) ? sex : "all";
+  const activeOrigin: HorseCountryFilter = isCountryFilter(origin) ? origin : "all";
 
   const [searchHit, horses, totalCount] = await Promise.all([
     queryStr ? searchHorses(queryStr, 60) : Promise.resolve(null),
-    queryStr ? Promise.resolve<Horse[]>([]) : getHorsesSorted(activeSort, activeAge, 60),
+    queryStr
+      ? Promise.resolve<Horse[]>([])
+      : getHorsesSorted(activeSort, activeAge, activeSex, activeOrigin, 60),
     countAllHorses(),
   ]);
   const resultRows: Horse[] = searchHit ? searchHit.rows : horses;
@@ -62,14 +89,14 @@ export default async function HorsesPage({
           </span>
         </div>
 
-        {/* Sort toggle + age filter — only when not searching */}
+        {/* Sort toggle + filters — only when not searching */}
         {!queryStr && (
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1 rounded-lg border border-primary/10 bg-white p-1">
               {SORT_OPTIONS.map(({ value, label }) => (
                 <Link
                   key={value}
-                  href={`/horses?sort=${value}&age=${activeAge}`}
+                  href={buildHorsesHref({ sort: value, age: activeAge, sex: activeSex, origin: activeOrigin })}
                   className={`rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
                     activeSort === value
                       ? "bg-primary text-sand-ivory shadow-sm"
@@ -81,6 +108,22 @@ export default async function HorsesPage({
               ))}
             </div>
             <AgeSelect activeAge={activeAge} activeSort={activeSort} />
+            <FilterPills
+              label="성별"
+              options={SEX_OPTIONS}
+              active={activeSex}
+              build={(v) =>
+                buildHorsesHref({ sort: activeSort, age: activeAge, sex: v, origin: activeOrigin })
+              }
+            />
+            <FilterPills
+              label="산지"
+              options={COUNTRY_OPTIONS}
+              active={activeOrigin}
+              build={(v) =>
+                buildHorsesHref({ sort: activeSort, age: activeAge, sex: activeSex, origin: v })
+              }
+            />
           </div>
         )}
       </div>
@@ -126,6 +169,53 @@ export default async function HorsesPage({
         </div>
       )}
     </main>
+  );
+}
+
+function buildHorsesHref(params: {
+  sort: HorseSort;
+  age: HorseAgeBucket;
+  sex: HorseSexFilter;
+  origin: HorseCountryFilter;
+}) {
+  const sp = new URLSearchParams();
+  sp.set("sort", params.sort);
+  sp.set("age", params.age);
+  if (params.sex !== "all") sp.set("sex", params.sex);
+  if (params.origin !== "all") sp.set("origin", params.origin);
+  return `/horses?${sp.toString()}`;
+}
+
+function FilterPills<T extends string>({
+  label,
+  options,
+  active,
+  build,
+}: {
+  label: string;
+  options: { value: T; label: string }[];
+  active: T;
+  build: (v: T) => string;
+}) {
+  return (
+    <div className="flex items-center gap-1 rounded-lg border border-primary/10 bg-white p-1 text-xs">
+      <span className="px-1 font-bold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+      {options.map((o) => (
+        <Link
+          key={o.value}
+          href={build(o.value)}
+          className={`rounded-md px-2 py-0.5 font-semibold transition-colors ${
+            active === o.value
+              ? "bg-primary text-sand-ivory shadow-sm"
+              : "text-slate-grey hover:text-primary"
+          }`}
+        >
+          {o.label}
+        </Link>
+      ))}
+    </div>
   );
 }
 
