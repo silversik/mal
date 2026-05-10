@@ -326,6 +326,120 @@ export async function getRaceResultsWithMsf(
   });
 }
 
+/**
+ * 출주마 비교용 sumamry — 다수 horse_no 한번에 조회.
+ * race detail 의 비교 카드에서 사용.
+ */
+export type HorseCompareSummary = {
+  horse_no: string;
+  horse_name: string;
+  total_race_count: number;
+  first_place_count: number;
+  second_place_count: number;
+  third_place_count: number;
+  /** 최근 5전 착순 (oldest-first, 표시 시 그대로 사용) */
+  recent_finishes: (number | null)[];
+  /** 최근 10전 평균 mal지수 (NULL 제외 평균). 데이터 없으면 null. */
+  avg_msf: number | null;
+  /** 최근 10전 최고 mal지수. */
+  best_msf: number | null;
+};
+
+export async function getHorseCompareSummaries(
+  horseNos: string[],
+): Promise<HorseCompareSummary[]> {
+  if (horseNos.length === 0) return [];
+  const placeholders = horseNos.map((_, i) => `$${i + 1}`).join(", ");
+
+  // 한 번 조회로: 마필 마스터 + race_results 집계 + 최근 mal지수 평균/최고.
+  // 최근 mal지수는 본인 record_time 과 같은 race 1착 record_time 비율.
+  const rows = await query<{
+    horse_no: string;
+    horse_name: string;
+    total_race_count: number;
+    first_place_count: number;
+    second_place_count: number;
+    third_place_count: number;
+    avg_msf: string | null;
+    best_msf: string | null;
+  }>(
+    `WITH recent AS (
+       SELECT rr.horse_no,
+              rr.race_date,
+              rr.race_no,
+              rr.meet,
+              ROW_NUMBER() OVER (PARTITION BY rr.horse_no ORDER BY rr.race_date DESC, rr.race_no DESC) AS rn,
+              ${RC_TIME_SECONDS_SQL} AS my_seconds
+         FROM race_results rr
+        WHERE rr.horse_no IN (${placeholders})
+     ),
+     msf_calc AS (
+       SELECT r.horse_no,
+              CASE WHEN r.my_seconds > 0 AND w.winner_time > 0
+                   THEN (w.winner_time / r.my_seconds * 100.0) END AS msf
+         FROM recent r
+         LEFT JOIN LATERAL (
+           SELECT MIN(${RC_TIME_SECONDS_SQL}) AS winner_time
+             FROM race_results rr
+            WHERE rr.race_date = r.race_date
+              AND rr.meet      = r.meet
+              AND rr.race_no   = r.race_no
+              AND rr.rank = 1
+         ) w ON TRUE
+        WHERE r.rn <= 10
+     ),
+     stats AS (
+       SELECT rr.horse_no,
+              COUNT(*) FILTER (WHERE rr.rank = 2)::int AS second_place_count,
+              COUNT(*) FILTER (WHERE rr.rank = 3)::int AS third_place_count
+         FROM race_results rr
+        WHERE rr.horse_no IN (${placeholders})
+        GROUP BY rr.horse_no
+     )
+     SELECT h.horse_no, h.horse_name,
+            h.total_race_count, h.first_place_count,
+            COALESCE(s.second_place_count, 0) AS second_place_count,
+            COALESCE(s.third_place_count, 0) AS third_place_count,
+            (SELECT AVG(msf)::numeric(6,1) FROM msf_calc m WHERE m.horse_no = h.horse_no AND msf IS NOT NULL)::text AS avg_msf,
+            (SELECT MAX(msf)::numeric(6,1) FROM msf_calc m WHERE m.horse_no = h.horse_no AND msf IS NOT NULL)::text AS best_msf
+       FROM horses h
+       LEFT JOIN stats s ON s.horse_no = h.horse_no
+      WHERE h.horse_no IN (${placeholders})`,
+    horseNos,
+  );
+
+  // 최근 5전 finishes 별도 조회 (마필별 5 row × N 마필 — 작아서 OK).
+  const finishesRows = await query<{ horse_no: string; rank: number | null; rn: number }>(
+    `SELECT horse_no, rank, rn FROM (
+       SELECT rr.horse_no, rr.rank,
+              ROW_NUMBER() OVER (PARTITION BY rr.horse_no ORDER BY rr.race_date DESC, rr.race_no DESC) AS rn
+         FROM race_results rr
+        WHERE rr.horse_no IN (${placeholders})
+     ) ord
+     WHERE rn <= 5`,
+    horseNos,
+  );
+  const finishesByHorse = new Map<string, (number | null)[]>();
+  for (const f of finishesRows) {
+    const arr = finishesByHorse.get(f.horse_no) ?? [];
+    arr.push(f.rank);
+    finishesByHorse.set(f.horse_no, arr);
+  }
+
+  return rows.map((r) => ({
+    horse_no: r.horse_no,
+    horse_name: r.horse_name,
+    total_race_count: Number(r.total_race_count),
+    first_place_count: Number(r.first_place_count),
+    second_place_count: Number(r.second_place_count),
+    third_place_count: Number(r.third_place_count),
+    // ROW_NUMBER 는 최신부터 1 → reverse 로 oldest-first 만들기.
+    recent_finishes: (finishesByHorse.get(r.horse_no) ?? []).reverse(),
+    avg_msf: r.avg_msf !== null ? Number(r.avg_msf) : null,
+    best_msf: r.best_msf !== null ? Number(r.best_msf) : null,
+  }));
+}
+
 /** mal지수 시계열 (오래된 순). sparkline 용. */
 export async function getMsfHistory(
   horseNo: string,
