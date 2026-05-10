@@ -7,7 +7,9 @@ export type Horse = {
   sex: string | null;
   birth_date: string | null;
   sire_name: string | null;
+  sire_no: string | null;
   dam_name: string | null;
+  dam_no: string | null;
   total_race_count: number;
   first_place_count: number;
   coat_color: string | null;
@@ -34,7 +36,8 @@ export type RaceResult = {
 const HORSE_COLUMNS = `
   h.horse_no, h.horse_name, h.country, h.sex,
   to_char(h.birth_date, 'YYYY-MM-DD') AS birth_date,
-  h.sire_name, h.dam_name, h.total_race_count, h.first_place_count,
+  h.sire_name, h.sire_no, h.dam_name, h.dam_no,
+  h.total_race_count, h.first_place_count,
   h.coat_color, h.characteristics,
   COALESCE(h.ow_no, h.raw->>'owNo') AS ow_no,
   o.ow_name AS owner_name
@@ -342,6 +345,84 @@ export async function getRaceResultsWithMsf(
       msf: computeMsf(myTime, winTime),
     };
   });
+}
+
+/**
+ * 부모(부마/모마) 자식 통계 — sire_no/dam_no 가 horseNo 인 자식들의 race_results 집계.
+ * /parent/[no] 페이지 + 마필 상세의 혈통 적성 카드에서 공통 사용.
+ */
+export type ParentChildAggregate = {
+  parent_no: string;
+  parent_name: string;
+  side: "sire" | "dam";
+  total_children: number;
+  /** 자식들의 통산 출전 합계. */
+  total_starts: number;
+  total_win: number;
+  total_place: number;
+  total_show: number;
+  /** 자식 중 최소 1승 한 비율. */
+  win_rate: number;
+};
+
+export async function getParentChildAggregate(
+  parentNo: string,
+): Promise<ParentChildAggregate | null> {
+  const rows = await query<{
+    side: "sire" | "dam";
+    parent_name: string;
+    total_children: number;
+    total_starts: number;
+    total_win: number;
+    total_place: number;
+    total_show: number;
+    winners: number;
+  }>(
+    `WITH parent AS (
+       SELECT horse_no, horse_name FROM horses WHERE horse_no = $1
+     ),
+     children AS (
+       SELECT h.horse_no, h.first_place_count,
+              CASE WHEN h.sire_no = $1 THEN 'sire'
+                   WHEN h.dam_no = $1  THEN 'dam'
+                   ELSE NULL END AS side
+         FROM horses h
+        WHERE h.sire_no = $1 OR h.dam_no = $1
+     )
+     SELECT MIN(c.side) AS side,
+            (SELECT horse_name FROM parent) AS parent_name,
+            COUNT(*)::int AS total_children,
+            COALESCE(SUM(rrstats.starts), 0)::int AS total_starts,
+            COALESCE(SUM(rrstats.win), 0)::int AS total_win,
+            COALESCE(SUM(rrstats.place), 0)::int AS total_place,
+            COALESCE(SUM(rrstats.show_), 0)::int AS total_show,
+            SUM(CASE WHEN c.first_place_count > 0 THEN 1 ELSE 0 END)::int AS winners
+       FROM children c
+       LEFT JOIN LATERAL (
+         SELECT COUNT(*)::int AS starts,
+                SUM(CASE WHEN rank = 1 THEN 1 ELSE 0 END)::int AS win,
+                SUM(CASE WHEN rank = 2 THEN 1 ELSE 0 END)::int AS place,
+                SUM(CASE WHEN rank = 3 THEN 1 ELSE 0 END)::int AS show_
+           FROM race_results
+          WHERE horse_no = c.horse_no
+       ) rrstats ON TRUE`,
+    [parentNo],
+  );
+
+  const r = rows[0];
+  if (!r || r.total_children === 0) return null;
+  const totalChildren = Number(r.total_children);
+  return {
+    parent_no: parentNo,
+    parent_name: r.parent_name,
+    side: r.side,
+    total_children: totalChildren,
+    total_starts: Number(r.total_starts),
+    total_win: Number(r.total_win),
+    total_place: Number(r.total_place),
+    total_show: Number(r.total_show),
+    win_rate: totalChildren > 0 ? Number(r.winners) / totalChildren : 0,
+  };
 }
 
 /**

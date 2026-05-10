@@ -17,6 +17,7 @@ import { HorseTabs } from "@/components/horse-tabs";
 import { HorseFormBreakdown } from "@/components/horse-form-breakdown";
 import { RecentFormStrip } from "@/components/recent-form-strip";
 import { MsfSparkline } from "@/components/msf-sparkline";
+import { PedigreeAptitude } from "@/components/pedigree-aptitude";
 import { isHorseFavorited } from "@/lib/favorite_horses";
 import { query } from "@/lib/db";
 import {
@@ -24,6 +25,7 @@ import {
   getHorseByNo,
   getHorseFormBreakdown,
   getMsfHistory,
+  getParentChildAggregate,
   getPedigree,
   getRaceResultsWithMsf,
   getRecentFinishes,
@@ -166,6 +168,8 @@ export default async function HorseDetailPage({
     formBreakdown,
     recentFinishes,
     msfHistory,
+    sireAgg,
+    damAgg,
   ] = await Promise.all([
     getRaceResultsWithMsf(horse_no, 10),
     getSiblings(horse.sire_name, horse_no),
@@ -177,6 +181,8 @@ export default async function HorseDetailPage({
     getHorseFormBreakdown(horse_no),
     getRecentFinishes(horse_no, 5),
     getMsfHistory(horse_no, 20),
+    horse.sire_no ? getParentChildAggregate(horse.sire_no) : Promise.resolve(null),
+    horse.dam_no ? getParentChildAggregate(horse.dam_no) : Promise.resolve(null),
   ]);
 
   const [jockeyMap, videoMap] = await Promise.all([
@@ -219,6 +225,12 @@ export default async function HorseDetailPage({
       <div className="mt-10">
         <HorseFormBreakdown data={formBreakdown} />
       </div>
+
+      {(sireAgg || damAgg) && (
+        <div className="mt-10">
+          <PedigreeAptitude sire={sireAgg} dam={damAgg} />
+        </div>
+      )}
     </main>
   );
 }
