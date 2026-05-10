@@ -18,6 +18,7 @@ import { HorseFormBreakdown } from "@/components/horse-form-breakdown";
 import { RecentFormStrip } from "@/components/recent-form-strip";
 import { MsfSparkline } from "@/components/msf-sparkline";
 import { PedigreeAptitude } from "@/components/pedigree-aptitude";
+import { generateHorseComment } from "@/lib/horse_comment";
 import { isHorseFavorited } from "@/lib/favorite_horses";
 import { query } from "@/lib/db";
 import {
@@ -210,6 +211,27 @@ export default async function HorseDetailPage({
         msfHistory={msfHistory}
       />
 
+      <AutoCommentBlock
+        comment={generateHorseComment({
+          horse_name: horse.horse_name,
+          total_race_count: horse.total_race_count,
+          first_place_count: horse.first_place_count,
+          recent_finishes: recentFinishes,
+          avg_msf: msfHistory.length > 0
+            ? msfHistory.reduce((s, p) => s + p.msf, 0) / msfHistory.length
+            : null,
+          best_msf: msfHistory.length > 0
+            ? Math.max(...msfHistory.map((p) => p.msf))
+            : null,
+          form: formBreakdown,
+          sire_aggregate: sireAgg ? {
+            parent_name: sireAgg.parent_name,
+            win_rate: sireAgg.win_rate,
+            total_children: sireAgg.total_children,
+          } : null,
+        })}
+      />
+
       <div className="mt-10">
         <HorseTabs
           horse={horse}
@@ -232,6 +254,21 @@ export default async function HorseDetailPage({
         </div>
       )}
     </main>
+  );
+}
+
+/* ── 자동 코멘트 (룰베이스) ─────────────────────────────── */
+
+function AutoCommentBlock({ comment }: { comment: string }) {
+  return (
+    <div className="mt-4 rounded-md border border-primary/10 bg-primary/[0.02] px-4 py-3">
+      <div className="flex items-start gap-2">
+        <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+          ai
+        </span>
+        <p className="text-sm leading-relaxed text-foreground">{comment}</p>
+      </div>
+    </div>
   );
 }
 
