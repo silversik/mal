@@ -65,6 +65,130 @@ export async function getAllJockeys(limit = 50): Promise<Jockey[]> {
   );
 }
 
+/**
+ * 기수 × 조교사 콤보 적중률.
+ * race_results 의 (jockey_name, trainer_name) 으로 group by + 조교사 정보 join.
+ * 최소 X 회 이상 동승한 콤보만 의미 있음 — minStarts 미만은 제외.
+ */
+export type JockeyTrainerCombo = {
+  trainer_name: string;
+  tr_no: string | null;
+  starts: number;
+  win: number;
+  place: number;
+  show: number;
+  win_rate: number;
+  in_money_rate: number;
+};
+
+export async function getJockeyTrainerCombos(
+  jkName: string,
+  minStarts = 5,
+): Promise<JockeyTrainerCombo[]> {
+  const rows = await query<{
+    trainer_name: string;
+    tr_no: string | null;
+    starts: number;
+    win: number;
+    place: number;
+    show_: number;
+  }>(
+    `SELECT rr.trainer_name,
+            t.tr_no,
+            COUNT(*)::int AS starts,
+            SUM(CASE WHEN rr.rank = 1 THEN 1 ELSE 0 END)::int AS win,
+            SUM(CASE WHEN rr.rank = 2 THEN 1 ELSE 0 END)::int AS place,
+            SUM(CASE WHEN rr.rank = 3 THEN 1 ELSE 0 END)::int AS show_
+       FROM race_results rr
+       LEFT JOIN trainers t ON t.tr_name = rr.trainer_name
+      WHERE rr.jockey_name = $1 AND rr.trainer_name IS NOT NULL
+      GROUP BY rr.trainer_name, t.tr_no
+     HAVING COUNT(*) >= $2
+      ORDER BY COUNT(*) FILTER (WHERE rr.rank = 1) DESC,
+               COUNT(*) DESC
+      LIMIT 30`,
+    [jkName, minStarts],
+  );
+  return rows.map((r) => {
+    const starts = Number(r.starts);
+    const win = Number(r.win);
+    const place = Number(r.place);
+    const show = Number(r.show_);
+    return {
+      trainer_name: r.trainer_name,
+      tr_no: r.tr_no,
+      starts,
+      win,
+      place,
+      show,
+      win_rate: starts > 0 ? win / starts : 0,
+      in_money_rate: starts > 0 ? (win + place + show) / starts : 0,
+    };
+  });
+}
+
+/**
+ * 기수의 월별 출전·우승 카운트 (최근 N개월).
+ * SVG 차트용 시계열.
+ */
+export type JockeyMonthlyStat = {
+  ym: string; // YYYY-MM
+  starts: number;
+  win: number;
+  place: number;
+  show: number;
+};
+
+export async function getJockeyMonthlyStats(
+  jkName: string,
+  months = 12,
+): Promise<JockeyMonthlyStat[]> {
+  // 최근 N개월 (현재월 포함). 빈 월은 0 으로 채움.
+  const rows = await query<{
+    ym: string;
+    starts: number;
+    win: number;
+    place: number;
+    show_: number;
+  }>(
+    `WITH months AS (
+       SELECT to_char(d, 'YYYY-MM') AS ym
+         FROM generate_series(
+           date_trunc('month', NOW() AT TIME ZONE 'Asia/Seoul') - ((($2::int - 1) || ' months')::interval),
+           date_trunc('month', NOW() AT TIME ZONE 'Asia/Seoul'),
+           interval '1 month'
+         ) AS d
+     ),
+     agg AS (
+       SELECT to_char(rr.race_date, 'YYYY-MM') AS ym,
+              COUNT(*)::int AS starts,
+              SUM(CASE WHEN rr.rank = 1 THEN 1 ELSE 0 END)::int AS win,
+              SUM(CASE WHEN rr.rank = 2 THEN 1 ELSE 0 END)::int AS place,
+              SUM(CASE WHEN rr.rank = 3 THEN 1 ELSE 0 END)::int AS show_
+         FROM race_results rr
+        WHERE rr.jockey_name = $1
+          AND rr.race_date >= (date_trunc('month', NOW() AT TIME ZONE 'Asia/Seoul') - ((($2::int - 1) || ' months')::interval))::date
+        GROUP BY 1
+     )
+     SELECT m.ym,
+            COALESCE(a.starts, 0) AS starts,
+            COALESCE(a.win, 0) AS win,
+            COALESCE(a.place, 0) AS place,
+            COALESCE(a.show_, 0) AS show_
+       FROM months m
+       LEFT JOIN agg a ON a.ym = m.ym
+      ORDER BY m.ym`,
+    [jkName, months],
+  );
+  return rows.map((r) => ({
+    ym: r.ym,
+    starts: Number(r.starts),
+    win: Number(r.win),
+    place: Number(r.place),
+    show: Number(r.show_),
+  }));
+}
+
 export async function getRecentRacesByJockey(
   jkName: string,
   limit = 20,
