@@ -77,29 +77,51 @@ def _parse_date_str(value: Any) -> str | None:
 def api_item_to_race_fields(item: dict[str, Any]) -> dict[str, Any]:
     """Map a HorseRaceInfo item into `races` columns.
 
-    Expected field names (verify after activation):
-        rcDate      경주일자
-        meet        경마장
-        rcNo        경주번호
-        rcName      경주명
-        rcDist      거리(m)
-        rank        등급
-        track       주로 타입 (잔디/모래)
-        trackCond   주로 상태
-        chulCnt     출전두수
-        rcTime      발주 시각 (HH:MM) — race_results 의 rcTime(기록)과 별개
+    KRA API187 키 다중 폴백:
+        date     rcDate / rcdate / rc_date
+        meet     meet (1/2/3 → 한글)
+        race_no  rcNo / rcno / rc_no
+        name     rcName / rcNm / rcname / rcnm
+        distance rcDist / rcdist / dist / rc_dist / distance
+        grade    rank / rcRank / rcrank / gradeNm / gradenm / rcClass / rcclass / hrCls
+        track    track / trkNm / trkname / trkType / trktype
+        cond     trackCond / trkCond / trkcond / track_cond
+        entries  chulCnt / chulcnt / entCnt / entcnt
+        start    rcTime / stTime / sttime / rctime
     """
     meet_raw = str(item.get("meet") or "").strip()
+
+    def first(*keys: str) -> Any:
+        """대소문자/네이밍 차이 모두 시도. 첫 non-empty 값 반환."""
+        for k in keys:
+            v = item.get(k)
+            if v is not None and str(v).strip() not in ("", "-"):
+                return v
+        return None
+
     return {
-        "race_date": _parse_date_str(item.get("rcDate")),
+        "race_date": _parse_date_str(first("rcDate", "rcdate", "rc_date")),
         "meet": _MEET_NAMES.get(meet_raw, _clean(meet_raw)),
-        "race_no": _parse_int(item.get("rcNo")),
-        "race_name": _clean(item.get("rcName") or item.get("rcNm")),
-        "distance": _parse_int(item.get("rcDist") or item.get("dist")),
-        "grade": _clean(item.get("rank") or item.get("gradeNm") or item.get("rcClass")),
-        "track_type": _clean(item.get("track") or item.get("trkNm")),
-        "track_condition": _clean(item.get("trackCond") or item.get("trkCond")),
-        "entry_count": _parse_int(item.get("chulCnt") or item.get("entCnt")),
-        "start_time": _clean(item.get("rcTime") or item.get("stTime")),
+        "race_no": _parse_int(first("rcNo", "rcno", "rc_no")),
+        "race_name": _clean(first("rcName", "rcNm", "rcname", "rcnm")),
+        "distance": _parse_int(
+            first("rcDist", "rcdist", "dist", "rc_dist", "distance"),
+        ),
+        "grade": _clean(
+            first(
+                "rank", "rcRank", "rcrank",
+                "gradeNm", "gradenm",
+                "rcClass", "rcclass",
+                "hrCls", "hrcls",
+            ),
+        ),
+        "track_type": _clean(
+            first("track", "trkNm", "trkname", "trkType", "trktype"),
+        ),
+        "track_condition": _clean(
+            first("trackCond", "trkCond", "trkcond", "track_cond"),
+        ),
+        "entry_count": _parse_int(first("chulCnt", "chulcnt", "entCnt", "entcnt")),
+        "start_time": _clean(first("rcTime", "stTime", "sttime", "rctime")),
         "raw": item,
     }
