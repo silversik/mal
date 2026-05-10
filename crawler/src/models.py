@@ -399,20 +399,19 @@ class RacePoolSales(Base):
     )
 
 
-class RaceResultCorner(Base):
-    """경주 통과순위·구간기록 — KRA API4_2/raceResult_2 (publicDataPk=15089493).
+class RaceCorner(Base):
+    """경주 구간별 성적 — KRA API6_1/raceDetailSectionRecord_1 (publicDataPk=15057847).
 
-    한 row = (race_date, meet, race_no, horse_no). race_results 와 1:1 매칭.
-    페이스 맵 (B-1) 에 사용.
+    ⚠ 데이터 구조: 마필×경주 1 row 가 아닌 **경주 1 row**.
+    한 row 안에 1등마의 통과 순위 + 펄롱별 구간기록 / 통과시간 / 통과거리.
 
-    See: db/migrations/027_race_result_corners.sql
+    See: db/migrations/028_race_corners.sql
     """
 
-    __tablename__ = "race_result_corners"
+    __tablename__ = "race_corners"
     __table_args__ = (
         UniqueConstraint(
-            "race_date", "meet", "race_no", "horse_no",
-            name="uq_race_result_corners",
+            "race_date", "meet", "race_no", name="uq_race_corners",
         ),
     )
 
@@ -420,15 +419,51 @@ class RaceResultCorner(Base):
     race_date: Mapped[date] = mapped_column(Date, nullable=False)
     meet: Mapped[str] = mapped_column(String(20), nullable=False)
     race_no: Mapped[int] = mapped_column(Integer, nullable=False)
-    horse_no: Mapped[str] = mapped_column(String(20), nullable=False)
+    rc_dist: Mapped[int | None] = mapped_column(Integer)
 
-    ord_1c: Mapped[int | None] = mapped_column(Integer)
-    ord_2c: Mapped[int | None] = mapped_column(Integer)
-    ord_3c: Mapped[int | None] = mapped_column(Integer)
-    ord_4c: Mapped[int | None] = mapped_column(Integer)
-    ord_s1f: Mapped[int | None] = mapped_column(Integer)
-    ord_g3f: Mapped[int | None] = mapped_column(Integer)
-    ord_g1f: Mapped[int | None] = mapped_column(Integer)
+    # 통과순위 — KRA 표기 텍스트 (예: "(^1,3,9)-7,2,6,(5,8),4").
+    passrank_s1f: Mapped[str | None] = mapped_column(Text)
+    passrank_g8f_1c: Mapped[str | None] = mapped_column(Text)
+    passrank_g6f_2c: Mapped[str | None] = mapped_column(Text)
+    passrank_g4f_3c: Mapped[str | None] = mapped_column(Text)
+    passrank_g3f_4c: Mapped[str | None] = mapped_column(Text)
+    passrank_g2f: Mapped[str | None] = mapped_column(Text)
+    passrank_g1f: Mapped[str | None] = mapped_column(Text)
+
+    time_1f: Mapped[str | None] = mapped_column(Text)
+    time_2f: Mapped[str | None] = mapped_column(Text)
+    time_3f: Mapped[str | None] = mapped_column(Text)
+    time_4f: Mapped[str | None] = mapped_column(Text)
+    time_5f: Mapped[str | None] = mapped_column(Text)
+    time_6f: Mapped[str | None] = mapped_column(Text)
+    time_7f: Mapped[str | None] = mapped_column(Text)
+    time_8f: Mapped[str | None] = mapped_column(Text)
+    time_9f: Mapped[str | None] = mapped_column(Text)
+    time_10f: Mapped[str | None] = mapped_column(Text)
+    time_11f: Mapped[str | None] = mapped_column(Text)
+    time_12f: Mapped[str | None] = mapped_column(Text)
+
+    dist_1f: Mapped[int | None] = mapped_column(Integer)
+    dist_2f: Mapped[int | None] = mapped_column(Integer)
+    dist_3f: Mapped[int | None] = mapped_column(Integer)
+    dist_4f: Mapped[int | None] = mapped_column(Integer)
+    dist_5f: Mapped[int | None] = mapped_column(Integer)
+    dist_6f: Mapped[int | None] = mapped_column(Integer)
+    dist_7f: Mapped[int | None] = mapped_column(Integer)
+    dist_8f: Mapped[int | None] = mapped_column(Integer)
+    dist_9f: Mapped[int | None] = mapped_column(Integer)
+    dist_10f: Mapped[int | None] = mapped_column(Integer)
+
+    passtime_1f: Mapped[str | None] = mapped_column(Text)
+    passtime_2f: Mapped[str | None] = mapped_column(Text)
+    passtime_3f: Mapped[str | None] = mapped_column(Text)
+    passtime_4f: Mapped[str | None] = mapped_column(Text)
+    passtime_5f: Mapped[str | None] = mapped_column(Text)
+    passtime_6f: Mapped[str | None] = mapped_column(Text)
+    passtime_7f: Mapped[str | None] = mapped_column(Text)
+    passtime_8f: Mapped[str | None] = mapped_column(Text)
+    passtime_9f: Mapped[str | None] = mapped_column(Text)
+    passtime_10f: Mapped[str | None] = mapped_column(Text)
 
     raw: Mapped[dict | None] = mapped_column(JSONB)
     fetched_at: Mapped[datetime] = mapped_column(
