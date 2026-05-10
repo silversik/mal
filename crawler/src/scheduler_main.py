@@ -35,6 +35,7 @@ from .jobs.periodic import (
     run_sync_race_entries,
     run_sync_race_info,
     run_sync_race_plan,
+    run_sync_race_result_corners,
     run_sync_race_sales,
     run_sync_race_today_meta,
     run_sync_races_live,
@@ -218,6 +219,14 @@ def main() -> None:
         id="mal.sync_race_sales",
         **common,
     )
+    # 매출 직후 통과순위·구간기록(22:55) — race_result_corners (KRA API4_2).
+    # 활용신청 전엔 빈 응답이라 0 적재 — 신청 완료 시점에 자동 데이터 시작.
+    sched.add_job(
+        run_sync_race_result_corners,
+        CronTrigger(hour=22, minute=55),
+        id="mal.sync_race_result_corners",
+        **common,
+    )
     # 메타 백필 다음 영상 매칭(23:00) — 누락된 경주에 KRBC YouTube search 로 upsert.
     sched.add_job(
         run_sync_videos_backfill,
@@ -265,6 +274,7 @@ def main() -> None:
         "mal.sync_race_today_meta": run_sync_race_today_meta,
         "mal.sync_race_dividends": run_sync_race_dividends,
         "mal.sync_race_sales": run_sync_race_sales,
+        "mal.sync_race_result_corners": run_sync_race_result_corners,
         "mal.chunked_dividends_backfill": run_chunked_dividends_backfill,
         "mal.settle_bets": run_settle_bets,
         "mal.audit_combo_dividends": run_audit_combo_dividends,

@@ -399,6 +399,46 @@ class RacePoolSales(Base):
     )
 
 
+class RaceResultCorner(Base):
+    """경주 통과순위·구간기록 — KRA API4_2/raceResult_2 (publicDataPk=15089493).
+
+    한 row = (race_date, meet, race_no, horse_no). race_results 와 1:1 매칭.
+    페이스 맵 (B-1) 에 사용.
+
+    See: db/migrations/027_race_result_corners.sql
+    """
+
+    __tablename__ = "race_result_corners"
+    __table_args__ = (
+        UniqueConstraint(
+            "race_date", "meet", "race_no", "horse_no",
+            name="uq_race_result_corners",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    race_date: Mapped[date] = mapped_column(Date, nullable=False)
+    meet: Mapped[str] = mapped_column(String(20), nullable=False)
+    race_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    horse_no: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    ord_1c: Mapped[int | None] = mapped_column(Integer)
+    ord_2c: Mapped[int | None] = mapped_column(Integer)
+    ord_3c: Mapped[int | None] = mapped_column(Integer)
+    ord_4c: Mapped[int | None] = mapped_column(Integer)
+    ord_s1f: Mapped[int | None] = mapped_column(Integer)
+    ord_g3f: Mapped[int | None] = mapped_column(Integer)
+    ord_g1f: Mapped[int | None] = mapped_column(Integer)
+
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class HorseRankChange(Base):
     """경주마 등급변동 이벤트 — KRA raceHorseRatingChangeInfo_2 (dataset 15058076).
 

@@ -32,6 +32,9 @@ from .sync_race_today_meta import sync_today_meta
 from .sync_race_plan import sync_current_year as sync_current_race_plan
 from .sync_race_dividends import sync_date_all_meets as sync_dividends_all_meets
 from .sync_race_sales import sync_date_all_meets as sync_race_sales_all_meets
+from .sync_race_result_corner import (
+    sync_date_all_meets as sync_race_corners_all_meets,
+)
 from .sync_races import sync_date_all_meets
 from .chunked_backfill_dividends import run_chunk as run_chunked_dividends_chunk
 from .sync_videos import sync_videos
@@ -209,6 +212,16 @@ def run_sync_race_dividends() -> int:
 def run_sync_race_sales() -> int:
     """오늘 경주의 풀별 매출 적재 — race_dividends (22:45) 직후 22:50 KST."""
     return sync_race_sales_all_meets(date.today())
+
+
+@track_job("mal.sync_race_result_corners")
+def run_sync_race_result_corners() -> int:
+    """오늘 경주의 통과순위·구간기록 — race_results (22:00) 직후 22:55 KST.
+
+    KRA API4_2/raceResult_2 (publicDataPk=15089493) 별도 활용신청 필요.
+    응답 빈 경우 0 반환 — 활용신청 완료 시점에 자동 적재 시작.
+    """
+    return sync_race_corners_all_meets(date.today())
 
 
 @track_job("mal.sync_trainers")

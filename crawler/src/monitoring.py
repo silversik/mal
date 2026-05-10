@@ -121,6 +121,11 @@ JOB_CATALOG: dict[str, dict] = {
         "description": "경주별·풀별 매출액 (API179_1, 15119558)",
         "expected_interval_sec": 86400,
     },
+    "mal.sync_race_result_corners": {
+        "category": "kra_openapi",
+        "description": "경주 통과순위·구간기록 (API4_2/raceResult_2, 15089493) — 페이스 맵 의존",
+        "expected_interval_sec": 86400,
+    },
     "mal.sync_trainers": {
         "category": "kra_openapi",
         "description": "조교사정보_영문추가 (API308, 15130588)",
