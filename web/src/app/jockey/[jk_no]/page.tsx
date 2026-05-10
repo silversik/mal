@@ -12,11 +12,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getJockeyByNo, getRecentRacesByJockey, type Jockey } from "@/lib/jockeys";
+import {
+  getJockeyByNo,
+  getJockeyMonthlyStats,
+  getJockeyTrainerCombos,
+  getRecentRacesByJockey,
+  type Jockey,
+} from "@/lib/jockeys";
 import { getVideosForRaces, raceKey, type RaceKey } from "@/lib/videos";
 import { youtubeWatchUrl } from "@/lib/video-helpers";
 import { WinRateBar } from "@/components/win-rate-bar";
 import { RecentFormDots } from "@/components/recent-form-dots";
+import { JockeyTrainerCombos } from "@/components/jockey-trainer-combos";
+import { JockeyMonthlyChart } from "@/components/jockey-monthly-chart";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
 
 const fetchJockey = cache(getJockeyByNo);
@@ -51,7 +59,11 @@ export default async function JockeyDetailPage({
   const jockey = await fetchJockey(jk_no);
   if (!jockey) notFound();
 
-  const recentRaces = await getRecentRacesByJockey(jockey.jk_name, 20);
+  const [recentRaces, combos, monthly] = await Promise.all([
+    getRecentRacesByJockey(jockey.jk_name, 20),
+    getJockeyTrainerCombos(jockey.jk_name, 5),
+    getJockeyMonthlyStats(jockey.jk_name, 12),
+  ]);
   const videoMap = await getVideosForRaces(recentRaces);
 
   return (
@@ -70,6 +82,26 @@ export default async function JockeyDetailPage({
           <RecentFormDots ranks={recentRaces.map((r) => r.rank)} />
         </div>
       )}
+
+      {monthly.some((m) => m.starts > 0) && (
+        <section className="mt-10">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            최근 12개월 기승
+          </h2>
+          <Card className="py-3">
+            <CardContent className="p-3 text-slate-grey">
+              <JockeyMonthlyChart data={monthly} />
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
+      <section className="mt-10">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          조교사별 동승 (5회 이상)
+        </h2>
+        <JockeyTrainerCombos combos={combos} />
+      </section>
 
       <section className="mt-10">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">

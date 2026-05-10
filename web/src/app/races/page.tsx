@@ -48,6 +48,12 @@ import {
   type RacePoolSales,
 } from "@/lib/race_pool_sales";
 import { getRaceVideo, youtubeEmbedUrl } from "@/lib/videos";
+import { PoolSalesDonut } from "@/components/pool-sales-donut";
+import { RaceHorseCompare } from "@/components/race-horse-compare";
+import { PopularityVsResult } from "@/components/popularity-vs-result";
+import { PaceMap } from "@/components/pace-map";
+import { getHorseCompareSummaries } from "@/lib/horses";
+import { getCornersForRace } from "@/lib/race_corners";
 
 import { BetForm } from "./bet-form";
 
@@ -210,6 +216,7 @@ export default async function RacesPage({
     betState,
     userBalance,
     dailyTotalP,
+    corners,
   ] = selectedRace
     ? await Promise.all([
         getRaceEntries(currentDate, selectedRace.meet, selectedRace.race_no),
@@ -220,6 +227,7 @@ export default async function RacesPage({
         getRaceBetState(currentDate, selectedRace.meet, selectedRace.race_no),
         userId ? getUserBalance(userId) : Promise.resolve(null),
         userId ? getDailyBetTotalP(userId, todayKst) : Promise.resolve(null),
+        getCornersForRace(currentDate, selectedRace.meet, selectedRace.race_no),
       ])
     : [
         { phase: "post" as const, entries: [] },
@@ -230,9 +238,16 @@ export default async function RacesPage({
         null,
         null,
         null,
+        [],
       ];
   const entries = entriesResult.entries;
   const entriesPhase = entriesResult.phase;
+  const compareSummaries = entries.length > 0
+    ? await getHorseCompareSummaries(entries.map((e) => e.horse_no))
+    : [];
+  const chulMap: Record<string, number | null> = Object.fromEntries(
+    entries.map((e) => [e.horse_no, e.chul_no]),
+  );
 
   // 경기 있는 날만 순회하도록 raceDates 내에서 탐색. 인접 레이스데이가 없으면 null.
   const prevDate = findNearbyRaceDate(raceDates, currentDate, "prev");
@@ -377,6 +392,12 @@ export default async function RacesPage({
                   className="h-full w-full"
                 />
               </div>
+            </div>
+          )}
+
+          {compareSummaries.length > 0 && (
+            <div className="mb-4">
+              <RaceHorseCompare summaries={compareSummaries} chulMap={chulMap} />
             </div>
           )}
 
@@ -550,6 +571,32 @@ export default async function RacesPage({
             />
           )}
 
+          {corners.length > 0 && (
+            <div className="mt-6">
+              <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
+                페이스 맵
+              </h3>
+              <Card>
+                <CardContent className="p-4">
+                  <PaceMap rows={corners} />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {entriesPhase === "post" && (
+            <div className="mt-6">
+              <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
+                인기 vs 결과
+              </h3>
+              <Card>
+                <CardContent className="p-4">
+                  <PopularityVsResult entries={entries} />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {comboDividends.length > 0 && (
             <ComboDividendsSection rows={comboDividends} />
           )}
@@ -590,28 +637,33 @@ function PoolSalesSection({ rows }: { rows: RacePoolSales[] }) {
         </span>
       </div>
       <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-16">풀</TableHead>
-              <TableHead className="text-right">매출액</TableHead>
-              <TableHead>인기순위 (배당률)</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sorted.map((r) => (
-              <TableRow key={r.pool}>
-                <TableCell className="font-semibold">{r.pool}</TableCell>
-                <TableCell className="text-right font-mono tabular-nums">
-                  {formatAmount(r.amount)}
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {r.odds_summary ?? "-"}
-                </TableCell>
+        <CardContent className="grid gap-6 p-4 md:grid-cols-[auto_1fr] md:p-5">
+          <div className="flex justify-center md:justify-start">
+            <PoolSalesDonut rows={sorted} />
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-16">풀</TableHead>
+                <TableHead className="text-right">매출액</TableHead>
+                <TableHead>인기순위 (배당률)</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {sorted.map((r) => (
+                <TableRow key={r.pool}>
+                  <TableCell className="font-semibold">{r.pool}</TableCell>
+                  <TableCell className="text-right font-mono tabular-nums">
+                    {formatAmount(r.amount)}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {r.odds_summary ?? "-"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
       </Card>
     </div>
   );
