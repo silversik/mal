@@ -21,6 +21,7 @@ from crawler_core import client as dash
 from .jobs.periodic import (
     run_audit_combo_dividends,
     run_build_favorite_notifications,
+    run_backfill_races_from_entries,
     run_chunked_dividends_backfill,
     run_settle_bets,
     run_sync_horse_rank_changes,
@@ -86,6 +87,14 @@ def main() -> None:
         run_sync_race_entries,
         IntervalTrigger(hours=3),
         id="mal.sync_race_entries",
+        **common,
+    )
+    # race_entries sync 후 races.distance/grade/start_time 빈 컬럼 백필.
+    # API187 미응답 영구 fallback — 매 3시간(엔트리 sync 와 동일 주기).
+    sched.add_job(
+        run_backfill_races_from_entries,
+        IntervalTrigger(hours=3),
+        id="mal.backfill_races_from_entries",
         **common,
     )
     # 매일 KST 고정 시각
@@ -275,6 +284,7 @@ def main() -> None:
         "mal.sync_race_dividends": run_sync_race_dividends,
         "mal.sync_race_sales": run_sync_race_sales,
         "mal.sync_race_result_corners": run_sync_race_result_corners,
+        "mal.backfill_races_from_entries": run_backfill_races_from_entries,
         "mal.chunked_dividends_backfill": run_chunked_dividends_backfill,
         "mal.settle_bets": run_settle_bets,
         "mal.audit_combo_dividends": run_audit_combo_dividends,

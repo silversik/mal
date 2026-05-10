@@ -26,6 +26,7 @@ from .sync_owners import sync_all_owners
 from .sync_trainers import sync_all_trainers
 from .sync_favorite_notifications import build_favorite_notifications
 from .sync_naver_news import sync_naver_news
+from .backfill_races_from_entries import backfill_races_metadata_from_entries
 from .sync_race_entries import sync_upcoming as sync_upcoming_race_entries
 from .sync_race_info import backfill_races_metadata
 from .sync_race_today_meta import sync_today_meta
@@ -190,6 +191,16 @@ def run_sync_race_info() -> int:
     이 잡이 자동으로 다시 데이터를 받게 된다.
     """
     return backfill_races_metadata()
+
+
+@track_job("mal.backfill_races_from_entries")
+def run_backfill_races_from_entries() -> int:
+    """race_entries.raw → races 메타 백필 — API187 미응답 영구 fallback.
+
+    race_entries 가 매 3시간 sync 되므로 항상 fresh. 한 row 의 메타 변경 시에도
+    COALESCE 로 기존 non-null 값 보존.
+    """
+    return backfill_races_metadata_from_entries()
 
 
 @track_job("mal.sync_race_today_meta")

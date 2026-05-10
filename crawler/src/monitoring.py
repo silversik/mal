@@ -105,6 +105,11 @@ JOB_CATALOG: dict[str, dict] = {
         # 05:30 ↔ 22:30 KST 두 번 실행: 가장 긴 간격 17시간(61200s) → 18h 여유로 클램프.
         "expected_interval_sec": 64800,
     },
+    "mal.backfill_races_from_entries": {
+        "category": "kra_openapi",
+        "description": "races 메타 백필 — race_entries.raw 의 rcDist/rank/rcName/stTime 추출",
+        "expected_interval_sec": 14400,
+    },
     "mal.sync_race_today_meta": {
         "category": "kra_openapi",
         "description": "당일 발주시각·거리 HTML 크롤링 (race.kra.co.kr/seoulMain.do) — API187 빈 응답 fallback",
