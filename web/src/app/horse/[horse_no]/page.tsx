@@ -14,13 +14,19 @@ import {
   normalizeCharacteristics,
 } from "@/lib/coat";
 import { HorseTabs } from "@/components/horse-tabs";
+import { HorseFormBreakdown } from "@/components/horse-form-breakdown";
+import { RecentFormStrip } from "@/components/recent-form-strip";
+import { MsfSparkline } from "@/components/msf-sparkline";
 import { isHorseFavorited } from "@/lib/favorite_horses";
 import { query } from "@/lib/db";
 import {
   getChildrenByParentNo,
   getHorseByNo,
+  getHorseFormBreakdown,
+  getMsfHistory,
   getPedigree,
-  getRaceResultsForHorse,
+  getRaceResultsWithMsf,
+  getRecentFinishes,
   getSiblings,
   type Horse,
 } from "@/lib/horses";
@@ -149,14 +155,28 @@ export default async function HorseDetailPage({
   const session = await auth();
   const userId = session?.user?.id ?? null;
 
-  const [results, siblings, pedigree, rating, ratingHistory, rankChanges, favorited] = await Promise.all([
-    getRaceResultsForHorse(horse_no, 10),
+  const [
+    results,
+    siblings,
+    pedigree,
+    rating,
+    ratingHistory,
+    rankChanges,
+    favorited,
+    formBreakdown,
+    recentFinishes,
+    msfHistory,
+  ] = await Promise.all([
+    getRaceResultsWithMsf(horse_no, 10),
     getSiblings(horse.sire_name, horse_no),
     getPedigree(horse_no, 4),
     getLatestRating(horse_no),
     getRatingHistory(horse_no, 52),
     getHorseRankChanges(horse_no, 10),
     userId ? isHorseFavorited(userId, horse_no) : Promise.resolve(false),
+    getHorseFormBreakdown(horse_no),
+    getRecentFinishes(horse_no, 5),
+    getMsfHistory(horse_no, 20),
   ]);
 
   const [jockeyMap, videoMap] = await Promise.all([
@@ -180,6 +200,8 @@ export default async function HorseDetailPage({
         ratingHistory={ratingHistory}
         favorited={favorited}
         loggedIn={!!userId}
+        recentFinishes={recentFinishes}
+        msfHistory={msfHistory}
       />
 
       <div className="mt-10">
@@ -193,6 +215,10 @@ export default async function HorseDetailPage({
           siblings={siblings}
         />
       </div>
+
+      <div className="mt-10">
+        <HorseFormBreakdown data={formBreakdown} />
+      </div>
     </main>
   );
 }
@@ -205,12 +231,16 @@ function ProfileCard({
   ratingHistory,
   favorited,
   loggedIn,
+  recentFinishes,
+  msfHistory,
 }: {
   horse: Horse;
   rating: HorseRating | null;
   ratingHistory: HorseRatingPoint[];
   favorited: boolean;
   loggedIn: boolean;
+  recentFinishes: (number | null)[];
+  msfHistory: { race_date: string; msf: number }[];
 }) {
   const fields: Array<[string, React.ReactNode]> = [
     ["마번", <span className="font-mono" key="no">{horse.horse_no}</span>],
@@ -247,6 +277,11 @@ function ProfileCard({
       </span>,
     ],
   ];
+
+  if (recentFinishes.length > 0) {
+    fields.push(["최근 5전", <RecentFormStrip key="rf" finishes={recentFinishes} />]);
+  }
+  const hasMsfTrend = msfHistory.length >= 2;
 
   const characteristics = normalizeCharacteristics(horse.characteristics);
   const hasRatingTrend = ratingHistory.filter((p) => p.rating4 !== null).length >= 2;
@@ -292,6 +327,19 @@ function ProfileCard({
               </dt>
               <dd className="mt-1">
                 <RatingSparkline points={ratingHistory} />
+              </dd>
+            </div>
+          )}
+          {hasMsfTrend && (
+            <div className="col-span-2">
+              <dt
+                className="text-xs uppercase tracking-wider text-muted-foreground"
+                title="mal지수: 같은 경주 1착 기록 대비 % (100=1착과 동일)"
+              >
+                mal지수 추세
+              </dt>
+              <dd className="mt-1">
+                <MsfSparkline points={msfHistory} />
               </dd>
             </div>
           )}

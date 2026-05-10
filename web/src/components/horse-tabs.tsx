@@ -13,8 +13,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { FamilyTreeDiagram, type FamNode } from "@/components/family-tree-diagram";
-import type { PedigreeNode } from "@/lib/horses";
-import type { RaceResult, Horse } from "@/lib/horses";
+import type { PedigreeNode, RaceWithMsf } from "@/lib/horses";
+import type { Horse } from "@/lib/horses";
 import type { HorseRankChange } from "@/lib/horse_rank_changes";
 
 type JockeyMap = Record<string, string>;
@@ -22,7 +22,7 @@ type RaceKey = string;
 
 interface HorseTabsProps {
   horse: Horse;
-  results: RaceResult[];
+  results: RaceWithMsf[];
   jockeyMap: JockeyMap;
   videoEntries: [RaceKey, { video_id: string }][];
   rankChanges: HorseRankChange[];
@@ -55,7 +55,7 @@ export function HorseTabs({
   return (
     <div className="space-y-10">
       <PedigreeSection treeProps={treeProps} />
-      <RaceResultsSection
+      <RaceWithMsfsSection
         results={results}
         jockeyMap={jockeyMap}
         videoMap={videoMap}
@@ -214,12 +214,12 @@ function sexToGender(sex: string | null): FamNode["gender"] {
 
 /* ── 경주 기록 ──────────────────────────────────────────── */
 
-function RaceResultsSection({
+function RaceWithMsfsSection({
   results,
   jockeyMap,
   videoMap,
 }: {
-  results: RaceResult[];
+  results: RaceWithMsf[];
   jockeyMap: JockeyMap;
   videoMap: Map<RaceKey, { video_id: string }>;
 }) {
@@ -244,6 +244,9 @@ function RaceResultsSection({
                 <TableHead className="text-center">경주</TableHead>
                 <TableHead className="text-center">착순</TableHead>
                 <TableHead className="text-center">기록</TableHead>
+                <TableHead className="text-center" title="mal지수 — 같은 경주 1착 기록 대비 % (100=1착)">
+                  mal지수
+                </TableHead>
                 <TableHead className="text-center">마체중</TableHead>
                 <TableHead className="text-center">기수</TableHead>
                 <TableHead className="text-center">조교사</TableHead>
@@ -310,6 +313,9 @@ function RaceResultsSection({
                     </TableCell>
                     <TableCell className="text-center font-mono tabular-nums">
                       {r.record_time ?? "-"}
+                    </TableCell>
+                    <TableCell className="text-center font-mono tabular-nums">
+                      <MsfCell msf={r.msf} />
                     </TableCell>
                     <TableCell className="text-center font-mono tabular-nums">
                       {r.weight ?? "-"}
@@ -419,6 +425,19 @@ const RANK_MEDAL_STYLE: Record<number, string> = {
   2: "bg-slate-400 text-white",
   3: "bg-amber-700 text-white",
 };
+
+/**
+ * mal지수 (MSF) 셀.
+ * 100=1착(금), 95~99=정상권(녹), 90~94=후미(회), 90 미만=흐림.
+ */
+function MsfCell({ msf }: { msf: number | null }) {
+  if (msf === null) return <span className="text-muted-foreground">-</span>;
+  let cls = "text-slate-500";
+  if (msf >= 100) cls = "text-amber-700 font-bold";
+  else if (msf >= 95) cls = "text-emerald-700 font-semibold";
+  else if (msf >= 90) cls = "text-slate-600";
+  return <span className={cls}>{msf.toFixed(1)}</span>;
+}
 
 function RankBadge({ rank }: { rank: number | null }) {
   if (rank === null) return <span className="text-muted-foreground">-</span>;

@@ -210,6 +210,338 @@ export async function getHorsesSorted(
   );
 }
 
+// raw->>'rcTime' 이 "1:49.0" 형식이라 NUMERIC record_time 파싱이 실패하는 row 가 다수.
+// 두 곳에서 (mine CTE + LATERAL subquery) 모두 alias `rr` 기준으로 사용.
+const RC_TIME_SECONDS_SQL = `
+  CASE
+    WHEN rr.record_time IS NOT NULL THEN rr.record_time
+    WHEN rr.raw->>'rcTime' ~ '^[0-9]+:[0-9]+(\\.[0-9]+)?$'
+      THEN (split_part(rr.raw->>'rcTime', ':', 1)::numeric * 60
+          + split_part(rr.raw->>'rcTime', ':', 2)::numeric)
+    WHEN rr.raw->>'rcTime' ~ '^[0-9]+(\\.[0-9]+)?$'
+      THEN (rr.raw->>'rcTime')::numeric
+    ELSE NULL
+  END
+`;
+
+/**
+ * mal지수 (MSF, mal Speed Figure) — 단순형.
+ *
+ * 정의: 같은 경주의 1착 record_time 을 기준으로 100 으로 잡고,
+ *       본인 기록을 ratio 로 환산한 뒤 100 점 만점 스케일로 표시.
+ *
+ *   msf = 1착_시간 / 본인_시간 * 100
+ *
+ * 같은 경주 (= 같은 거리·코스·주로상태) 내 비교라 보정 무관.
+ * 1착이면 100, 1착보다 1% 느리면 99, 5% 느리면 95.
+ *
+ * 한계:
+ *   - 거리·트랙 다른 경주 간 절대비교는 안 됨 → 같은 마필의 시즌 추세는 OK
+ *   - 1착보다 빠를 수는 없음 (당연)
+ *   - 결과 미수집 race (1착 record_time NULL) 는 NULL
+ */
+export function computeMsf(record: number | null | undefined, winnerTime: number | null | undefined): number | null {
+  if (!record || !winnerTime || record <= 0 || winnerTime <= 0) return null;
+  return Math.round((winnerTime / record) * 100 * 10) / 10; // 1소수점
+}
+
+export type RaceWithMsf = RaceResult & { msf: number | null };
+
+/**
+ * 마필의 경주 기록 + msf 동시 조회.
+ * 같은 (race_date, meet, race_no) 의 1착 record_time 을 window function 으로 가져와 비율 계산.
+ */
+export async function getRaceResultsWithMsf(
+  horseNo: string,
+  limit = 10,
+): Promise<RaceWithMsf[]> {
+  // 같은 race 의 모든 row 를 같이 가져와 1착의 record_time 을 PARTITION 으로 추출.
+  // race_results 의 record_time 은 NUMERIC. raw->>'rcTime' 은 표시용 텍스트.
+  const rows = await query<{
+    id: number;
+    horse_no: string;
+    race_date: string;
+    meet: string | null;
+    race_no: number;
+    track_condition: string | null;
+    rank: number | null;
+    record_time_text: string | null;
+    record_time_num: string | null;
+    weight: string | null;
+    jockey_name: string | null;
+    trainer_name: string | null;
+    trainer_no: string | null;
+    winner_time: string | null;
+  }>(
+    // 동일 race 의 1착 record_time 을 LATERAL subquery 로 N+1 회피 + cartesian 방지.
+    `WITH mine AS (
+       SELECT rr.*,
+              ${RC_TIME_SECONDS_SQL} AS my_seconds
+         FROM race_results rr
+        WHERE rr.horse_no = $1
+        ORDER BY rr.race_date DESC, rr.race_no DESC
+        LIMIT $2
+     )
+     SELECT m.id, m.horse_no,
+            to_char(m.race_date, 'YYYY-MM-DD') AS race_date,
+            m.meet, m.race_no, m.track_condition, m.rank,
+            COALESCE(NULLIF(NULLIF(m.raw->>'rcTime','-'),''), m.record_time::text) AS record_time_text,
+            m.my_seconds::text AS record_time_num,
+            m.weight::text,
+            m.jockey_name, m.trainer_name,
+            t.tr_no AS trainer_no,
+            w.winner_time::text AS winner_time
+       FROM mine m
+       LEFT JOIN trainers t ON t.tr_name = m.trainer_name
+       LEFT JOIN LATERAL (
+         SELECT MIN(${RC_TIME_SECONDS_SQL}) AS winner_time
+           FROM race_results rr
+          WHERE rr.race_date = m.race_date
+            AND rr.meet      = m.meet
+            AND rr.race_no   = m.race_no
+            AND rr.rank = 1
+       ) w ON TRUE
+      ORDER BY m.race_date DESC, m.race_no DESC`,
+    [horseNo, limit],
+  );
+
+  return rows.map((r) => {
+    const myTime = r.record_time_num ? Number(r.record_time_num) : null;
+    const winTime = r.winner_time ? Number(r.winner_time) : null;
+    return {
+      id: r.id,
+      horse_no: r.horse_no,
+      race_date: r.race_date,
+      meet: r.meet,
+      race_no: r.race_no,
+      track_condition: r.track_condition,
+      rank: r.rank,
+      record_time: r.record_time_text,
+      weight: r.weight,
+      jockey_name: r.jockey_name,
+      trainer_name: r.trainer_name,
+      trainer_no: r.trainer_no,
+      msf: computeMsf(myTime, winTime),
+    };
+  });
+}
+
+/** mal지수 시계열 (오래된 순). sparkline 용. */
+export async function getMsfHistory(
+  horseNo: string,
+  limit = 20,
+): Promise<{ race_date: string; msf: number }[]> {
+  const rows = await query<{ race_date: string; record_time_num: string | null; winner_time: string | null }>(
+    `WITH mine AS (
+       SELECT rr.race_date, rr.race_no, rr.meet,
+              ${RC_TIME_SECONDS_SQL} AS my_seconds
+         FROM race_results rr
+        WHERE rr.horse_no = $1
+        ORDER BY rr.race_date DESC, rr.race_no DESC
+        LIMIT $2
+     )
+     SELECT to_char(m.race_date,'YYYY-MM-DD') AS race_date,
+            m.my_seconds::text AS record_time_num,
+            w.winner_time::text AS winner_time
+       FROM mine m
+       LEFT JOIN LATERAL (
+         SELECT MIN(${RC_TIME_SECONDS_SQL}) AS winner_time
+           FROM race_results rr
+          WHERE rr.race_date = m.race_date
+            AND rr.meet      = m.meet
+            AND rr.race_no   = m.race_no
+            AND rr.rank = 1
+       ) w ON TRUE
+      ORDER BY m.race_date DESC, m.race_no DESC`,
+    [horseNo, limit],
+  );
+  // 오래된 순으로 뒤집어 반환.
+  return rows
+    .reverse()
+    .map((r) => {
+      const my = r.record_time_num ? Number(r.record_time_num) : null;
+      const win = r.winner_time ? Number(r.winner_time) : null;
+      const m = computeMsf(my, win);
+      return m !== null ? { race_date: r.race_date, msf: m } : null;
+    })
+    .filter((x): x is { race_date: string; msf: number } => x !== null);
+}
+
+/** 최근 N전의 착순 시퀀스 (최신이 마지막). null = 미확정/취소. */
+export async function getRecentFinishes(
+  horseNo: string,
+  limit = 5,
+): Promise<(number | null)[]> {
+  const rows = await query<{ rank: number | null }>(
+    `SELECT rr.rank
+       FROM race_results rr
+      WHERE rr.horse_no = $1
+      ORDER BY rr.race_date DESC, rr.race_no DESC
+      LIMIT $2`,
+    [horseNo, limit],
+  );
+  // 표시는 오래된 순 → 최신 순 (왼쪽 oldest, 오른쪽 latest).
+  return rows.map((r) => (r.rank ?? null)).reverse();
+}
+
+export type FormRow = {
+  /** 표시용 라벨 — "1400m" / "잔디" / "건조" / "서울" 등 */
+  bucket: string;
+  /** 정렬용 숫자 키 (없으면 0) — 거리 그룹은 거리, 그 외는 0 */
+  sortKey: number;
+  starts: number;
+  win: number;
+  place: number;
+  show: number;
+  /** win / starts (0..1) */
+  win_rate: number;
+  /** (win+place+show) / starts (0..1) */
+  in_money_rate: number;
+  /** 1착 평균 record_time (초) — 비교용. 1착 없으면 null */
+  best_time: number | null;
+};
+
+export type FormBreakdown = {
+  by_distance: FormRow[];
+  by_track_type: FormRow[];
+  by_track_condition: FormRow[];
+  by_meet: FormRow[];
+};
+
+/**
+ * 마필의 조건별 폼 분해. race_results 와 races (거리/주로타입) 을 JOIN.
+ * 첫 컷은 단순 SELECT 4개. 향후 캐싱 가능.
+ */
+export async function getHorseFormBreakdown(
+  horseNo: string,
+): Promise<FormBreakdown> {
+  // 공통: rr.record_time 이 NULL 인 row 가 많아 raw->>'rcTime' 폴백.
+  // 분 표기("1:22.4") 는 복원 어려우니 best_time 은 NUMERIC 컬럼 기준 평균만.
+  const SELECT_FIELDS = `
+    COUNT(*)::int AS starts,
+    SUM(CASE WHEN rr.rank = 1 THEN 1 ELSE 0 END)::int AS win,
+    SUM(CASE WHEN rr.rank = 2 THEN 1 ELSE 0 END)::int AS place,
+    SUM(CASE WHEN rr.rank = 3 THEN 1 ELSE 0 END)::int AS show_,
+    AVG(CASE WHEN rr.rank = 1 THEN rr.record_time END) AS best_time
+  `;
+
+  // races 테이블에 매칭이 약한 row 가 많아 raw->>'rcDist' / 'track' 폴백.
+  const distanceRows = await query<{
+    distance: number | null;
+    starts: number;
+    win: number;
+    place: number;
+    show_: number;
+    best_time: string | null;
+  }>(
+    `SELECT COALESCE(r.distance, NULLIF(rr.raw->>'rcDist','')::int) AS distance,
+            ${SELECT_FIELDS}
+       FROM race_results rr
+       LEFT JOIN races r
+         ON r.race_date = rr.race_date AND r.meet = rr.meet AND r.race_no = rr.race_no
+      WHERE rr.horse_no = $1
+      GROUP BY COALESCE(r.distance, NULLIF(rr.raw->>'rcDist','')::int)
+     HAVING COALESCE(r.distance, NULLIF(rr.raw->>'rcDist','')::int) IS NOT NULL
+      ORDER BY COALESCE(r.distance, NULLIF(rr.raw->>'rcDist','')::int)`,
+    [horseNo],
+  );
+
+  // race_results.raw 의 track 필드(잔디/모래)는 'track' 또는 'trkNm' 두 케이스 존재.
+  const trackRows = await query<{
+    track_type: string | null;
+    starts: number;
+    win: number;
+    place: number;
+    show_: number;
+    best_time: string | null;
+  }>(
+    `WITH base AS (
+       SELECT rr.*,
+              COALESCE(r.track_type,
+                       NULLIF(rr.raw->>'trkNm',''),
+                       NULLIF(rr.raw->>'track','')) AS tt
+         FROM race_results rr
+         LEFT JOIN races r
+           ON r.race_date = rr.race_date AND r.meet = rr.meet AND r.race_no = rr.race_no
+        WHERE rr.horse_no = $1
+     )
+     SELECT tt AS track_type,
+            ${SELECT_FIELDS}
+       FROM base rr
+      WHERE tt IS NOT NULL
+      GROUP BY tt
+      ORDER BY tt`,
+    [horseNo],
+  );
+
+  const condRows = await query<{
+    track_condition: string | null;
+    starts: number;
+    win: number;
+    place: number;
+    show_: number;
+    best_time: string | null;
+  }>(
+    `SELECT rr.track_condition,
+            ${SELECT_FIELDS}
+       FROM race_results rr
+      WHERE rr.horse_no = $1 AND rr.track_condition IS NOT NULL
+      GROUP BY rr.track_condition
+      ORDER BY rr.track_condition`,
+    [horseNo],
+  );
+
+  const meetRows = await query<{
+    meet: string | null;
+    starts: number;
+    win: number;
+    place: number;
+    show_: number;
+    best_time: string | null;
+  }>(
+    `SELECT rr.meet,
+            ${SELECT_FIELDS}
+       FROM race_results rr
+      WHERE rr.horse_no = $1 AND rr.meet IS NOT NULL
+      GROUP BY rr.meet
+      ORDER BY rr.meet`,
+    [horseNo],
+  );
+
+  const toRow = (
+    bucket: string,
+    sortKey: number,
+    r: { starts: number; win: number; place: number; show_: number; best_time: string | null },
+  ): FormRow => {
+    const starts = Number(r.starts);
+    const win = Number(r.win);
+    const place = Number(r.place);
+    const show = Number(r.show_);
+    return {
+      bucket,
+      sortKey,
+      starts,
+      win,
+      place,
+      show,
+      win_rate: starts > 0 ? win / starts : 0,
+      in_money_rate: starts > 0 ? (win + place + show) / starts : 0,
+      best_time: r.best_time !== null ? Number(r.best_time) : null,
+    };
+  };
+
+  return {
+    by_distance: distanceRows.map((r) =>
+      toRow(`${r.distance}m`, r.distance ?? 0, r),
+    ),
+    by_track_type: trackRows.map((r) => toRow(r.track_type ?? "-", 0, r)),
+    by_track_condition: condRows.map((r) =>
+      toRow(r.track_condition ?? "-", 0, r),
+    ),
+    by_meet: meetRows.map((r) => toRow(r.meet ?? "-", 0, r)),
+  };
+}
+
 export async function getRaceResultsForHorse(
   horseNo: string,
   limit = 10,
