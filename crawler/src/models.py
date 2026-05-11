@@ -15,6 +15,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Numeric,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -597,6 +598,37 @@ class SyncMeta(Base):
     page_token: Mapped[str | None] = mapped_column(Text)
     last_error: Mapped[str | None] = mapped_column(Text)
     raw: Mapped[dict | None] = mapped_column(JSONB)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class WeatherObservation(Base):
+    """기상청 ASOS 일자료 — (station_id, obs_date) PK.
+
+    races 와 race_date 로 조인, 가까운 ASOS 관측소(서울→119/수원, 제주→184,
+    부경→159/부산)로 meet 별 환경변수 제공. 마필별 기상 조건별 성적 분석에 사용.
+
+    See: db/migrations/029_weather_observations.sql
+    """
+
+    __tablename__ = "weather_observations"
+
+    station_id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    obs_date: Mapped[date] = mapped_column(Date, primary_key=True)
+
+    avg_ta: Mapped[float | None] = mapped_column(Numeric(4, 1))
+    min_ta: Mapped[float | None] = mapped_column(Numeric(4, 1))
+    max_ta: Mapped[float | None] = mapped_column(Numeric(4, 1))
+    sum_rn: Mapped[float | None] = mapped_column(Numeric(5, 1))
+    avg_ws: Mapped[float | None] = mapped_column(Numeric(4, 1))
+    avg_rhm: Mapped[float | None] = mapped_column(Numeric(4, 1))
+    iscs: Mapped[str | None] = mapped_column(Text)
+
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
