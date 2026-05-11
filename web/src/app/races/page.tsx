@@ -17,14 +17,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getDailyBetTotalP, getUserBalance } from "@/lib/balances";
 import { getRaceBetState } from "@/lib/bets";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   getAllRaceDates,
   getRaceDataSyncedAt,
   getRaceEntries,
@@ -48,7 +40,17 @@ import {
   type RacePoolSales,
 } from "@/lib/race_pool_sales";
 import { getRaceVideo, youtubeEmbedUrl } from "@/lib/videos";
-import { PoolSalesDonut } from "@/components/pool-sales-donut";
+import { youtubeSearchUrl } from "@/lib/video-helpers";
+import {
+  GateNum,
+  OddsBar,
+  PoolSalesTiles,
+  PopularityChart,
+  RaceChip,
+  RankMedal,
+  RoundBadge,
+  WeightDelta,
+} from "@/components/race-detail-ui";
 import { RaceHorseCompare } from "@/components/race-horse-compare";
 import { PopularityVsResult } from "@/components/popularity-vs-result";
 import { PaceMap } from "@/components/pace-map";
@@ -357,28 +359,96 @@ export default async function RacesPage({
 
       {/* ── 선택된 경기 상세 ── */}
       {selectedRace && (
-        <section className="mt-8">
-          {/* 헤더 — 좌측: 경마장·라운드·거리 / 우측: 업데이트 시각. 그 외 메타(날짜·발주
-              시각·등급·주로·라이브/검색 버튼) 은 라운드 필터/달력 와 중복이라 제거. */}
-          <div className="mb-4 flex flex-wrap items-center gap-3 border-t pt-8">
-            <div className="flex items-center gap-1.5 text-base font-semibold text-foreground">
-              <VenueIcon meet={selectedRace.meet} size={16} className="opacity-70" />
-              <span>{selectedRace.meet}</span>
+        <section className="mt-8 border-t pt-8">
+          {/* 헤더: 2열 그리드 — 좌(라운드 + 메타 + 타이틀 + 칩) / 우(영상 액션 + 업데이트) */}
+          <div className="mb-4 grid grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-[1fr_auto]">
+            <div className="flex min-w-0 flex-col gap-2">
+              <div className="flex items-center gap-3">
+                <RoundBadge no={selectedRace.race_no} />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <VenueIcon meet={selectedRace.meet} size={13} />
+                      {selectedRace.meet}
+                    </span>
+                    <span className="h-[3px] w-[3px] rounded-full bg-current opacity-40" />
+                    <span className="font-mono tabular-nums">{currentDate}</span>
+                    {selectedRace.start_time && (
+                      <>
+                        <span className="h-[3px] w-[3px] rounded-full bg-current opacity-40" />
+                        <span className="font-mono tabular-nums">
+                          {selectedRace.start_time} 발주
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <h2 className="mt-0.5 text-xl font-extrabold leading-tight tracking-tight sm:text-[22px]">
+                    {selectedRace.race_name ?? `${selectedRace.race_no}R`}
+                  </h2>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {selectedRace.distance && (
+                  <RaceChip label="거리" value={`${selectedRace.distance}m`} />
+                )}
+                {selectedRace.grade && (
+                  <RaceChip label="등급" value={selectedRace.grade} tone="gold" />
+                )}
+                {(selectedRace.track_type || selectedRace.track_condition) && (
+                  <RaceChip
+                    label="주로"
+                    value={[selectedRace.track_type, selectedRace.track_condition]
+                      .filter(Boolean)
+                      .join(" · ") || "-"}
+                    tone="condition"
+                  />
+                )}
+                {selectedRace.entry_count != null && (
+                  <RaceChip label="출전" value={`${selectedRace.entry_count}두`} />
+                )}
+              </div>
             </div>
-            <h2 className="text-xl font-bold">{selectedRace.race_no}라운드</h2>
-            {selectedRace.distance && (
-              <span className="text-sm text-muted-foreground">
-                {selectedRace.distance}m
-              </span>
-            )}
-            {syncedAt && (
-              <span
-                className="ml-auto text-[11px] text-muted-foreground/70 tabular-nums"
-                title={`데이터 수집 시각: ${syncedAt}`}
-              >
-                업데이트 {formatSyncedAt(syncedAt)}
-              </span>
-            )}
+
+            <div className="flex flex-col items-start gap-2 md:items-end">
+              <div className="flex items-center gap-2">
+                {raceVideo ? (
+                  <a
+                    href={`https://www.youtube.com/watch?v=${raceVideo.video_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[rgba(255,0,0,0.3)] bg-transparent px-3 text-xs font-semibold text-[#FF0000] transition hover:bg-[rgba(255,0,0,0.06)]"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.5 15.6V8.4L15.8 12l-6.3 3.6z" />
+                    </svg>
+                    유튜브 영상
+                  </a>
+                ) : (
+                  <a
+                    href={youtubeSearchUrl(
+                      `${currentDate} ${selectedRace.meet} ${selectedRace.race_no}R 경마`,
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[rgba(255,0,0,0.3)] bg-transparent px-3 text-xs font-semibold text-[#FF0000] transition hover:bg-[rgba(255,0,0,0.06)]"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.5 15.6V8.4L15.8 12l-6.3 3.6z" />
+                    </svg>
+                    유튜브 검색
+                  </a>
+                )}
+              </div>
+              {syncedAt && (
+                <span
+                  className="text-[11px] text-muted-foreground/70 tabular-nums"
+                  title={`데이터 수집 시각: ${syncedAt}`}
+                >
+                  데이터 업데이트{" "}
+                  <span className="font-mono">{formatSyncedAt(syncedAt)}</span>
+                </span>
+              )}
+            </div>
           </div>
 
           {raceVideo && (
@@ -404,148 +474,178 @@ export default async function RacesPage({
           {entries.length > 0 ? (
             <>
               {entriesPhase === "pre" && (
-                <div className="mb-3 inline-flex items-center gap-2 rounded-md border border-champagne-gold/40 bg-champagne-gold/10 px-3 py-1.5 text-xs font-medium text-gold-ink">
+                <div className="mb-3 flex items-center gap-2 rounded-md border border-champagne-gold/50 bg-gradient-to-r from-champagne-gold/16 to-champagne-gold/6 px-3.5 py-2.5 text-[13px] text-gold-ink">
                   <span className="relative flex h-2 w-2">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-champagne-gold opacity-60" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-champagne-gold" />
                   </span>
-                  출전표 (경주 전 · 결과 미확정)
+                  <span>
+                    <strong>출전표</strong> · 경주 시작 전, 결과는 발주 직후 갱신됩니다.
+                  </span>
                 </div>
               )}
-              <Card className="py-0">
-              <div className="relative overflow-x-auto rounded-[inherit]">
-              <Table className="min-w-[580px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="sticky left-0 z-10 w-14 bg-background text-center">
-                      {entriesPhase === "pre" ? "출전" : "착순"}
-                    </TableHead>
-                    <TableHead className="text-center">마명</TableHead>
-                    <TableHead className="text-center">기수</TableHead>
-                    <TableHead className="text-center">조교사</TableHead>
-                    <TableHead
-                      className="hidden text-center sm:table-cell"
-                      title="말 연령"
-                    >
-                      연령
-                    </TableHead>
-                    <TableHead
-                      className="hidden text-center sm:table-cell"
-                      title="경주 시점의 말 레이팅"
-                    >
-                      레이팅
-                    </TableHead>
-                    <TableHead
-                      className="hidden text-center sm:table-cell"
-                      title="부담중량 (핸디캡)"
-                    >
-                      부담
-                    </TableHead>
-                    <TableHead className="text-center">기록</TableHead>
-                    <TableHead
-                      className="hidden text-center md:table-cell"
-                      title="1착과의 착차"
-                    >
-                      착차
-                    </TableHead>
-                    <TableHead className="text-center">마체중</TableHead>
-                    <TableHead className="text-center">단승</TableHead>
-                    <TableHead className="text-center">연승</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {entries.map((e, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="sticky left-0 z-10 bg-background text-center font-semibold">
-                        {entriesPhase === "pre" ? (
-                          <span className="font-mono text-sm tabular-nums text-muted-foreground">
-                            {e.chul_no ?? "-"}
-                          </span>
-                        ) : (
-                          <RankBadge rank={e.rank} />
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Link
-                          href={`/horse/${e.horse_no}`}
-                          className="text-primary hover:underline"
-                        >
-                          {e.horse_name}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="text-center text-muted-foreground">
-                        <span className="inline-flex items-center gap-1">
-                          {e.jockey_name ? (
-                            e.jockey_no ? (
+              <Card className="overflow-hidden py-0">
+                <div className="relative overflow-x-auto rounded-[inherit]">
+                  <table className="w-full border-collapse text-[13px]">
+                    <thead>
+                      <tr className="bg-[#faf7ef]">
+                        <th className="border-b border-border px-2 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 52 }}>
+                          {entriesPhase === "pre" ? "출전" : "착순"}
+                        </th>
+                        <th className="border-b border-border px-2 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 44 }}>
+                          번호
+                        </th>
+                        <th className="border-b border-border px-2 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          마명
+                        </th>
+                        <th className="border-b border-border px-2 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 160 }}>
+                          기수 / 조교사
+                        </th>
+                        <th className="hidden border-b border-border px-2 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 50 }}>
+                          연령
+                        </th>
+                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 64 }}>
+                          레이팅
+                        </th>
+                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 56 }}>
+                          부담
+                        </th>
+                        <th className="border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 88 }}>
+                          기록
+                        </th>
+                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground md:table-cell" style={{ width: 60 }}>
+                          착차
+                        </th>
+                        <th className="border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 86 }}>
+                          마체중
+                        </th>
+                        <th className="border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 130 }}>
+                          단승
+                        </th>
+                        <th className="border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 130 }}>
+                          연승
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {entries.map((e, i) => {
+                        const rowBg =
+                          entriesPhase === "post" && e.rank === 1
+                            ? "bg-[#fff8df]"
+                            : entriesPhase === "post" && e.rank === 2
+                              ? "bg-[#f0f1f4]"
+                              : entriesPhase === "post" && e.rank === 3
+                                ? "bg-[#f8eedf]"
+                                : "";
+                        return (
+                          <tr
+                            key={i}
+                            className={`${rowBg} border-b border-border/60 last:border-b-0 hover:bg-champagne-gold/[0.06]`}
+                          >
+                            <td className="px-2 py-2.5 text-center font-bold align-middle">
+                              {entriesPhase === "pre" ? (
+                                <GateNum n={e.chul_no} size={24} />
+                              ) : (
+                                <RankMedal rank={e.rank} />
+                              )}
+                            </td>
+                            <td className="px-2 py-2.5 text-center align-middle">
+                              <GateNum n={e.chul_no} />
+                            </td>
+                            <td className="px-2 py-2.5 align-middle">
                               <Link
-                                href={`/jockey/${e.jockey_no}`}
-                                className="text-primary hover:underline"
+                                href={`/horse/${e.horse_no}`}
+                                className="text-sm font-bold text-primary hover:underline"
                               >
-                                {e.jockey_name}
+                                {e.horse_name}
                               </Link>
-                            ) : (
-                              e.jockey_name
-                            )
-                          ) : (
-                            "-"
-                          )}
-                          {e.jockey_changed_from && (
-                            <JockeyChangeBadge
-                              from={e.jockey_changed_from}
-                              to={e.jockey_name}
-                              reason={e.jockey_change_reason}
-                              weightBefore={e.jockey_weight_before}
-                              weightAfter={e.jockey_weight_after}
-                            />
-                          )}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center text-muted-foreground">
-                        {e.trainer_name ? (
-                          e.trainer_no ? (
-                            <Link
-                              href={`/trainer/${e.trainer_no}`}
-                              className="text-primary hover:underline"
+                              {e.age && (
+                                <div className="mt-0.5 font-mono text-[11px] tabular-nums text-muted-foreground">
+                                  {e.age}세
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-2 py-2.5 align-middle leading-tight">
+                              <div className="flex items-center gap-1.5 text-[13px]">
+                                {e.jockey_name ? (
+                                  e.jockey_no ? (
+                                    <Link
+                                      href={`/jockey/${e.jockey_no}`}
+                                      className="text-primary hover:underline"
+                                    >
+                                      {e.jockey_name}
+                                    </Link>
+                                  ) : (
+                                    <span>{e.jockey_name}</span>
+                                  )
+                                ) : (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
+                                {e.jockey_changed_from && (
+                                  <JockeyChangeBadge
+                                    from={e.jockey_changed_from}
+                                    to={e.jockey_name}
+                                    reason={e.jockey_change_reason}
+                                    weightBefore={e.jockey_weight_before}
+                                    weightAfter={e.jockey_weight_after}
+                                  />
+                                )}
+                              </div>
+                              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                                {e.trainer_name ? (
+                                  e.trainer_no ? (
+                                    <Link
+                                      href={`/trainer/${e.trainer_no}`}
+                                      className="text-primary hover:underline"
+                                    >
+                                      {e.trainer_name}
+                                    </Link>
+                                  ) : (
+                                    e.trainer_name
+                                  )
+                                ) : (
+                                  "-"
+                                )}
+                              </div>
+                            </td>
+                            <td className="hidden px-2 py-2.5 text-center align-middle font-mono text-xs tabular-nums text-muted-foreground sm:table-cell">
+                              {e.age ?? "-"}
+                            </td>
+                            <td className="hidden px-2 py-2.5 text-right align-middle font-mono text-xs tabular-nums sm:table-cell">
+                              {e.hr_rating ?? "-"}
+                            </td>
+                            <td className="hidden px-2 py-2.5 text-right align-middle font-mono text-xs tabular-nums text-muted-foreground sm:table-cell">
+                              {e.budam_weight ?? "-"}
+                            </td>
+                            <td
+                              className={`px-2 py-2.5 text-right align-middle font-mono text-xs tabular-nums font-semibold ${
+                                e.rank === 1 && entriesPhase === "post" ? "text-primary" : ""
+                              } ${entriesPhase === "pre" ? "text-muted-foreground" : ""}`}
                             >
-                              {e.trainer_name}
-                            </Link>
-                          ) : (
-                            e.trainer_name
-                          )
-                        ) : (
-                          "-"
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden text-center font-mono tabular-nums text-muted-foreground sm:table-cell">
-                        {e.age ?? "-"}
-                      </TableCell>
-                      <TableCell className="hidden text-center font-mono tabular-nums text-muted-foreground sm:table-cell">
-                        {e.hr_rating ?? "-"}
-                      </TableCell>
-                      <TableCell className="hidden text-center font-mono tabular-nums text-muted-foreground sm:table-cell">
-                        {e.budam_weight ?? "-"}
-                      </TableCell>
-                      <TableCell className="text-center font-mono tabular-nums">
-                        {e.record_time ?? "-"}
-                      </TableCell>
-                      <TableCell className="hidden text-center font-mono tabular-nums text-muted-foreground md:table-cell">
-                        {e.differ ?? "-"}
-                      </TableCell>
-                      <TableCell className="text-center font-mono tabular-nums">
-                        {e.weight ?? "-"}
-                      </TableCell>
-                      <TableCell className="text-center font-mono tabular-nums text-muted-foreground">
-                        {e.win_rate ?? "-"}
-                      </TableCell>
-                      <TableCell className="text-center font-mono tabular-nums text-muted-foreground">
-                        {e.plc_rate ?? "-"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              </div>
-            </Card>
+                              {e.record_time ?? "-"}
+                            </td>
+                            <td className="hidden px-2 py-2.5 text-right align-middle font-mono text-xs tabular-nums text-muted-foreground md:table-cell">
+                              {e.differ ?? "-"}
+                            </td>
+                            <td className="px-2 py-2.5 text-right align-middle font-mono text-xs tabular-nums">
+                              {e.weight ?? "-"}
+                              {/* mal_app 데이터에 마체중 직전 경주 대비 증감(diff) 컬럼이
+                                  들어오면 WeightDelta 로 보여줄 수 있음 (현재는 null) */}
+                              <WeightDelta diff={null} />
+                            </td>
+                            <td className="px-2 py-2.5 text-right align-middle">
+                              <OddsBar value={e.win_rate} kind="win" />
+                            </td>
+                            <td className="px-2 py-2.5 text-right align-middle">
+                              <OddsBar value={e.plc_rate} kind="plc" />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
             </>
           ) : (
             <Card className="border-dashed">
@@ -607,71 +707,55 @@ export default async function RacesPage({
             <ComboDividendsSection rows={comboDividends} />
           )}
 
-          {poolSales.length > 0 && <PoolSalesSection rows={poolSales} />}
+          {poolSales.length > 0 && (
+            <div className="mt-7">
+              <div className="mb-3 flex items-baseline justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  풀별 매출
+                </h3>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  총 매출{" "}
+                  <strong className="text-foreground">
+                    {(() => {
+                      const t = poolSales.reduce((s, r) => s + Number(r.amount), 0);
+                      if (t >= 100_000_000) return `${(t / 100_000_000).toFixed(2)}억`;
+                      if (t >= 10_000) return `${Math.round(t / 10_000).toLocaleString("ko-KR")}만`;
+                      return t.toLocaleString("ko-KR");
+                    })()}
+                  </strong>
+                </span>
+              </div>
+              <PoolSalesTiles
+                rows={[...poolSales].sort(
+                  (a, b) =>
+                    POOL_DISPLAY_ORDER.indexOf(
+                      a.pool as (typeof POOL_DISPLAY_ORDER)[number],
+                    ) -
+                    POOL_DISPLAY_ORDER.indexOf(
+                      b.pool as (typeof POOL_DISPLAY_ORDER)[number],
+                    ),
+                )}
+                totalAmount={poolSales.reduce((s, r) => s + Number(r.amount), 0)}
+              />
+            </div>
+          )}
+
+          {entries.length > 0 && entries.some((e) => e.win_rate) && (
+            <div className="mt-7">
+              <div className="mb-3 flex items-baseline justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  인기 분포
+                </h3>
+                <span className="text-xs text-muted-foreground">
+                  단승 배당 기준 · 낮을수록 인기
+                </span>
+              </div>
+              <PopularityChart entries={entries} />
+            </div>
+          )}
         </section>
       )}
     </main>
-  );
-}
-
-/* ── 풀별 매출 섹션 ──────────────────────────────────────── */
-
-/** 매출액(원) → "1.2억" / "3,400만" / "5,200" 형태로 축약. */
-function formatAmount(amountStr: string): string {
-  const n = Number(amountStr);
-  if (!Number.isFinite(n) || n === 0) return "-";
-  if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(2)}억`;
-  if (n >= 10_000) return `${Math.round(n / 10_000).toLocaleString("ko-KR")}만`;
-  return n.toLocaleString("ko-KR");
-}
-
-function PoolSalesSection({ rows }: { rows: RacePoolSales[] }) {
-  const total = rows.reduce((s, r) => s + Number(r.amount), 0);
-  // KRA 가 응답 안 한 풀은 표시하지 않음 — 단순히 받은 풀만 정렬해 보여준다.
-  const sorted = [...rows].sort(
-    (a, b) =>
-      POOL_DISPLAY_ORDER.indexOf(a.pool as (typeof POOL_DISPLAY_ORDER)[number]) -
-      POOL_DISPLAY_ORDER.indexOf(b.pool as (typeof POOL_DISPLAY_ORDER)[number]),
-  );
-
-  return (
-    <div className="mt-6">
-      <div className="mb-3 flex items-baseline justify-between">
-        <h3 className="text-sm font-semibold text-muted-foreground">풀별 매출</h3>
-        <span className="text-xs text-muted-foreground tabular-nums">
-          총 매출 <strong className="text-foreground">{formatAmount(String(total))}</strong>
-        </span>
-      </div>
-      <Card>
-        <CardContent className="grid gap-6 p-4 md:grid-cols-[auto_1fr] md:p-5">
-          <div className="flex justify-center md:justify-start">
-            <PoolSalesDonut rows={sorted} />
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-16">풀</TableHead>
-                <TableHead className="text-right">매출액</TableHead>
-                <TableHead>인기순위 (배당률)</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sorted.map((r) => (
-                <TableRow key={r.pool}>
-                  <TableCell className="font-semibold">{r.pool}</TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">
-                    {formatAmount(r.amount)}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {r.odds_summary ?? "-"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
   );
 }
 
