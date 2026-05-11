@@ -18,6 +18,7 @@ import {
   type Owner,
 } from "@/lib/owners";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
+import { BackButton } from "@/components/back-button";
 
 const fetchOwner = cache(getOwnerByNo);
 
@@ -54,14 +55,17 @@ export default async function OwnerDetailPage({
   const horses = await getHorsesByOwner(ow_no, 50);
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-6 py-12">
+    <div>
       <BreadcrumbJsonLd
         items={[
           { name: "홈", url: "/" },
-          { name: "마주", url: "/horses" },
+          { name: "마주", url: "/owner" },
           { name: owner.ow_name, url: `/owner/${ow_no}` },
         ]}
       />
+      <div className="mb-3">
+        <BackButton fallback="/owner" />
+      </div>
       <OwnerProfileCard owner={owner} />
 
       <section className="mt-10">
@@ -117,7 +121,7 @@ export default async function OwnerDetailPage({
           </Card>
         )}
       </section>
-    </main>
+    </div>
   );
 }
 

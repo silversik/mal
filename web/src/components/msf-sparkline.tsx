@@ -26,6 +26,10 @@ export function MsfSparkline({
     .map((p, i) => `${i === 0 ? "M" : "L"} ${(i * xStep).toFixed(1)} ${yScale(p.msf).toFixed(1)}`)
     .join(" ");
 
+  // area path → gold-tinted fill (디자인 Sparkline 스펙).
+  const lastX = (points.length - 1) * xStep;
+  const area = `${d} L ${lastX.toFixed(1)} ${height} L 0 ${height} Z`;
+
   // 100 (1착 기준선) 점선
   const baselineY = yScale(100);
   const lastPoint = points[points.length - 1];
@@ -38,6 +42,7 @@ export function MsfSparkline({
         viewBox={`0 0 ${width} ${height}`}
         aria-label="mal지수 추세"
       >
+        <path d={area} fill="rgba(252, 223, 104, 0.45)" />
         <line
           x1={0}
           y1={baselineY}
@@ -48,7 +53,7 @@ export function MsfSparkline({
           strokeDasharray="2 3"
           strokeWidth={1}
         />
-        <path d={d} stroke="var(--color-primary)" strokeWidth={1.6} fill="none" />
+        <path d={d} stroke="var(--color-primary)" strokeWidth={1.6} fill="none" strokeLinecap="round" strokeLinejoin="round" />
         {points.map((p, i) => (
           <circle
             key={i}

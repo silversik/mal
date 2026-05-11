@@ -20,6 +20,7 @@ import {
 } from "@/lib/trainers";
 import { WinRateBar } from "@/components/win-rate-bar";
 import { RecentFormDots } from "@/components/recent-form-dots";
+import { BackButton } from "@/components/back-button";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
 
 const fetchTrainer = cache(getTrainerByNo);
@@ -57,14 +58,17 @@ export default async function TrainerDetailPage({
   const recentRaces = await getRecentRacesByTrainer(trainer.tr_name, 20);
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-6 py-12">
+    <div>
       <BreadcrumbJsonLd
         items={[
           { name: "홈", url: "/" },
-          { name: "조교사", url: "/jockeys" },
+          { name: "조교사", url: "/trainer" },
           { name: trainer.tr_name, url: `/trainer/${tr_no}` },
         ]}
       />
+      <div className="mb-3">
+        <BackButton fallback="/trainer" />
+      </div>
       <TrainerProfileCard trainer={trainer} />
 
       {recentRaces.length > 0 && (
@@ -149,7 +153,7 @@ export default async function TrainerDetailPage({
           </Card>
         )}
       </section>
-    </main>
+    </div>
   );
 }
 

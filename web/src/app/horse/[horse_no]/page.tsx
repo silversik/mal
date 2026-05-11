@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { auth } from "@/auth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FavoriteHorseButton } from "@/components/favorite-horse-button";
 import { HorseMark } from "@/components/brand/logo";
@@ -18,6 +18,21 @@ import { HorseFormBreakdown } from "@/components/horse-form-breakdown";
 import { RecentFormStrip } from "@/components/recent-form-strip";
 import { MsfSparkline } from "@/components/msf-sparkline";
 import { PedigreeAptitude } from "@/components/pedigree-aptitude";
+import { InlineRatingChart } from "@/components/inline-rating-chart";
+import {
+  BreadCrumb,
+  MetaTile,
+  ProfileTag,
+  IconCalendar,
+  IconCrown,
+  IconFlag,
+  IconHash,
+  IconHorseshoe,
+  IconTrend,
+  IconUser,
+  IconUserPlus,
+} from "@/components/profile-ui";
+import { StatsBar } from "@/components/stats-bar";
 import { generateHorseComment } from "@/lib/horse_comment";
 import { isHorseFavorited } from "@/lib/favorite_horses";
 import { query } from "@/lib/db";
@@ -25,6 +40,7 @@ import {
   getChildrenByParentNo,
   getHorseByNo,
   getHorseFormBreakdown,
+  getHorseRankAggregate,
   getMsfHistory,
   getParentChildAggregate,
   getPedigree,
@@ -32,7 +48,11 @@ import {
   getRecentFinishes,
   getSiblings,
   type Horse,
+  type PedigreeNode,
 } from "@/lib/horses";
+import { PedigreeDialog } from "@/components/pedigree-dialog";
+import type { PedigreeInput } from "@/components/pedigree-tree";
+import { getTrainerNoMap } from "@/lib/trainers";
 import {
   getLatestRating,
   getRatingHistory,
@@ -171,6 +191,7 @@ export default async function HorseDetailPage({
     msfHistory,
     sireAgg,
     damAgg,
+    rankAgg,
   ] = await Promise.all([
     getRaceResultsWithMsf(horse_no, 10),
     getSiblings(horse.sire_name, horse_no),
@@ -184,20 +205,41 @@ export default async function HorseDetailPage({
     getMsfHistory(horse_no, 20),
     horse.sire_no ? getParentChildAggregate(horse.sire_no) : Promise.resolve(null),
     horse.dam_no ? getParentChildAggregate(horse.dam_no) : Promise.resolve(null),
+    getHorseRankAggregate(horse_no),
   ]);
 
-  const [jockeyMap, videoMap] = await Promise.all([
+  // 마지막 trainer 는 가장 최근 경주의 trainer_name 으로 (horses 테이블엔 컬럼 없음).
+  const trainerName =
+    results.find((r) => r.trainer_name)?.trainer_name ?? null;
+
+  const [jockeyMap, videoMap, trainerNoMap] = await Promise.all([
     buildJockeyMap(results.map((r) => r.jockey_name).filter((n): n is string => n !== null)),
     getVideosForRaces(results),
+    trainerName ? getTrainerNoMap([trainerName]) : Promise.resolve<Record<string, string>>({}),
   ]);
 
+  const trainerNo = trainerName ? trainerNoMap[trainerName] ?? null : null;
+
+  // AI 코멘트에 쓰는 최고 mal지수.
+  const bestMsf = msfHistory.length > 0
+    ? Math.max(...msfHistory.map((p) => p.msf))
+    : null;
+
   return (
-    <main className="mx-auto w-full max-w-4xl px-6 py-12">
+    <main className="mx-auto w-full max-w-7xl px-4 py-5 md:px-6 md:py-6">
       <BreadcrumbJsonLd
         items={[
           { name: "홈", url: "/" },
           { name: "마필", url: "/horses" },
           { name: horse.horse_name, url: `/horse/${horse_no}` },
+        ]}
+      />
+
+      <BreadCrumb
+        items={[
+          { label: "홈", href: "/" },
+          { label: "마필", href: "/horses" },
+          { label: horse.horse_name },
         ]}
       />
 
@@ -207,52 +249,78 @@ export default async function HorseDetailPage({
         ratingHistory={ratingHistory}
         favorited={favorited}
         loggedIn={!!userId}
-        recentFinishes={recentFinishes}
-        msfHistory={msfHistory}
+        trainerName={trainerName}
+        trainerNo={trainerNo}
+        rankAgg={rankAgg}
+        pedigree={pedigree}
       />
 
-      <AutoCommentBlock
-        comment={generateHorseComment({
-          horse_name: horse.horse_name,
-          total_race_count: horse.total_race_count,
-          first_place_count: horse.first_place_count,
-          recent_finishes: recentFinishes,
-          avg_msf: msfHistory.length > 0
-            ? msfHistory.reduce((s, p) => s + p.msf, 0) / msfHistory.length
-            : null,
-          best_msf: msfHistory.length > 0
-            ? Math.max(...msfHistory.map((p) => p.msf))
-            : null,
-          form: formBreakdown,
-          sire_aggregate: sireAgg ? {
-            parent_name: sireAgg.parent_name,
-            win_rate: sireAgg.win_rate,
-            total_children: sireAgg.total_children,
-          } : null,
-        })}
-      />
+      <div className="mt-5 grid gap-5 md:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0">
+          <AutoCommentBlock
+            comment={generateHorseComment({
+              horse_name: horse.horse_name,
+              total_race_count: horse.total_race_count,
+              first_place_count: horse.first_place_count,
+              recent_finishes: recentFinishes,
+              avg_msf: msfHistory.length > 0
+                ? msfHistory.reduce((s, p) => s + p.msf, 0) / msfHistory.length
+                : null,
+              best_msf: bestMsf,
+              form: formBreakdown,
+              sire_aggregate: sireAgg ? {
+                parent_name: sireAgg.parent_name,
+                win_rate: sireAgg.win_rate,
+                total_children: sireAgg.total_children,
+              } : null,
+            })}
+          />
+          <div className="mt-5">
+            <HorseTabs
+              horse={horse}
+              results={results}
+              jockeyMap={jockeyMap}
+              videoEntries={[...videoMap.entries()].map(([k, v]) => [k, { video_id: v.video_id }])}
+              rankChanges={rankChanges}
+              pedigree={pedigree}
+              siblings={siblings}
+            />
+          </div>
 
-      <div className="mt-10">
-        <HorseTabs
-          horse={horse}
-          results={results}
-          jockeyMap={jockeyMap}
-          videoEntries={[...videoMap.entries()].map(([k, v]) => [k, { video_id: v.video_id }])}
-          rankChanges={rankChanges}
-          pedigree={pedigree}
-          siblings={siblings}
-        />
-      </div>
+          <div className="mt-6">
+            <HorseFormBreakdown data={formBreakdown} />
+          </div>
 
-      <div className="mt-10">
-        <HorseFormBreakdown data={formBreakdown} />
-      </div>
-
-      {(sireAgg || damAgg) && (
-        <div className="mt-10">
-          <PedigreeAptitude sire={sireAgg} dam={damAgg} />
+          {(sireAgg || damAgg) && (
+            <div className="mt-6">
+              <PedigreeAptitude sire={sireAgg} dam={damAgg} />
+            </div>
+          )}
         </div>
-      )}
+
+        <aside className="flex flex-col gap-3">
+          {recentFinishes.length > 0 && (
+            <Card>
+              <CardContent className="p-3">
+                <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  최근 폼
+                </h3>
+                <RecentFormStrip finishes={recentFinishes} />
+              </CardContent>
+            </Card>
+          )}
+          {msfHistory.length >= 2 && (
+            <Card>
+              <CardContent className="p-3">
+                <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  mal지수 추세
+                </h3>
+                <MsfSparkline points={msfHistory} width={260} height={56} />
+              </CardContent>
+            </Card>
+          )}
+        </aside>
+      </div>
     </main>
   );
 }
@@ -280,135 +348,214 @@ function ProfileCard({
   ratingHistory,
   favorited,
   loggedIn,
-  recentFinishes,
-  msfHistory,
+  trainerName,
+  trainerNo,
+  rankAgg,
+  pedigree,
 }: {
   horse: Horse;
   rating: HorseRating | null;
   ratingHistory: HorseRatingPoint[];
   favorited: boolean;
   loggedIn: boolean;
-  recentFinishes: (number | null)[];
-  msfHistory: { race_date: string; msf: number }[];
+  trainerName: string | null;
+  trainerNo: string | null;
+  rankAgg: { total: number; win: number; place: number; show: number };
+  pedigree: PedigreeNode | null;
 }) {
-  const fields: Array<[string, React.ReactNode]> = [
-    ["마번", <span className="font-mono" key="no">{horse.horse_no}</span>],
-    ["성별", <SexBadge key="sx" sex={horse.sex} />],
-    ["생년월일", horse.birth_date ?? "-"],
-    ["산지", horse.country ?? "-"],
-    ["모색", coatColorLabel(horse.coat_color) ?? "-"],
-    [
-      "마주",
-      horse.owner_name && horse.ow_no ? (
-        <Link
-          key="ow"
-          href={`/owner/${horse.ow_no}`}
-          className="text-primary hover:underline"
-        >
-          {horse.owner_name}
-        </Link>
-      ) : (
-        (horse.owner_name ?? horse.ow_no ?? "-")
-      ),
-    ],
-    [
-      "통산 출전",
-      <span key="rc">
-        {horse.total_race_count}
-        <span className="text-muted-foreground">회</span>
-      </span>,
-    ],
-    [
-      "통산 1착",
-      <span key="w">
-        <span className="text-primary">{horse.first_place_count}</span>
-        <span className="text-muted-foreground">회</span>
-      </span>,
-    ],
-  ];
-
-  if (recentFinishes.length > 0) {
-    fields.push(["최근 5전", <RecentFormStrip key="rf" finishes={recentFinishes} />]);
-  }
-  const hasMsfTrend = msfHistory.length >= 2;
-
-  const characteristics = normalizeCharacteristics(horse.characteristics);
   const hasRatingTrend = ratingHistory.filter((p) => p.rating4 !== null).length >= 2;
+  const characteristics = normalizeCharacteristics(horse.characteristics);
+
+  const sex = (horse.sex ?? "").trim();
+  const ageYear = horse.birth_date ? new Date().getFullYear() - Number(horse.birth_date.slice(0, 4)) : null;
 
   return (
-    <Card className="relative">
+    <Card className="royal-card relative">
       <FavoriteHorseButton
         horseNo={horse.horse_no}
         initialFavorited={favorited}
         loggedIn={loggedIn}
         className="absolute right-3 top-3"
       />
-      <CardHeader className="pb-2">
-        <div className="flex items-start gap-4 pr-10">
+      <CardContent className="p-4">
+        {/* 헤더: 마크 · 이름/태그/메타 · ⭐ 자리 */}
+        <div className="flex items-start gap-3 pr-12">
           <HorseMark
-            size={96}
-            radius={12}
+            size={64}
+            radius={10}
             badgeFill={coatBgHex(horse.coat_color)}
             markFill={coatBodyHex(horse.coat_color)}
           />
           <div className="min-w-0 flex-1">
-            <CardTitle className="text-4xl font-bold tracking-tight">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {rating?.rating4 != null && (
+                <ProfileTag tone="navy" icon={<IconTrend size={11} />}>
+                  레이팅 {rating.rating4}
+                </ProfileTag>
+              )}
+              {coatColorLabel(horse.coat_color) && (
+                <ProfileTag tone="gold" icon={<IconCrown size={11} />}>
+                  {coatColorLabel(horse.coat_color)}
+                </ProfileTag>
+              )}
+            </div>
+            <h1 className="mt-0.5 text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
               {horse.horse_name}
-            </CardTitle>
+            </h1>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              {sex && (
+                <span className="inline-flex items-center gap-1">
+                  <SexBadge sex={horse.sex} />
+                  {sex.startsWith("거")
+                    ? "거세"
+                    : sex.startsWith("암")
+                      ? "암말"
+                      : sex.startsWith("수")
+                        ? "수말"
+                        : sex}
+                </span>
+              )}
+              <Sep />
+              {ageYear != null && (
+                <span className="inline-flex items-center gap-1">
+                  <IconCalendar size={12} />
+                  {ageYear}세 · {horse.birth_date}
+                </span>
+              )}
+              <Sep />
+              <span className="inline-flex items-center gap-1">
+                <IconFlag size={12} />
+                {horse.country ?? "-"}
+              </span>
+              <Sep />
+              <span className="inline-flex items-center gap-1 font-mono">
+                <IconHash size={12} />
+                {horse.horse_no}
+              </span>
+            </div>
           </div>
         </div>
-      </CardHeader>
-      <CardContent>
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
-          {fields.map(([label, value]) => (
-            <div key={String(label)}>
-              <dt className="text-xs uppercase tracking-wider text-muted-foreground">
-                {label}
-              </dt>
-              <dd className="mt-0.5 text-sm font-medium">{value}</dd>
-            </div>
-          ))}
-          {/* 마지막 행: 레이팅 추이(좌, col-span-2) + 특징(우, col-span-2). 두 영역 모두 데이터 없으면 행 자체를 생략. */}
+
+        {/* 통산 성적 stacked bar */}
+        <div className="mt-3">
+          <StatsBar
+            total={Math.max(rankAgg.total, horse.total_race_count)}
+            win={rankAgg.win || horse.first_place_count}
+            place={rankAgg.place}
+            show={rankAgg.show}
+          />
+        </div>
+
+        {/* 메타 + sparkline 그리드 */}
+        <div className="mt-3 grid gap-2.5 sm:grid-cols-[1fr_280px]">
+          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3 self-start">
+            <MetaTile
+              icon={<IconUser size={14} />}
+              label="마주"
+              value={
+                horse.owner_name && horse.ow_no ? (
+                  <Link href={`/owner/${horse.ow_no}`} className="hover:underline">
+                    {horse.owner_name}
+                  </Link>
+                ) : (
+                  (horse.owner_name ?? horse.ow_no ?? "-")
+                )
+              }
+            />
+            <MetaTile
+              icon={<IconUserPlus size={14} />}
+              label="조교사"
+              value={
+                trainerName && trainerNo ? (
+                  <Link href={`/trainer/${trainerNo}`} className="hover:underline">
+                    {trainerName}
+                  </Link>
+                ) : (
+                  (trainerName ?? "-")
+                )
+              }
+            />
+            <MetaTile
+              icon={<IconHorseshoe size={14} />}
+              label="부 / 모"
+              value={<SireDamValue horse={horse} pedigree={pedigree} />}
+            />
+          </div>
           {hasRatingTrend && (
-            <div className="col-span-2">
-              <dt className="text-xs uppercase tracking-wider text-muted-foreground">
-                레이팅 추이
-              </dt>
-              <dd className="mt-1">
-                <RatingSparkline points={ratingHistory} />
-              </dd>
-            </div>
+            <InlineRatingChart points={ratingHistory} width={280} />
           )}
-          {hasMsfTrend && (
-            <div className="col-span-2">
-              <dt
-                className="text-xs uppercase tracking-wider text-muted-foreground"
-                title="mal지수: 같은 경주 1착 기록 대비 % (100=1착과 동일)"
-              >
-                mal지수 추세
-              </dt>
-              <dd className="mt-1">
-                <MsfSparkline points={msfHistory} />
-              </dd>
-            </div>
-          )}
-          {characteristics.length > 0 && (
-            <div className="col-span-2">
-              <dt className="text-xs uppercase tracking-wider text-muted-foreground">
-                특징
-              </dt>
-              <dd className="mt-1 flex flex-wrap gap-1.5">
-                {characteristics.map((c) => (
-                  <Badge key={c} variant="secondary" className="font-normal">
-                    {c}
-                  </Badge>
-                ))}
-              </dd>
-            </div>
-          )}
-        </dl>
+        </div>
+
+        {characteristics.length > 0 && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              특징
+            </span>
+            {characteristics.map((c) => (
+              <Badge key={c} variant="secondary" className="font-normal text-[11px]">
+                {c}
+              </Badge>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+function Sep() {
+  return <span className="h-2.5 w-px bg-border" aria-hidden />;
+}
+
+/**
+ * "부 / 모" MetaTile 값 — 각 부모를 마필 페이지 링크로,
+ * pedigree 데이터가 있으면 우측에 작은 "족보" 버튼(다이얼로그).
+ */
+function SireDamValue({
+  horse,
+  pedigree,
+}: {
+  horse: Horse;
+  pedigree: PedigreeNode | null;
+}) {
+  const sireNode = horse.sire_name ? (
+    horse.sire_no ? (
+      <Link href={`/horse/${horse.sire_no}`} className="hover:underline">
+        {horse.sire_name}
+      </Link>
+    ) : (
+      <span>{horse.sire_name}</span>
+    )
+  ) : (
+    <span className="text-muted-foreground">-</span>
+  );
+
+  const damNode = horse.dam_name ? (
+    horse.dam_no ? (
+      <Link href={`/horse/${horse.dam_no}`} className="hover:underline">
+        {horse.dam_name}
+      </Link>
+    ) : (
+      <span>{horse.dam_name}</span>
+    )
+  ) : (
+    <span className="text-muted-foreground">-</span>
+  );
+
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="truncate">
+        {sireNode}
+        <span className="mx-1 text-muted-foreground">/</span>
+        {damNode}
+      </span>
+      {pedigree && (
+        <PedigreeDialog
+          data={pedigree as unknown as PedigreeInput}
+          rootName={horse.horse_name}
+        />
+      )}
+    </span>
   );
 }
 

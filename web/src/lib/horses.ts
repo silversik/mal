@@ -116,6 +116,34 @@ export async function searchHorsesByName(name: string, limit = 30): Promise<Hors
   return hit.rows;
 }
 
+/**
+ * 마필의 통산 1·2·3착 카운트. horses 테이블은 1착만 캐싱하므로
+ * race_results 의 rank 집계가 필요.
+ */
+export async function getHorseRankAggregate(
+  horseNo: string,
+): Promise<{ total: number; win: number; place: number; show: number }> {
+  const rows = await query<{ rank: number | null; c: string }>(
+    `SELECT rank, COUNT(*)::text AS c
+       FROM race_results
+      WHERE horse_no = $1
+      GROUP BY rank`,
+    [horseNo],
+  );
+  let total = 0;
+  let win = 0;
+  let place = 0;
+  let show = 0;
+  for (const r of rows) {
+    const c = Number(r.c);
+    total += c;
+    if (r.rank === 1) win = c;
+    else if (r.rank === 2) place = c;
+    else if (r.rank === 3) show = c;
+  }
+  return { total, win, place, show };
+}
+
 export async function countAllHorses(): Promise<number> {
   const rows = await query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM horses`);
   return Number(rows[0]?.count ?? 0);

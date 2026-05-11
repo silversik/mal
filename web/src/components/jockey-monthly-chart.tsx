@@ -1,12 +1,13 @@
 import type { JockeyMonthlyStat } from "@/lib/jockeys";
 
 /**
- * 기수 월별 출전·우승 차트 (SVG, recharts 등 의존 없음).
- * stacked bar: 1착(금) / 2-3착(채도 약함) / 그 외 출전(매우 흐림).
+ * 기수 월별 1착 차트 (SVG only, recharts 등 의존 없음).
+ * 디자인 스펙: 단일 막대(1착 건수)를 gold-pale 로, 가장 최근 달은 gold-deep 로 강조.
+ * stacked 출전/2착/3착 표시는 가독성을 떨어뜨려 제거.
  */
 export function JockeyMonthlyChart({
   data,
-  height = 140,
+  height = 100,
   width = 720,
 }: {
   data: JockeyMonthlyStat[];
@@ -15,16 +16,17 @@ export function JockeyMonthlyChart({
 }) {
   if (data.length === 0) return null;
 
-  const max = Math.max(1, ...data.map((d) => d.starts));
-  const padX = 24;
-  const padY = 24;
+  const max = Math.max(1, ...data.map((d) => d.win));
+  const padX = 12;
+  const padY = 18;
+  const labelGap = 16;
+  const barH = height - padY - labelGap;
   const innerW = width - padX * 2;
-  const innerH = height - padY * 2;
-  const barW = (innerW / data.length) * 0.7;
   const step = innerW / data.length;
+  const barW = step * 0.65;
 
-  // y → pixel
-  const yScale = (v: number) => innerH * (1 - v / max);
+  const yOf = (v: number) => padY + barH - (v / max) * barH;
+  const total = data.reduce((s, d) => s + d.win, 0);
 
   return (
     <div className="overflow-x-auto">
@@ -34,88 +36,47 @@ export function JockeyMonthlyChart({
         viewBox={`0 0 ${width} ${height}`}
         className="block"
         role="img"
-        aria-label="월별 기승 통계"
+        aria-label="월별 1착 추이"
       >
-        {/* y축 가이드: 25/50/75/100% */}
-        {[0.25, 0.5, 0.75, 1].map((p) => {
-          const y = padY + yScale(max * p);
-          return (
-            <line
-              key={p}
-              x1={padX}
-              x2={width - padX}
-              y1={y}
-              y2={y}
-              stroke="currentColor"
-              strokeOpacity={0.08}
-              strokeWidth={1}
-            />
-          );
-        })}
-
         {data.map((d, i) => {
           const x = padX + step * i + (step - barW) / 2;
-          const otherCount = Math.max(0, d.starts - d.win - d.place - d.show);
-
-          // bottom-up stacking: other → show → place → win
-          const otherTop = yScale(d.starts);
-          const showTop = yScale(d.starts - otherCount);
-          const placeTop = yScale(d.win + d.place);
-          const winTop = yScale(d.win);
-          const baseY = innerH;
-
-          const segments: Array<[number, number, string, string]> = [];
-          if (otherCount > 0) {
-            segments.push([otherTop, showTop, "rgba(100,116,139,0.25)", "etc"]);
-          }
-          if (d.show > 0) {
-            segments.push([showTop, placeTop, "rgba(180,83,9,0.55)", "show"]);
-          }
-          if (d.place > 0) {
-            segments.push([placeTop, winTop, "rgba(148,163,184,0.7)", "place"]);
-          }
-          if (d.win > 0) {
-            segments.push([winTop, baseY, "var(--color-champagne-gold)", "win"]);
-          }
-
-          // segments: [top, bottom, fill, type] — inverted means top is smaller y.
-          // We want each segment to draw rect from top to bottom (filling correctly).
-          // The "bottom" arg represents height baseline; recompute proper rect.
+          const isLast = i === data.length - 1;
+          const y = yOf(d.win);
+          const h = padY + barH - y;
           const monthLabel = d.ym.slice(5); // MM only
 
           return (
             <g key={d.ym}>
-              {segments.map(([top, bottom], si) => (
-                <rect
-                  key={si}
-                  x={x}
-                  y={padY + top}
-                  width={barW}
-                  height={Math.max(1, bottom - top)}
-                  fill={segments[si][2]}
-                />
-              ))}
-              <title>
-                {`${d.ym} · 출전 ${d.starts} / 1착 ${d.win} · 2착 ${d.place} · 3착 ${d.show}`}
-              </title>
+              <rect
+                x={x}
+                y={y}
+                width={barW}
+                height={Math.max(1, h)}
+                rx={3}
+                fill={isLast ? "var(--color-gold-deep)" : "var(--color-gold-pale)"}
+                stroke="rgba(160, 108, 0, 0.18)"
+              />
+              <title>{`${d.ym} · 출전 ${d.starts} / 1착 ${d.win}`}</title>
               <text
                 x={x + barW / 2}
-                y={height - 6}
+                y={height - 4}
                 textAnchor="middle"
                 fontSize="10"
-                fill="currentColor"
-                fillOpacity="0.6"
+                fontFamily="var(--font-mono)"
+                fill="var(--muted-foreground)"
               >
                 {monthLabel}
               </text>
               {d.win > 0 && (
                 <text
                   x={x + barW / 2}
-                  y={padY + winTop - 2}
+                  y={y - 3}
                   textAnchor="middle"
                   fontSize="10"
-                  fontWeight="600"
-                  fill="var(--color-primary)"
+                  fontWeight="700"
+                  fontFamily="var(--font-mono)"
+                  fill={isLast ? "var(--color-gold-ink)" : "var(--color-navy)"}
+                  opacity={isLast ? 1 : 0.65}
                 >
                   {d.win}
                 </text>
@@ -124,25 +85,9 @@ export function JockeyMonthlyChart({
           );
         })}
       </svg>
-      <div className="mt-1 flex flex-wrap gap-3 text-[10px] text-muted-foreground">
-        <Legend color="var(--color-champagne-gold)" label="1착" />
-        <Legend color="rgba(148,163,184,0.7)" label="2착" />
-        <Legend color="rgba(180,83,9,0.55)" label="3착" />
-        <Legend color="rgba(100,116,139,0.25)" label="기타" />
+      <div className="mt-1 px-2 text-right text-[11px] font-mono tabular-nums text-muted-foreground">
+        연 누계 <span className="font-bold text-foreground">{total}</span>회
       </div>
     </div>
-  );
-}
-
-function Legend({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span
-        aria-hidden="true"
-        className="inline-block h-2 w-2 rounded-sm"
-        style={{ background: color }}
-      />
-      {label}
-    </span>
   );
 }

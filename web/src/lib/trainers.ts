@@ -42,6 +42,21 @@ export async function getTrainerByNo(trNo: string): Promise<Trainer | null> {
   return rows[0] ?? null;
 }
 
+export async function getAllTrainers(limit = 100): Promise<Trainer[]> {
+  return query<Trainer>(
+    `SELECT ${TRAINER_COLUMNS}
+       FROM trainers
+      ORDER BY first_place_count DESC, total_race_count DESC
+      LIMIT $1`,
+    [limit],
+  );
+}
+
+export async function getTrainerCount(): Promise<number> {
+  const rows = await query<{ c: string }>(`SELECT count(*)::text AS c FROM trainers`);
+  return Number(rows[0]?.c ?? 0);
+}
+
 export async function searchTrainersByName(name: string, limit = 20): Promise<Trainer[]> {
   if (!name.trim()) return [];
   return query<Trainer>(
