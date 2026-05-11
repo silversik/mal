@@ -11,8 +11,8 @@ const RANK_COLOR: Record<string, { bg: string; border?: string }> = {
   "2": { bg: "#cbd5e1" },
   "3": { bg: "#b45309" },
 };
-const RANK_OTHER = { bg: "#e2e8f0" };
-const RANK_MISS = { bg: "#e5e7eb" };
+const RANK_OTHER: { bg: string; border?: string } = { bg: "#e2e8f0" };
+const RANK_MISS: { bg: string; border?: string } = { bg: "#e5e7eb" };
 
 export function RecentFormDots({ ranks, count = 10 }: RecentFormDotsProps) {
   const recent = ranks.slice(0, count);
