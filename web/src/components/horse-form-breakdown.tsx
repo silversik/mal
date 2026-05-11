@@ -20,6 +20,7 @@ export function HorseFormBreakdown({ data }: { data: FormBreakdown }) {
     { title: "주로별", rows: data.by_track_type, firstHeader: "주로" },
     { title: "주로상태", rows: data.by_track_condition, firstHeader: "상태" },
     { title: "경마장별", rows: data.by_meet, firstHeader: "경마장" },
+    { title: "강수별", rows: data.by_weather, firstHeader: "날씨" },
   ].filter((s) => s.rows.length > 0);
 
   if (sections.length === 0) return null;
