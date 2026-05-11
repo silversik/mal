@@ -26,12 +26,14 @@ from .sync_owners import sync_all_owners
 from .sync_trainers import sync_all_trainers
 from .sync_favorite_notifications import build_favorite_notifications
 from .sync_naver_news import sync_naver_news
+from .backfill_races_from_entries import backfill_races_metadata_from_entries
 from .sync_race_entries import sync_upcoming as sync_upcoming_race_entries
 from .sync_race_info import backfill_races_metadata
 from .sync_race_today_meta import sync_today_meta
 from .sync_race_plan import sync_current_year as sync_current_race_plan
 from .sync_race_dividends import sync_date_all_meets as sync_dividends_all_meets
 from .sync_race_sales import sync_date_all_meets as sync_race_sales_all_meets
+from .sync_race_corners import sync_date_all_meets as sync_race_corners_all_meets
 from .sync_races import sync_date_all_meets
 from .chunked_backfill_dividends import run_chunk as run_chunked_dividends_chunk
 from .sync_videos import sync_videos
@@ -189,6 +191,16 @@ def run_sync_race_info() -> int:
     return backfill_races_metadata()
 
 
+@track_job("mal.backfill_races_from_entries")
+def run_backfill_races_from_entries() -> int:
+    """race_entries.raw → races 메타 백필 — API187 미응답 영구 fallback.
+
+    race_entries 가 매 3시간 sync 되므로 항상 fresh. 한 row 의 메타 변경 시에도
+    COALESCE 로 기존 non-null 값 보존.
+    """
+    return backfill_races_metadata_from_entries()
+
+
 @track_job("mal.sync_race_today_meta")
 def run_sync_race_today_meta() -> int:
     """race.kra.co.kr/seoulMain.do 크롤링으로 당일 발주시각·거리 backfill.
@@ -209,6 +221,16 @@ def run_sync_race_dividends() -> int:
 def run_sync_race_sales() -> int:
     """오늘 경주의 풀별 매출 적재 — race_dividends (22:45) 직후 22:50 KST."""
     return sync_race_sales_all_meets(date.today())
+
+
+@track_job("mal.sync_race_corners")
+def run_sync_race_corners() -> int:
+    """오늘 경주의 통과순위·구간기록 — race_results (22:00) 직후 22:55 KST.
+
+    KRA API6_1/raceDetailSectionRecord_1 (publicDataPk=15057847) — 별도 활용신청.
+    응답 빈 경우 0 반환 — 활용신청 완료 시점에 자동 적재 시작.
+    """
+    return sync_race_corners_all_meets(date.today())
 
 
 @track_job("mal.sync_trainers")

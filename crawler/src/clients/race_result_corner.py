@@ -1,27 +1,18 @@
-"""한국마사회 경주별상세성적표_2 (publicDataPk=15089493).
+"""한국마사회 경주 구간별 성적 정보 (publicDataPk=15057847).
 
-Endpoint: https://apis.data.go.kr/B551015/API4_2/raceResult_2
-Operation: raceResult_2
+Endpoint: https://apis.data.go.kr/B551015/API6_1/raceDetailSectionRecord_1
+Operation: raceDetailSectionRecord_1
 
-기본 raceResult 와 같은 row 단위(=마필×경주)이지만 통과순위·구간기록을
-포함. mal.kr 의 페이스 맵(B-1)이 의존.
+기본 raceResult 와 달리 **경주 단위 1 row** (마필×경주 아님). 한 row 안에
+그 경주의 통과 순위/시간/거리가 통째로:
+  - passrank{S1F, G8F_1C, G6F_2C, G4F_3C, G3F_4C, G2F, G1F}  통과순위 (1등 누구였나)
+  - time_1f ~ time_12f                                          구간기록
+  - dist_1f ~ dist_10f                                          펄롱 통과거리
+  - passtime_1f ~ passtime_10f                                  펄롱 통과시간
 
-Verified field name candidates (KRA 응답 변형이 잦으니 다중 폴백):
-    hrNo / hrno    마번
-    hrName / hrname 마명
-    rcDate / rcdate 경주일자
-    meet            경마장 (1/2/3)
-    rcNo / rcno    경주번호
-    ord1cOrd        1코너 통과순위
-    ord2cOrd        2코너 통과순위
-    ord3cOrd        3코너 통과순위
-    ord4cOrd        4코너 통과순위
-    g1fOrd / g3fOrd 결승 1/3펄롱 통과순위
-    s1fOrd          출발 후 1펄롱 통과순위
-    ratingChullopt  핸디캡 / 부담중량
-    prizeMoney      상금
+⚠ 마필별 통과순위는 안 들어옴. 1등마의 페이스 변화 (선행/추입) 만 추적 가능.
 
-⚠ 활용신청 필수 — racedetailresult 와 별도 신청.
+KRA 활용신청 publicDataPk=15057847. 미신청 시 500 반환.
 """
 from __future__ import annotations
 
@@ -31,15 +22,15 @@ from typing import Any
 from ..config import settings
 from .kra_base import KraClient
 
-ENDPOINT = "API4_2"
-DEFAULT_OPERATION = "raceResult_2"
+ENDPOINT = "API6_1"
+DEFAULT_OPERATION = "raceDetailSectionRecord_1"
 
 
 class RaceResultCornerClient(KraClient):
-    """API4_2/raceResult_2 — 마필별 통과순위 포함 경주 결과."""
+    """API6_1/raceDetailSectionRecord_1 — race-level 통과순위·구간기록."""
 
     def __init__(self, operation: str = DEFAULT_OPERATION) -> None:
-        # KRA 가 race_result 와 동일 키를 활용신청에 묶을 수도 있어 폴백.
+        # 활용신청 별도 키를 둘 수도 있지만 기본 race_result 키 폴백.
         key = (
             getattr(settings, "kra_key_race_result_corner", None)
             or settings.kra_key_race_result
@@ -76,23 +67,87 @@ def _parse_int(value: Any) -> int | None:
         return None
 
 
-def api_item_to_corner_fields(item: dict[str, Any]) -> dict[str, Any]:
-    """Map an API4_2 item into a row for the future race_result_corners table.
-
-    반환 dict 의 ord1c~ord4c 는 코너 통과순위, g1f/g3f/s1f 는 펄롱 통과순위.
-    NULL 인 값은 KRA 가 안 보낸 것 — 모두 nullable 로 둘 것.
+def _parse_decimal(value: Any) -> str | None:
+    """구간기록 / passrank 모두 텍스트 그대로 보존. KRA 가 "-"/"" 외에
+    "0" 정수로 미지원 표기하는 케이스도 있어 0/0.0 도 NULL 처리.
     """
+    if value is None:
+        return None
+    s = str(value).strip()
+    if s in ("", "-", "0", "0.0"):
+        return None
+    return s
+
+
+_MEET_NAMES = {"1": "서울", "2": "제주", "3": "부경", "서울": "서울", "제주": "제주", "부경": "부경", "부산경남": "부경"}
+
+
+def api_item_to_corner_fields(item: dict[str, Any]) -> dict[str, Any]:
+    """API6_1 응답 1 row → race_corners 테이블 row.
+
+    응답의 meet 가 한글 ("서울" 등) 으로 옴 — 그대로 사용.
+    """
+    meet_raw = str(item.get("meet") or "").strip()
+    meet = _MEET_NAMES.get(meet_raw, meet_raw if meet_raw else None)
+
+    race_date_raw = item.get("rcDate")
+    race_no = _parse_int(item.get("rcNo"))
+    if not (meet and race_date_raw and race_no is not None):
+        return {"_skip": True, "raw": item}
+
     return {
-        "horse_no": str(_first(item, "hrNo", "hrno") or "").strip() or None,
-        "race_date": _first(item, "rcDate", "rcdate"),
-        "meet_raw":  _first(item, "meet"),
-        "race_no":   _parse_int(_first(item, "rcNo", "rcno")),
-        "ord_1c":    _parse_int(_first(item, "ord1cOrd", "ord1corner", "ord1c")),
-        "ord_2c":    _parse_int(_first(item, "ord2cOrd", "ord2corner", "ord2c")),
-        "ord_3c":    _parse_int(_first(item, "ord3cOrd", "ord3corner", "ord3c")),
-        "ord_4c":    _parse_int(_first(item, "ord4cOrd", "ord4corner", "ord4c")),
-        "ord_g1f":   _parse_int(_first(item, "g1fOrd", "g1ford")),
-        "ord_g3f":   _parse_int(_first(item, "g3fOrd", "g3ford")),
-        "ord_s1f":   _parse_int(_first(item, "s1fOrd", "s1ford")),
-        "raw":       item,
+        "race_date_raw": race_date_raw,    # YYYYMMDD string — caller 가 date 변환
+        "meet": meet,
+        "race_no": race_no,
+        "rc_dist": _parse_int(item.get("rcDist")),
+
+        # 통과순위 — KRA 표기 텍스트. 모든 마필의 그 시점 순위를 한 row 에 압축.
+        # 예: "(^1,3,9)-7,2,6,(5,8),4" → 1=3=9 (선두) > 7 > 2 > 6 > 5=8 > 4
+        "passrank_s1f":    _parse_decimal(item.get("passrankS1f")),
+        "passrank_g8f_1c": _parse_decimal(item.get("passrankG8f_1c")),
+        "passrank_g6f_2c": _parse_decimal(item.get("passrankG6f_2c")),
+        "passrank_g4f_3c": _parse_decimal(item.get("passrankG4f_3c")),
+        "passrank_g3f_4c": _parse_decimal(item.get("passrankG3f_4c")),
+        "passrank_g2f":    _parse_decimal(item.get("passrankG2f")),
+        "passrank_g1f":    _parse_decimal(item.get("passrankG1f")),
+
+        # 펄롱별 구간 기록 (1F ~ 12F 누적 또는 분할)
+        "time_1f":  _parse_decimal(item.get("time_1f")),
+        "time_2f":  _parse_decimal(item.get("time_2f")),
+        "time_3f":  _parse_decimal(item.get("time_3f")),
+        "time_4f":  _parse_decimal(item.get("time_4f")),
+        "time_5f":  _parse_decimal(item.get("time_5f")),
+        "time_6f":  _parse_decimal(item.get("time_6f")),
+        "time_7f":  _parse_decimal(item.get("time_7f")),
+        "time_8f":  _parse_decimal(item.get("time_8f")),
+        "time_9f":  _parse_decimal(item.get("time_9f")),
+        "time_10f": _parse_decimal(item.get("time_10f")),
+        "time_11f": _parse_decimal(item.get("time_11f")),
+        "time_12f": _parse_decimal(item.get("time_12f")),
+
+        # 펄롱별 통과 거리 (1F~10F 누적거리)
+        "dist_1f":  _parse_int(item.get("dist_1f")),
+        "dist_2f":  _parse_int(item.get("dist_2f")),
+        "dist_3f":  _parse_int(item.get("dist_3f")),
+        "dist_4f":  _parse_int(item.get("dist_4f")),
+        "dist_5f":  _parse_int(item.get("dist_5f")),
+        "dist_6f":  _parse_int(item.get("dist_6f")),
+        "dist_7f":  _parse_int(item.get("dist_7f")),
+        "dist_8f":  _parse_int(item.get("dist_8f")),
+        "dist_9f":  _parse_int(item.get("dist_9f")),
+        "dist_10f": _parse_int(item.get("dist_10f")),
+
+        # 펄롱별 통과 시간
+        "passtime_1f":  _parse_decimal(item.get("passtime_1f")),
+        "passtime_2f":  _parse_decimal(item.get("passtime_2f")),
+        "passtime_3f":  _parse_decimal(item.get("passtime_3f")),
+        "passtime_4f":  _parse_decimal(item.get("passtime_4f")),
+        "passtime_5f":  _parse_decimal(item.get("passtime_5f")),
+        "passtime_6f":  _parse_decimal(item.get("passtime_6f")),
+        "passtime_7f":  _parse_decimal(item.get("passtime_7f")),
+        "passtime_8f":  _parse_decimal(item.get("passtime_8f")),
+        "passtime_9f":  _parse_decimal(item.get("passtime_9f")),
+        "passtime_10f": _parse_decimal(item.get("passtime_10f")),
+
+        "raw": item,
     }

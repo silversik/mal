@@ -1,44 +1,89 @@
-import Link from "next/link";
-import type { CornerRow } from "@/lib/race_corners";
+import { passrankSeriesByHorse, type RaceCorner } from "@/lib/race_corners";
 
 /**
- * 페이스 맵 (Sectional Chart) — racingpost·keibalab 스타일.
+ * 페이스 맵 — 마필별 통과순위 변화 라인 (Sectional Chart).
  *
- * x축: 통과 지점 (S1F → 1C → 2C → 3C → 4C → G3F → G1F → 결승)
- * y축: 순위 (위가 1등)
- * 1착 마필 라인은 금색, 그 외 채도 약하게.
+ * KRA API6_1 의 passrank_* 텍스트를 파싱해 마필별 (chul_no) 시계열로 변환.
+ * 진정한 racingpost·keibalab 스타일 페이스 차트.
  *
- * race_result_corners 테이블 row 가 있을 때만 사용 — 없으면 lib 가 빈 배열.
+ * 표시 단계 (서울/제주 기준 명칭, 부경은 G8F/G6F/G4F/G3F 동일 컬럼):
+ *   S1F → 1C → 2C → 3C → 4C → G2F → G1F
+ *
+ * 1등마 (final rank 가 가장 좋은) 의 라인을 금색으로 강조.
  */
+type Stage = {
+  key:
+    | "passrank_s1f" | "passrank_g8f_1c" | "passrank_g6f_2c" | "passrank_g4f_3c"
+    | "passrank_g3f_4c" | "passrank_g2f" | "passrank_g1f";
+  seoul: string;
+  bukgyeong?: string;
+};
 
-const STAGES: { key: keyof Pick<CornerRow, "ord_s1f" | "ord_1c" | "ord_2c" | "ord_3c" | "ord_4c" | "ord_g3f" | "ord_g1f">; label: string }[] = [
-  { key: "ord_s1f", label: "S1F" },
-  { key: "ord_1c", label: "1C" },
-  { key: "ord_2c", label: "2C" },
-  { key: "ord_3c", label: "3C" },
-  { key: "ord_4c", label: "4C" },
-  { key: "ord_g3f", label: "G3F" },
-  { key: "ord_g1f", label: "G1F" },
+const STAGES: Stage[] = [
+  { key: "passrank_s1f",    seoul: "S1F" },
+  { key: "passrank_g8f_1c", seoul: "1C",  bukgyeong: "G8F" },
+  { key: "passrank_g6f_2c", seoul: "2C",  bukgyeong: "G6F" },
+  { key: "passrank_g4f_3c", seoul: "3C",  bukgyeong: "G4F" },
+  { key: "passrank_g3f_4c", seoul: "4C",  bukgyeong: "G3F" },
+  { key: "passrank_g2f",    seoul: "G2F" },
+  { key: "passrank_g1f",    seoul: "G1F" },
 ];
 
-export function PaceMap({ rows }: { rows: CornerRow[] }) {
-  if (rows.length === 0) return null;
+// 마필 라인 색상 팔레트 (1등=금, 그 외는 채도 약한 색)
+const LINE_COLORS = [
+  "rgba(30,58,138,0.65)",   // navy
+  "rgba(190,18,60,0.6)",     // rose
+  "rgba(13,148,136,0.6)",    // teal
+  "rgba(146,64,14,0.6)",     // amber
+  "rgba(99,102,241,0.6)",    // indigo
+  "rgba(220,38,38,0.6)",     // red
+  "rgba(22,163,74,0.6)",     // green
+  "rgba(124,58,237,0.6)",    // violet
+  "rgba(234,88,12,0.55)",    // orange
+  "rgba(8,145,178,0.6)",     // sky
+];
 
-  const max = Math.max(rows.length, ...rows.flatMap((r) => STAGES.map((s) => r[s.key] ?? 0)));
-  if (max === 0) return null;
+export function PaceMap({
+  corner,
+  meet,
+  winnerChulNo,
+}: {
+  corner: RaceCorner;
+  meet: string;
+  /** 1착 마필의 출전번호 (있으면 금색 강조). race_results 와 join 해서 외부 주입. */
+  winnerChulNo?: number | null;
+}) {
+  const isBukgyeong = meet === "부경";
 
-  const width = 640;
+  // STAGES 의 각 key 에 대해 corner 의 통과순위 텍스트 추출.
+  const stageData = STAGES.map((s) => ({ key: s.key, text: corner[s.key] }));
+  const { rankByHorse } = passrankSeriesByHorse(stageData);
+
+  if (rankByHorse.size === 0) return null;
+
+  // 차트에 표시할 마필 리스트 — chul_no 오름차순.
+  const horses = [...rankByHorse.entries()].sort(([a], [b]) => a - b);
+  const maxRank = Math.max(
+    ...horses.flatMap(([, s]) => s.filter((r): r is number => r !== null)),
+    horses.length,
+  );
+
+  const width = 680;
   const height = 280;
-  const padX = 48;
-  const padY = 24;
+  const padX = 50;
+  const padY = 28;
   const innerW = width - padX * 2;
   const innerH = height - padY * 2;
-  const stepX = innerW / (STAGES.length + 1); // +1 = finish (= rank)
+  const stepX = innerW / (STAGES.length - 1);
 
-  const yScale = (rank: number) => padY + ((rank - 1) / (max - 1 || 1)) * innerH;
+  const yScale = (r: number) => padY + ((r - 1) / (maxRank - 1 || 1)) * innerH;
+  const xOf = (idx: number) => padX + stepX * idx;
 
   return (
     <div className="overflow-x-auto">
+      <div className="mb-2 text-xs text-muted-foreground">
+        마필별 통과순위 변화. 위쪽일수록 선행, 우상향이면 추입형.
+      </div>
       <svg
         width={width}
         height={height}
@@ -46,8 +91,8 @@ export function PaceMap({ rows }: { rows: CornerRow[] }) {
         role="img"
         aria-label="페이스 맵"
       >
-        {/* y축 가이드: 1, max */}
-        {[1, Math.ceil(max / 2), max].map((r) => (
+        {/* y축 가이드 */}
+        {[1, Math.ceil(maxRank / 2), maxRank].map((r) => (
           <g key={r}>
             <line
               x1={padX}
@@ -58,7 +103,7 @@ export function PaceMap({ rows }: { rows: CornerRow[] }) {
               strokeOpacity="0.08"
             />
             <text
-              x={padX - 6}
+              x={padX - 8}
               y={yScale(r) + 3}
               textAnchor="end"
               fontSize="9"
@@ -71,61 +116,58 @@ export function PaceMap({ rows }: { rows: CornerRow[] }) {
         ))}
 
         {/* x축 라벨 */}
-        {[...STAGES, { key: "rank" as const, label: "결승" }].map((s, i) => (
-          <text
-            key={s.label}
-            x={padX + stepX * (i + 0.5)}
-            y={height - 6}
-            textAnchor="middle"
-            fontSize="10"
-            fill="currentColor"
-            fillOpacity="0.7"
-          >
-            {s.label}
-          </text>
-        ))}
-
-        {rows.map((row) => {
-          const points: [number, number][] = [];
-          STAGES.forEach((s, i) => {
-            const v = row[s.key];
-            if (v !== null) {
-              points.push([padX + stepX * (i + 0.5), yScale(v)]);
-            }
-          });
-          if (row.rank !== null) {
-            points.push([padX + stepX * (STAGES.length + 0.5), yScale(row.rank)]);
-          }
-          if (points.length < 2) return null;
-
-          const isWinner = row.rank === 1;
-          const stroke = isWinner ? "var(--color-champagne-gold)" : "rgba(30,58,138,0.45)";
-          const strokeWidth = isWinner ? 2 : 1;
-          const d = points
-            .map(([x, y], i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`)
-            .join(" ");
-
+        {STAGES.map((s, i) => {
+          const label = isBukgyeong && s.bukgyeong ? s.bukgyeong : s.seoul;
           return (
-            <g key={row.horse_no}>
-              <path d={d} stroke={stroke} strokeWidth={strokeWidth} fill="none" />
-              {points.map(([x, y], i) => (
-                <circle
-                  key={i}
-                  cx={x}
-                  cy={y}
-                  r={isWinner ? 3 : 2}
-                  fill={stroke}
-                />
-              ))}
-              {isWinner && (
+            <text
+              key={s.key}
+              x={xOf(i)}
+              y={height - 8}
+              textAnchor="middle"
+              fontSize="10"
+              fill="currentColor"
+              fillOpacity="0.7"
+            >
+              {label}
+            </text>
+          );
+        })}
+
+        {horses.map(([chul, series], i) => {
+          const isWinner = chul === winnerChulNo;
+          const stroke = isWinner ? "var(--color-champagne-gold)" : LINE_COLORS[i % LINE_COLORS.length];
+          const strokeWidth = isWinner ? 2.4 : 1.4;
+
+          const path = series
+            .map((r, idx) => (r === null ? null : `${xOf(idx).toFixed(1)} ${yScale(r).toFixed(1)}`))
+            .filter((s): s is string => s !== null);
+          if (path.length < 2) return null;
+          const d = "M " + path.join(" L ");
+
+          const lastDefined = [...series.entries()].reverse().find(([, v]) => v !== null);
+          return (
+            <g key={chul}>
+              <path d={d} stroke={stroke} strokeWidth={strokeWidth} fill="none" opacity={isWinner ? 1 : 0.85} />
+              {series.map((r, idx) =>
+                r === null ? null : (
+                  <circle
+                    key={idx}
+                    cx={xOf(idx)}
+                    cy={yScale(r)}
+                    r={isWinner ? 3.5 : 2.2}
+                    fill={stroke}
+                  />
+                ),
+              )}
+              {lastDefined && (
                 <text
-                  x={points[points.length - 1][0] + 6}
-                  y={points[points.length - 1][1] + 3}
+                  x={xOf(lastDefined[0]) + 7}
+                  y={yScale(lastDefined[1]!) + 3}
                   fontSize="10"
-                  fontWeight="700"
-                  fill="var(--color-champagne-gold)"
+                  fontWeight={isWinner ? 700 : 500}
+                  fill={stroke}
                 >
-                  {row.horse_name}
+                  {chul}
                 </text>
               )}
             </g>
@@ -133,22 +175,16 @@ export function PaceMap({ rows }: { rows: CornerRow[] }) {
         })}
       </svg>
 
-      <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
-        {rows.map((r) => (
-          <Link
-            key={r.horse_no}
-            href={`/horse/${r.horse_no}`}
-            className="hover:text-primary"
-          >
-            <span
-              className={`mr-1 inline-block h-2 w-2 rounded-full ${
-                r.rank === 1 ? "bg-champagne-gold" : "bg-slate-400/60"
-              }`}
-            />
-            {r.rank ?? "-"}. {r.horse_name}
-          </Link>
-        ))}
-      </div>
+      {corner.rc_dist && (
+        <div className="mt-2 text-xs text-muted-foreground">
+          경주 거리 <span className="font-mono">{corner.rc_dist}m</span>
+          {winnerChulNo && (
+            <span className="ml-3">
+              1착 출전번호 <span className="font-mono font-bold text-champagne-gold">{winnerChulNo}</span>
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

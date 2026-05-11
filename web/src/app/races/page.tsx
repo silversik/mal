@@ -53,7 +53,7 @@ import { RaceHorseCompare } from "@/components/race-horse-compare";
 import { PopularityVsResult } from "@/components/popularity-vs-result";
 import { PaceMap } from "@/components/pace-map";
 import { getHorseCompareSummaries } from "@/lib/horses";
-import { getCornersForRace } from "@/lib/race_corners";
+import { getRaceCorner } from "@/lib/race_corners";
 
 import { BetForm } from "./bet-form";
 
@@ -216,7 +216,7 @@ export default async function RacesPage({
     betState,
     userBalance,
     dailyTotalP,
-    corners,
+    raceCorner,
   ] = selectedRace
     ? await Promise.all([
         getRaceEntries(currentDate, selectedRace.meet, selectedRace.race_no),
@@ -227,7 +227,7 @@ export default async function RacesPage({
         getRaceBetState(currentDate, selectedRace.meet, selectedRace.race_no),
         userId ? getUserBalance(userId) : Promise.resolve(null),
         userId ? getDailyBetTotalP(userId, todayKst) : Promise.resolve(null),
-        getCornersForRace(currentDate, selectedRace.meet, selectedRace.race_no),
+        getRaceCorner(currentDate, selectedRace.meet, selectedRace.race_no),
       ])
     : [
         { phase: "post" as const, entries: [] },
@@ -238,7 +238,7 @@ export default async function RacesPage({
         null,
         null,
         null,
-        [],
+        null,
       ];
   const entries = entriesResult.entries;
   const entriesPhase = entriesResult.phase;
@@ -571,14 +571,20 @@ export default async function RacesPage({
             />
           )}
 
-          {corners.length > 0 && (
+          {raceCorner && (
             <div className="mt-6">
               <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
                 페이스 맵
               </h3>
               <Card>
                 <CardContent className="p-4">
-                  <PaceMap rows={corners} />
+                  <PaceMap
+                    corner={raceCorner}
+                    meet={selectedRace.meet}
+                    winnerChulNo={
+                      entries.find((e) => e.rank === 1)?.chul_no ?? null
+                    }
+                  />
                 </CardContent>
               </Card>
             </div>

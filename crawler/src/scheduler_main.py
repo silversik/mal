@@ -21,6 +21,7 @@ from crawler_core import client as dash
 from .jobs.periodic import (
     run_audit_combo_dividends,
     run_build_favorite_notifications,
+    run_backfill_races_from_entries,
     run_chunked_dividends_backfill,
     run_settle_bets,
     run_sync_horse_rank_changes,
@@ -35,6 +36,7 @@ from .jobs.periodic import (
     run_sync_race_entries,
     run_sync_race_info,
     run_sync_race_plan,
+    run_sync_race_corners,
     run_sync_race_sales,
     run_sync_race_today_meta,
     run_sync_races_live,
@@ -85,6 +87,14 @@ def main() -> None:
         run_sync_race_entries,
         IntervalTrigger(hours=3),
         id="mal.sync_race_entries",
+        **common,
+    )
+    # race_entries sync 후 races.distance/grade/start_time 빈 컬럼 백필.
+    # API187 미응답 영구 fallback — 매 3시간(엔트리 sync 와 동일 주기).
+    sched.add_job(
+        run_backfill_races_from_entries,
+        IntervalTrigger(hours=3),
+        id="mal.backfill_races_from_entries",
         **common,
     )
     # 매일 KST 고정 시각
@@ -218,6 +228,14 @@ def main() -> None:
         id="mal.sync_race_sales",
         **common,
     )
+    # 매출 직후 통과순위·구간기록(22:55) — race_result_corners (KRA API4_2).
+    # 활용신청 전엔 빈 응답이라 0 적재 — 신청 완료 시점에 자동 데이터 시작.
+    sched.add_job(
+        run_sync_race_corners,
+        CronTrigger(hour=22, minute=55),
+        id="mal.sync_race_corners",
+        **common,
+    )
     # 메타 백필 다음 영상 매칭(23:00) — 누락된 경주에 KRBC YouTube search 로 upsert.
     sched.add_job(
         run_sync_videos_backfill,
@@ -265,6 +283,8 @@ def main() -> None:
         "mal.sync_race_today_meta": run_sync_race_today_meta,
         "mal.sync_race_dividends": run_sync_race_dividends,
         "mal.sync_race_sales": run_sync_race_sales,
+        "mal.sync_race_corners": run_sync_race_corners,
+        "mal.backfill_races_from_entries": run_backfill_races_from_entries,
         "mal.chunked_dividends_backfill": run_chunked_dividends_backfill,
         "mal.settle_bets": run_settle_bets,
         "mal.audit_combo_dividends": run_audit_combo_dividends,
