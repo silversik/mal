@@ -55,6 +55,8 @@ services:
       # 값은 /srv/stack/.env 로 관리하고 그대로 주입한다.
       KRA_SERVICE_KEY: ${KRA_SERVICE_KEY:-}
       KRA_CHULMA_OPERATION: ${KRA_CHULMA_OPERATION:-}
+      # 기상청 ASOS 일자료 — KRA 와 별개 활용신청. 미설정 시 sync_weather job 실패.
+      KMA_SERVICE_KEY: ${KMA_SERVICE_KEY:-}
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
       YOUTUBE_KRBC_CHANNEL_ID: ${YOUTUBE_KRBC_CHANNEL_ID:-}
       # 실패/stale 알림용 Telegram 봇. 둘 다 채워지지 않으면 조용히 skip.
