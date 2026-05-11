@@ -51,8 +51,8 @@ export default async function ComparePage({
   );
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-10">
-      <h1 className="text-3xl font-bold tracking-tight">마필 비교</h1>
+    <div>
+      <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">마필 비교</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         URL ?h=마번&h=마번 으로 최대 {MAX_HORSES}두 비교.
         예) <code className="rounded bg-muted px-1 font-mono text-xs">/compare?h=0047231&h=3104646</code>
@@ -70,7 +70,7 @@ export default async function ComparePage({
           <CompareHeadToHead horseNos={horseNos} />
         </div>
       )}
-    </main>
+    </div>
   );
 }
 

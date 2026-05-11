@@ -73,8 +73,8 @@ export default async function RankingsPage({
   };
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-10">
-      <h1 className="text-3xl font-bold tracking-tight">랭킹</h1>
+    <div>
+      <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">랭킹</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         race_results 1착 횟수 기준 — 동률은 출전 수로 차순.
       </p>
@@ -183,7 +183,7 @@ export default async function RankingsPage({
           </Card>
         )}
       </div>
-    </main>
+    </div>
   );
 }
 

@@ -37,6 +37,21 @@ export async function getOwnerByNo(owNo: string): Promise<Owner | null> {
   return rows[0] ?? null;
 }
 
+export async function getAllOwners(limit = 100): Promise<Owner[]> {
+  return query<Owner>(
+    `SELECT ${OWNER_COLUMNS}
+       FROM owners
+      ORDER BY first_place_count DESC, total_race_count DESC
+      LIMIT $1`,
+    [limit],
+  );
+}
+
+export async function getOwnerCount(): Promise<number> {
+  const rows = await query<{ c: string }>(`SELECT count(*)::text AS c FROM owners`);
+  return Number(rows[0]?.c ?? 0);
+}
+
 export async function searchOwnersByName(name: string, limit = 20): Promise<Owner[]> {
   if (!name.trim()) return [];
   return query<Owner>(

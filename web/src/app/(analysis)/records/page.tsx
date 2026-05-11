@@ -110,8 +110,8 @@ export default async function RecordsPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-6 py-10">
-      <h1 className="text-3xl font-bold tracking-tight">코스 레코드</h1>
+    <div>
+      <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">코스 레코드</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         경마장 × 거리별 1착 최단 기록 (race_results.rank=1 기준).
         races.distance 적재가 부분적이라 거리 매칭 가능한 경기만 노출.
@@ -173,6 +173,6 @@ export default async function RecordsPage() {
           ))}
         </div>
       )}
-    </main>
+    </div>
   );
 }

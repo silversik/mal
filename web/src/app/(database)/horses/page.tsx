@@ -80,7 +80,7 @@ export default async function HorsesPage({
   const resultRows: Horse[] = searchHit ? searchHit.rows : horses;
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-12">
+    <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div className="flex items-baseline gap-3">
           <h1 className="font-serif text-3xl font-bold tracking-tight text-primary">마필</h1>
@@ -168,7 +168,7 @@ export default async function HorsesPage({
           ))}
         </div>
       )}
-    </main>
+    </div>
   );
 }
 

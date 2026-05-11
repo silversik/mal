@@ -40,6 +40,11 @@ export async function getJockeyByNo(jkNo: string): Promise<Jockey | null> {
   return rows[0] ?? null;
 }
 
+export async function countAllJockeys(): Promise<number> {
+  const rows = await query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM jockeys`);
+  return Number(rows[0]?.count ?? 0);
+}
+
 export async function searchJockeysByName(
   name: string,
   limit = 20,
