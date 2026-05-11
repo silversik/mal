@@ -647,7 +647,7 @@ export type FormBreakdown = {
   by_track_type: FormRow[];
   by_track_condition: FormRow[];
   by_meet: FormRow[];
-  /** 강수량 그룹별 성적: 맑음/흐림(=0), 약한 비(<5mm), 강한 비(≥5mm). */
+  /** 발주시각 기준 강수 그룹별 성적: 맑음/흐림(=0), 약한 비(<2mm), 강한 비(≥2mm). */
   by_weather: FormRow[];
 };
 
@@ -751,9 +751,12 @@ export async function getHorseFormBreakdown(
     [horseNo],
   );
 
-  // 강수량 버킷별 성적 — weather_observations(ASOS) JOIN.
-  // meet → 관측소 매핑은 crawler/src/clients/kma_asos.py 와 동일 (값 변경 시 양쪽 동기).
-  // 관측 데이터가 없는 날(JOIN 미스)은 그룹에서 빠짐 — 백필 진행도에 따라 점진적으로 채워짐.
+  // 발주시각 기준 강수 버킷별 성적 — weather_observations(ASOS 시간자료) JOIN.
+  // race_date + races.start_time(HH:MM) 을 KST 정시로 truncate 해서 매칭.
+  // - 시간 단위: 14:50 발주 → 14:00 관측 행. 충분한 정밀도.
+  // - 1시간 강수량 < 2mm 를 "약한 비" 컷오프 (일자료의 5mm 와 다른 기준).
+  // - meet → 관측소 매핑은 crawler/src/clients/kma_asos.py 와 동일.
+  // - start_time NULL 또는 weather 미백필 row 는 INNER JOIN 으로 자동 제외.
   const weatherRows = await query<{
     bucket: string;
     sort_key: number;
@@ -765,25 +768,31 @@ export async function getHorseFormBreakdown(
   }>(
     `SELECT
         CASE
-          WHEN w.sum_rn IS NULL OR w.sum_rn = 0 THEN '맑음/흐림'
-          WHEN w.sum_rn < 5 THEN '약한 비'
+          WHEN w.rn IS NULL OR w.rn = 0 THEN '맑음/흐림'
+          WHEN w.rn < 2 THEN '약한 비'
           ELSE '강한 비'
         END AS bucket,
         CASE
-          WHEN w.sum_rn IS NULL OR w.sum_rn = 0 THEN 0
-          WHEN w.sum_rn < 5 THEN 1
+          WHEN w.rn IS NULL OR w.rn = 0 THEN 0
+          WHEN w.rn < 2 THEN 1
           ELSE 2
         END AS sort_key,
         ${SELECT_FIELDS}
        FROM race_results rr
+       JOIN races r
+         ON r.race_date = rr.race_date AND r.meet = rr.meet AND r.race_no = rr.race_no
        JOIN weather_observations w
-         ON w.obs_date = rr.race_date
-        AND w.station_id = CASE rr.meet
-            WHEN '서울' THEN 119
-            WHEN '제주' THEN 184
-            WHEN '부경' THEN 159
-          END
+         ON w.station_id = CASE rr.meet
+              WHEN '서울' THEN 119
+              WHEN '제주' THEN 184
+              WHEN '부경' THEN 159
+            END
+        AND w.obs_time = date_trunc('hour',
+              (rr.race_date::text || ' ' || lpad(r.start_time, 5, '0') || ':00')::timestamp
+                AT TIME ZONE 'Asia/Seoul'
+            )
       WHERE rr.horse_no = $1
+        AND r.start_time IS NOT NULL
       GROUP BY bucket, sort_key
       ORDER BY sort_key`,
     [horseNo],

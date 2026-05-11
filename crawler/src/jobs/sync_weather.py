@@ -1,12 +1,14 @@
-"""Sync 기상청 ASOS 일자료 → `weather_observations`.
+"""Sync 기상청 ASOS 시간자료 → `weather_observations`.
 
-3개 관측소 (수원119/제주184/부산159) 일통계를 upsert. 신뢰 가능한 데이터 확정이
-관측 다음날 늦게(보통 정오 전) 이뤄지므로 매일 03시 KST 에 직전 7일을 재수집해
-누락/지연 케이스를 보정한다. 청크/전체 backfill 은 별도 함수.
+3개 관측소 (수원119/제주184/부산159) 시간 단위 관측치를 upsert. 경마 발주시각
+기준 매칭이 필요해서 일자료 대신 시간자료를 사용한다.
+
+매일 03:00 KST 에 직전 7일(=24h×7×3 ≈ 504행)을 재수집해 관측 확정 지연을 보정.
+백필은 chunk_days 단위(기본 30일 = 720행/관측소)로 분할.
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import func
@@ -14,6 +16,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from ..clients.kma_asos import (
     ALL_STATIONS,
+    KST,
     KmaAsosClient,
     api_item_to_weather_fields,
 )
@@ -27,27 +30,24 @@ log = get_logger(__name__)
 def upsert_weather(rows: list[dict[str, Any]]) -> int:
     if not rows:
         return 0
-    # batch 내 동일 (station_id, obs_date) dedupe — KMA 가 같은 day 를 중복 응답하지는
-    # 않지만, 안전 차원.
+    # batch 내 동일 (station_id, obs_time) dedupe — 안전 차원.
     seen: dict[tuple, dict[str, Any]] = {}
     for r in rows:
-        seen[(r["station_id"], r["obs_date"])] = r
+        seen[(r["station_id"], r["obs_time"])] = r
     unique = list(seen.values())
 
     stmt = pg_insert(WeatherObservation).values(unique)
     update_set = {
-        "avg_ta": stmt.excluded.avg_ta,
-        "min_ta": stmt.excluded.min_ta,
-        "max_ta": stmt.excluded.max_ta,
-        "sum_rn": stmt.excluded.sum_rn,
-        "avg_ws": stmt.excluded.avg_ws,
-        "avg_rhm": stmt.excluded.avg_rhm,
-        "iscs": stmt.excluded.iscs,
+        "ta": stmt.excluded.ta,
+        "rn": stmt.excluded.rn,
+        "ws": stmt.excluded.ws,
+        "wd": stmt.excluded.wd,
+        "hm": stmt.excluded.hm,
         "raw": stmt.excluded.raw,
         "updated_at": func.now(),
     }
     stmt = stmt.on_conflict_do_update(
-        index_elements=["station_id", "obs_date"],
+        index_elements=["station_id", "obs_time"],
         set_=update_set,
     )
     with session_scope() as s:
@@ -56,18 +56,26 @@ def upsert_weather(rows: list[dict[str, Any]]) -> int:
     return len(unique)
 
 
-def _fetch_station(client: KmaAsosClient, station_id: int, start: date, end: date) -> int:
-    items = client.fetch_daily(station_id, start, end)
+def _fetch_station(
+    client: KmaAsosClient, station_id: int, start: datetime, end: datetime,
+) -> int:
+    items = client.fetch_hourly(station_id, start, end)
     normalized = [r for r in (api_item_to_weather_fields(it) for it in items) if r]
     if not normalized:
         return 0
     return upsert_weather(normalized)
 
 
-def sync_range(start: date, end: date) -> int:
-    """[start, end] 모든 관측소 일자료 upsert."""
-    if start > end:
-        raise ValueError(f"start({start}) > end({end})")
+def _kst(d: date, hour: int = 0) -> datetime:
+    return datetime(d.year, d.month, d.day, hour, tzinfo=KST)
+
+
+def sync_range(start_date: date, end_date: date) -> int:
+    """[start_date 00:00, end_date 23:00] 모든 관측소 시간자료 upsert."""
+    if start_date > end_date:
+        raise ValueError(f"start({start_date}) > end({end_date})")
+    start = _kst(start_date, 0)
+    end = _kst(end_date, 23)
     total = 0
     with KmaAsosClient() as client:
         for stn in ALL_STATIONS:
@@ -82,13 +90,16 @@ def sync_range(start: date, end: date) -> int:
 
 
 def sync_recent(days: int = 7) -> int:
-    """직전 `days` 일치 일자료 갱신 — 일일 cron 용. 관측 확정 지연 대비 안전 마진."""
+    """직전 `days` 일치 시간자료 갱신 — 일일 cron 용. 관측 확정 지연 대비 안전 마진."""
     today = date.today()
     return sync_range(today - timedelta(days=days), today)
 
 
-def backfill(start: date, end: date, *, chunk_days: int = 90) -> int:
-    """과거 백필 — chunk_days 단위로 끊어 호출 (서버 응답 행수 한도 회피)."""
+def backfill(start: date, end: date, *, chunk_days: int = 30) -> int:
+    """과거 백필 — chunk_days 단위로 끊어 호출 (시간자료 응답 행수 한도 회피).
+
+    30일 × 24시 × 1관측소 = 720행. numOfRows=999 페이지 한 번에 가능.
+    """
     if start > end:
         raise ValueError(f"start({start}) > end({end})")
     total = 0

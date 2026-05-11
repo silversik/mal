@@ -1,15 +1,16 @@
-"""KMA ASOS (지상 종관기상관측) 일자료 클라이언트 — data.go.kr 1360000.
+"""KMA ASOS (지상 종관기상관측) 시간자료 클라이언트 — data.go.kr 1360000.
 
 KRA(B551015) 와 다른 호스트라 KraClient 재사용하지 않고 별도 구현. 같은
 data.go.kr 계열이라 인증/페이지네이션 패턴은 동일하다.
 
-- 엔드포인트: https://apis.data.go.kr/1360000/AsosDalyInfoService/getWthrDataList
-- 일자료 1 row = (관측소 stnId × 날짜 tm) 의 일통계.
+- 엔드포인트: https://apis.data.go.kr/1360000/AsosHourlyInfoService/getWthrDataList
+- 시간자료(dateCd=HR) 1 row = (관측소 × 시각) 1시간 데이터.
+- 경마 발주시각 기준 매칭이 필요해서 일자료(DAY) 대신 시간자료(HR).
 - mal.kr 은 경마장과 가까운 3개 관측소만 사용 (MEET_TO_STATION).
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import datetime, timezone, timedelta
 from typing import Any
 from urllib.parse import unquote
 
@@ -28,8 +29,11 @@ from ..logging import get_logger
 log = get_logger(__name__)
 
 
-BASE_URL = "https://apis.data.go.kr/1360000/AsosDalyInfoService"
-DEFAULT_TIMEOUT = httpx.Timeout(15.0, connect=5.0)
+BASE_URL = "https://apis.data.go.kr/1360000/AsosHourlyInfoService"
+DEFAULT_TIMEOUT = httpx.Timeout(20.0, connect=5.0)
+
+# KMA 가 KST 로 응답 — 명시적 timezone 객체.
+KST = timezone(timedelta(hours=9))
 
 # 경마장 한글 라벨 → ASOS 관측소 ID. races.meet 는 "서울"/"제주"/"부경" 한글 저장.
 # 서울경마공원(과천)은 ASOS 관측소가 없어 수원(119)이 가장 근접.
@@ -46,7 +50,7 @@ class KmaApiError(RuntimeError):
 
 
 class KmaAsosClient:
-    """기상청 ASOS 일자료 조회 클라이언트."""
+    """기상청 ASOS 시간자료 조회 클라이언트."""
 
     def __init__(self, service_key: str | None = None) -> None:
         key = service_key or settings.kma_service_key
@@ -81,20 +85,23 @@ class KmaAsosClient:
         self,
         *,
         station_id: int,
-        start: date,
-        end: date,
+        start: datetime,
+        end: datetime,
         page_no: int,
         page_size: int,
     ) -> dict[str, Any]:
+        # KMA 시간자료 API 는 startDt/endDt 와 startHh/endHh 를 분리 요구.
         params = {
             "serviceKey": self.service_key,
             "dataType": "JSON",
             "dataCd": "ASOS",
-            "dateCd": "DAY",
+            "dateCd": "HR",
             "pageNo": page_no,
             "numOfRows": page_size,
             "startDt": start.strftime("%Y%m%d"),
+            "startHh": start.strftime("%H"),
             "endDt": end.strftime("%Y%m%d"),
+            "endHh": end.strftime("%H"),
             "stnIds": station_id,
         }
         resp = self._client.get("/getWthrDataList", params=params)
@@ -103,22 +110,29 @@ class KmaAsosClient:
         _raise_for_api_error(data)
         return data
 
-    def fetch_daily(
+    def fetch_hourly(
         self,
         station_id: int,
-        start: date,
-        end: date,
+        start: datetime,
+        end: datetime,
         *,
-        page_size: int = 500,
+        page_size: int = 999,
     ) -> list[dict[str, Any]]:
-        """[start, end] 범위 일자료를 받아 정규화된 dict 목록 반환."""
+        """[start, end] 시간 범위 시간자료를 받아 정규화된 dict 목록 반환.
+
+        start/end 는 KST(또는 naive=KST 로 해석) datetime, 시 단위 정밀도.
+        """
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=KST)
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=KST)
         out: list[dict[str, Any]] = []
         page = 1
         while True:
             data = self._get_page(
                 station_id=station_id,
-                start=start,
-                end=end,
+                start=start.astimezone(KST),
+                end=end.astimezone(KST),
                 page_no=page,
                 page_size=page_size,
             )
@@ -172,16 +186,22 @@ def _to_decimal(s: Any) -> float | None:
         return None
 
 
-def _parse_obs_date(value: Any) -> date | None:
+def _to_int(s: Any) -> int | None:
+    v = _to_decimal(s)
+    return int(v) if v is not None else None
+
+
+def _parse_obs_time(value: Any) -> datetime | None:
     if value is None:
         return None
     s = str(value).strip()
     if not s:
         return None
-    # KMA 는 보통 "YYYY-MM-DD" 반환. 안전하게 양식 모두 처리.
-    for fmt in ("%Y-%m-%d", "%Y%m%d"):
+    # KMA 시간자료 tm 은 보통 "YYYY-MM-DD HH:MM" 형식 — 폭넓게 처리.
+    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S", "%Y%m%d%H%M", "%Y%m%d%H"):
         try:
-            return datetime.strptime(s, fmt).date()
+            naive = datetime.strptime(s, fmt)
+            return naive.replace(tzinfo=KST)
         except ValueError:
             continue
     return None
@@ -189,9 +209,9 @@ def _parse_obs_date(value: Any) -> date | None:
 
 def api_item_to_weather_fields(item: dict[str, Any]) -> dict[str, Any] | None:
     """KMA item → weather_observations row dict. 잘못된 row 는 None."""
-    obs_date = _parse_obs_date(item.get("tm"))
+    obs_time = _parse_obs_time(item.get("tm"))
     stn_raw = item.get("stnId")
-    if obs_date is None or stn_raw in (None, ""):
+    if obs_time is None or stn_raw in (None, ""):
         return None
     try:
         station_id = int(str(stn_raw).strip())
@@ -199,13 +219,11 @@ def api_item_to_weather_fields(item: dict[str, Any]) -> dict[str, Any] | None:
         return None
     return {
         "station_id": station_id,
-        "obs_date": obs_date,
-        "avg_ta": _to_decimal(item.get("avgTa")),
-        "min_ta": _to_decimal(item.get("minTa")),
-        "max_ta": _to_decimal(item.get("maxTa")),
-        "sum_rn": _to_decimal(item.get("sumRn")),
-        "avg_ws": _to_decimal(item.get("avgWs")),
-        "avg_rhm": _to_decimal(item.get("avgRhm")),
-        "iscs": (item.get("iscs") or "").strip() or None,
+        "obs_time": obs_time,
+        "ta": _to_decimal(item.get("ta")),
+        "rn": _to_decimal(item.get("rn")),
+        "ws": _to_decimal(item.get("ws")),
+        "wd": _to_int(item.get("wd")),
+        "hm": _to_decimal(item.get("hm")),
         "raw": item,
     }
