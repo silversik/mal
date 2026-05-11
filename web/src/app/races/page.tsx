@@ -21,6 +21,7 @@ import {
   getRaceDataSyncedAt,
   getRaceEntries,
   getRacesByDate,
+  getRecentFinishesBulk,
   type RaceInfo,
 } from "@/lib/races";
 import {
@@ -42,6 +43,7 @@ import {
 import { getRaceVideo, youtubeEmbedUrl } from "@/lib/videos";
 import { youtubeSearchUrl } from "@/lib/video-helpers";
 import {
+  FormDots,
   GateNum,
   OddsBar,
   PoolSalesTiles,
@@ -49,8 +51,10 @@ import {
   RaceChip,
   RankMedal,
   RoundBadge,
+  SexBullet,
   WeightDelta,
 } from "@/components/race-detail-ui";
+import { PreRaceBanner } from "@/components/pre-race-banner";
 import { RaceHorseCompare } from "@/components/race-horse-compare";
 import { PopularityVsResult } from "@/components/popularity-vs-result";
 import { PaceMap } from "@/components/pace-map";
@@ -244,9 +248,17 @@ export default async function RacesPage({
       ];
   const entries = entriesResult.entries;
   const entriesPhase = entriesResult.phase;
-  const compareSummaries = entries.length > 0
-    ? await getHorseCompareSummaries(entries.map((e) => e.horse_no))
-    : [];
+  const [compareSummaries, recentFinishesMap] = entries.length > 0 && selectedRace
+    ? await Promise.all([
+        getHorseCompareSummaries(entries.map((e) => e.horse_no)),
+        getRecentFinishesBulk(
+          entries.map((e) => e.horse_no),
+          currentDate,
+          selectedRace.race_no,
+          5,
+        ),
+      ])
+    : [[], {} as Record<string, (number | null)[]>];
   const chulMap: Record<string, number | null> = Object.fromEntries(
     entries.map((e) => [e.horse_no, e.chul_no]),
   );
@@ -474,15 +486,10 @@ export default async function RacesPage({
           {entries.length > 0 ? (
             <>
               {entriesPhase === "pre" && (
-                <div className="mb-3 flex items-center gap-2 rounded-md border border-champagne-gold/50 bg-gradient-to-r from-champagne-gold/16 to-champagne-gold/6 px-3.5 py-2.5 text-[13px] text-gold-ink">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-champagne-gold opacity-60" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-champagne-gold" />
-                  </span>
-                  <span>
-                    <strong>출전표</strong> · 경주 시작 전, 결과는 발주 직후 갱신됩니다.
-                  </span>
-                </div>
+                <PreRaceBanner
+                  raceDate={currentDate}
+                  startTime={selectedRace.start_time ?? null}
+                />
               )}
               <Card className="overflow-hidden py-0">
                 <div className="relative overflow-x-auto rounded-[inherit]">
@@ -559,11 +566,20 @@ export default async function RacesPage({
                               >
                                 {e.horse_name}
                               </Link>
-                              {e.age && (
-                                <div className="mt-0.5 font-mono text-[11px] tabular-nums text-muted-foreground">
-                                  {e.age}세
-                                </div>
-                              )}
+                              <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                                <SexBullet sex={e.sex} />
+                                {e.age && (
+                                  <span className="font-mono tabular-nums">
+                                    {/* KRA raw 가 "3" 또는 "3세" 로 섞여 옴 — "세" 중복 방지 */}
+                                    {String(e.age).replace(/세$/, "")}세
+                                  </span>
+                                )}
+                                {recentFinishesMap[e.horse_no]?.length > 0 && (
+                                  <FormDots
+                                    finishes={recentFinishesMap[e.horse_no]}
+                                  />
+                                )}
+                              </div>
                             </td>
                             <td className="px-2 py-2.5 align-middle leading-tight">
                               <div className="flex items-center gap-1.5 text-[13px]">
@@ -629,9 +645,7 @@ export default async function RacesPage({
                             </td>
                             <td className="px-2 py-2.5 text-right align-middle font-mono text-xs tabular-nums">
                               {e.weight ?? "-"}
-                              {/* mal_app 데이터에 마체중 직전 경주 대비 증감(diff) 컬럼이
-                                  들어오면 WeightDelta 로 보여줄 수 있음 (현재는 null) */}
-                              <WeightDelta diff={null} />
+                              <WeightDelta diff={e.weight_diff} />
                             </td>
                             <td className="px-2 py-2.5 text-right align-middle">
                               <OddsBar value={e.win_rate} kind="win" />

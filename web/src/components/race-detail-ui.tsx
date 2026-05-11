@@ -72,6 +72,51 @@ export function RankMedal({ rank }: { rank: number | null }) {
   );
 }
 
+/**
+ * 마명 셀 옆에 노출하는 sex bullet — 수말(파랑)/암말(분홍)/거세마(회색).
+ * `horse.sex` 가 "수4"·"암3"·"거6" 처럼 연령이 붙어 들어오므로 startsWith 매칭.
+ */
+export function SexBullet({ sex }: { sex: string | null }) {
+  if (!sex) return null;
+  const s = sex.trim();
+  if (s.startsWith("암"))
+    return <span className="font-bold text-[#c2417a]">암</span>;
+  if (s.startsWith("거"))
+    return <span className="font-bold text-muted-foreground">거</span>;
+  if (s.startsWith("수"))
+    return <span className="font-bold text-[#2867d8]">수</span>;
+  return <span className="text-muted-foreground">{s}</span>;
+}
+
+/**
+ * 출전표의 "최근 5전" 미니 도트. 1=gold, 2=silver, 3=copper, 그외=muted.
+ * 시각화 가벼움 — 마명 셀 인라인용.
+ */
+export function FormDots({ finishes }: { finishes: (number | null)[] }) {
+  if (finishes.length === 0) return null;
+  return (
+    <span className="inline-flex items-center gap-[2px] align-middle">
+      {finishes.map((r, i) => {
+        const cls =
+          r === 1
+            ? "bg-[var(--color-gold)]"
+            : r === 2
+              ? "bg-[#c4c8d2]"
+              : r === 3
+                ? "bg-[#b07a40]"
+                : "bg-muted";
+        return (
+          <span
+            key={i}
+            className={`inline-block h-2 w-2 rounded-full ${cls}`}
+            title={r == null ? "미완주" : `${r}착`}
+          />
+        );
+      })}
+    </span>
+  );
+}
+
 /** 마체중 ± 증감 칩. */
 export function WeightDelta({ diff }: { diff: number | null }) {
   if (diff === null) return null;
