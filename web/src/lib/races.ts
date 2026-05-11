@@ -32,9 +32,11 @@ export type RaceEntry = {
   plc_rate: string | null;   // 연승 배당률 (phase='pre' 이면 null)
   // race_results.raw JSONB / race_entries 컬럼에서 추출한 부가 필드.
   age: string | null;         // 말 연령 (예: "4") — 양쪽 phase 에서 채워짐
+  sex: string | null;         // 말 성별 (horses.sex, 예: "수4", "암3", "거6")
   budam_weight: string | null; // 부담중량(kg) — 마체중(wgHr)과 별개의 핸디캡 중량. raw.wgBudam
   differ: string | null;       // 1착과의 착차 (예: "1", "코") — phase='post' 만. raw.differ
   hr_rating: number | null;    // 경주 시점의 말 레이팅 — 양쪽 phase (race_entries.rating / raw.hrRating)
+  weight_diff: number | null;  // 직전 경주 마체중과의 ± 차이 (kg). 직전 경주 없으면 null.
   // 기수변경 (jockey_changes LEFT JOIN) — 출주표 발표 후 교체된 경우만 채워짐.
   jockey_changed_from: string | null;  // 변경 전 기수명 (jk_name_before)
   jockey_change_reason: string | null; // 사유 (예: "기수부상")
@@ -312,6 +314,7 @@ export async function getRaceEntries(
   const post = await query<RaceEntry>(
     // trainer JOIN 은 이름 매칭 — race_results.tr_no 가 백필되기 전까지의 임시 브릿지.
     // 동명이인 가능하나 실데이터상 충돌 거의 없음 (trainers ~333명).
+    // weight_diff: 마필의 직전 race_results 와 weight 비교 (lateral subquery).
     `SELECT r.rank, (r.raw->>'chulNo')::int AS chul_no,
             r.horse_no, h.horse_name,
             r.jockey_name,
@@ -323,9 +326,11 @@ export async function getRaceEntries(
             d.win_rate::text AS win_rate,
             d.plc_rate::text AS plc_rate,
             r.raw->>'age' AS age,
+            h.sex AS sex,
             r.raw->>'wgBudam' AS budam_weight,
             r.raw->>'differ' AS differ,
             (r.raw->>'hrRating')::int AS hr_rating,
+            (r.weight - prev.weight)::int AS weight_diff,
             jc.jk_name_before AS jockey_changed_from,
             jc.reason AS jockey_change_reason,
             jc.weight_before::text AS jockey_weight_before,
@@ -344,6 +349,14 @@ export async function getRaceEntries(
              AND jc.meet = r.meet
              AND jc.race_no = r.race_no
              AND jc.horse_no = r.horse_no
+       LEFT JOIN LATERAL (
+              SELECT pr.weight FROM race_results pr
+               WHERE pr.horse_no = r.horse_no
+                 AND (pr.race_date, pr.race_no) < (r.race_date, r.race_no)
+                 AND pr.weight IS NOT NULL
+               ORDER BY pr.race_date DESC, pr.race_no DESC
+               LIMIT 1
+            ) prev ON true
       WHERE r.race_date = $1::date
         AND r.meet = $2
         AND r.race_no = $3
@@ -364,13 +377,17 @@ export async function getRaceEntries(
             t.tr_no AS trainer_no,
             NULL::text AS record_time, e.weight::text,
             NULL::text AS win_rate, NULL::text AS plc_rate,
-            e.age, e.raw->>'wgBudam' AS budam_weight,
+            e.age,
+            h.sex AS sex,
+            e.raw->>'wgBudam' AS budam_weight,
             NULL::text AS differ, e.rating AS hr_rating,
+            (e.weight - prev.weight)::int AS weight_diff,
             jc.jk_name_before AS jockey_changed_from,
             jc.reason AS jockey_change_reason,
             jc.weight_before::text AS jockey_weight_before,
             jc.weight_after::text AS jockey_weight_after
        FROM race_entries e
+       LEFT JOIN horses h ON h.horse_no = e.horse_no
        LEFT JOIN jockeys j ON j.jk_name = e.jockey_name
        LEFT JOIN trainers t ON t.tr_name = e.trainer_name
        LEFT JOIN jockey_changes jc
@@ -378,6 +395,14 @@ export async function getRaceEntries(
              AND jc.meet = e.meet
              AND jc.race_no = e.race_no
              AND jc.horse_no = e.horse_no
+       LEFT JOIN LATERAL (
+              SELECT pr.weight FROM race_results pr
+               WHERE pr.horse_no = e.horse_no
+                 AND (pr.race_date, pr.race_no) < (e.race_date, e.race_no)
+                 AND pr.weight IS NOT NULL
+               ORDER BY pr.race_date DESC, pr.race_no DESC
+               LIMIT 1
+            ) prev ON true
       WHERE e.race_date = $1::date
         AND e.meet = $2
         AND e.race_no = $3
@@ -385,6 +410,43 @@ export async function getRaceEntries(
     [raceDate, meet, raceNo],
   );
   return { phase: "pre", entries: pre };
+}
+
+/**
+ * 한 경주에 출전하는 마필들의 직전 N전 착순 — 대량(10마리) 일괄 조회.
+ * 마명 셀 form-dots 용. 결과: { horse_no: [rank1, rank2, ...] } (최신 → 과거 순).
+ */
+export async function getRecentFinishesBulk(
+  horseNos: string[],
+  beforeDate: string,
+  beforeRaceNo: number,
+  limit = 5,
+): Promise<Record<string, (number | null)[]>> {
+  if (horseNos.length === 0) return {};
+  const placeholders = horseNos.map((_, i) => `$${i + 1}`).join(", ");
+  const limitParam = `$${horseNos.length + 1}`;
+  const dateParam = `$${horseNos.length + 2}`;
+  const raceNoParam = `$${horseNos.length + 3}`;
+  const rows = await query<{ horse_no: string; rn: string; rank: number | null }>(
+    `WITH ranked AS (
+       SELECT pr.horse_no, pr.rank,
+              ROW_NUMBER() OVER (
+                PARTITION BY pr.horse_no
+                ORDER BY pr.race_date DESC, pr.race_no DESC
+              )::text AS rn
+         FROM race_results pr
+        WHERE pr.horse_no IN (${placeholders})
+          AND (pr.race_date, pr.race_no) < (${dateParam}::date, ${raceNoParam}::int)
+     )
+     SELECT horse_no, rn, rank FROM ranked WHERE rn::int <= ${limitParam}::int
+     ORDER BY horse_no, rn::int ASC`,
+    [...horseNos, limit, beforeDate, beforeRaceNo],
+  );
+  const out: Record<string, (number | null)[]> = {};
+  for (const r of rows) {
+    (out[r.horse_no] ??= []).push(r.rank);
+  }
+  return out;
 }
 
 export type RaceCardEntry = {
