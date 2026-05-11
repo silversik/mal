@@ -27,6 +27,7 @@ class Settings:
     kra_key_jockey_change: str
     kra_key_race_sales: str
     kra_key_horse_rank_change: str
+    kma_service_key: str
     youtube_api_key: str
     youtube_krbc_channel_id: str
     kra_chulma_operation: str
@@ -74,6 +75,9 @@ class Settings:
             kra_key_horse_rank_change=os.environ.get(
                 "KRA_SERVICE_KEY_HORSE_RANK_CHANGE", default_key
             ),
+            # 기상청 ASOS 일자료 (data.go.kr 1360000). KRA 와 별개 활용신청 필요 —
+            # 미설정 시 sync_weather job 은 명시적으로 실패해서 모니터링에 노출됨.
+            kma_service_key=os.environ.get("KMA_SERVICE_KEY", ""),
             youtube_api_key=os.environ.get("YOUTUBE_API_KEY", ""),
             # KRBC 한국마사회 경마방송 — UC...로 시작하는 채널 ID를 .env에 박아둘 것.
             # 미설정 시 채널 핸들 lookup이 추가 호출 1회를 소비하므로 운영시엔 항상 지정.
