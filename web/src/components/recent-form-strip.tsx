@@ -23,22 +23,21 @@ export function RecentFormStrip({
 }
 
 function RankChip({ rank, className }: { rank: number | null; className: string }) {
+  // 1=brand gold, 2=slate, 3=copper-amber, 그 외=neutral.
   const style =
     rank === null
-      ? "bg-muted text-muted-foreground"
+      ? "bg-muted text-muted-foreground border border-border"
       : rank === 1
-        ? "bg-champagne-gold text-primary"
+        ? "bg-secondary text-primary"
         : rank === 2
           ? "bg-slate-300 text-slate-900"
           : rank === 3
             ? "bg-amber-700 text-white"
-            : rank <= 5
-              ? "bg-slate-100 text-slate-700"
-              : "bg-slate-200 text-slate-500";
+            : "bg-muted text-muted-foreground border border-border";
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center justify-center rounded font-mono font-bold tabular-nums ${style} ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center rounded-full font-mono font-bold tabular-nums ${style} ${className}`}
       title={rank === null ? "기록 없음" : `${rank}착`}
     >
       {rank === null ? "-" : rank > 9 ? "9+" : rank}

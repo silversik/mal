@@ -52,9 +52,12 @@ export function HorseTabs({
     siblings: siblings.map(sibToFamNode),
   } as const;
 
+  // 족보(PedigreeSection)는 ProfileCard 의 "부/모" MetaTile 옆 PedigreeDialog 로 이동.
+  // siblings/pedigree 는 다이얼로그 데이터로만 사용되므로 여기 본문에는 노출하지 않음.
+  void treeProps;
+
   return (
     <div className="space-y-10">
-      <PedigreeSection treeProps={treeProps} />
       <RaceWithMsfsSection
         results={results}
         jockeyMap={jockeyMap}

@@ -5,11 +5,14 @@ interface RecentFormDotsProps {
   count?: number;
 }
 
-const RANK_COLOR: Record<string, string> = {
-  "1": "bg-yellow-400",
-  "2": "bg-zinc-400",
-  "3": "bg-amber-700",
+// 1착=brand gold, 2착=slate, 3착=copper-amber, 기타/미완주=neutral.
+const RANK_COLOR: Record<string, { bg: string; border?: string }> = {
+  "1": { bg: "var(--color-gold)", border: "var(--color-gold-deep)" },
+  "2": { bg: "#cbd5e1" },
+  "3": { bg: "#b45309" },
 };
+const RANK_OTHER = { bg: "#e2e8f0" };
+const RANK_MISS = { bg: "#e5e7eb" };
 
 export function RecentFormDots({ ranks, count = 10 }: RecentFormDotsProps) {
   const recent = ranks.slice(0, count);
@@ -23,16 +26,18 @@ export function RecentFormDots({ ranks, count = 10 }: RecentFormDotsProps) {
     <div className="flex items-center gap-2">
       <div className="flex gap-1">
         {recent.map((r, i) => {
-          const cls = r == null ? "bg-zinc-200" : RANK_COLOR[String(r)] ?? "bg-zinc-300";
-          const title =
-            r == null
-              ? "미완주"
-              : `${r}착`;
+          const tok =
+            r == null ? RANK_MISS : (RANK_COLOR[String(r)] ?? RANK_OTHER);
+          const title = r == null ? "미완주" : `${r}착`;
           return (
             <span
               key={i}
               title={title}
-              className={`inline-block h-2.5 w-2.5 rounded-full ${cls}`}
+              className="inline-block h-2.5 w-2.5 rounded-full"
+              style={{
+                background: tok.bg,
+                border: tok.border ? `1px solid ${tok.border}` : "none",
+              }}
             />
           );
         })}

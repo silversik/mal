@@ -55,13 +55,19 @@ export function RatingSparkline({ points, width = 240, height = 56 }: Props) {
     series.length === 1 ? width / 2 : pad + (i * innerW) / (series.length - 1);
   const yOf = (v: number) => pad + innerH - ((v - min) / span) * innerH;
 
-  const d = series
+  const line = series
     .map((p, i) => {
       const x = xOf(i);
       const y = yOf(p.value);
       return `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
     })
     .join(" ");
+
+  // area path = line + closure to baseline → 디자인의 gold-tinted area fill.
+  const baseline = height;
+  const lastX = xOf(series.length - 1);
+  const firstX = xOf(0);
+  const area = `${line} L ${lastX.toFixed(1)} ${baseline} L ${firstX.toFixed(1)} ${baseline} Z`;
 
   const current = hover ?? series.length - 1;
   const currentPoint = series[current];
@@ -81,11 +87,12 @@ export function RatingSparkline({ points, width = 240, height = 56 }: Props) {
         className="overflow-visible"
         onMouseLeave={() => setHover(null)}
       >
+        <path d={area} fill="rgba(252, 223, 104, 0.45)" />
         <path
-          d={d}
+          d={line}
           fill="none"
           stroke="currentColor"
-          strokeWidth={1.5}
+          strokeWidth={1.6}
           strokeLinecap="round"
           strokeLinejoin="round"
           className="text-primary"
@@ -94,6 +101,7 @@ export function RatingSparkline({ points, width = 240, height = 56 }: Props) {
           const x = xOf(i);
           const y = yOf(p.value);
           const isActive = i === current;
+          const isLast = i === series.length - 1;
           return (
             <g key={p.label}>
               {/* 호버 히트박스 — 얇은 세로 띠 */}
@@ -108,8 +116,8 @@ export function RatingSparkline({ points, width = 240, height = 56 }: Props) {
               <circle
                 cx={x}
                 cy={y}
-                r={isActive ? 3 : 1.5}
-                className={isActive ? "fill-primary" : "fill-primary/60"}
+                r={isActive ? 3 : isLast ? 2.6 : 1.4}
+                className={isActive || isLast ? "fill-primary" : "fill-primary/60"}
               />
             </g>
           );

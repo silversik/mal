@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -19,13 +19,28 @@ import {
   getRecentRacesByJockey,
   type Jockey,
 } from "@/lib/jockeys";
-import { getVideosForRaces, raceKey, type RaceKey } from "@/lib/videos";
+import { getVideosForRaces, raceKey } from "@/lib/videos";
 import { youtubeWatchUrl } from "@/lib/video-helpers";
-import { WinRateBar } from "@/components/win-rate-bar";
+import { WinRateBars } from "@/components/win-rate-bar";
+import { WinRateRing } from "@/components/win-rate-ring";
 import { RecentFormDots } from "@/components/recent-form-dots";
 import { JockeyTrainerCombos } from "@/components/jockey-trainer-combos";
 import { JockeyMonthlyChart } from "@/components/jockey-monthly-chart";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
+import {
+  BreadCrumb,
+  ProfileTag,
+  SectionHead,
+  IconActivity,
+  IconBars,
+  IconCalendar,
+  IconCrown,
+  IconFlag,
+  IconHash,
+  IconTarget,
+  IconUserPlus,
+} from "@/components/profile-ui";
+import { StatsBar } from "@/components/stats-bar";
 
 const fetchJockey = cache(getJockeyByNo);
 
@@ -66,8 +81,26 @@ export default async function JockeyDetailPage({
   ]);
   const videoMap = await getVideosForRaces(recentRaces);
 
+  const total = jockey.total_race_count;
+  const winRate = jockey.win_rate == null ? null : Number(jockey.win_rate);
+  const plcRate =
+    total > 0
+      ? ((jockey.first_place_count + jockey.second_place_count) / total) * 100
+      : null;
+  const showRate =
+    total > 0
+      ? ((jockey.first_place_count +
+          jockey.second_place_count +
+          jockey.third_place_count) /
+          total) *
+        100
+      : null;
+
+  const monthlyHasData = monthly.some((m) => m.starts > 0);
+  const recentRanks = recentRaces.map((r) => r.rank);
+
   return (
-    <main className="mx-auto w-full max-w-4xl px-6 py-12">
+    <main className="mx-auto w-full max-w-7xl px-4 py-5 md:px-6 md:py-6">
       <BreadcrumbJsonLd
         items={[
           { name: "홈", url: "/" },
@@ -75,177 +108,249 @@ export default async function JockeyDetailPage({
           { name: jockey.jk_name, url: `/jockey/${jk_no}` },
         ]}
       />
-      <JockeyProfileCard jockey={jockey} />
 
-      {recentRaces.length > 0 && (
-        <div className="mt-4 px-1">
-          <RecentFormDots ranks={recentRaces.map((r) => r.rank)} />
-        </div>
-      )}
+      <BreadCrumb
+        items={[
+          { label: "홈", href: "/" },
+          { label: "기수", href: "/jockeys" },
+          { label: jockey.jk_name },
+        ]}
+      />
 
-      {monthly.some((m) => m.starts > 0) && (
-        <section className="mt-10">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            최근 12개월 기승
-          </h2>
-          <Card className="py-3">
-            <CardContent className="p-3 text-slate-grey">
-              <JockeyMonthlyChart data={monthly} />
-            </CardContent>
-          </Card>
-        </section>
-      )}
+      <JockeyProfileCard jockey={jockey} recentRanks={recentRanks} winRate={winRate} />
 
-      <section className="mt-10">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          조교사별 동승 (5회 이상)
-        </h2>
-        <JockeyTrainerCombos combos={combos} />
-      </section>
-
-      <section className="mt-10">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          최근 기승 기록
-        </h2>
-        {recentRaces.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              기승 기록이 아직 적재되지 않았습니다.
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-center">일자</TableHead>
-                  <TableHead className="text-center">경마장</TableHead>
-                  <TableHead className="text-center">경주</TableHead>
-                  <TableHead className="text-center">착순</TableHead>
-                  <TableHead className="text-center">마명</TableHead>
-                  <TableHead className="text-center">기록</TableHead>
-                  <TableHead className="w-12 text-center">영상</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentRaces.map((r) => {
-                  const raceHref =
-                    r.race_date && r.meet && r.race_no
-                      ? `/races?date=${r.race_date}&venue=${encodeURIComponent(r.meet)}&race=${r.race_no}`
-                      : null;
-                  const video =
-                    r.race_date && r.meet && r.race_no
-                      ? videoMap.get(raceKey(r.race_date, r.meet, r.race_no))
-                      : null;
-                  return (
-                  <TableRow key={r.id}>
-                    <TableCell className="text-center font-mono text-xs">
-                      {r.race_date}
-                    </TableCell>
-                    <TableCell className="text-center">{r.meet ?? "-"}</TableCell>
-                    <TableCell className="text-center">
-                      {raceHref ? (
-                        <Link href={raceHref} className="text-primary hover:underline">
-                          {r.race_no}R
-                        </Link>
-                      ) : (
-                        `${r.race_no}R`
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center font-semibold">
-                      <RankBadge rank={r.rank} />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Link
-                        href={`/horse/${r.horse_no}`}
-                        className="text-primary hover:underline"
-                      >
-                        {r.horse_name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-center font-mono tabular-nums">
-                      {r.record_time ?? "-"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {video ? (
-                        <a
-                          href={youtubeWatchUrl(video.video_id)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label="YouTube에서 경주 영상 보기"
-                          className="inline-flex items-center justify-center text-[#FF0000] opacity-70 transition hover:opacity-100"
-                        >
-                          <YoutubeIcon />
-                        </a>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
+      <div className="mt-5 grid gap-5 md:grid-cols-[minmax(0,1fr)_320px]">
+        {/* 좌측: 최근 기승 기록 */}
+        <div className="min-w-0">
+          <SectionHead icon={<IconActivity size={13} />} label="최근 기승 기록" />
+          {recentRaces.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                기승 기록이 아직 적재되지 않았습니다.
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="overflow-hidden p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-center">착순</TableHead>
+                    <TableHead className="text-center">일자</TableHead>
+                    <TableHead className="text-center">경마장</TableHead>
+                    <TableHead className="text-center">경주</TableHead>
+                    <TableHead className="text-center">마명</TableHead>
+                    <TableHead className="text-right">기록</TableHead>
+                    <TableHead className="w-12 text-center">영상</TableHead>
                   </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </Card>
-        )}
-      </section>
+                </TableHeader>
+                <TableBody>
+                  {recentRaces.map((r) => {
+                    const raceHref =
+                      r.race_date && r.meet && r.race_no
+                        ? `/races?date=${r.race_date}&venue=${encodeURIComponent(r.meet)}&race=${r.race_no}`
+                        : null;
+                    const video =
+                      r.race_date && r.meet && r.race_no
+                        ? videoMap.get(raceKey(r.race_date, r.meet, r.race_no))
+                        : null;
+                    return (
+                      <TableRow key={r.id}>
+                        <TableCell className="text-center font-semibold">
+                          <RankBadge rank={r.rank} />
+                        </TableCell>
+                        <TableCell className="text-center font-mono text-xs text-muted-foreground">
+                          {r.race_date}
+                        </TableCell>
+                        <TableCell className="text-center">{r.meet ?? "-"}</TableCell>
+                        <TableCell className="text-center">
+                          {raceHref ? (
+                            <Link href={raceHref} className="text-primary hover:underline">
+                              {r.race_no}R
+                            </Link>
+                          ) : (
+                            `${r.race_no}R`
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Link
+                            href={`/horse/${r.horse_no}`}
+                            className="text-primary hover:underline"
+                          >
+                            {r.horse_name}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-semibold tabular-nums">
+                          {r.record_time ?? "-"}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {video ? (
+                            <a
+                              href={youtubeWatchUrl(video.video_id)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label="YouTube에서 경주 영상 보기"
+                              className="inline-flex items-center justify-center text-[#FF0000] opacity-70 transition hover:opacity-100"
+                            >
+                              <YoutubeIcon />
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </Card>
+          )}
+
+          {combos.length > 0 && (
+            <div className="mt-8">
+              <SectionHead
+                icon={<IconUserPlus size={13} />}
+                label="조교사별 동승"
+                right={
+                  <span className="text-[11px] text-muted-foreground">
+                    5회 이상
+                  </span>
+                }
+              />
+              <JockeyTrainerCombos combos={combos} />
+            </div>
+          )}
+        </div>
+
+        {/* 우측 사이드바: 승률 카드 + 월별 카드 */}
+        <aside className="flex flex-col gap-4">
+          {(winRate != null || plcRate != null || showRate != null) && (
+            <Card>
+              <CardContent className="p-4">
+                <SectionHead
+                  icon={<IconTarget size={13} />}
+                  label="승률 · 복승률 · 복연승률"
+                />
+                <WinRateBars
+                  winRate={winRate}
+                  plcRate={plcRate}
+                  showRate={showRate}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {monthlyHasData && (
+            <Card>
+              <CardContent className="p-4">
+                <SectionHead icon={<IconBars size={13} />} label="월별 1착" />
+                <JockeyMonthlyChart data={monthly} width={272} height={110} />
+              </CardContent>
+            </Card>
+          )}
+        </aside>
+      </div>
     </main>
   );
 }
 
-function JockeyProfileCard({ jockey }: { jockey: Jockey }) {
-  const fields: Array<[string, React.ReactNode]> = [
-    ["기수번호", <span className="font-mono" key="no">{jockey.jk_no}</span>],
-    ["소속", jockey.meet ?? "-"],
-    ["생년월일", jockey.birth_date ?? "-"],
-    ["데뷔일", jockey.debut_date ?? "-"],
-    [
-      "통산 출전",
-      <span key="rc">
-        {jockey.total_race_count}
-        <span className="text-muted-foreground">회</span>
-      </span>,
-    ],
-    [
-      "1착",
-      <span key="f" className="text-primary">
-        {jockey.first_place_count}
-      </span>,
-    ],
-    [
-      "2착 / 3착",
-      `${jockey.second_place_count} / ${jockey.third_place_count}`,
-    ],
-    ["승률", <WinRateBar key="wr" rate={jockey.win_rate} layout="inline" />],
-  ];
+function JockeyProfileCard({
+  jockey,
+  recentRanks,
+  winRate,
+}: {
+  jockey: Jockey;
+  recentRanks: (number | null)[];
+  winRate: number | null;
+}) {
+  const initial = jockey.jk_name?.[0] ?? "?";
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-4xl font-bold tracking-tight">
-          {jockey.jk_name}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
-          {fields.map(([label, value]) => (
-            <div key={String(label)}>
-              <dt className="text-xs uppercase tracking-wider text-muted-foreground">
-                {label}
-              </dt>
-              <dd className="mt-0.5 text-sm font-medium">{value}</dd>
+    <Card className="royal-card">
+      <CardContent className="p-4">
+        {/* 헤더 */}
+        <div className="flex items-start gap-3">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-primary text-3xl font-extrabold leading-none text-secondary">
+            {initial}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {jockey.meet && (
+                <ProfileTag tone="navy" icon={<IconFlag size={10} />}>
+                  {jockey.meet} 소속
+                </ProfileTag>
+              )}
+              {winRate != null && winRate >= 15 && (
+                <ProfileTag tone="gold" icon={<IconCrown size={11} />}>
+                  승률 TOP
+                </ProfileTag>
+              )}
             </div>
-          ))}
-        </dl>
+            <h1 className="mt-0.5 whitespace-nowrap text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
+              {jockey.jk_name}
+              <span className="ml-2 align-middle text-sm font-medium text-muted-foreground">
+                기수
+              </span>
+            </h1>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              {jockey.debut_date && (
+                <span className="inline-flex items-center gap-1">
+                  <IconCalendar size={12} />
+                  데뷔 {jockey.debut_date}
+                </span>
+              )}
+              <Sep />
+              <span className="inline-flex items-center gap-1 font-mono">
+                <IconHash size={12} />
+                {jockey.jk_no}
+              </span>
+              {jockey.birth_date && (
+                <>
+                  <Sep />
+                  <span className="inline-flex items-center gap-1">
+                    <IconCalendar size={12} />생 {jockey.birth_date}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+          {winRate != null && (
+            <div className="shrink-0">
+              <WinRateRing value={winRate} size={72} />
+            </div>
+          )}
+        </div>
+
+        {/* 통산 성적 stacked bar */}
+        <div className="mt-3">
+          <StatsBar
+            total={jockey.total_race_count}
+            win={jockey.first_place_count}
+            place={jockey.second_place_count}
+            show={jockey.third_place_count}
+          />
+        </div>
+
+        {recentRanks.length > 0 && (
+          <div className="mt-3 rounded-[10px] border border-border bg-card px-3 py-2">
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              최근 폼 ({Math.min(recentRanks.length, 15)}경기)
+            </div>
+            <RecentFormDots ranks={recentRanks} count={15} />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-// 1·2·3위는 홈의 "TOP 기수 랭킹" 메달과 동일한 금/은/동 원형 배지로 통일.
+function Sep() {
+  return <span className="h-2.5 w-px bg-border" aria-hidden />;
+}
+
+// 1·2·3위 메달 톤.
 const RANK_MEDAL_STYLE: Record<number, string> = {
-  1: "bg-champagne-gold text-primary",
-  2: "bg-slate-400 text-white",
+  1: "bg-secondary text-primary",
+  2: "bg-slate-300 text-slate-900",
   3: "bg-amber-700 text-white",
 };
 
@@ -260,7 +365,11 @@ function RankBadge({ rank }: { rank: number | null }) {
       </span>
     );
   }
-  return <span>{rank}</span>;
+  return (
+    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-muted font-mono text-xs font-bold tabular-nums text-muted-foreground">
+      {rank}
+    </span>
+  );
 }
 
 function YoutubeIcon() {
