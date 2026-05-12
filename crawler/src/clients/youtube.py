@@ -161,6 +161,63 @@ class YoutubeClient:
             return []
         return self.fetch_videos(ids)
 
+    def list_all_video_items(
+        self,
+        uploads_playlist_id: str,
+        *,
+        published_after: datetime | None = None,
+        hard_limit: int = 5000,
+    ) -> list[dict[str, Any]]:
+        """업로드 플레이리스트 전체 페이지를 walk — pageToken 으로 페이지네이션.
+
+        반환 item 은 `{video_id, published_at}` dict 리스트 (최신 → 과거 순).
+        `published_after` 보다 오래된 영상이 한 페이지에서라도 나오면 즉시 중단해
+        쿼터 절약. `hard_limit` 은 폭주 방지 안전장치.
+
+        할당량: 페이지당 1 unit (50 items). 1년치 KRBC uploads ~2000개라면
+        40 units 면 충분 — search 백필(50 races=5000 units) 의 1/100 비용.
+        """
+        out: list[dict[str, Any]] = []
+        page_token: str | None = None
+        while len(out) < hard_limit:
+            params: dict[str, Any] = {
+                "part": "contentDetails",
+                "playlistId": uploads_playlist_id,
+                "maxResults": 50,
+            }
+            if page_token:
+                params["pageToken"] = page_token
+            data = self._get("playlistItems", **params)
+            page_done = False
+            for it in data.get("items", []):
+                cd = it.get("contentDetails") or {}
+                vid = cd.get("videoId")
+                if not vid:
+                    continue
+                published_str = cd.get("videoPublishedAt")
+                published_dt: datetime | None = None
+                if published_str:
+                    try:
+                        # RFC3339 — YouTube 항상 UTC `Z` 형식.
+                        published_dt = datetime.fromisoformat(
+                            published_str.replace("Z", "+00:00")
+                        )
+                    except ValueError:
+                        published_dt = None
+                if (
+                    published_after is not None
+                    and published_dt is not None
+                    and published_dt < published_after
+                ):
+                    # uploads 는 시간 역순이라 이 페이지부터는 모두 컷오프.
+                    page_done = True
+                    break
+                out.append({"video_id": vid, "published_at": published_dt})
+            page_token = data.get("nextPageToken")
+            if page_done or not page_token:
+                break
+        return out
+
     def list_recent_video_ids(
         self, uploads_playlist_id: str, *, max_results: int = 20
     ) -> list[str]:

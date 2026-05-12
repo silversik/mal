@@ -171,6 +171,11 @@ JOB_CATALOG: dict[str, dict] = {
         "description": "누락된 경주 영상 YouTube search 로 매칭",
         "expected_interval_sec": 86400,
     },
+    "mal.sync_videos_bulk": {
+        "category": "youtube",
+        "description": "KRBC 업로드 플레이리스트 1년 walk — kra_videos 일괄 적재",
+        "expected_interval_sec": 86400 * 35,  # 월 1회 + 여유
+    },
     "mal.settle_bets": {
         "category": "mock_betting",
         "description": "모의배팅 정산 — 결과 확정된 경주의 PENDING bets → /api/internal/settle",

@@ -39,6 +39,7 @@ from .sync_races import sync_date_all_meets
 from .chunked_backfill_dividends import run_chunk as run_chunked_dividends_chunk
 from .sync_videos import sync_videos
 from .sync_videos_backfill import backfill_missing_race_videos
+from .sync_videos_bulk import bulk_backfill_videos
 from .sync_weather import sync_recent as sync_weather_recent
 
 log = get_logger(__name__)
@@ -353,6 +354,21 @@ def run_sync_videos_backfill() -> int:
         )
         return 0
     return backfill_missing_race_videos(days_back=30, limit=50)
+
+
+@track_job("mal.sync_videos_bulk")
+def run_sync_videos_bulk() -> int:
+    """KRBC 업로드 플레이리스트 1년치 walk → kra_videos 일괄 적재.
+
+    sync_videos_backfill 은 search API 로 race 1건 = 100 units 라 LIMIT 50 매일
+    돌려야 1년치 cover (~30일 소요). 이 잡은 uploads playlist paginate 로 1회
+    실행에 ~80 units 만 쓰며 1년치 영상 ID 를 통째로 가져온다. 매칭은
+    upsert_videos 가 제목 패턴 ('(meet) YYYY.MM.DD N경주') 으로 race_date/
+    meet/race_no 추출해 자동 채움.
+
+    수동 트리거 / 월 1회 cron 용도 (race day 잡 자체는 sync_videos 가 처리).
+    """
+    return bulk_backfill_videos(months_back=12)
 
 
 @track_job("mal.settle_bets")
