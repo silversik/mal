@@ -1,49 +1,84 @@
 # mal.kr
 
-한국마사회(KRA) 공공데이터 API 기반 경마 데이터 아카이빙 서비스.
+한국마사회(KRA) 공공데이터 기반 경마 데이터 아카이빙 + 분석 + 모의배팅 서비스.
 
-## 구조
+- **운영**: https://mal.kr
+- **저장소**: `silversik/mal` (private)
+- **데이터 소스**: KRA OpenAPI (data.go.kr) · 기상청 ASOS · 네이버 검색 · YouTube Data v3
+
+---
+
+## 모듈 구성
 
 ```
 mal/
-├── web/          Next.js (App Router) 프론트엔드
-├── crawler/      Python 데이터 수집 스크립트 (KRA OpenAPI / RSS / YouTube). 리포트는 통합 대시보드로.
+├── web/           Next.js 16 (App Router) · NextAuth v5 · Server Actions
+├── crawler/       Python (httpx · Tenacity · SQLAlchemy · APScheduler)
 ├── db/
-│   └── migrations/   PostgreSQL 스키마 마이그레이션
-└── docker/       로컬 개발용 docker-compose (Postgres 16)
+│   └── migrations/   PostgreSQL 마이그레이션 (run-migrations.sh 가 idempotent 적용)
+├── docker/        로컬 개발용 docker-compose (Postgres 16)
+└── docs/          이 저장소의 모든 문서 (아래 인덱스)
 ```
 
-## 빠른 시작 — 로컬 DB 기동
+| 모듈 | 진입 문서 |
+|---|---|
+| Web (Next.js) | [web/README.md](web/README.md) · [web/AGENTS.md](web/AGENTS.md) |
+| Crawler (Python) | [crawler/README.md](crawler/README.md) |
+| DB 마이그레이션 | [db/migrations/](db/migrations/) |
+
+---
+
+## 빠른 시작 — 로컬 개발
 
 ```bash
+# 1) 로컬 Postgres (마이그레이션 자동 적용)
 cd docker
 cp .env.example .env    # 최초 1회
 docker compose up -d
+
+# 2) Web
+cd ../web
+npm install
+npm run dev             # http://localhost:3000
+
+# 3) Crawler (uv 설치 후)
+cd ../crawler
+cp .env.example .env    # KRA_SERVICE_KEY · KMA_SERVICE_KEY · NAVER_* · YOUTUBE_* 등 채움
+uv sync
+uv run python -m src.main smoke
 ```
 
-- Postgres 16 컨테이너가 `localhost:5432` 에 뜹니다.
-- 최초 기동 시 `db/migrations/*.sql` 이 자동 실행되어 스키마가 생성됩니다.
-- 데이터는 `docker/pgdata/` 에 퍼시스트됩니다(.gitignore 처리됨).
+---
 
-중지:
+## docs/ 인덱스
 
-```bash
-docker compose down          # 컨테이너만 내림
-docker compose down -v       # 볼륨까지 삭제(스키마 재적용 시)
-```
+| 카테고리 | 내용 | 진입 |
+|---|---|---|
+| **api** | 외부 OpenAPI (KRA · KMA · 네이버 · YouTube) 별 엔드포인트·인증·구현 위치 | [docs/api/](docs/api/) |
+| **spec** | 아키텍처 · 배포 · 운영 (Jenkins, docker-compose, systemd 레거시) | [docs/spec/](docs/spec/) |
+| **tasks** | 페이즈 단위 작업 히스토리 (0001부터 시간순 누적) | [docs/tasks/](docs/tasks/) |
+| **feature** | 운영 중인 기능별 정의서 (기획 의도 · 데이터 흐름 · 컴포넌트) | [docs/feature/](docs/feature/) |
 
-## 단계 진행
+새 문서를 추가할 때는 위 4개 디렉토리 중 하나로 분류:
 
-- [x] 1단계: DB 스키마 + Docker Compose
-- [ ] 2단계: Python 수집기 (KRA API42_1 + 경주성적)
-- [ ] 3단계: Next.js 기본 API Route + 리스트 페이지
-- [ ] 4단계: UI 테마 마감
+- **외부 API 가 새로 들어오면** → `docs/api/<provider>.md`
+- **인프라/배포 변경이 있으면** → `docs/spec/` 갱신
+- **새 페이즈/큰 작업이 끝나면** → `docs/tasks/NNNN-<slug>.md` 추가
+- **사용자가 보는 기능이 생기면** → `docs/feature/<feature>.md`
 
-## 데이터 소스 (KRA OpenAPI, data.go.kr)
+---
 
-MVP(P0):
-- 한국마사회 마필종합 상세정보 (API42_1) — `horses`
-- 한국마사회 경주성적정보 — `race_results`
-- 한국마사회 경주마별 1년간 전적 — 상세페이지 차트
+## 운영 진입점
 
-확장(P1): 기수정보, 조교사정보, 혈통정보, 경주로정보
+- **배포**: [docs/spec/deployment.md](docs/spec/deployment.md) — Jenkins SCM 폴링 + `db/run-migrations.sh`
+- **최신 작업 상태**: [docs/tasks/](docs/tasks/) 의 마지막 번호 파일
+- **외부 API 키 발급/관리**: [docs/api/](docs/api/)
+
+---
+
+## 컨벤션
+
+- 커밋: 1커밋 1논리변경, 한국어 `Type: 요약` 형식 (예: `Feat: 마감 카운트다운 표시`)
+- 머지: feature 브랜치 → `gh pr create` → 머지. main 직접 푸시 금지 (Jenkins SCM 폴링 `H/2 * * * *`)
+- 마이그레이션 번호: 마지막 `db/migrations/NNN_*.sql` 다음 번호 사용
+- 크롤러 잡 추가: [crawler/README.md](crawler/README.md) + [docs/spec/deployment.md §5](docs/spec/deployment.md) 의 4단계 절차
