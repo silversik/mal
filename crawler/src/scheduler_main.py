@@ -44,6 +44,7 @@ from .jobs.periodic import (
     run_sync_trainers,
     run_sync_videos,
     run_sync_videos_backfill,
+    run_sync_weather,
     run_sync_yesterday_catchup,
 )
 from .logging import configure_logging, get_logger
@@ -257,6 +258,13 @@ def main() -> None:
         id="mal.build_favorite_notifications",
         **common,
     )
+    # 기상청 ASOS 일자료 — 매일 03:00 KST. 관측 확정 지연 대비 직전 7일 재수집.
+    sched.add_job(
+        run_sync_weather,
+        CronTrigger(hour=3, minute=0),
+        id="mal.sync_weather",
+        **common,
+    )
 
     # 대시보드 "지금 실행" 트리거 폴링 — 15초마다 pending_trigger 확인해서 즉시 실행.
     # 각 job id 는 위 add_job 의 id 와 동일 key 를 사용 (대시보드 UI 와 1:1).
@@ -289,6 +297,7 @@ def main() -> None:
         "mal.settle_bets": run_settle_bets,
         "mal.audit_combo_dividends": run_audit_combo_dividends,
         "mal.build_favorite_notifications": run_build_favorite_notifications,
+        "mal.sync_weather": run_sync_weather,
     }
 
     def _trigger_poll() -> None:

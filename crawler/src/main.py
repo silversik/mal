@@ -43,6 +43,8 @@ from .jobs.sync_naver_news import sync_naver_news
 from .jobs.sync_race_info import sync_races_by_year
 from .jobs.sync_races import sync_date, sync_date_all_meets
 from .jobs.sync_videos import smoke_videos, sync_videos
+from .jobs.sync_weather import backfill as backfill_weather
+from .jobs.sync_weather import sync_recent as sync_weather_recent
 from .logging import configure_logging, get_logger
 from .monitoring import check_stale, register_all_jobs
 
@@ -521,6 +523,28 @@ def cmd_periodic_settle_bets() -> None:
     """[scheduled] settle_bets — 모의배팅 정산 트리거 (Next.js 호출)."""
     n = run_settle_bets()
     typer.echo(f"settled+void {n} bets")
+
+
+@app.command("sync-weather")
+def cmd_sync_weather(
+    days: int = typer.Option(7, help="직전 N일 ASOS 일자료 재수집 (cron 과 동일)"),
+) -> None:
+    """[manual] sync_weather — 3개 관측소 직전 N일치 갱신."""
+    n = sync_weather_recent(days=days)
+    typer.echo(f"upserted {n} weather_observation rows")
+
+
+@app.command("backfill-weather")
+def cmd_backfill_weather(
+    start: str = typer.Argument(..., help="시작일 YYYY-MM-DD"),
+    end: str = typer.Argument(..., help="종료일 YYYY-MM-DD (포함)"),
+    chunk_days: int = typer.Option(90, help="한 번에 요청할 일수 (KMA 응답 한도 분할)"),
+) -> None:
+    """[manual] 기상청 ASOS 일자료 백필 — 과거 임의 범위. chunk_days 단위로 분할."""
+    s = datetime.strptime(start, "%Y-%m-%d").date()
+    e = datetime.strptime(end, "%Y-%m-%d").date()
+    n = backfill_weather(s, e, chunk_days=chunk_days)
+    typer.echo(f"upserted {n} weather_observation rows")
 
 
 @app.command("register-dashboard-jobs")

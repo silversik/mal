@@ -15,6 +15,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Numeric,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -597,6 +598,40 @@ class SyncMeta(Base):
     page_token: Mapped[str | None] = mapped_column(Text)
     last_error: Mapped[str | None] = mapped_column(Text)
     raw: Mapped[dict | None] = mapped_column(JSONB)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class WeatherObservation(Base):
+    """기상청 ASOS 시간자료 — (station_id, obs_time) PK.
+
+    races.start_time 으로 발주시각 정시를 만들어 매칭. 일자료(avg/min/max)는
+    같은 날 오전·오후 경주를 구분 못 해 정확도 한계.
+
+    가까운 ASOS 관측소 매핑(서울→119/수원, 제주→184, 부경→159/부산) —
+    kma_asos.py 의 MEET_TO_STATION 상수.
+
+    See: db/migrations/029_weather_observations.sql
+    """
+
+    __tablename__ = "weather_observations"
+
+    station_id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    obs_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), primary_key=True
+    )
+
+    ta: Mapped[float | None] = mapped_column(Numeric(4, 1))
+    rn: Mapped[float | None] = mapped_column(Numeric(5, 1))
+    ws: Mapped[float | None] = mapped_column(Numeric(4, 1))
+    wd: Mapped[int | None] = mapped_column(SmallInteger)
+    hm: Mapped[float | None] = mapped_column(Numeric(4, 1))
+
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

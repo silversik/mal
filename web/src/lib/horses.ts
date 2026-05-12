@@ -647,6 +647,8 @@ export type FormBreakdown = {
   by_track_type: FormRow[];
   by_track_condition: FormRow[];
   by_meet: FormRow[];
+  /** 발주시각 기준 강수 그룹별 성적: 맑음/흐림(=0), 약한 비(<2mm), 강한 비(≥2mm). */
+  by_weather: FormRow[];
 };
 
 /**
@@ -749,6 +751,53 @@ export async function getHorseFormBreakdown(
     [horseNo],
   );
 
+  // 발주시각 기준 강수 버킷별 성적 — weather_observations(ASOS 시간자료) JOIN.
+  // race_date + races.start_time(HH:MM) 을 KST 정시로 truncate 해서 매칭.
+  // - 시간 단위: 14:50 발주 → 14:00 관측 행. 충분한 정밀도.
+  // - 1시간 강수량 < 2mm 를 "약한 비" 컷오프 (일자료의 5mm 와 다른 기준).
+  // - meet → 관측소 매핑은 crawler/src/clients/kma_asos.py 와 동일.
+  // - start_time NULL 또는 weather 미백필 row 는 INNER JOIN 으로 자동 제외.
+  const weatherRows = await query<{
+    bucket: string;
+    sort_key: number;
+    starts: number;
+    win: number;
+    place: number;
+    show_: number;
+    best_time: string | null;
+  }>(
+    `SELECT
+        CASE
+          WHEN w.rn IS NULL OR w.rn = 0 THEN '맑음/흐림'
+          WHEN w.rn < 2 THEN '약한 비'
+          ELSE '강한 비'
+        END AS bucket,
+        CASE
+          WHEN w.rn IS NULL OR w.rn = 0 THEN 0
+          WHEN w.rn < 2 THEN 1
+          ELSE 2
+        END AS sort_key,
+        ${SELECT_FIELDS}
+       FROM race_results rr
+       JOIN races r
+         ON r.race_date = rr.race_date AND r.meet = rr.meet AND r.race_no = rr.race_no
+       JOIN weather_observations w
+         ON w.station_id = CASE rr.meet
+              WHEN '서울' THEN 119
+              WHEN '제주' THEN 184
+              WHEN '부경' THEN 159
+            END
+        AND w.obs_time = date_trunc('hour',
+              (rr.race_date::text || ' ' || lpad(r.start_time, 5, '0') || ':00')::timestamp
+                AT TIME ZONE 'Asia/Seoul'
+            )
+      WHERE rr.horse_no = $1
+        AND r.start_time IS NOT NULL
+      GROUP BY bucket, sort_key
+      ORDER BY sort_key`,
+    [horseNo],
+  );
+
   const toRow = (
     bucket: string,
     sortKey: number,
@@ -780,6 +829,7 @@ export async function getHorseFormBreakdown(
       toRow(r.track_condition ?? "-", 0, r),
     ),
     by_meet: meetRows.map((r) => toRow(r.meet ?? "-", 0, r)),
+    by_weather: weatherRows.map((r) => toRow(r.bucket, Number(r.sort_key), r)),
   };
 }
 

@@ -181,6 +181,11 @@ JOB_CATALOG: dict[str, dict] = {
         "description": "즐겨찾기 마필 다음 경기 출주 → 인앱 알림 적재",
         "expected_interval_sec": 3600,  # hourly — sync_race_entries(3h) 보다 자주 회전
     },
+    "mal.sync_weather": {
+        "category": "kma_openapi",
+        "description": "기상청 ASOS 일자료 (수원119/제주184/부산159, 직전 7일 재수집)",
+        "expected_interval_sec": 86400,  # daily 03:00 KST
+    },
 }
 
 _registered: set[str] = set()

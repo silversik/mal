@@ -38,6 +38,7 @@ from .sync_races import sync_date_all_meets
 from .chunked_backfill_dividends import run_chunk as run_chunked_dividends_chunk
 from .sync_videos import sync_videos
 from .sync_videos_backfill import backfill_missing_race_videos
+from .sync_weather import sync_recent as sync_weather_recent
 
 log = get_logger(__name__)
 
@@ -420,3 +421,14 @@ def run_build_favorite_notifications() -> int:
     같은 (user, race) 조합은 두 번 INSERT 되지 않음.
     """
     return build_favorite_notifications()
+
+
+@track_job("mal.sync_weather")
+def run_sync_weather() -> int:
+    """기상청 ASOS 일자료 동기화 — 직전 7일 재수집.
+
+    관측 확정이 다음날 정오 전후라 단순 D-1 수집은 누락 위험. 7일 윈도우로 매일
+    재수집해 idempotent 갱신. KMA_SERVICE_KEY 미설정 시 KmaAsosClient 초기화에서
+    명시적 실패 → 모니터링 빨간 신호.
+    """
+    return sync_weather_recent(days=7)
