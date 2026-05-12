@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { Card, CardContent } from "@/components/ui/card";
 
 /**
@@ -254,14 +256,63 @@ function formatAmount(amountStr: string): string {
  * 풀별 매출 타일 — 각 타일에 풀명/코드, 매출액, 비중 막대.
  * KRA 의 `odds_summary` 가 "5번(2.4) · 3번(3.1) · 1번(4.8)" 형태로 들어와
  * 정규식으로 상위 3개를 파싱해 칩으로 노출.
+ *
+ * `compact` — 사이드바용 1열 가로 배치 (풀명·매출·비중·인기칩 한 행).
  */
 export function PoolSalesTiles({
   rows,
   totalAmount,
+  compact = false,
 }: {
   rows: { pool: string; amount: string; odds_summary: string | null }[];
   totalAmount: number;
+  compact?: boolean;
 }) {
+  if (compact) {
+    return (
+      <Card className="py-0">
+        <CardContent className="p-2">
+          <ul className="divide-y divide-border/40">
+            {rows.map((r) => {
+              const amt = Number(r.amount);
+              const pct = totalAmount > 0 ? (amt / totalAmount) * 100 : 0;
+              const display = POOL_DISPLAY[r.pool] ?? { name: r.pool, code: "" };
+              const popular = parsePopularChips(r.odds_summary);
+              return (
+                <li key={r.pool} className="px-1.5 py-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-12 shrink-0 text-[11px] font-semibold text-muted-foreground">
+                      {display.name}
+                    </span>
+                    <span className="flex-1 font-mono text-[12px] font-bold tabular-nums">
+                      {formatAmount(r.amount)}
+                    </span>
+                    <span className="w-10 shrink-0 text-right font-mono text-[10px] tabular-nums text-muted-foreground">
+                      {pct.toFixed(1)}%
+                    </span>
+                  </div>
+                  <span className="mt-1 block h-[3px] rounded-sm bg-muted">
+                    <span
+                      className="block h-full rounded-sm bg-primary"
+                      style={{ width: `${Math.min(100, pct * 3.5)}%` }}
+                    />
+                  </span>
+                  {popular.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {popular.map((p, i) => (
+                        <PopChip key={i} rank={i + 1} num={p.num} odd={p.odd} />
+                      ))}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardContent className="p-3">
@@ -354,8 +405,10 @@ function parsePopularChips(summary: string | null): { num: string; odd: string }
 
 export function PopularityChart({
   entries,
+  compact = false,
 }: {
   entries: { chul_no: number | null; horse_no: string; horse_name: string; win_rate: string | null }[];
+  compact?: boolean;
 }) {
   const rows = entries
     .map((e) => {
@@ -382,21 +435,32 @@ export function PopularityChart({
 
   return (
     <Card>
-      <CardContent className="p-4">
-        <div className="flex flex-col gap-2">
+      <CardContent className={compact ? "p-2.5" : "p-4"}>
+        <div className={`flex flex-col ${compact ? "gap-1" : "gap-2"}`}>
           {rows.map((r, i) => {
             const widthPct = Math.max(8, Math.min(100, (minOdds / r.win) * 100));
             const impliedPct = ((1 / r.win) / totalImplied) * 100;
             const isFav = i === 0;
             return (
-              <div key={r.horse_no} className="flex items-center gap-2.5">
-                <div className="flex w-[120px] flex-none items-center gap-2">
-                  <GateNum n={r.chul_no} size={22} />
-                  <span className="truncate text-xs font-semibold">{r.horse_name}</span>
+              <div
+                key={r.horse_no}
+                className={`flex items-center ${compact ? "gap-1.5" : "gap-2.5"}`}
+              >
+                <div
+                  className={`flex flex-none items-center ${compact ? "w-[88px] gap-1" : "w-[120px] gap-2"}`}
+                >
+                  <GateNum n={r.chul_no} size={compact ? 18 : 22} />
+                  <span
+                    className={`truncate font-semibold ${compact ? "text-[11px]" : "text-xs"}`}
+                  >
+                    {r.horse_name}
+                  </span>
                 </div>
-                <div className="relative h-[18px] flex-1 overflow-hidden rounded bg-muted">
+                <div
+                  className={`relative flex-1 overflow-hidden rounded bg-muted ${compact ? "h-[14px]" : "h-[18px]"}`}
+                >
                   <div
-                    className="absolute inset-y-0 left-0 flex items-center justify-start rounded px-2 font-mono text-[11px] font-bold tabular-nums text-white"
+                    className={`absolute inset-y-0 left-0 flex items-center justify-start rounded font-mono font-bold tabular-nums ${compact ? "px-1.5 text-[10px]" : "px-2 text-[11px]"}`}
                     style={{
                       width: `${widthPct}%`,
                       background: isFav
@@ -408,10 +472,102 @@ export function PopularityChart({
                     {r.win.toFixed(1)}
                   </div>
                 </div>
-                <div className="w-[88px] flex-none text-right font-mono text-[11px] tabular-nums text-muted-foreground">
-                  인기 <strong className="text-foreground">{i + 1}</strong> ·{" "}
-                  {impliedPct.toFixed(1)}%
+                {compact ? (
+                  <div className="w-9 flex-none text-right font-mono text-[10px] tabular-nums text-muted-foreground">
+                    <strong className="text-foreground">{i + 1}</strong>위
+                  </div>
+                ) : (
+                  <div className="w-[88px] flex-none text-right font-mono text-[11px] tabular-nums text-muted-foreground">
+                    인기 <strong className="text-foreground">{i + 1}</strong> ·{" "}
+                    {impliedPct.toFixed(1)}%
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ── 결과 시상대 (1·2·3착) ───────────────────────────────────── */
+
+export type PodiumEntry = {
+  rank: number;
+  chul_no: number | null;
+  horse_no: string;
+  horse_name: string;
+  jockey_name: string | null;
+  jockey_no: string | null;
+  win_rate: string | null;
+  record_time: string | null;
+};
+
+/**
+ * 결과(post) 직후 가장 먼저 보고 싶은 정보는 1·2·3착.
+ * 헤더 바로 아래에 podium 카드로 노출해 출전표까지 스크롤할 필요를 없앤다.
+ *
+ * 색상: 1착은 라운드 헤더와 같은 navy + gold 강조, 2·3착은 muted.
+ */
+export function PodiumCard({ podium }: { podium: PodiumEntry[] }) {
+  if (podium.length === 0) return null;
+  const sorted = [...podium].sort((a, b) => a.rank - b.rank);
+
+  return (
+    <Card className="overflow-hidden py-0">
+      <CardContent className="p-0">
+        <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          {sorted.map((e) => {
+            const tone =
+              e.rank === 1
+                ? "bg-[#fff8df]"
+                : e.rank === 2
+                  ? "bg-[#f4f5f8]"
+                  : "bg-[#f8efe0]";
+            return (
+              <div key={e.horse_no} className={`flex items-center gap-3 p-3 ${tone}`}>
+                <RankMedal rank={e.rank} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <GateNum n={e.chul_no} size={22} />
+                    <Link
+                      href={`/horse/${e.horse_no}`}
+                      className="truncate text-sm font-bold text-primary hover:underline"
+                    >
+                      {e.horse_name}
+                    </Link>
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    {e.jockey_name &&
+                      (e.jockey_no ? (
+                        <Link
+                          href={`/jockey/${e.jockey_no}`}
+                          className="truncate hover:text-primary hover:underline"
+                        >
+                          {e.jockey_name}
+                        </Link>
+                      ) : (
+                        <span className="truncate">{e.jockey_name}</span>
+                      ))}
+                    {e.record_time && (
+                      <>
+                        <span className="h-[3px] w-[3px] rounded-full bg-current opacity-40" />
+                        <span className="font-mono tabular-nums">{e.record_time}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
+                {e.win_rate && (
+                  <div className="text-right">
+                    <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      단승
+                    </div>
+                    <div className="font-mono text-sm font-bold tabular-nums">
+                      {e.win_rate}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
