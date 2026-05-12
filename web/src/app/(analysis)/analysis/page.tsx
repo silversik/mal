@@ -37,17 +37,35 @@ export default async function AnalysisPage() {
         <TopList
           title={`TOP 기수 · ${currentYear}`}
           moreHref={`/rankings?entity=jockey&scope=ytd`}
-          rows={topJockeys.map((r) => ({ name: r.name, sub: `${r.starts}전`, value: `${r.win}승` }))}
+          rows={topJockeys.map((r) => ({
+            no: r.no,
+            href: `/jockey/${r.no}`,
+            name: r.name,
+            sub: `${r.starts}전 · 승률 ${(r.win_rate * 100).toFixed(1)}%`,
+            value: `${r.win}승`,
+          }))}
         />
         <TopList
           title={`TOP 마필 · ${currentYear}`}
           moreHref={`/rankings?entity=horse&scope=ytd`}
-          rows={topHorses.map((r) => ({ name: r.name, sub: `${r.starts}전`, value: `${r.win}승` }))}
+          rows={topHorses.map((r) => ({
+            no: r.no,
+            href: `/horse/${r.no}`,
+            name: r.name,
+            sub: `${r.starts}전 · 복승률 ${(((r.win + r.place) / r.starts) * 100).toFixed(1)}%`,
+            value: `${r.win}승`,
+          }))}
         />
         <TopList
           title={`TOP 조교사 · ${currentYear}`}
           moreHref={`/rankings?entity=trainer&scope=ytd`}
-          rows={topTrainers.map((r) => ({ name: r.name, sub: `${r.starts}전`, value: `${r.win}승` }))}
+          rows={topTrainers.map((r) => ({
+            no: r.no,
+            href: `/trainer/${r.no}`,
+            name: r.name,
+            sub: `${r.starts}전 · 승률 ${(r.win_rate * 100).toFixed(1)}%`,
+            value: `${r.win}승`,
+          }))}
         />
       </section>
     </div>
@@ -89,6 +107,21 @@ function ToolTile({
   );
 }
 
+// 1·2·3 위만 메달 배지 — 홈 "TOP 기수 랭킹" 카드와 톤 통일.
+const RANK_MEDAL_STYLE: Record<number, string> = {
+  1: "bg-champagne-gold text-primary",
+  2: "bg-slate-400 text-white",
+  3: "bg-amber-700 text-white",
+};
+
+type TopListRow = {
+  no: string;
+  href: string;
+  name: string;
+  sub?: string;
+  value: string;
+};
+
 function TopList({
   title,
   moreHref,
@@ -96,7 +129,7 @@ function TopList({
 }: {
   title: string;
   moreHref: string;
-  rows: { name: string; sub?: string; value: string }[];
+  rows: TopListRow[];
 }) {
   return (
     <Card>
@@ -114,18 +147,36 @@ function TopList({
           <p className="py-2 text-center text-xs text-muted-foreground">데이터 없음</p>
         ) : (
           <ul className="divide-y divide-border">
-            {rows.map((r, i) => (
-              <li key={i} className="flex items-center gap-2 py-2 text-sm">
-                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold tabular-nums text-muted-foreground">
-                  {i + 1}
-                </span>
-                <span className="flex-1 truncate font-semibold">{r.name}</span>
-                {r.sub && (
-                  <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{r.sub}</span>
-                )}
-                <span className="font-mono text-xs font-bold tabular-nums text-primary">{r.value}</span>
-              </li>
-            ))}
+            {rows.map((r, i) => {
+              const rank = i + 1;
+              return (
+                <li key={r.no}>
+                  <Link
+                    href={r.href}
+                    className="group flex items-center gap-2 py-2 text-sm transition hover:bg-muted/40 -mx-2 px-2 rounded"
+                  >
+                    <span
+                      className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tabular-nums ${
+                        RANK_MEDAL_STYLE[rank] ?? "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {rank}
+                    </span>
+                    <span className="flex-1 truncate font-semibold group-hover:text-primary">
+                      {r.name}
+                    </span>
+                    {r.sub && (
+                      <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                        {r.sub}
+                      </span>
+                    )}
+                    <span className="font-mono text-xs font-bold tabular-nums text-primary">
+                      {r.value}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </CardContent>
