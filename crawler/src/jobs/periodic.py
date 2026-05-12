@@ -10,9 +10,10 @@ migration 에 seed row 를 넣고 여기에 래퍼를 추가.
 from __future__ import annotations
 
 import os
-from datetime import date
+from datetime import date, timedelta
 
 import httpx
+from sqlalchemy import text
 
 from ..config import settings
 from ..logging import get_logger
@@ -72,16 +73,77 @@ def run_sync_races_today() -> int:
     return sync_date_all_meets(date.today())
 
 
+def _has_races_on(d: date) -> bool:
+    """오늘(또는 d) 일자에 races 출주표 row 가 있는지. sync_race_plan(05:00 KST)
+    이 미리 채워두므로, 경기일이면 True. 비경기일이면 KRA OpenAPI 호출을 생략하기
+    위한 게이트."""
+    from ..db import session_scope
+
+    with session_scope() as s:
+        row = s.execute(
+            text("SELECT 1 FROM races WHERE race_date = :d LIMIT 1"),
+            {"d": d},
+        ).first()
+    return row is not None
+
+
+def _has_unresolved_races_on(d: date) -> bool:
+    """d 일자 races 중 race_results 가 비어있는 race 가 하나라도 있는지.
+    어제 catchup 잡이 모두 채웠는지 판단하기 위함."""
+    from ..db import session_scope
+
+    with session_scope() as s:
+        row = s.execute(
+            text(
+                """
+                SELECT 1 FROM races r
+                 WHERE r.race_date = :d
+                   AND NOT EXISTS (
+                     SELECT 1 FROM race_results rr
+                      WHERE rr.race_date = r.race_date
+                        AND rr.meet      = r.meet
+                        AND rr.race_no   = r.race_no
+                   )
+                 LIMIT 1
+                """
+            ),
+            {"d": d},
+        ).first()
+    return row is not None
+
+
 @track_job("mal.sync_races_live")
 def run_sync_races_live() -> int:
-    """경기일 실시간 업데이트 — 매시간 10~21시 KST.
+    """경기일 실시간 업데이트 — KST 10:00~22:30 매 30분.
 
-    경기 진행 중 결과와 배당을 갱신한다. 비경기일이면 KRA API 가 0건을 반환하므로
-    idempotent 하게 무해하게 실행된다.
+    DB races 테이블에 오늘 일자 row 가 있을 때만 KRA OpenAPI 호출. 비경기일이면
+    즉시 skip — KRA 호출도, 실패 알림도 발생하지 않는다.
     """
-    races = sync_date_all_meets(date.today())
-    dividends = sync_dividends_all_meets(date.today())
+    today = date.today()
+    if not _has_races_on(today):
+        log.info("races_live_skip_no_today_races", date=str(today))
+        return 0
+    races = sync_date_all_meets(today)
+    dividends = sync_dividends_all_meets(today)
     log.info("races_live_done", races=races, dividends=dividends)
+    return races + dividends
+
+
+@track_job("mal.sync_yesterday_residual")
+def run_sync_yesterday_residual() -> int:
+    """전날 결과 잔여분 catchup — 다음날 09:00~12:00 1시간 간격.
+
+    07:30 sync_yesterday_catchup 이 메인 보정이고, 이 잡은 KRA 가 결과를 더 늦게
+    publish 하는 케이스를 잡기 위한 추가 시도. DB 에 어제 미해결(race_results 0건)
+    race 가 남아 있을 때만 KRA 호출. 모두 채워지면 즉시 skip.
+    """
+    yesterday = date.today() - timedelta(days=1)
+    if not _has_unresolved_races_on(yesterday):
+        log.info("yesterday_residual_skip_complete", date=str(yesterday))
+        return 0
+    races = sync_date_all_meets(yesterday)
+    dividends = sync_dividends_all_meets(yesterday)
+    log.info("yesterday_residual_done", date=str(yesterday), races=races, dividends=dividends)
     return races + dividends
 
 
