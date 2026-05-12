@@ -61,12 +61,17 @@ JOB_CATALOG: dict[str, dict] = {
     },
     "mal.sync_races_live": {
         "category": "kra_openapi",
-        "description": "경기일 실시간 결과+배당 갱신 (평일 10~21시 시간당 / 주말 10~22시 15분 간격)",
-        "expected_interval_sec": 3600,
+        "description": "경기일 실시간 결과+배당 갱신 (KST 10:00~22:30 매 30분, DB races 게이트로 비경기일 skip)",
+        "expected_interval_sec": 1800,
     },
     "mal.sync_yesterday_catchup": {
         "category": "kra_openapi",
         "description": "전날 경주결과·배당·매출 누락 보정 (07:30 KST)",
+        "expected_interval_sec": 86400,
+    },
+    "mal.sync_yesterday_residual": {
+        "category": "kra_openapi",
+        "description": "전날 결과 잔여 catchup — 09~12시 1시간마다, 미해결 race 있을 때만 KRA 호출",
         "expected_interval_sec": 86400,
     },
     "mal.sync_jockeys": {

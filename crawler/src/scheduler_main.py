@@ -41,6 +41,7 @@ from .jobs.periodic import (
     run_sync_race_today_meta,
     run_sync_races_live,
     run_sync_races_today,
+    run_sync_yesterday_residual,
     run_sync_trainers,
     run_sync_videos,
     run_sync_videos_backfill,
@@ -178,22 +179,23 @@ def main() -> None:
         id="mal.sync_races_today",
         **common,
     )
-    # 경기일 실시간 결과·배당 동기화 — 평일은 시간당 backstop, 주말은 15분 간격.
+    # 경기일 실시간 결과·배당 동기화 — KST 10:00~22:30 매 30분.
     # 단일 22:00 sync_races_today 잡 실패 시 그날 결과가 통째로 비는 사고를
-    # 방지하기 위한 in-day backstop. 비경기일이면 KRA API 가 0건 반환이라 무해.
-    # 주말은 race day 라 결과 확정이 마지막 경주 직후(보통 21:00~21:30 KST)에
-    # 몰리므로 22시까지 더 자주 갱신해 22:00 sync 전에도 홈에 반영되도록 한다.
-    # `monitoring.py` 의 mal.sync_races_live job_key 와 1:1 대응.
+    # 방지하기 위한 in-day backstop. 비경기일이면 함수 내부에서 _has_races_on
+    # 게이트로 즉시 skip — KRA 호출도, 실패 알림도 발생하지 않는다.
     sched.add_job(
         run_sync_races_live,
-        CronTrigger(day_of_week="mon-fri", hour="10-21", minute=0),
+        CronTrigger(hour="10-22", minute="0,30"),
         id="mal.sync_races_live",
         **common,
     )
+    # 다음날 09~12시 잔여 catchup — sync_yesterday_catchup(07:30) 이후에도
+    # KRA publish 지연으로 결과 누락이 남는 케이스 보충. DB 에 미해결 race
+    # 가 있을 때만 KRA 호출, 모두 채워지면 즉시 skip.
     sched.add_job(
-        run_sync_races_live,
-        CronTrigger(day_of_week="sat,sun", hour="10-22", minute="*/15"),
-        id="mal.sync_races_live_weekend",
+        run_sync_yesterday_residual,
+        CronTrigger(hour="9-12", minute=0),
+        id="mal.sync_yesterday_residual",
         **common,
     )
     # 결과 수집(22:00) 직후 메타 백필(22:30) — races.race_name/distance/grade/track_type 채움.
@@ -287,6 +289,7 @@ def main() -> None:
         "mal.sync_races_today": run_sync_races_today,
         "mal.sync_races_live": run_sync_races_live,
         "mal.sync_yesterday_catchup": run_sync_yesterday_catchup,
+        "mal.sync_yesterday_residual": run_sync_yesterday_residual,
         "mal.sync_race_info": run_sync_race_info,
         "mal.sync_race_today_meta": run_sync_race_today_meta,
         "mal.sync_race_dividends": run_sync_race_dividends,
