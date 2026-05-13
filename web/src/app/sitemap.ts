@@ -41,12 +41,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const now = new Date();
 
+  // 정적 공개 페이지. 개인화·인증 경로(/me, /login, /notifications, /board/new)는 제외.
   const staticPages: MetadataRoute.Sitemap = [
     { url: SITE,                       lastModified: now, changeFrequency: "daily",  priority: 1.0 },
-    { url: `${SITE}/horses`,           lastModified: now, changeFrequency: "daily",  priority: 0.9 },
     { url: `${SITE}/races`,            lastModified: now, changeFrequency: "daily",  priority: 0.9 },
     { url: `${SITE}/races/schedule`,   lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${SITE}/database`,         lastModified: now, changeFrequency: "daily",  priority: 0.8 },
+    { url: `${SITE}/horses`,           lastModified: now, changeFrequency: "daily",  priority: 0.9 },
     { url: `${SITE}/jockeys`,          lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${SITE}/trainer`,          lastModified: now, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${SITE}/owner`,            lastModified: now, changeFrequency: "weekly", priority: 0.5 },
+    { url: `${SITE}/analysis`,         lastModified: now, changeFrequency: "daily",  priority: 0.8 },
+    { url: `${SITE}/rankings`,         lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${SITE}/records`,          lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${SITE}/compare`,          lastModified: now, changeFrequency: "monthly",priority: 0.5 },
     { url: `${SITE}/news`,             lastModified: now, changeFrequency: "daily",  priority: 0.6 },
     { url: `${SITE}/board`,            lastModified: now, changeFrequency: "hourly", priority: 0.5 },
   ];
