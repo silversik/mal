@@ -77,17 +77,58 @@ export function RecentRacesSwiper({ races, finishers, videos }: Props) {
     return groups;
   }, [races]);
 
+  // 데이터가 있는 첫 meet 을 기본 탭으로. 셋 다 비어있으면 서울.
+  const initialMeet =
+    MEETS.find((m) => byMeet[m].length > 0) ?? "서울";
+  const [activeMeet, setActiveMeet] = useState<Meet>(initialMeet);
+
   return (
-    <div className="space-y-10">
-      {MEETS.map((m) => (
-        <MeetSwiper
-          key={m}
-          meet={m}
-          races={byMeet[m]}
-          finishersMap={finishersMap}
-          videosMap={videosMap}
-        />
-      ))}
+    <div>
+      {/* ── 경마장 탭바 (한 줄) — 이전 디자인은 meet 별 row 가 3개 세로로 쌓여
+            페이지를 길게 잡아먹었다. 한 줄 탭으로 압축하고 swiper 1개만 노출. */}
+      <div className="mb-4 flex items-center gap-1 border-b border-primary/10">
+        {MEETS.map((m) => {
+          const count = byMeet[m].length;
+          const active = m === activeMeet;
+          const disabled = count === 0;
+          return (
+            <button
+              key={m}
+              type="button"
+              onClick={() => !disabled && setActiveMeet(m)}
+              disabled={disabled}
+              aria-selected={active}
+              role="tab"
+              className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-bold transition ${
+                active
+                  ? "border-primary text-primary"
+                  : disabled
+                    ? "border-transparent text-muted-foreground/40"
+                    : "border-transparent text-muted-foreground hover:text-primary"
+              }`}
+            >
+              <VenueIcon
+                meet={m}
+                size={14}
+                className={active ? "" : "opacity-70"}
+              />
+              <span>{m}</span>
+              <span className="font-mono text-xs tabular-nums opacity-60">
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* key 로 탭 전환 시 스크롤·페이지 state 리셋 */}
+      <MeetSwiper
+        key={activeMeet}
+        meet={activeMeet}
+        races={byMeet[activeMeet]}
+        finishersMap={finishersMap}
+        videosMap={videosMap}
+      />
     </div>
   );
 }
@@ -163,18 +204,13 @@ function MeetSwiper({
 
   return (
     <div>
-      <div className="mb-3 flex items-center gap-2">
-        <VenueIcon meet={meet} size={16} className="opacity-70" />
-        <h3 className="text-base font-bold text-primary">{meet}</h3>
-        <span className="font-mono text-xs text-slate-grey/70 tabular-nums">{races.length}</span>
-
-        {races.length > 0 && (
-          <div className="ml-auto hidden gap-1 sm:flex">
-            <SwiperArrow direction="prev" disabled={!canPrev} onClick={() => scrollByPage(-1)} />
-            <SwiperArrow direction="next" disabled={!canNext} onClick={() => scrollByPage(1)} />
-          </div>
-        )}
-      </div>
+      {/* meet 이름·카운트는 상위 탭바에 노출. 여기는 데스크탑 화살표만. */}
+      {races.length > 0 && (
+        <div className="mb-2 hidden justify-end gap-1 sm:flex">
+          <SwiperArrow direction="prev" disabled={!canPrev} onClick={() => scrollByPage(-1)} />
+          <SwiperArrow direction="next" disabled={!canNext} onClick={() => scrollByPage(1)} />
+        </div>
+      )}
 
       {races.length === 0 ? (
         <div className="rounded-lg border border-dashed border-primary/10 py-6 text-center text-xs text-slate-grey">

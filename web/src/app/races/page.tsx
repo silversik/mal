@@ -30,9 +30,6 @@ import {
 } from "@/lib/race_plans";
 import {
   getRaceComboDividends,
-  POOL_LABEL,
-  POOL_ORDERED,
-  type ComboPool,
   type RaceComboDividend,
 } from "@/lib/race_combo_dividends";
 import {
@@ -43,9 +40,10 @@ import {
 import { getRaceVideo, youtubeEmbedUrl } from "@/lib/videos";
 import { youtubeSearchUrl } from "@/lib/video-helpers";
 import {
-  FormDots,
   GateNum,
   OddsBar,
+  PodiumCard,
+  type PodiumEntry,
   PoolSalesTiles,
   PopularityChart,
   RaceChip,
@@ -55,10 +53,14 @@ import {
   WeightDelta,
 } from "@/components/race-detail-ui";
 import { PreRaceBanner } from "@/components/pre-race-banner";
-import { RaceHorseCompare } from "@/components/race-horse-compare";
 import { PopularityVsResult } from "@/components/popularity-vs-result";
 import { PaceMap } from "@/components/pace-map";
-import { getHorseCompareSummaries } from "@/lib/horses";
+import { RecentFormStrip } from "@/components/recent-form-strip";
+import { ComboDividendsSection } from "@/components/combo-dividends-section";
+import {
+  getHorseCompareSummaries,
+  type HorseCompareSummary,
+} from "@/lib/horses";
 import { getRaceCorner } from "@/lib/race_corners";
 
 import { BetForm } from "./bet-form";
@@ -262,13 +264,19 @@ export default async function RacesPage({
   const chulMap: Record<string, number | null> = Object.fromEntries(
     entries.map((e) => [e.horse_no, e.chul_no]),
   );
+  // horse_no → 통산·평균지수·최근 5전 한 묶음. 별도 "출주마 비교" 표 대신
+  // 출전표 인라인에 끼워 넣어 한눈 정보 밀도를 올린다.
+  const compareMap: Record<string, HorseCompareSummary> = Object.fromEntries(
+    compareSummaries.map((s) => [s.horse_no, s]),
+  );
+  const hasMsf = compareSummaries.some((s) => s.avg_msf !== null);
 
   // 경기 있는 날만 순회하도록 raceDates 내에서 탐색. 인접 레이스데이가 없으면 null.
   const prevDate = findNearbyRaceDate(raceDates, currentDate, "prev");
   const nextDate = findNearbyRaceDate(raceDates, currentDate, "next");
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8">
+    <main className="mx-auto w-full max-w-7xl px-4 py-8">
       <div className="mb-5 flex items-baseline justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight">경기 일람</h1>
         <Link
@@ -422,35 +430,23 @@ export default async function RacesPage({
             </div>
 
             <div className="flex flex-col items-start gap-2 md:items-end">
-              <div className="flex items-center gap-2">
-                {raceVideo ? (
-                  <a
-                    href={`https://www.youtube.com/watch?v=${raceVideo.video_id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[rgba(255,0,0,0.3)] bg-transparent px-3 text-xs font-semibold text-[#FF0000] transition hover:bg-[rgba(255,0,0,0.06)]"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                      <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.5 15.6V8.4L15.8 12l-6.3 3.6z" />
-                    </svg>
-                    유튜브 영상
-                  </a>
-                ) : (
-                  <a
-                    href={youtubeSearchUrl(
-                      `${currentDate} ${selectedRace.meet} ${selectedRace.race_no}R 경마`,
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[rgba(255,0,0,0.3)] bg-transparent px-3 text-xs font-semibold text-[#FF0000] transition hover:bg-[rgba(255,0,0,0.06)]"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                      <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.5 15.6V8.4L15.8 12l-6.3 3.6z" />
-                    </svg>
-                    유튜브 검색
-                  </a>
-                )}
-              </div>
+              {/* 영상이 있으면 사이드바 embed 가 대신 노출되므로 헤더 영상 버튼 생략.
+                  영상이 없는 경우만 KRBC 외부 검색 fallback 을 헤더에 유지. */}
+              {!raceVideo && (
+                <a
+                  href={youtubeSearchUrl(
+                    `${currentDate} ${selectedRace.meet} ${selectedRace.race_no}R 경마`,
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[rgba(255,0,0,0.3)] bg-transparent px-3 text-xs font-semibold text-[#FF0000] transition hover:bg-[rgba(255,0,0,0.06)]"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.5 15.6V8.4L15.8 12l-6.3 3.6z" />
+                  </svg>
+                  유튜브 검색
+                </a>
+              )}
               {syncedAt && (
                 <span
                   className="text-[11px] text-muted-foreground/70 tabular-nums"
@@ -463,35 +459,61 @@ export default async function RacesPage({
             </div>
           </div>
 
-          {raceVideo && (
-            <div className="mb-6 overflow-hidden rounded-xl border bg-card shadow-sm">
-              <div className="aspect-video w-full bg-black">
-                <iframe
-                  src={youtubeEmbedUrl(raceVideo.video_id)}
-                  title={raceVideo.title}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="h-full w-full"
-                />
-              </div>
-            </div>
-          )}
+          {/* 결과(post) 가 있고 1·2·3착이 모두 채워졌으면 시상대 카드로 즉시 노출.
+              헤더 직후 → 출전표까지 스크롤하지 않고 결과 한 줄을 본다. */}
+          {entriesPhase === "post" &&
+            (() => {
+              const podium: PodiumEntry[] = entries
+                .filter(
+                  (e): e is typeof e & { rank: number } =>
+                    e.rank != null && e.rank >= 1 && e.rank <= 3,
+                )
+                .sort((a, b) => a.rank - b.rank)
+                .map((e) => ({
+                  rank: e.rank,
+                  chul_no: e.chul_no,
+                  horse_no: e.horse_no,
+                  horse_name: e.horse_name,
+                  jockey_name: e.jockey_name,
+                  jockey_no: e.jockey_no,
+                  win_rate: e.win_rate,
+                  record_time: e.record_time,
+                }));
+              return podium.length > 0 ? (
+                <div className="mb-5">
+                  <PodiumCard podium={podium} />
+                </div>
+              ) : null;
+            })()}
 
-          {compareSummaries.length > 0 && (
-            <div className="mb-4">
-              <RaceHorseCompare summaries={compareSummaries} chulMap={chulMap} />
-            </div>
-          )}
-
-          {entries.length > 0 ? (
-            <>
-              {entriesPhase === "pre" && (
-                <PreRaceBanner
-                  raceDate={currentDate}
-                  startTime={selectedRace.start_time ?? null}
-                />
+          {/* 2-열 그리드 — lg+ 에선 우측 사이드바(영상·풀별매출·인기분포),
+              그 아래선 단일 컬럼. 사이드바는 데스크탑에서 sticky 로 따라온다. */}
+          <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
+            <div className="min-w-0 space-y-5">
+              {/* 모바일·태블릿(lg 미만)에선 영상이 메인 컬럼 상단. 데스크탑에선 사이드바로 이동. */}
+              {raceVideo && (
+                <div className="overflow-hidden rounded-xl border bg-card shadow-sm lg:hidden">
+                  <div className="aspect-video w-full bg-black">
+                    <iframe
+                      src={youtubeEmbedUrl(raceVideo.video_id)}
+                      title={raceVideo.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="h-full w-full"
+                    />
+                  </div>
+                </div>
               )}
-              <Card className="overflow-hidden py-0">
+
+              {entries.length > 0 ? (
+                <>
+                  {entriesPhase === "pre" && (
+                    <PreRaceBanner
+                      raceDate={currentDate}
+                      startTime={selectedRace.start_time ?? null}
+                    />
+                  )}
+                  <Card className="overflow-hidden py-0">
                 <div className="relative overflow-x-auto rounded-[inherit]">
                   <table className="w-full border-collapse text-[13px]">
                     <thead>
@@ -526,10 +548,19 @@ export default async function RacesPage({
                         <th className="border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 86 }}>
                           마체중
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 130 }}>
+                        {hasMsf && (
+                          <th
+                            className="hidden border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground md:table-cell"
+                            style={{ width: 78 }}
+                            title="최근 10전 평균 / 최고 mal지수"
+                          >
+                            지수
+                          </th>
+                        )}
+                        <th className="border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 110 }}>
                           단승
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 130 }}>
+                        <th className="border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 110 }}>
                           연승
                         </th>
                       </tr>
@@ -566,19 +597,45 @@ export default async function RacesPage({
                               >
                                 {e.horse_name}
                               </Link>
-                              <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                                <SexBullet sex={e.sex} />
-                                {e.age && (
-                                  <span className="font-mono tabular-nums">
-                                    {/* KRA raw 가 "3" 또는 "3세" 로 섞여 옴 — "세" 중복 방지 */}
-                                    {String(e.age).replace(/세$/, "")}세
+                              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                                <span className="inline-flex items-center gap-1">
+                                  <SexBullet sex={e.sex} />
+                                  {e.age && (
+                                    <span className="font-mono tabular-nums">
+                                      {/* KRA raw 가 "3" 또는 "3세" 로 섞여 옴 — "세" 중복 방지 */}
+                                      {String(e.age).replace(/세$/, "")}세
+                                    </span>
+                                  )}
+                                </span>
+                                {compareMap[e.horse_no] && (
+                                  <span
+                                    className="font-mono tabular-nums"
+                                    title="통산 1·2·3착 / 출주"
+                                  >
+                                    <strong className="text-foreground">
+                                      {compareMap[e.horse_no].first_place_count}
+                                      -
+                                      {compareMap[e.horse_no].second_place_count}
+                                      -
+                                      {compareMap[e.horse_no].third_place_count}
+                                    </strong>
+                                    <span className="opacity-70">
+                                      {" "}
+                                      / {compareMap[e.horse_no].total_race_count}
+                                    </span>
                                   </span>
                                 )}
-                                {recentFinishesMap[e.horse_no]?.length > 0 && (
-                                  <FormDots
-                                    finishes={recentFinishesMap[e.horse_no]}
-                                  />
-                                )}
+                                {(() => {
+                                  // compareMap 의 recent_finishes 가 우선 (출전표 fetch 와 별도 집계).
+                                  // 없으면 recentFinishesMap fallback.
+                                  const finishes =
+                                    compareMap[e.horse_no]?.recent_finishes ??
+                                    recentFinishesMap[e.horse_no] ??
+                                    [];
+                                  return finishes.length > 0 ? (
+                                    <RecentFormStrip finishes={finishes} />
+                                  ) : null;
+                                })()}
                               </div>
                             </td>
                             <td className="px-2 py-2.5 align-middle leading-tight">
@@ -647,6 +704,17 @@ export default async function RacesPage({
                               {e.weight ?? "-"}
                               <WeightDelta diff={e.weight_diff} />
                             </td>
+                            {hasMsf && (
+                              <td
+                                className="hidden px-2 py-2.5 text-right align-middle font-mono text-[11px] tabular-nums leading-tight md:table-cell"
+                                title="최근 10전 평균 / 최고 mal지수"
+                              >
+                                <MsfCell
+                                  avg={compareMap[e.horse_no]?.avg_msf ?? null}
+                                  best={compareMap[e.horse_no]?.best_msf ?? null}
+                                />
+                              </td>
+                            )}
                             <td className="px-2 py-2.5 text-right align-middle">
                               <OddsBar value={e.win_rate} kind="win" />
                             </td>
@@ -669,103 +737,128 @@ export default async function RacesPage({
             </Card>
           )}
 
-          {betState && (
-            <BetForm
-              raceDate={currentDate}
-              meet={selectedRace.meet}
-              raceNo={selectedRace.race_no}
-              entries={entries
-                .filter((e): e is typeof e & { chul_no: number } => e.chul_no != null)
-                .map((e) => ({ chul_no: e.chul_no, horse_name: e.horse_name }))}
-              state={betState}
-              loggedIn={!!userId}
-              balanceP={userBalance?.balance_p ?? null}
-              dailyTotalP={dailyTotalP}
-              startTime={selectedRace.start_time ?? null}
-            />
-          )}
+              {betState && (
+                <BetForm
+                  raceDate={currentDate}
+                  meet={selectedRace.meet}
+                  raceNo={selectedRace.race_no}
+                  entries={entries
+                    .filter((e): e is typeof e & { chul_no: number } => e.chul_no != null)
+                    .map((e) => ({ chul_no: e.chul_no, horse_name: e.horse_name }))}
+                  state={betState}
+                  loggedIn={!!userId}
+                  balanceP={userBalance?.balance_p ?? null}
+                  dailyTotalP={dailyTotalP}
+                  startTime={selectedRace.start_time ?? null}
+                />
+              )}
 
-          {raceCorner && (
-            <div className="mt-6">
-              <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
-                페이스 맵
-              </h3>
-              <Card>
-                <CardContent className="p-4">
-                  <PaceMap
-                    corner={raceCorner}
-                    meet={selectedRace.meet}
-                    winnerChulNo={
-                      entries.find((e) => e.rank === 1)?.chul_no ?? null
-                    }
+              {raceCorner && (
+                <div>
+                  <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
+                    페이스 맵
+                  </h3>
+                  <Card>
+                    <CardContent className="p-4">
+                      <PaceMap
+                        corner={raceCorner}
+                        meet={selectedRace.meet}
+                        winnerChulNo={
+                          entries.find((e) => e.rank === 1)?.chul_no ?? null
+                        }
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+            </div>
+
+            {/* ── 사이드바 (lg+) / 메인 컬럼 아래(mobile) ──
+                영상·풀별매출·인기분포처럼 "한눈 정보" 는 우측으로 빠져
+                메인 컬럼 상단을 출전표가 차지. */}
+            <aside className="mt-6 space-y-4 lg:mt-0 lg:sticky lg:top-4 lg:self-start">
+              {raceVideo && (
+                <div className="hidden overflow-hidden rounded-xl border bg-card shadow-sm lg:block">
+                  <div className="aspect-video w-full bg-black">
+                    <iframe
+                      src={youtubeEmbedUrl(raceVideo.video_id)}
+                      title={raceVideo.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="h-full w-full"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {poolSales.length > 0 && (
+                <div>
+                  <div className="mb-2 flex items-baseline justify-between">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      풀별 매출
+                    </h3>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {(() => {
+                        const t = poolSales.reduce((s, r) => s + Number(r.amount), 0);
+                        if (t >= 100_000_000) return `${(t / 100_000_000).toFixed(2)}억`;
+                        if (t >= 10_000) return `${Math.round(t / 10_000).toLocaleString("ko-KR")}만`;
+                        return t.toLocaleString("ko-KR");
+                      })()}
+                    </span>
+                  </div>
+                  <PoolSalesTiles
+                    compact
+                    rows={[...poolSales].sort(
+                      (a, b) =>
+                        POOL_DISPLAY_ORDER.indexOf(
+                          a.pool as (typeof POOL_DISPLAY_ORDER)[number],
+                        ) -
+                        POOL_DISPLAY_ORDER.indexOf(
+                          b.pool as (typeof POOL_DISPLAY_ORDER)[number],
+                        ),
+                    )}
+                    totalAmount={poolSales.reduce((s, r) => s + Number(r.amount), 0)}
                   />
-                </CardContent>
-              </Card>
-            </div>
-          )}
+                </div>
+              )}
 
-          {entriesPhase === "post" && (
-            <div className="mt-6">
-              <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
-                인기 vs 결과
-              </h3>
-              <Card>
-                <CardContent className="p-4">
-                  <PopularityVsResult entries={entries} />
-                </CardContent>
-              </Card>
-            </div>
-          )}
+              {entries.length > 0 && entries.some((e) => e.win_rate) && (
+                <div>
+                  <div className="mb-2 flex items-baseline justify-between">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      인기 분포
+                    </h3>
+                    <span className="text-[10px] text-muted-foreground">
+                      단승 기준
+                    </span>
+                  </div>
+                  <PopularityChart entries={entries} compact />
+                </div>
+              )}
+
+              {entriesPhase === "post" && (
+                <div>
+                  <div className="mb-2 flex items-baseline justify-between">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      인기 vs 결과
+                    </h3>
+                  </div>
+                  <Card>
+                    <CardContent className="p-3">
+                      {/* 사이드바(좁은 폭) 에선 SVG 위 / 텍스트 아래의 세로 스택. */}
+                      <div className="[&>div]:!flex-col [&>div]:!items-stretch">
+                        <PopularityVsResult entries={entries} />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </aside>
+          </div>
 
           {comboDividends.length > 0 && (
             <ComboDividendsSection rows={comboDividends} />
-          )}
-
-          {poolSales.length > 0 && (
-            <div className="mt-7">
-              <div className="mb-3 flex items-baseline justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  풀별 매출
-                </h3>
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  총 매출{" "}
-                  <strong className="text-foreground">
-                    {(() => {
-                      const t = poolSales.reduce((s, r) => s + Number(r.amount), 0);
-                      if (t >= 100_000_000) return `${(t / 100_000_000).toFixed(2)}억`;
-                      if (t >= 10_000) return `${Math.round(t / 10_000).toLocaleString("ko-KR")}만`;
-                      return t.toLocaleString("ko-KR");
-                    })()}
-                  </strong>
-                </span>
-              </div>
-              <PoolSalesTiles
-                rows={[...poolSales].sort(
-                  (a, b) =>
-                    POOL_DISPLAY_ORDER.indexOf(
-                      a.pool as (typeof POOL_DISPLAY_ORDER)[number],
-                    ) -
-                    POOL_DISPLAY_ORDER.indexOf(
-                      b.pool as (typeof POOL_DISPLAY_ORDER)[number],
-                    ),
-                )}
-                totalAmount={poolSales.reduce((s, r) => s + Number(r.amount), 0)}
-              />
-            </div>
-          )}
-
-          {entries.length > 0 && entries.some((e) => e.win_rate) && (
-            <div className="mt-7">
-              <div className="mb-3 flex items-baseline justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  인기 분포
-                </h3>
-                <span className="text-xs text-muted-foreground">
-                  단승 배당 기준 · 낮을수록 인기
-                </span>
-              </div>
-              <PopularityChart entries={entries} />
-            </div>
           )}
         </section>
       )}
@@ -773,29 +866,36 @@ export default async function RacesPage({
   );
 }
 
-/* ── 복식 배당 섹션 ──────────────────────────────────────── */
-
-const POOL_ORDER: ComboPool[] = ["QNL", "QPL", "EXA", "TRI", "TLA"];
-
-function formatCombo(d: RaceComboDividend): string {
-  const sep = POOL_ORDERED[d.pool] ? " → " : ", ";
-  const parts = [
-    d.horse_name_1 ? `${d.horse_no_1} ${d.horse_name_1}` : d.horse_no_1,
-    d.horse_name_2 ? `${d.horse_no_2} ${d.horse_name_2}` : d.horse_no_2,
-  ];
-  if (d.horse_no_3) {
-    parts.push(
-      d.horse_name_3 ? `${d.horse_no_3} ${d.horse_name_3}` : d.horse_no_3,
-    );
+/**
+ * 최근 10전 mal지수 — 평균/최고 stacked.
+ * 평균 ≥100 골드 강조, 95+ 에메랄드, 그 이하 muted.
+ */
+function MsfCell({
+  avg,
+  best,
+}: {
+  avg: number | null;
+  best: number | null;
+}) {
+  if (avg === null && best === null) {
+    return <span className="text-muted-foreground">-</span>;
   }
-  return parts.join(sep);
-}
-
-function formatOdds(odds: string | null): string {
-  if (odds === null) return "-";
-  const n = Number(odds);
-  if (Number.isNaN(n)) return odds;
-  return n.toFixed(1);
+  const avgCls =
+    avg === null
+      ? "text-muted-foreground"
+      : avg >= 100
+        ? "text-amber-700 font-bold"
+        : avg >= 95
+          ? "text-emerald-700 font-semibold"
+          : "text-foreground";
+  return (
+    <div className="flex flex-col items-end leading-tight">
+      <span className={avgCls}>{avg === null ? "-" : avg.toFixed(1)}</span>
+      <span className="text-[10px] opacity-60">
+        {best === null ? "-" : best.toFixed(1)}
+      </span>
+    </div>
+  );
 }
 
 /**
@@ -839,57 +939,6 @@ function JockeyChangeBadge({
         </span>
       )}
     </span>
-  );
-}
-
-function ComboDividendsSection({ rows }: { rows: RaceComboDividend[] }) {
-  const byPool = new Map<ComboPool, RaceComboDividend[]>();
-  for (const r of rows) {
-    const arr = byPool.get(r.pool) ?? [];
-    arr.push(r);
-    byPool.set(r.pool, arr);
-  }
-  const activePools = POOL_ORDER.filter((p) => byPool.has(p));
-
-  return (
-    <div className="mt-6">
-      <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
-        복식 배당
-      </h3>
-      {/* 좌우 슬라이드 — 풀 종류가 많고 모바일에서 그리드로 펼치면 너무 길어지므로
-          가로 스크롤 + snap 으로 한 손 스와이프에 최적화. */}
-      <div className="-mx-4 overflow-x-auto px-4 scrollbar-hide sm:mx-0 sm:px-0">
-        <div className="flex snap-x snap-mandatory gap-4 pb-2">
-          {activePools.map((pool) => {
-            const items = byPool.get(pool) ?? [];
-            return (
-              <Card
-                key={pool}
-                className="w-[78%] shrink-0 snap-start py-0 sm:w-[46%] lg:w-[32%]"
-              >
-                <div className="border-b bg-muted/40 px-4 py-2 text-xs font-semibold tracking-wide text-muted-foreground">
-                  {POOL_LABEL[pool]}{" "}
-                  <span className="ml-1 font-mono opacity-70">{pool}</span>
-                </div>
-                <div className="divide-y divide-border/40">
-                  {items.map((d, i) => (
-                    <div
-                      key={`${pool}-${i}`}
-                      className="flex items-center justify-between px-4 py-1.5 text-xs"
-                    >
-                      <span className="truncate">{formatCombo(d)}</span>
-                      <span className="ml-2 shrink-0 font-mono tabular-nums font-semibold">
-                        {formatOdds(d.odds)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      </div>
-    </div>
   );
 }
 

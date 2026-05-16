@@ -14,13 +14,6 @@ type NavItem = {
 
 import React from "react";
 
-const DB_SUB_ITEMS = [
-  { href: "/horses", label: "마필" },
-  { href: "/jockeys", label: "기수" },
-  { href: "/trainer", label: "조교사" },
-  { href: "/owner", label: "마주" },
-];
-
 const ANALYSIS_PATHS = ["/analysis", "/rankings", "/records", "/compare"];
 
 const PRIMARY_ITEMS: NavItem[] = [
@@ -80,7 +73,6 @@ const MORE_ITEMS = [
 export function MobileBottomNav() {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
-  const [dbOpen, setDbOpen] = useState(false);
 
   function isActive(href: string, opts?: { exact?: boolean; activePaths?: string[] }): boolean {
     if (opts?.exact) return pathname === href;
@@ -88,53 +80,18 @@ export function MobileBottomNav() {
     return pathname.startsWith(href);
   }
 
-  // 데이터베이스 시트가 열렸을 때 다른 시트는 닫음.
-  const openDb = () => {
-    setMoreOpen(false);
-    setDbOpen((v) => !v);
-  };
-  const openMore = () => {
-    setDbOpen(false);
-    setMoreOpen((v) => !v);
-  };
-  const closeAll = () => {
-    setDbOpen(false);
-    setMoreOpen(false);
-  };
-
-  const overlayOpen = moreOpen || dbOpen;
+  const openMore = () => setMoreOpen((v) => !v);
+  const closeAll = () => setMoreOpen(false);
 
   return (
     <>
-      {overlayOpen && (
+      {moreOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/40 md:hidden"
           onClick={closeAll}
           aria-hidden="true"
         />
       )}
-
-      {/* 데이터베이스 서브메뉴 시트 */}
-      <div
-        className={`fixed bottom-16 left-0 right-0 z-50 border-t border-primary/10 bg-background/95 backdrop-blur-md transition-transform duration-200 md:hidden ${
-          dbOpen ? "translate-y-0" : "translate-y-full"
-        }`}
-      >
-        <div className="grid grid-cols-4 divide-x divide-border">
-          {DB_SUB_ITEMS.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={closeAll}
-              className={`flex flex-col items-center gap-1 py-4 text-xs font-medium transition ${
-                isActive(href) ? "text-primary" : "text-muted-foreground hover:text-primary"
-              }`}
-            >
-              {label}
-            </Link>
-          ))}
-        </div>
-      </div>
 
       {/* 더보기 패널 */}
       <div
@@ -168,25 +125,6 @@ export function MobileBottomNav() {
         <div className="flex h-full items-stretch">
           {PRIMARY_ITEMS.map((it) => {
             const active = isActive(it.href, { exact: it.exact, activePaths: it.activePaths });
-            // 데이터베이스는 서브메뉴를 펼치는 버튼으로 동작.
-            if (it.href === "/database") {
-              const dbActive = active || dbOpen;
-              return (
-                <button
-                  key={it.href}
-                  type="button"
-                  onClick={openDb}
-                  aria-expanded={dbOpen}
-                  aria-label="데이터베이스 메뉴"
-                  className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition ${
-                    dbActive ? "text-primary" : "text-muted-foreground"
-                  }`}
-                >
-                  <span>{it.icon}</span>
-                  {it.label}
-                </button>
-              );
-            }
             return (
               <Link
                 key={it.href}

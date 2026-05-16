@@ -12,11 +12,13 @@ export default function AnalysisLayout({
           분석 대시보드
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          축적된 경주 데이터를 활용한 분석 도구. 좌측 메뉴에서 도구를 선택하세요.
+          축적된 경주 데이터를 활용한 분석 도구.
         </p>
       </header>
 
-      <div className="grid gap-5 md:grid-cols-[200px_minmax(0,1fr)]">
+      {/* 모바일에선 사이드바가 본문 위 가로 탭바로 떨어지고, md+ 부터 좌측 컬럼.
+          AnalysisSidebar 내부에서 자체 분기. */}
+      <div className="flex flex-col gap-5 md:grid md:grid-cols-[200px_minmax(0,1fr)]">
         <AnalysisSidebar />
         <div className="min-w-0">{children}</div>
       </div>
