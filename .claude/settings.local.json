@@ -48,5 +48,29 @@
       "mcp__Claude_in_Chrome__tabs_context_mcp",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:4000/)"
     ]
+  },
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/notify-start.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/notify-cancel.sh"
+          }
+        ]
+      }
+    ]
   }
 }
