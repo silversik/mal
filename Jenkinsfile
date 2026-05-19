@@ -100,29 +100,22 @@ pipeline {
     }
 
     post {
-        success { echo "[mal] deployed ✔" }
+        // Telegram 알림 — prod /srv/stack/.env 의 TELEGRAM_BOT_TOKEN/CHAT_ID 재사용.
+        // 다른 Jenkinsfile들과 동일 패턴으로 표준화 (이전엔 Jenkins credential 'telegram-bot-token' 사용).
+        success {
+            echo "[mal] deployed ✔"
+            sshagent(credentials: ['service-ssh']) {
+                sh """
+                    ssh \$DEPLOY_HOST 'set +e; . /srv/stack/.env 2>/dev/null; [ -n "\$TELEGRAM_BOT_TOKEN" ] && [ -n "\$TELEGRAM_CHAT_ID" ] || exit 0; curl -sS --max-time 10 -d "chat_id=\$TELEGRAM_CHAT_ID" -d "parse_mode=Markdown" --data-urlencode "text=✅ *mal* Jenkins #${env.BUILD_NUMBER} 배포 완료 (${env.BUILD_URL})" "https://api.telegram.org/bot\$TELEGRAM_BOT_TOKEN/sendMessage" > /dev/null' || true
+                """
+            }
+        }
         failure {
             echo "[mal] FAILED"
-            // Telegram 알림 — credentials 'telegram-bot-token' / 'telegram-chat-id' 등록 필요.
-            // 미등록 시 stage 자체는 silent skip 으로 빌드 결과 변경 X (이미 failure 상태).
-            script {
-                try {
-                    withCredentials([
-                        string(credentialsId: 'telegram-bot-token', variable: 'TG_TOKEN'),
-                        string(credentialsId: 'telegram-chat-id', variable: 'TG_CHAT'),
-                    ]) {
-                        sh '''
-                            MSG="🚨 *mal* build #${BUILD_NUMBER} FAILED\\n${BUILD_URL}"
-                            curl -fsS --max-time 10 -X POST \
-                                "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
-                                -H "Content-Type: application/json" \
-                                -d "{\\"chat_id\\":\\"${TG_CHAT}\\",\\"text\\":\\"${MSG}\\",\\"parse_mode\\":\\"Markdown\\"}" \
-                                || echo "[warn] telegram notify failed"
-                        '''
-                    }
-                } catch (err) {
-                    echo "[warn] telegram credentials not configured — skipping alert"
-                }
+            sshagent(credentials: ['service-ssh']) {
+                sh """
+                    ssh \$DEPLOY_HOST 'set +e; . /srv/stack/.env 2>/dev/null; [ -n "\$TELEGRAM_BOT_TOKEN" ] && [ -n "\$TELEGRAM_CHAT_ID" ] || exit 0; curl -sS --max-time 10 -d "chat_id=\$TELEGRAM_CHAT_ID" -d "parse_mode=Markdown" --data-urlencode "text=🚨 *mal* Jenkins #${env.BUILD_NUMBER} 빌드 실패 (${env.BUILD_URL})" "https://api.telegram.org/bot\$TELEGRAM_BOT_TOKEN/sendMessage" > /dev/null' || true
+                """
             }
         }
     }

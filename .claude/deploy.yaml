@@ -1,0 +1,15 @@
+# /deploy mapping for mal (single Jenkinsfile)
+#
+#   /deploy          → mal-web + mal-crawler (둘 다 한 잡에서 배포)
+#   /deploy web      → 같은 잡
+#   /deploy crawler  → 같은 잡
+#
+# COMPOSE_SERVICES (Jenkinsfile): mal-web mal-crawler
+services:
+  web:
+    job: mal
+  crawler:
+    job: mal
+
+project: mal
+repo: silversik/mal
