@@ -144,7 +144,7 @@ KRA 경마 데이터 웹앱(`/Users/esik/Documents/mal`)에 가상화폐 P 기�
 
 ### 운영 환경
 - 운영 DB 스키마는 `mal` (NOT `public`)
-- 운영 호스트: SSH `mal-prod` (49.50.138.31)
+- 운영 호스트: SSH `server` (49.50.138.31)
 - 컨테이너: `mal-web` (포트 4000), `mal-crawler`, `stack-db`
 - 배포: Jenkins (`Jenkinsfile`) 자동 빌드·배포
 
