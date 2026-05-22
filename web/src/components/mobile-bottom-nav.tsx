@@ -65,7 +65,6 @@ const PRIMARY_ITEMS: NavItem[] = [
 ];
 
 const MORE_ITEMS = [
-  { href: "/board", label: "커뮤니티" },
   { href: "/notifications", label: "알림" },
   { href: "/me", label: "마이페이지" },
 ];

@@ -65,6 +65,8 @@ import {
 import { RatingSparkline } from "@/components/rating-sparkline";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
 import { getVideosForRaces, raceKey } from "@/lib/videos";
+import { Suspense } from "react";
+import { CommentSection } from "@/components/comment-section";
 
 // generateMetadata 와 페이지 본체가 같은 horse_no 를 두 번 호출하므로 cache 로 한 번만 실행.
 const fetchHorse = cache(getHorseByNo);
@@ -319,6 +321,9 @@ export default async function HorseDetailPage({
               </CardContent>
             </Card>
           )}
+          <Suspense fallback={null}>
+            <CommentSection entityType="horse" entityId={horse_no} entityName={horse.horse_name} />
+          </Suspense>
         </aside>
       </div>
     </main>

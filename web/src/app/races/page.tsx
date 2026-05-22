@@ -62,6 +62,8 @@ import {
   type HorseCompareSummary,
 } from "@/lib/horses";
 import { getRaceCorner } from "@/lib/race_corners";
+import { Suspense } from "react";
+import { CommentSection } from "@/components/comment-section";
 
 import { BetForm } from "./bet-form";
 
@@ -860,6 +862,14 @@ export default async function RacesPage({
           {comboDividends.length > 0 && (
             <ComboDividendsSection rows={comboDividends} />
           )}
+
+          <Suspense fallback={null}>
+            <CommentSection
+              entityType="race"
+              entityId={`${currentDate}_${selectedRace.meet}_${selectedRace.race_no}`}
+              entityName={`${currentDate} ${selectedRace.meet} ${selectedRace.race_no}R`}
+            />
+          </Suspense>
         </section>
       )}
     </main>

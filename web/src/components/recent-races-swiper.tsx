@@ -204,21 +204,12 @@ function MeetSwiper({
 
   return (
     <div>
-      {/* meet 이름·카운트는 상위 탭바에 노출. 여기는 데스크탑 화살표만. */}
-      {races.length > 0 && (
-        <div className="mb-2 hidden justify-end gap-1 sm:flex">
-          <SwiperArrow direction="prev" disabled={!canPrev} onClick={() => scrollByPage(-1)} />
-          <SwiperArrow direction="next" disabled={!canNext} onClick={() => scrollByPage(1)} />
-        </div>
-      )}
-
       {races.length === 0 ? (
         <div className="rounded-lg border border-dashed border-primary/10 py-6 text-center text-xs text-slate-grey">
           최근 경기가 없습니다.
         </div>
       ) : (
         <div className="relative">
-          {/* 모바일 화살표 — 카드 위 오버레이 */}
           <SwiperOverlayArrow
             direction="prev"
             visible={canPrev}
@@ -278,40 +269,6 @@ function MeetSwiper({
 
 /* ── 화살표 버튼 ──────────────────── */
 
-function SwiperArrow({
-  direction,
-  disabled,
-  onClick,
-}: {
-  direction: "prev" | "next";
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={direction === "prev" ? "이전" : "다음"}
-      className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/15 bg-white text-primary transition hover:border-primary/40 hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-primary"
-    >
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        {direction === "prev" ? <polyline points="15 18 9 12 15 6" /> : <polyline points="9 18 15 12 9 6" />}
-      </svg>
-    </button>
-  );
-}
-
 function SwiperOverlayArrow({
   direction,
   visible,
@@ -328,7 +285,7 @@ function SwiperOverlayArrow({
       aria-label={direction === "prev" ? "이전" : "다음"}
       tabIndex={visible ? 0 : -1}
       aria-hidden={!visible}
-      className={`absolute top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white shadow-md backdrop-blur-sm transition-opacity sm:hidden ${
+      className={`absolute top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-primary/15 bg-white/90 text-primary shadow-md backdrop-blur-sm transition-all hover:bg-primary hover:text-white ${
         direction === "prev" ? "left-1" : "right-1"
       } ${visible ? "opacity-100" : "pointer-events-none opacity-0"}`}
     >

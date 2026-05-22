@@ -20,7 +20,6 @@ const ANALYSIS_PATHS = ["/analysis", "/rankings", "/records", "/compare"] as con
 const NAV_ITEMS = [
   { href: "/races", label: "경기", paths: ["/races"] },
   { href: "/database", label: "데이터베이스", paths: DATABASE_PATHS },
-  { href: "/board", label: "커뮤니티", paths: ["/board"] },
   { href: "/analysis", label: "분석", paths: ANALYSIS_PATHS },
 ];
 

@@ -4,7 +4,6 @@ import Script from "next/script";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Toaster } from "sonner";
 import { Navbar } from "@/components/navbar";
-import { FloatingChat } from "@/components/floating-chat";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { HorseMarkSymbolDefs } from "@/components/brand/logo";
 import { SiteJsonLd } from "@/components/seo/site-jsonld";
@@ -93,7 +92,6 @@ export default function RootLayout({
           {children}
         </main>
         <MobileBottomNav />
-        <FloatingChat />
         <Toaster position="top-center" richColors />
       </body>
       <GoogleAnalytics gaId="G-N9EQPNFPR7" />

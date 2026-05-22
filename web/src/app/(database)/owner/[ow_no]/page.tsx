@@ -19,6 +19,8 @@ import {
 } from "@/lib/owners";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
 import { BackButton } from "@/components/back-button";
+import { Suspense } from "react";
+import { CommentSection } from "@/components/comment-section";
 
 const fetchOwner = cache(getOwnerByNo);
 
@@ -68,59 +70,67 @@ export default async function OwnerDetailPage({
       </div>
       <OwnerProfileCard owner={owner} />
 
-      <section className="mt-10">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          보유마{" "}
-          <span className="ml-1 text-xs font-normal text-muted-foreground">
-            ({horses.length}두)
-          </span>
-        </h2>
-        {horses.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              보유마 데이터가 아직 적재되지 않았습니다.
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>마명</TableHead>
-                  <TableHead>성별</TableHead>
-                  <TableHead>생년월일</TableHead>
-                  <TableHead className="text-right">출전</TableHead>
-                  <TableHead className="text-right">1착</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {horses.map((h) => (
-                  <TableRow key={h.horse_no}>
-                    <TableCell>
-                      <Link
-                        href={`/horse/${h.horse_no}`}
-                        className="text-primary hover:underline"
-                      >
-                        {h.horse_name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{h.sex ?? "-"}</TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {h.birth_date ?? "-"}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {h.total_race_count}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums text-primary">
-                      {h.first_place_count}
-                    </TableCell>
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+        <section>
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            보유마{" "}
+            <span className="ml-1 text-xs font-normal text-muted-foreground">
+              ({horses.length}두)
+            </span>
+          </h2>
+          {horses.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                보유마 데이터가 아직 적재되지 않았습니다.
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>마명</TableHead>
+                    <TableHead>성별</TableHead>
+                    <TableHead>생년월일</TableHead>
+                    <TableHead className="text-right">출전</TableHead>
+                    <TableHead className="text-right">1착</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-        )}
-      </section>
+                </TableHeader>
+                <TableBody>
+                  {horses.map((h) => (
+                    <TableRow key={h.horse_no}>
+                      <TableCell>
+                        <Link
+                          href={`/horse/${h.horse_no}`}
+                          className="text-primary hover:underline"
+                        >
+                          {h.horse_name}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{h.sex ?? "-"}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {h.birth_date ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {h.total_race_count}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-primary">
+                        {h.first_place_count}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          )}
+        </section>
+
+        <aside>
+          <Suspense fallback={null}>
+            <CommentSection entityType="owner" entityId={ow_no} entityName={`${owner.ow_name} 마주`} />
+          </Suspense>
+        </aside>
+      </div>
     </div>
   );
 }
