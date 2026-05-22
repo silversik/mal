@@ -4,11 +4,9 @@ import Link from "next/link";
 import { HorseMark } from "@/components/brand/logo";
 import { coatBodyHex, coatBgHex } from "@/lib/coat";
 import { VenueIcon } from "@/components/venue-icon";
-import { HeroTodayCarousel, type HeroMeetData } from "@/components/hero-today-carousel";
 import { EmptyState } from "@/components/empty-state";
 import { WinRateBar } from "@/components/win-rate-bar";
 import { RecentRacesSwiper } from "@/components/recent-races-swiper";
-import { Badge } from "@/components/ui/badge";
 import { type RecentWinner } from "@/lib/horses";
 import { type Jockey } from "@/lib/jockeys";
 import { type RaceInfo } from "@/lib/races";
@@ -18,7 +16,6 @@ import { getRecentComments } from "@/lib/comments";
 import {
   cachedAllJockeys,
   cachedNextRaceDayRaces,
-  cachedRaceDayCard,
   cachedRecentRaceDaysRaces,
   cachedRecentTopFinishers,
   cachedRecentWinners,
@@ -57,8 +54,8 @@ function isStakesRace(r: RaceInfo): boolean {
 export default function Home() {
   const todayDate = todayKST();
   return (
-    <div className="min-h-screen">
-      <Suspense fallback={<HeroSkeleton todayDate={todayDate} />}>
+    <div className="theme-v2 min-h-screen bg-[#fbfbf9]">
+      <Suspense fallback={<HeroSkeleton />}>
         <HeroSection todayDate={todayDate} />
       </Suspense>
 
@@ -99,126 +96,157 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
   // 같은 KST 날짜의 모든 경기 결과가 적재됐으면 그 날 전체를 "종료"로 본다.
   const nextDayAllFinished =
     nextDayRaces.length > 0 && nextDayRaces.every((r) => r.has_results);
-  const nextStatus = nextRaceRef
-    ? getRaceStatus({ ...nextRaceRef, has_results: nextDayAllFinished })
-    : null;
-
-  // 오늘 경기가 있으면 배너에 출전표 슬라이드를 노출. 그 외(미래 일정/대상경주 fallback)는
-  // 기존의 banner card 그대로.
   const isRaceToday = nextRaceDate === todayDate;
 
-  if (isRaceToday) {
-    const todayMeets = MEET_ORDER.filter((m) => nextDayRaces.some((r) => r.meet === m));
-    const todayCards: HeroMeetData[] = await Promise.all(
-      todayMeets.map(async (meet) => {
-        const c = await cachedRaceDayCard(todayDate, meet);
-        return {
-          meet,
-          phase: c.phase,
-          races: nextDayRaces.filter((r) => r.meet === meet),
-          byRace: Object.fromEntries(c.byRace),
-        };
-      }),
-    );
-
-    return (
-      <section className="relative overflow-hidden border-b border-primary/5 bg-primary px-6 py-10 md:py-12 text-white">
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/carbon-fibre.png")' }}></div>
-        <div className="relative mx-auto max-w-6xl">
-          <div className="mb-6">
-            <Badge variant="outline" className="mb-3 border-champagne-gold text-champagne-gold">
-              {nextDayAllFinished ? "TODAY" : "LIVE"} · 오늘의 경주 · {todayDate}
-            </Badge>
-            <h1 className="font-serif text-2xl font-bold tracking-tight text-sand-ivory md:text-4xl">
-              오늘의 경주
-            </h1>
-          </div>
-
-          <HeroTodayCarousel date={todayDate} meets={todayCards} />
-        </div>
-      </section>
-    );
-  }
-
+  // featured 경주: 대상경주 우선, 없으면 미트별 대표 1경주.
   const detectedStakes = nextDayRaces.filter(isStakesRace);
   const featureRaces =
     detectedStakes.length > 0
-      ? detectedStakes
-      : MEET_ORDER.flatMap((meet) => {
-          const meetRaces = nextDayRaces
+      ? detectedStakes.slice(0, 4)
+      : MEET_ORDER.flatMap((meet) =>
+          nextDayRaces
             .filter((r) => r.meet === meet)
-            .sort((a, b) => b.race_no - a.race_no);
-          return meetRaces.slice(0, 1);
-        });
+            .sort((a, b) => b.race_no - a.race_no)
+            .slice(0, 1),
+        );
 
   const useStakesFallback = featureRaces.length === 0 && upcomingStakes.length > 0;
   const fallbackDate = useStakesFallback ? upcomingStakes[0].race_date : null;
   const fallbackStakes = useStakesFallback
-    ? upcomingStakes.filter((s) => s.race_date === fallbackDate)
+    ? upcomingStakes.filter((s) => s.race_date === fallbackDate).slice(0, 4)
     : [];
+  const heroDate = nextRaceDate ?? fallbackDate ?? todayDate;
 
-  const heroDate = nextRaceDate ?? fallbackDate;
-  // fallback(=race_plans 미래 대상경주)는 결과가 있을 수 없으므로 has_results=false.
-  const heroStatus = heroDate
-    ? getRaceStatus({ race_date: heroDate, has_results: nextDayAllFinished })
-    : null;
-  const nextDayHref = heroDate
-    ? `/races?date=${heroDate}`
-    : `/races?date=${todayDate}`;
+  const label = isRaceToday
+    ? nextDayAllFinished
+      ? "오늘 · 종료"
+      : "LIVE · 오늘"
+    : useStakesFallback
+      ? "UPCOMING"
+      : "NEXT";
+  const title = isRaceToday
+    ? "오늘의 핵심"
+    : useStakesFallback
+      ? "다가오는 대상경주"
+      : "다음 진행 예정 경기";
+  const moreHref = useStakesFallback ? "/races/schedule" : `/races?date=${heroDate}`;
+  const empty = featureRaces.length === 0 && !useStakesFallback;
 
   return (
-    <section className="relative overflow-hidden border-b border-primary/5 bg-primary px-6 py-10 md:py-16 text-white">
-      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/carbon-fibre.png")' }}></div>
-      <div className="relative mx-auto max-w-6xl">
-        <div>
-          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <Badge variant="outline" className="mb-3 border-champagne-gold text-champagne-gold">
-                {heroStatus === "진행중" ? "LIVE" : useStakesFallback ? "UPCOMING" : "NEXT"} · {heroDate ?? todayDate}
-              </Badge>
-              <h1 className="font-serif text-2xl font-bold tracking-tight text-sand-ivory md:text-4xl">
-                {nextStatus === "진행중"
-                  ? "진행중인 경기"
-                  : useStakesFallback
-                    ? "다가오는 대상경주"
-                    : "다음 진행 예정 경기"}
-              </h1>
+    <section className="border-b border-[#e7e7e2] bg-[#fbfbf9] px-5 py-8 md:py-12">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-6 flex items-end justify-between gap-4">
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#1f6b47]">
+              {label} · {heroDate}
             </div>
-            <Link
-              href={useStakesFallback ? "/races/schedule" : nextDayHref}
-              className="text-sm font-semibold text-champagne-gold transition hover:text-white"
-            >
-              더보기 &rarr;
-            </Link>
+            <h1 className="mt-1.5 text-2xl font-extrabold tracking-tight text-[#191a18] md:text-3xl">
+              {title}
+            </h1>
           </div>
-
-          {featureRaces.length === 0 && !useStakesFallback ? (
-            <EmptyState
-              title="예정된 경기가 없습니다."
-              description="경기 일정을 확인해 보세요."
-              variant="dark"
-            />
-          ) : useStakesFallback ? (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              {fallbackStakes.map((s) => (
-                <StakesPlanCard key={s.id} stake={s} />
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              {featureRaces.length === 1 ? (
-                <>
-                  <BannerRaceCard race={featureRaces[0]} />
-                  <HeroCommentPanel comments={heroComments} />
-                </>
-              ) : (
-                featureRaces.map((r) => <BannerRaceCard key={r.id} race={r} />)
-              )}
-            </div>
-          )}
+          <Link
+            href={moreHref}
+            className="shrink-0 text-sm font-semibold text-[#1f6b47] transition hover:underline"
+          >
+            더보기 &rarr;
+          </Link>
         </div>
+
+        {empty ? (
+          <EmptyState
+            title="예정된 경기가 없습니다."
+            description="경기 일정을 확인해 보세요."
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {useStakesFallback
+                ? fallbackStakes.map((s) => <HeroStakeCard key={s.id} stake={s} />)
+                : featureRaces.map((r) => <HeroFeatureCard key={r.id} race={r} />)}
+            </div>
+            <HeroCommentPanel comments={heroComments} />
+          </div>
+        )}
       </div>
     </section>
+  );
+}
+
+/* ── Hero feature/stake 카드 (페이퍼 네이티브) ───────────── */
+
+function HeroMetaItem({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="flex items-baseline gap-1">
+      <span className="text-[10px] uppercase tracking-wide text-[#9b9e99]">{label}</span>
+      <span className="font-mono text-sm font-semibold tabular-nums text-[#191a18]">{value}</span>
+    </span>
+  );
+}
+
+function HeroFeatureCard({ race }: { race: RaceInfo }) {
+  const status = getRaceStatus(race);
+  const stakes = isStakesRace(race);
+  const href = `/races?date=${race.race_date}&venue=${encodeURIComponent(race.meet)}&race=${race.race_no}`;
+  const statusCls =
+    status === "진행중"
+      ? "bg-[#1f6b47] text-white"
+      : status === "예정"
+        ? "border border-[#1f6b47] text-[#1f6b47]"
+        : "bg-[#f1f1ed] text-[#6b6e6a]";
+  return (
+    <Link
+      href={href}
+      className="group block rounded-xl border border-[#e7e7e2] bg-white p-4 transition-all hover:border-[#1f6b47]/50 hover:shadow-sm"
+    >
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-[#191a18]">
+          <VenueIcon meet={race.meet} size={16} />
+          <span className="text-sm font-semibold">{race.meet}</span>
+        </div>
+        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusCls}`}>
+          {status}
+        </span>
+      </div>
+      <h3
+        className={`text-base font-bold ${stakes ? "text-[#1f6b47]" : "text-[#191a18] group-hover:text-[#1f6b47]"}`}
+      >
+        {race.race_name ?? `${race.race_no}R 메인 경주`}
+      </h3>
+      <div className="mt-3 flex items-center gap-4 border-t border-dashed border-[#e7e7e2] pt-3">
+        <HeroMetaItem label="R" value={`${race.race_no}`} />
+        {race.start_time && <HeroMetaItem label="출발" value={race.start_time} />}
+        <HeroMetaItem label="출주" value={`${race.entry_count ?? "-"}두`} />
+      </div>
+    </Link>
+  );
+}
+
+function HeroStakeCard({ stake }: { stake: UpcomingStake }) {
+  const displayName = stake.race_name.replace(/\s*\((G[123]|L|특)\)\s*/g, "").trim();
+  const tierBadge = stake.tier ?? (stake.grade === "대상" ? "대상" : null);
+  return (
+    <Link
+      href={`/races?date=${stake.race_date}`}
+      className="group block rounded-xl border border-[#e7e7e2] bg-white p-4 transition-all hover:border-[#1f6b47]/50 hover:shadow-sm"
+    >
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-[#191a18]">
+          <VenueIcon meet={stake.meet} size={16} />
+          <span className="text-sm font-semibold">{stake.meet}</span>
+        </div>
+        {tierBadge && (
+          <span className="rounded-full border border-[#1f6b47] px-2 py-0.5 text-[11px] font-semibold text-[#1f6b47]">
+            {tierBadge}
+          </span>
+        )}
+      </div>
+      <h3 className="text-base font-bold text-[#1f6b47]">{displayName}</h3>
+      <div className="mt-3 flex items-center gap-4 border-t border-dashed border-[#e7e7e2] pt-3">
+        <HeroMetaItem label="일자" value={stake.race_date} />
+        {stake.distance && <HeroMetaItem label="거리" value={`${stake.distance}m`} />}
+        {stake.age_cond && <HeroMetaItem label="조건" value={stake.age_cond} />}
+      </div>
+    </Link>
   );
 }
 
@@ -231,23 +259,22 @@ function HeroCommentPanel({
 }) {
   if (comments.length === 0) return null;
   return (
-    <div className="flex flex-col rounded-xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-      <div className="mb-3 flex items-center gap-1.5">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-champagne-gold/70"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-champagne-gold/70">최신 댓글</span>
+    <div className="flex flex-col rounded-xl border border-[#e7e7e2] bg-white p-4">
+      <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[#6b6e6a]">
+        최신 댓글
       </div>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1">
         {comments.slice(0, 5).map((c) => (
           <Link
             key={String(c.id)}
             href={c.entity_href}
-            className="flex flex-col gap-0.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 transition-all hover:border-champagne-gold/30 hover:bg-white/[0.09]"
+            className="rounded-lg px-2.5 py-2 transition-colors hover:bg-[#f1f1ed]"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-[11px] font-semibold text-champagne-gold/90">{c.entity_name}</span>
-              <time className="shrink-0 text-[10px] tabular-nums text-white/35">{commentTimeAgo(c.created_at)}</time>
+              <span className="truncate text-[12px] font-semibold text-[#1f6b47]">{c.entity_name}</span>
+              <time className="shrink-0 font-mono text-[10px] tabular-nums text-[#6b6e6a]">{commentTimeAgo(c.created_at)}</time>
             </div>
-            <p className="line-clamp-1 text-[11px] text-white/60">{c.content}</p>
+            <p className="line-clamp-1 text-[12px] text-[#6b6e6a]">{c.content}</p>
           </Link>
         ))}
       </div>
@@ -350,22 +377,17 @@ async function TopJockeysSection() {
 
 /* ── Skeleton fallbacks ───────────────────────────────── */
 
-function HeroSkeleton({ todayDate }: { todayDate: string }) {
+function HeroSkeleton() {
   return (
-    <section className="relative overflow-hidden border-b border-primary/5 bg-primary px-6 py-10 md:py-16 text-white">
-      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/carbon-fibre.png")' }}></div>
-      <div className="relative mx-auto max-w-6xl">
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <div className="mb-3 inline-block rounded border border-champagne-gold/40 px-2 py-0.5 text-[10px] text-champagne-gold/70">
-              · {todayDate}
-            </div>
-            <div className="h-9 w-72 animate-pulse rounded bg-white/10 md:h-12 md:w-96" />
-          </div>
+    <section className="border-b border-[#e7e7e2] bg-[#fbfbf9] px-5 py-8 md:py-12">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-6">
+          <div className="h-3 w-40 animate-pulse rounded bg-[#e7e7e2]" />
+          <div className="mt-2 h-8 w-56 animate-pulse rounded bg-[#e7e7e2]" />
         </div>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          {[0, 1].map((i) => (
-            <div key={i} className="h-40 animate-pulse rounded-xl border border-white/10 bg-white/5" />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-32 animate-pulse rounded-xl border border-[#e7e7e2] bg-white" />
           ))}
         </div>
       </div>
@@ -455,95 +477,6 @@ function Section({
 }
 
 /* ── Cards ────────────────────────────────────────────── */
-
-const BANNER_STATUS_STYLE = {
-  종료: "bg-white/10 text-white/70 border-white/20",
-  진행중: "bg-champagne-gold/15 text-champagne-gold border-champagne-gold/40 animate-pulse",
-  예정: "bg-champagne-gold text-primary border-champagne-gold",
-} as const;
-
-function BannerRaceCard({ race }: { race: RaceInfo }) {
-  const status = getRaceStatus(race);
-  const stakes = isStakesRace(race);
-  const href = `/races?date=${race.race_date}&venue=${encodeURIComponent(race.meet)}&race=${race.race_no}`;
-  return (
-    <Link href={href}>
-      <div className="group cursor-pointer rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition-all hover:border-champagne-gold/50 hover:bg-white/10">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-champagne-gold">
-            <VenueIcon meet={race.meet} size={18} />
-            <span className="text-sm font-semibold">{race.meet}</span>
-          </div>
-          <Badge variant="outline" className={`border ${BANNER_STATUS_STYLE[status]}`}>
-            {status}
-          </Badge>
-        </div>
-        <h3 className={`mb-2 text-xl font-bold transition-colors ${stakes ? "text-champagne-gold" : "text-sand-ivory group-hover:text-champagne-gold"}`}>
-          {race.race_name ?? `${race.race_no}R 메인 경주`}
-        </h3>
-        <div className="mt-4 flex items-center justify-between border-t border-dashed border-white/10 pt-4">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-bold uppercase text-white/50">Race</span>
-            <span className="text-sm font-semibold text-white">{race.race_no}R</span>
-          </div>
-          {race.start_time && (
-            <div className="flex flex-col text-center">
-              <span className="text-[10px] font-bold uppercase text-white/50">Start</span>
-              <span className="font-mono text-sm font-semibold tabular-nums text-white">{race.start_time}</span>
-            </div>
-          )}
-          <div className="flex flex-col text-right">
-            <span className="text-[10px] font-bold uppercase text-white/50">Entries</span>
-            <span className="text-sm font-semibold text-white">{race.entry_count ?? "-"}두</span>
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-function StakesPlanCard({ stake }: { stake: UpcomingStake }) {
-  const displayName = stake.race_name.replace(/\s*\((G[123]|L|특)\)\s*/g, "").trim();
-  const tierBadge = stake.tier ?? (stake.grade === "대상" ? "대상" : null);
-  return (
-    <Link href={`/races?date=${stake.race_date}`}>
-      <div className="group cursor-pointer rounded-xl border border-champagne-gold/30 bg-white/5 p-6 backdrop-blur-sm transition-all hover:border-champagne-gold/60 hover:bg-white/10">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-champagne-gold">
-            <VenueIcon meet={stake.meet} size={18} />
-            <span className="text-sm font-semibold">{stake.meet}</span>
-          </div>
-          {tierBadge && (
-            <Badge variant="outline" className="border border-champagne-gold/60 bg-champagne-gold/15 text-champagne-gold">
-              {tierBadge}
-            </Badge>
-          )}
-        </div>
-        <h3 className="mb-2 text-xl font-bold text-champagne-gold transition-colors">
-          {displayName}
-        </h3>
-        <div className="mt-4 flex items-center justify-between border-t border-dashed border-white/10 pt-4">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-bold uppercase text-white/50">Date</span>
-            <span className="font-mono text-sm font-semibold tabular-nums text-white">{stake.race_date}</span>
-          </div>
-          {stake.distance && (
-            <div className="flex flex-col text-center">
-              <span className="text-[10px] font-bold uppercase text-white/50">Dist</span>
-              <span className="font-mono text-sm font-semibold tabular-nums text-white">{stake.distance}m</span>
-            </div>
-          )}
-          {stake.age_cond && (
-            <div className="flex flex-col text-right">
-              <span className="text-[10px] font-bold uppercase text-white/50">Age</span>
-              <span className="text-sm font-semibold text-white">{stake.age_cond}</span>
-            </div>
-          )}
-        </div>
-      </div>
-    </Link>
-  );
-}
 
 const RANK_BADGE_STYLE: Record<number, string> = {
   1: "bg-champagne-gold text-primary",

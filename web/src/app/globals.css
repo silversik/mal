@@ -1,4 +1,5 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+@import url("https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@latest/packages/wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.min.css");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -96,6 +97,35 @@
   --primary-foreground: #1d334e;
   --secondary: #2b4b73;
   --secondary-foreground: #fdea9a;
+}
+
+/* ── Design refresh v2 (strangler-fig) — 적용 범위에만 스코프.
+   토큰을 지역 재정의해 기존 마크업이 새 팔레트(페이퍼·터프그린·Wanted Sans)를
+   상속하도록 한다. 라이트 카드 위 텍스트(섹션)는 ink/green 으로 대비 양호.
+   어두운 배너가 필요한 hero 는 마크업에서 페이퍼 네이티브로 별도 작성. */
+.theme-v2 {
+  --background: #fbfbf9;
+  --card: #ffffff;
+  --muted: #f1f1ed;
+  --muted-foreground: #6b6e6a;
+  --border: #e7e7e2;
+  --primary: #191a18;
+  --primary-foreground: #ffffff;
+  --secondary: #1f6b47;
+  --secondary-foreground: #ffffff;
+  --accent: #1f6b47;
+  --accent-foreground: #ffffff;
+  --ring: #1f6b47;
+  --color-primary: #191a18;
+  --color-champagne-gold: #1f6b47;
+  --color-sand-ivory: #f4f4f0;
+  --color-slate-grey: #6b6e6a;
+  --color-navy: #191a18;
+  font-family: "Wanted Sans Variable", "Pretendard Variable", sans-serif;
+}
+.theme-v2 .font-serif,
+.theme-v2 :is(h1, h2, h3, h4, h5, h6) {
+  font-family: "Wanted Sans Variable", "Pretendard Variable", sans-serif;
 }
 
 @layer base {
