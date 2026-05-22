@@ -57,7 +57,7 @@ export default async function NewsPage({
   const pageItems = feed.slice(start, start + PAGE_SIZE);
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-6 py-10">
+    <main className="theme-v2 mx-auto w-full max-w-4xl px-6 py-10">
       <h1 className="mb-6 text-3xl font-bold tracking-tight">뉴스</h1>
 
       {pageItems.length === 0 ? (

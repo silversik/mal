@@ -278,7 +278,7 @@ export default async function RacesPage({
   const nextDate = findNearbyRaceDate(raceDates, currentDate, "next");
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-8">
+    <main className="theme-v2 mx-auto w-full max-w-7xl px-4 py-8">
       <div className="mb-5 flex items-baseline justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight">경기 일람</h1>
         <Link

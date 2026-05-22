@@ -15,7 +15,7 @@ export default async function LoginPage() {
   if (session) redirect("/");
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col items-center px-6 py-16">
+    <div className="theme-v2 mx-auto flex w-full max-w-md flex-col items-center px-6 py-16">
       <h1 className="font-serif text-3xl font-bold tracking-tight text-primary">
         mal.kr 시작하기
       </h1>
