@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   canonicalComboKey,
   comboCount,
+  comboCountBound,
   enumerateCombos,
 } from "../bet_combinations";
 
@@ -139,5 +140,47 @@ describe("canonicalComboKey", () => {
 
   it("WIN 단일 [3] → '3'", () => {
     expect(canonicalComboKey("WIN", [3])).toBe("3");
+  });
+});
+
+describe("comboCountBound — enumerate 없는 조합 수 상한 (DoS 가드)", () => {
+  it("STRAIGHT → 1", () => {
+    expect(
+      comboCountBound("TLA", { kind: "STRAIGHT", horses: [1, 2, 3] }),
+    ).toBe(1);
+  });
+
+  it("BOX 정확값 = comboCount (QNL N=4 → C(4,2)=6)", () => {
+    const sel = { kind: "BOX" as const, horses: [1, 2, 3, 4] };
+    expect(comboCountBound("QNL", sel)).toBe(comboCount("QNL", sel));
+    expect(comboCountBound("QNL", sel)).toBe(6);
+  });
+
+  it("BOX EXA N=4 → P(4,2)=12 (ordered)", () => {
+    expect(
+      comboCountBound("EXA", { kind: "BOX", horses: [1, 2, 3, 4] }),
+    ).toBe(12);
+  });
+
+  it("BOX TRI N=5 → C(5,3)=10", () => {
+    expect(
+      comboCountBound("TRI", { kind: "BOX", horses: [1, 2, 3, 4, 5] }),
+    ).toBe(10);
+  });
+
+  it("BOX TLA 99두 → P(99,3)=941094 (1000 한도 초과 = enumerate 전 차단)", () => {
+    const horses = Array.from({ length: 99 }, (_, i) => i + 1);
+    const sel = { kind: "BOX" as const, horses };
+    expect(comboCountBound("TLA", sel)).toBe(99 * 98 * 97);
+    expect(comboCountBound("TLA", sel)).toBeGreaterThan(1000);
+  });
+
+  it("FORMATION 상한 = 슬롯 길이 곱(중복 제거 전)", () => {
+    expect(
+      comboCountBound("TLA", {
+        kind: "FORMATION",
+        slots: [[1], [3, 5, 7], [3, 5, 7]],
+      }),
+    ).toBe(9);
   });
 });

@@ -3,12 +3,11 @@
 
 import { query } from "./db";
 import { withTransaction } from "./db_tx";
+import { applyDelta } from "./balances";
 import {
-  applyDelta,
-  getDailyBetTotalP,
-} from "./balances";
-import {
+  comboCountBound,
   enumerateCombos,
+  validateSelection,
   SLOTS,
   type BetKind,
   type BetPool,
@@ -19,6 +18,8 @@ import {
 export const MAX_PER_TICKET_P = BigInt(100_000); // 1매 ≤ 10만P
 export const MAX_DAILY_P = BigInt(750_000); // 1일 ≤ 75만P
 export const MIN_UNIT_P = BigInt(100); // 단위 100P
+// 유효 티켓의 최대 조합 수(=1매한도/단위). 초과 조합은 어차피 거부 → enumerate 전 차단.
+export const MAX_COMBOS_PER_TICKET = Number(MAX_PER_TICKET_P / MIN_UNIT_P); // 1000
 
 export type BetStatus = "PENDING" | "SETTLED_HIT" | "SETTLED_MISS" | "VOID";
 
@@ -146,9 +147,13 @@ export async function placeBet(
     return { ok: false, error: "UNIT_INVALID" };
   }
 
-  // 2. 조합 enumerate (입력 검증 포함)
+  // 2. 입력 검증 + 조합 수 상한 (enumerate 전 DoS 가드 — 메모리 폭발 차단)
   let combos: number[][];
   try {
+    validateSelection(input.pool, input.selection);
+    if (comboCountBound(input.pool, input.selection) > MAX_COMBOS_PER_TICKET) {
+      return { ok: false, error: "TICKET_LIMIT_EXCEEDED" };
+    }
     combos = enumerateCombos(input.pool, input.selection);
   } catch (e) {
     return {
@@ -188,17 +193,8 @@ export async function placeBet(
     }
   }
 
-  // 7. 1일 한도 (KST 기준 오늘)
-  const todayRows = await query<{ today: string }>(
-    `SELECT to_char((NOW() AT TIME ZONE 'Asia/Seoul')::date, 'YYYY-MM-DD') AS today`,
-  );
-  const today = todayRows[0].today;
-  const dailyTotal = await getDailyBetTotalP(userId, today);
-  if (dailyTotal + total > MAX_DAILY_P) {
-    return { ok: false, error: "DAILY_LIMIT_EXCEEDED" };
-  }
-
-  // 8. 트랜잭션: bets insert → bet_selections bulk insert → 잔액 차감 + tx 원장
+  // 7. 트랜잭션: 사용자별 advisory lock → 일일 한도 재확인(TOCTOU 방지)
+  //    → bets insert → bet_selections bulk insert → 잔액 차감 + tx 원장
   const slotsCount = SLOTS[input.pool];
   let formationMeta: object | null = null;
   if (input.selection.kind === "FORMATION") {
@@ -209,6 +205,23 @@ export async function placeBet(
 
   try {
     return await withTransaction(async (c) => {
+      // 동시 베팅 직렬화 — 일일 한도 검사~INSERT 사이 TOCTOU 차단.
+      await c.query(`SELECT pg_advisory_xact_lock($1::bigint)`, [userId]);
+
+      // 일일 한도 (KST 오늘) — 잠금 후 트랜잭션 내에서 읽어 정확.
+      const dailyRows = await c.query<{ daily_total: string }>(
+        `SELECT COALESCE(SUM(total_amount_p), 0)::text AS daily_total
+           FROM bets
+          WHERE user_id = $1::bigint
+            AND status <> 'VOID'
+            AND ((placed_at AT TIME ZONE 'Asia/Seoul')::date)
+                = (NOW() AT TIME ZONE 'Asia/Seoul')::date`,
+        [userId],
+      );
+      if (BigInt(dailyRows.rows[0].daily_total) + total > MAX_DAILY_P) {
+        throw new Error("DAILY_LIMIT_EXCEEDED");
+      }
+
       // bets 행 먼저 생성 — id 받아서 idem_key 로 사용.
       const betRows = await c.query<{ id: string }>(
         `INSERT INTO bets
@@ -279,6 +292,9 @@ export async function placeBet(
   } catch (e: unknown) {
     if (e instanceof Error && e.message === "INSUFFICIENT_FUNDS") {
       return { ok: false, error: "INSUFFICIENT_FUNDS" };
+    }
+    if (e instanceof Error && e.message === "DAILY_LIMIT_EXCEEDED") {
+      return { ok: false, error: "DAILY_LIMIT_EXCEEDED" };
     }
     throw e;
   }

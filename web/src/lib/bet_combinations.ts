@@ -169,3 +169,22 @@ export function canonicalComboKey(pool: BetPool, combo: number[]): string {
 export function comboCount(pool: BetPool, sel: SelectionInput): number {
   return enumerateCombos(pool, sel).length;
 }
+
+// enumerate 없이 조합 수 상한 계산 (DoS 가드 — 큰 입력을 메모리 폭발 전에 거부).
+//   STRAIGHT/BOX: 정확. FORMATION: 슬롯 길이 곱(중복 제거 전 상한).
+// 호출 전 validateSelection 으로 슬롯/중복 검증 가정.
+export function comboCountBound(pool: BetPool, sel: SelectionInput): number {
+  const slots = SLOTS[pool];
+  if (sel.kind === "STRAIGHT") return 1;
+  if (sel.kind === "BOX") {
+    return countBoxCombos(sel.horses.length, slots, ORDERED[pool]);
+  }
+  return sel.slots.reduce((acc, s) => acc * s.length, 1);
+}
+
+function countBoxCombos(n: number, slots: 1 | 2 | 3, ordered: boolean): number {
+  if (n < slots) return 0;
+  if (slots === 1) return n;
+  if (slots === 2) return ordered ? n * (n - 1) : (n * (n - 1)) / 2;
+  return ordered ? n * (n - 1) * (n - 2) : (n * (n - 1) * (n - 2)) / 6;
+}
