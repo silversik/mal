@@ -27,7 +27,7 @@ export default async function NotificationsPage() {
   const unread = items.filter((n) => !n.read_at).length;
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-12">
+    <main className="theme-v2 mx-auto w-full max-w-3xl px-6 py-12">
       <div className="mb-6 flex items-end justify-between gap-4">
         <h1 className="text-2xl font-bold tracking-tight">
           알림

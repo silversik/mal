@@ -6,7 +6,7 @@ export default function AnalysisLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 md:px-6 md:py-8">
+    <div className="theme-v2 mx-auto w-full max-w-7xl px-4 py-6 md:px-6 md:py-8">
       <header className="mb-5">
         <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
           분석 대시보드
