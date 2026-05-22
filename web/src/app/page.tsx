@@ -126,9 +126,12 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/carbon-fibre.png")' }}></div>
         <div className="relative mx-auto max-w-6xl">
           <div className="mb-6">
-            <Badge variant="outline" className="border-champagne-gold text-champagne-gold">
+            <Badge variant="outline" className="mb-3 border-champagne-gold text-champagne-gold">
               {nextDayAllFinished ? "TODAY" : "LIVE"} · 오늘의 경주 · {todayDate}
             </Badge>
+            <h1 className="font-serif text-2xl font-bold tracking-tight text-sand-ivory md:text-4xl">
+              오늘의 경주
+            </h1>
           </div>
 
           <HeroTodayCarousel date={todayDate} meets={todayCards} />
