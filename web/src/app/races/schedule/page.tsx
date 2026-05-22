@@ -46,7 +46,7 @@ function tierBadge(tier: Tier | null) {
     tier === "G1"
       ? "bg-primary text-primary-foreground"
       : tier === "G2"
-        ? "bg-champagne-gold/80 text-foreground"
+        ? "bg-champagne-gold/80 text-secondary-foreground"
         : tier === "G3"
           ? "bg-champagne-gold/30 text-foreground"
           : "bg-muted text-muted-foreground";
