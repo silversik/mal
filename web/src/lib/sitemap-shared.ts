@@ -34,7 +34,7 @@ export async function getSitemapChunkCount(): Promise<number> {
 }
 
 export async function buildStaticAndSmallChunk(): Promise<SitemapUrl[]> {
-  const [jockeys, trainers, owners, posts] = await Promise.all([
+  const [jockeys, trainers, owners] = await Promise.all([
     query<{ jk_no: string; updated_at: string }>(
       `SELECT jk_no, to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
          FROM jockeys`,
@@ -46,13 +46,6 @@ export async function buildStaticAndSmallChunk(): Promise<SitemapUrl[]> {
     query<{ ow_no: string; updated_at: string }>(
       `SELECT ow_no, to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
          FROM owners`,
-    ),
-    query<{ id: number; updated_at: string }>(
-      `SELECT id::int AS id,
-              to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
-         FROM community_posts
-        ORDER BY id DESC
-        LIMIT 5000`,
     ),
   ]);
 
@@ -73,7 +66,6 @@ export async function buildStaticAndSmallChunk(): Promise<SitemapUrl[]> {
     { loc: `${SITE}/records`,        lastmod: now, changefreq: "weekly",  priority: 0.7 },
     { loc: `${SITE}/compare`,        lastmod: now, changefreq: "monthly", priority: 0.5 },
     { loc: `${SITE}/news`,           lastmod: now, changefreq: "daily",   priority: 0.6 },
-    { loc: `${SITE}/board`,          lastmod: now, changefreq: "hourly",  priority: 0.5 },
   ];
 
   return [
@@ -94,12 +86,6 @@ export async function buildStaticAndSmallChunk(): Promise<SitemapUrl[]> {
       loc: `${SITE}/owner/${o.ow_no}`,
       lastmod: o.updated_at,
       changefreq: "weekly" as const,
-      priority: 0.4,
-    })),
-    ...posts.map((p) => ({
-      loc: `${SITE}/board/${p.id}`,
-      lastmod: p.updated_at,
-      changefreq: "monthly" as const,
       priority: 0.4,
     })),
   ];

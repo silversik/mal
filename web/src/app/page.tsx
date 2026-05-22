@@ -14,6 +14,7 @@ import { type Jockey } from "@/lib/jockeys";
 import { type RaceInfo } from "@/lib/races";
 import { type UpcomingStake } from "@/lib/race_plans";
 import { raceKey } from "@/lib/videos";
+import { getRecentComments } from "@/lib/comments";
 import {
   cachedAllJockeys,
   cachedNextRaceDayRaces,
@@ -75,6 +76,10 @@ export default function Home() {
             <TopJockeysSection />
           </Suspense>
         </div>
+
+        <Suspense fallback={null}>
+          <RecentCommentsSection />
+        </Suspense>
       </main>
     </div>
   );
@@ -83,9 +88,10 @@ export default function Home() {
 /* ── Hero ────────────────────────────────────────────── */
 
 async function HeroSection({ todayDate }: { todayDate: string }) {
-  const [nextDayRaces, upcomingStakes] = await Promise.all([
+  const [nextDayRaces, upcomingStakes, heroComments] = await Promise.all([
     cachedNextRaceDayRaces(),
     cachedUpcomingStakes(6),
+    getRecentComments(6),
   ]);
 
   const nextRaceRef = nextDayRaces[0] ?? null;
@@ -197,14 +203,52 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              {featureRaces.map((r) => (
-                <BannerRaceCard key={r.id} race={r} />
-              ))}
+              {featureRaces.length === 1 ? (
+                <>
+                  <BannerRaceCard race={featureRaces[0]} />
+                  <HeroCommentPanel comments={heroComments} />
+                </>
+              ) : (
+                featureRaces.map((r) => <BannerRaceCard key={r.id} race={r} />)
+              )}
             </div>
           )}
         </div>
       </div>
     </section>
+  );
+}
+
+/* ── Hero 최신 댓글 패널 (오른쪽 열) ─────────────────── */
+
+function HeroCommentPanel({
+  comments,
+}: {
+  comments: Array<{ id: bigint | number | string; entity_href: string; entity_name: string; content: string; created_at: string; author_name: string | null }>;
+}) {
+  if (comments.length === 0) return null;
+  return (
+    <div className="flex flex-col rounded-xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+      <div className="mb-3 flex items-center gap-1.5">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-champagne-gold/70"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-champagne-gold/70">최신 댓글</span>
+      </div>
+      <div className="flex flex-col gap-2">
+        {comments.slice(0, 5).map((c) => (
+          <Link
+            key={String(c.id)}
+            href={c.entity_href}
+            className="flex flex-col gap-0.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 transition-all hover:border-champagne-gold/30 hover:bg-white/[0.09]"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate text-[11px] font-semibold text-champagne-gold/90">{c.entity_name}</span>
+              <time className="shrink-0 text-[10px] tabular-nums text-white/35">{commentTimeAgo(c.created_at)}</time>
+            </div>
+            <p className="line-clamp-1 text-[11px] text-white/60">{c.content}</p>
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -246,6 +290,40 @@ async function RecentWinnersSection() {
       <div className="space-y-2">
         {horses.map((h) => (
           <HorseRow key={h.horse_no} horse={h} />
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+/* ── 최신 댓글 ─────────────────────────────────────── */
+
+function commentTimeAgo(isoStr: string): string {
+  const now = new Date();
+  const diffMin = Math.floor((now.getTime() - new Date(isoStr).getTime()) / 60_000);
+  if (diffMin < 1) return "방금";
+  if (diffMin < 60) return `${diffMin}분 전`;
+  const h = Math.floor(diffMin / 60);
+  if (h < 24) return `${h}시간 전`;
+  return `${Math.floor(h / 24)}일 전`;
+}
+
+async function RecentCommentsSection() {
+  const comments = await getRecentComments(10);
+  if (comments.length === 0) return null;
+
+  return (
+    <Section title="최신 댓글" href="#" tier="l1">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {comments.map((c) => (
+          <Link key={c.id} href={c.entity_href} className="group block rounded-lg border border-primary/8 bg-white p-3 hover:border-secondary/50 hover:shadow-sm transition-all">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold truncate group-hover:text-primary transition-colors">{c.entity_name}</span>
+              <time className="shrink-0 text-[10px] text-muted-foreground tabular-nums">{commentTimeAgo(c.created_at)}</time>
+            </div>
+            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{c.content}</p>
+            <p className="mt-1 text-[10px] text-muted-foreground/60">{c.author_name ?? "알 수 없음"}</p>
+          </Link>
         ))}
       </div>
     </Section>

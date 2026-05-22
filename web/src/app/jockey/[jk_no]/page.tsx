@@ -27,6 +27,8 @@ import { RecentFormDots } from "@/components/recent-form-dots";
 import { JockeyTrainerCombos } from "@/components/jockey-trainer-combos";
 import { JockeyMonthlyChart } from "@/components/jockey-monthly-chart";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
+import { Suspense } from "react";
+import { CommentSection } from "@/components/comment-section";
 import {
   BreadCrumb,
   ProfileTag,
@@ -247,6 +249,9 @@ export default async function JockeyDetailPage({
               </CardContent>
             </Card>
           )}
+          <Suspense fallback={null}>
+            <CommentSection entityType="jockey" entityId={jk_no} entityName={`${jockey.jk_name} 기수`} />
+          </Suspense>
         </aside>
       </div>
     </main>
