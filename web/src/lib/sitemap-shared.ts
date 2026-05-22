@@ -51,7 +51,7 @@ export async function buildStaticAndSmallChunk(): Promise<SitemapUrl[]> {
 
   const now = new Date().toISOString();
 
-  // 정적 공개 페이지. 개인화·인증 경로(/me, /login, /notifications, /board/new) 제외.
+  // 정적 공개 페이지. 개인화·인증 경로(/me, /login, /notifications) 제외.
   const staticPages: SitemapUrl[] = [
     { loc: SITE,                     lastmod: now, changefreq: "daily",   priority: 1.0 },
     { loc: `${SITE}/races`,          lastmod: now, changefreq: "daily",   priority: 0.9 },

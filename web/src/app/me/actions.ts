@@ -27,9 +27,8 @@ export async function updateNicknameAction(formData: FormData) {
     redirect(`/me?error=${result.error}`);
   }
 
-  // 커뮤니티 목록/상세 모두 작성자 표기가 바뀌므로 재검증.
+  // 댓글 작성자 표기가 바뀌므로 홈/마이 재검증.
   revalidatePath("/me");
-  revalidatePath("/board");
   revalidatePath("/");
   redirect("/me?ok=1");
 }

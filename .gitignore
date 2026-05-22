@@ -3,6 +3,7 @@
 
 # Claude Code
 .claude/scheduled_tasks.lock
+web/.claude/
 
 # Environment
 .env
@@ -39,3 +40,4 @@ docker/pgdata/
 # IDE
 .idea/
 .vscode/
+.gstack/
