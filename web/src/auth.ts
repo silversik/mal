@@ -7,6 +7,7 @@ import Kakao from "next-auth/providers/kakao";
 
 import { grantSignupBonusIfNeeded } from "@/lib/balances";
 import { query } from "@/lib/db";
+import { withTransaction } from "@/lib/db_tx";
 
 // session.user.id 타입 확장
 declare module "next-auth" {
@@ -20,6 +21,48 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     userId?: string;
+  }
+}
+
+// 최초 로그인: users + user_accounts 를 한 트랜잭션으로 생성(부분 실패 시 orphan users 방지).
+// 동시 최초로그인 경합 시 account 가 이미 있으면 트랜잭션 롤백 후 기존 user_id 채택.
+async function createUserAndAccount(
+  email: string | null,
+  name: string | null,
+  image: string | null,
+  provider: string,
+  providerAccountId: string,
+): Promise<string> {
+  try {
+    return await withTransaction(async (c) => {
+      const ins = await c.query<{ id: string }>(
+        `INSERT INTO users (email, name, image)
+         VALUES ($1, $2, $3)
+         RETURNING id::text AS id`,
+        [email, name, image],
+      );
+      const newId = ins.rows[0].id;
+      const acc = await c.query(
+        `INSERT INTO user_accounts (user_id, provider, provider_account_id)
+         VALUES ($1::bigint, $2, $3)
+         ON CONFLICT (provider, provider_account_id) DO NOTHING`,
+        [newId, provider, providerAccountId],
+      );
+      // 0행 = 동시 생성됨 → throw 로 롤백(방금 만든 users 행 제거)시키고 아래서 재조회.
+      if (acc.rowCount === 0) throw new Error("ACCOUNT_RACE");
+      return newId;
+    });
+  } catch (e) {
+    if (e instanceof Error && e.message === "ACCOUNT_RACE") {
+      const again = await query<{ user_id: string }>(
+        `SELECT user_id::text AS user_id
+           FROM user_accounts
+          WHERE provider = $1 AND provider_account_id = $2`,
+        [provider, providerAccountId],
+      );
+      if (again.length > 0) return again[0].user_id;
+    }
+    throw e;
   }
 }
 
@@ -61,17 +104,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           [userId, user.email ?? null, user.name ?? null, user.image ?? null],
         );
       } else {
-        const rows = await query<{ id: string }>(
-          `INSERT INTO users (email, name, image)
-           VALUES ($1, $2, $3)
-           RETURNING id::text AS id`,
-          [user.email ?? null, user.name ?? null, user.image ?? null],
-        );
-        userId = rows[0].id;
-        await query(
-          `INSERT INTO user_accounts (user_id, provider, provider_account_id)
-           VALUES ($1::bigint, $2, $3)`,
-          [userId, provider, providerAccountId],
+        userId = await createUserAndAccount(
+          user.email ?? null,
+          user.name ?? null,
+          user.image ?? null,
+          provider,
+          providerAccountId,
         );
       }
 
