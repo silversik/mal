@@ -113,8 +113,10 @@
   --primary-foreground: #ffffff;
   --secondary: #1f6b47;
   --secondary-foreground: #ffffff;
-  --accent: #1f6b47;
-  --accent-foreground: #ffffff;
+  /* accent = shadcn 의 subtle hover/highlight 토큰(브랜드 녹색 아님). 채도 높은
+     녹색으로 두면 hover:bg-accent 가 어두운 텍스트와 저대비가 됨 → 옅은 녹색 틴트. */
+  --accent: #eaf1ec;
+  --accent-foreground: #191a18;
   --ring: #1f6b47;
   --color-primary: #191a18;
   --color-champagne-gold: #1f6b47;
