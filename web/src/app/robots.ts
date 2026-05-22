@@ -15,7 +15,6 @@ export default function robots(): MetadataRoute.Robots {
           "/me",
           "/notifications",
           "/login",
-          "/board/new",    // 글쓰기 폼 — 본문 없음
         ],
       },
     ],

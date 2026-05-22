@@ -49,3 +49,10 @@ export const betRateLimiter = createRateLimiter({
   maxPerWindow: 30,
   minGapMs: 1_000,
 });
+
+// 댓글 전용 인스턴스 — 3초 1건 + 60초 10건 (홈 최신 댓글 피드 도배 방지)
+export const commentRateLimiter = createRateLimiter({
+  windowMs: 60_000,
+  maxPerWindow: 10,
+  minGapMs: 3_000,
+});

@@ -38,11 +38,16 @@ export async function getRaceFinishers(
   ranked.sort((a, b) => (a.rank as number) - (b.rank as number));
   const find = (k: number) =>
     ranked.find((r) => r.rank === k)?.chul_no ?? null;
+  // rank1 부재 = 정상 결과 아님(전마 실격 등) → 정산 보류(수동 검토). MISS 오정산 방지.
+  const first = find(1);
+  if (first === null) return null;
+  // NOTE(M-10): 동착(공동 1착 등 rank 중복)은 미지원 — find() 가 첫 행만 반환.
+  //   KRA race_results.rank 의 동착 인코딩 확인 후 다중-착순 구조로 확장 필요.
   return {
-    first: find(1) as number, // rank=1 은 결과 있는 race 라면 무조건 존재 가정
+    first,
     second: find(2),
     third: find(3),
-    entryCount: rows.length,
+    entryCount: ranked.length, // 착순 있는 출주마 수(취소·실격 rank=null 제외)
   };
 }
 
@@ -196,8 +201,8 @@ export async function settleRace(
   }
   const odds = await loadOddsMap(raceDate, meet, raceNo);
 
-  // 2. race_settlements 에 placeholder INSERT — 다른 호출과의 경합 방지.
-  //    이미 row 가 있으면 already=true 로 끝낸다 (재실행은 멱등성 보장).
+  // 2. race_settlements placeholder INSERT (멱등 가드). 이미 있어도 잔여 PENDING 은
+  //    계속 정산 — 부분 실패/크래시로 남은 PENDING 을 재실행으로 복구(re-entrant).
   const settle = await query<{ inserted: boolean }>(
     `INSERT INTO race_settlements (race_date, meet, race_no)
        VALUES ($1::date, $2, $3)
@@ -205,19 +210,9 @@ export async function settleRace(
        RETURNING TRUE AS inserted`,
     [raceDate, meet, raceNo],
   );
-  if (settle.length === 0) {
-    return {
-      ok: true,
-      raceDate,
-      meet,
-      raceNo,
-      bets_settled: 0,
-      bets_void: 0,
-      already: true,
-    };
-  }
+  const already = settle.length === 0;
 
-  // 3. PENDING bet 목록.
+  // 3. PENDING bet 목록 (placeholder 유무와 무관 — 재진입 시 잔여만 잡힘).
   const bets = await query<{
     id: string;
     user_id: string;
@@ -235,18 +230,35 @@ export async function settleRace(
     [raceDate, meet, raceNo],
   );
 
+  // 각 bet 은 독립 트랜잭션 + try/catch 격리 — 한 건 실패가 race 전체/배치를 막지 않음.
   let settled = 0;
   let voided = 0;
+  let errored = 0;
   for (const bet of bets) {
-    const r = await settleSingleBet(bet, finishers, odds);
-    if (r === "VOID") voided++;
-    else settled++;
+    try {
+      const r = await settleSingleBet(bet, finishers, odds);
+      if (r === "ALREADY") continue; // 동시/이전 정산됨 — 카운트 제외
+      if (r === "VOID") voided++;
+      else settled++;
+    } catch (e) {
+      errored++;
+      console.error(
+        `[settleRace] bet ${bet.id} (${raceDate} ${meet} ${raceNo}) 정산 실패`,
+        e,
+      );
+    }
+  }
+  if (errored > 0) {
+    console.error(
+      `[settleRace] ${raceDate} ${meet} ${raceNo}: ${errored}건 정산 실패 — 재실행으로 복구 가능`,
+    );
   }
 
-  // 4. race_settlements 카운트 갱신.
+  // 4. race_settlements 카운트 누적 (재진입 합산).
   await query(
     `UPDATE race_settlements
-        SET bets_settled = $4, bets_void = $5
+        SET bets_settled = COALESCE(bets_settled, 0) + $4,
+            bets_void    = COALESCE(bets_void, 0) + $5
       WHERE race_date = $1::date AND meet = $2 AND race_no = $3`,
     [raceDate, meet, raceNo, settled, voided],
   );
@@ -258,7 +270,7 @@ export async function settleRace(
     raceNo,
     bets_settled: settled,
     bets_void: voided,
-    already: false,
+    already,
   };
 }
 
@@ -277,7 +289,7 @@ async function settleSingleBet(
   bet: BetRow,
   finishers: RaceFinishers,
   odds: OddsMap,
-): Promise<"HIT" | "MISS" | "VOID"> {
+): Promise<"HIT" | "MISS" | "VOID" | "ALREADY"> {
   return await withTransaction(async (c) => {
     // 1. 이 bet 의 selections 모두 hit/odds 계산.
     const sels = await c.query<{
@@ -338,7 +350,35 @@ async function settleSingleBet(
       bet_void = true;
     }
 
-    // 2. bet_selections 갱신 — UNNEST batch.
+    // 2. 최종 상태 결정.
+    let status: "SETTLED_HIT" | "SETTLED_MISS" | "VOID";
+    let returnP = BigInt(0);
+    let txKind: "BET_PAYOUT" | "BET_REFUND" | null = null;
+
+    if (bet_void) {
+      status = "VOID";
+      returnP = BigInt(bet.total_amount_p); // 베팅액 전액 환급
+      txKind = "BET_REFUND";
+    } else if (any_hit) {
+      status = "SETTLED_HIT";
+      returnP = payout_total;
+      txKind = "BET_PAYOUT";
+    } else {
+      status = "SETTLED_MISS";
+    }
+
+    // 3. PENDING → 최종상태 선점. 0행이면 동시/이전 정산됨 → 이중 지급 방지 위해 중단.
+    const claimed = await c.query(
+      `UPDATE bets
+          SET status = $2,
+              payout_p = $3::bigint,
+              settled_at = NOW()
+        WHERE id = $1::bigint AND status = 'PENDING'`,
+      [bet.id, status, returnP.toString()],
+    );
+    if (claimed.rowCount === 0) return "ALREADY";
+
+    // 4. bet_selections 갱신 — UNNEST batch (선점 성공 후에만).
     if (updates.length > 0) {
       await c.query(
         `UPDATE bet_selections AS s
@@ -359,32 +399,7 @@ async function settleSingleBet(
       );
     }
 
-    // 3. bet 상태 / 잔액 트랜잭션
-    let status: "SETTLED_HIT" | "SETTLED_MISS" | "VOID";
-    let returnP = BigInt(0);
-    let txKind: "BET_PAYOUT" | "BET_REFUND" | null = null;
-
-    if (bet_void) {
-      status = "VOID";
-      returnP = BigInt(bet.total_amount_p); // 베팅액 전액 환급
-      txKind = "BET_REFUND";
-    } else if (any_hit) {
-      status = "SETTLED_HIT";
-      returnP = payout_total;
-      txKind = "BET_PAYOUT";
-    } else {
-      status = "SETTLED_MISS";
-    }
-
-    await c.query(
-      `UPDATE bets
-          SET status = $2,
-              payout_p = $3::bigint,
-              settled_at = NOW()
-        WHERE id = $1::bigint`,
-      [bet.id, status, returnP.toString()],
-    );
-
+    // 5. 잔액 트랜잭션 (PAYOUT/REFUND).
     if (txKind && returnP > BigInt(0)) {
       await applyDelta(c, bet.user_id, returnP, txKind, bet.id, bet.id);
       // lifetime_payout_p 누적 (PAYOUT 만; REFUND 는 누적 안 함)
