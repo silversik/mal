@@ -35,7 +35,7 @@ export function DatabaseSidebar() {
                   href={href}
                   className={`flex items-center gap-2 rounded-md px-2.5 py-2 text-sm font-semibold transition ${
                     active
-                      ? "bg-primary text-secondary"
+                      ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-primary"
                   }`}
                 >

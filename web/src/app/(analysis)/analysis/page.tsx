@@ -89,7 +89,7 @@ function ToolTile({
       className="group flex flex-col rounded-[10px] border border-border bg-card p-4 transition hover:border-primary/40 hover:shadow-subtle"
     >
       <div className="flex items-start gap-2">
-        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-secondary">
+        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <Icon size={18} />
         </span>
         <div className="min-w-0">
@@ -109,7 +109,7 @@ function ToolTile({
 
 // 1·2·3 위만 메달 배지 — 홈 "TOP 기수 랭킹" 카드와 톤 통일.
 const RANK_MEDAL_STYLE: Record<number, string> = {
-  1: "bg-champagne-gold text-primary",
+  1: "bg-champagne-gold text-secondary-foreground",
   2: "bg-slate-400 text-white",
   3: "bg-amber-700 text-white",
 };

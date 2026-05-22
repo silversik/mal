@@ -228,7 +228,7 @@ function TabLink({
 }
 
 const RANK_MEDAL_STYLE: Record<number, string> = {
-  1: "bg-champagne-gold text-primary",
+  1: "bg-champagne-gold text-secondary-foreground",
   2: "bg-slate-400 text-white",
   3: "bg-amber-700 text-white",
 };

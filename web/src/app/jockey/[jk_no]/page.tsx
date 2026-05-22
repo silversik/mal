@@ -274,7 +274,7 @@ function JockeyProfileCard({
       <CardContent className="p-4">
         {/* 헤더 */}
         <div className="flex items-start gap-3">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-primary text-3xl font-extrabold leading-none text-secondary">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-primary text-3xl font-extrabold leading-none text-primary-foreground">
             {initial}
           </div>
           <div className="min-w-0 flex-1">
@@ -354,7 +354,7 @@ function Sep() {
 
 // 1·2·3위 메달 톤.
 const RANK_MEDAL_STYLE: Record<number, string> = {
-  1: "bg-secondary text-primary",
+  1: "bg-secondary text-secondary-foreground",
   2: "bg-slate-300 text-slate-900",
   3: "bg-amber-700 text-white",
 };
