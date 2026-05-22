@@ -28,7 +28,7 @@ function RankChip({ rank, className }: { rank: number | null; className: string 
     rank === null
       ? "bg-muted text-muted-foreground border border-border"
       : rank === 1
-        ? "bg-secondary text-primary"
+        ? "bg-secondary text-secondary-foreground"
         : rank === 2
           ? "bg-slate-300 text-slate-900"
           : rank === 3

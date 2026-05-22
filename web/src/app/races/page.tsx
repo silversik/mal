@@ -972,7 +972,7 @@ function UpcomingStakesPanel({
       <CardContent className="py-8">
         <div className="mb-4 flex items-baseline justify-between gap-3">
           <div>
-            <Badge className="mb-1 bg-champagne-gold text-primary">예정</Badge>
+            <Badge className="mb-1 bg-champagne-gold text-secondary-foreground">예정</Badge>
             <h2 className="text-base font-bold">
               {formatDateLabel(date)} 예정 대상경주
             </h2>
@@ -1059,7 +1059,7 @@ function NavArrow({
 
 // 1·2·3위는 홈의 "TOP 기수 랭킹" 메달과 동일한 금/은/동 배지로 통일.
 const RANK_MEDAL_STYLE: Record<number, string> = {
-  1: "bg-champagne-gold text-primary",
+  1: "bg-champagne-gold text-secondary-foreground",
   2: "bg-slate-400 text-white",
   3: "bg-amber-700 text-white",
 };

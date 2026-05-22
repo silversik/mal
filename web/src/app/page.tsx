@@ -479,7 +479,7 @@ function Section({
 /* ── Cards ────────────────────────────────────────────── */
 
 const RANK_BADGE_STYLE: Record<number, string> = {
-  1: "bg-champagne-gold text-primary",
+  1: "bg-champagne-gold text-secondary-foreground",
   2: "bg-slate-400 text-white",
   3: "bg-amber-700 text-white",
 };
@@ -522,7 +522,7 @@ function JockeyRow({ jockey, rank }: { jockey: Jockey; rank: number }) {
         >
           {rank}
         </span>
-        <div className="w-10 h-10 shrink-0 bg-primary rounded flex items-center justify-center font-bold text-champagne-gold shadow-inner border border-white/10 uppercase">
+        <div className="w-10 h-10 shrink-0 bg-primary rounded flex items-center justify-center font-bold text-primary-foreground shadow-inner border border-white/10 uppercase">
           {jockey.jk_name.slice(0, 1)}
         </div>
         <div className="min-w-0 flex-1">

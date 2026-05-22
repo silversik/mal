@@ -15,7 +15,7 @@ export function SectionHead({
   return (
     <div className="mb-3 flex items-center gap-2">
       {icon && (
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-primary text-secondary">
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
           {icon}
         </span>
       )}
@@ -127,7 +127,7 @@ export function ProfileTag({
     gold: "bg-[rgba(252,223,104,0.25)] text-[var(--color-gold-ink)] border-[rgba(251,212,54,0.55)]",
     navy: "bg-[rgba(29,51,78,0.05)] text-primary border-[rgba(29,51,78,0.14)]",
     muted: "bg-muted text-muted-foreground border-border",
-    "solid-navy": "bg-primary text-secondary border-primary",
+    "solid-navy": "bg-primary text-primary-foreground border-primary",
   }[tone];
   return (
     <span

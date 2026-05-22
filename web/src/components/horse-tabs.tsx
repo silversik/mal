@@ -424,7 +424,7 @@ function RankChangesSection({ changes }: { changes: HorseRankChange[] }) {
 
 // 1·2·3위는 홈의 "TOP 기수 랭킹" 메달과 동일한 금/은/동 원형 배지로 통일.
 const RANK_MEDAL_STYLE: Record<number, string> = {
-  1: "bg-champagne-gold text-primary",
+  1: "bg-champagne-gold text-secondary-foreground",
   2: "bg-slate-400 text-white",
   3: "bg-amber-700 text-white",
 };
