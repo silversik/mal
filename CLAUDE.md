@@ -82,3 +82,7 @@ Next.js web (mal-web, :4000 → nginx → mal.kr)
 - **[web/README.md](web/README.md)** + **[web/AGENTS.md](web/AGENTS.md)** — Next.js 16 주의사항.
 - **[crawler/README.md](crawler/README.md)** — 잡 카탈로그 + APScheduler 흐름.
 - **[docs/](docs/)** — `api/` (외부 API 4종) · `feature/` (개별 기능) · `spec/` (아키텍처) · `tasks/` (작업 시점 결정).
+
+## 디자인 시스템
+
+시각/UI 작업 전 **[DESIGN.md](DESIGN.md)** 를 반드시 먼저 읽는다. 폰트·색·간격·레이아웃·모션·데이터 시각화 규칙이 모두 거기 정의돼 있다(단일 진실원). 승인 없이 이탈 금지. QA/리뷰 시 DESIGN.md 와 어긋나는 코드는 지적한다. 핵심: 중요정보 상단·적은 컬러(중립+터프그린 액센트 1)·중복 DOM 금지(단일 반응형)·숫자는 Geist Mono tabular·모바일 우선(터치타깃 ≥44px).
