@@ -1,4 +1,5 @@
 import { query } from "@/lib/db";
+import { PAGE_SIZE } from "@/lib/contact-shared";
 export { TITLE_MAX, CONTENT_MAX, AUTHOR_MAX, PAGE_SIZE } from "@/lib/contact-shared";
 
 export type ContactPost = {
