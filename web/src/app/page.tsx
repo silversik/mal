@@ -54,7 +54,7 @@ function isStakesRace(r: RaceInfo): boolean {
 export default function Home() {
   const todayDate = todayKST();
   return (
-    <div className="theme-v2 min-h-screen bg-[#fbfbf9]">
+    <div className="theme-v2 min-h-screen">
       <Suspense fallback={<HeroSkeleton />}>
         <HeroSection todayDate={todayDate} />
       </Suspense>
@@ -133,7 +133,7 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
   const empty = featureRaces.length === 0 && !useStakesFallback;
 
   return (
-    <section className="border-b border-[#e7e7e2] bg-[#fbfbf9] px-5 py-8 md:py-12">
+    <section className="border-b border-[#e7e7e2] px-5 py-8 md:py-12">
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
@@ -379,7 +379,7 @@ async function TopJockeysSection() {
 
 function HeroSkeleton() {
   return (
-    <section className="border-b border-[#e7e7e2] bg-[#fbfbf9] px-5 py-8 md:py-12">
+    <section className="border-b border-[#e7e7e2] px-5 py-8 md:py-12">
       <div className="mx-auto max-w-6xl">
         <div className="mb-6">
           <div className="h-3 w-40 animate-pulse rounded bg-[#e7e7e2]" />
