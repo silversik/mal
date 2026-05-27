@@ -5,6 +5,7 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import { Toaster } from "sonner";
 import { Navbar } from "@/components/navbar";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { SiteFooter } from "@/components/site-footer";
 import { HorseMarkSymbolDefs } from "@/components/brand/logo";
 import { SiteJsonLd } from "@/components/seo/site-jsonld";
 import "./globals.css";
@@ -91,6 +92,7 @@ export default function RootLayout({
         <main className="flex-1 pb-16 md:pb-0">
           {children}
         </main>
+        <SiteFooter />
         <MobileBottomNav />
         <Toaster position="top-center" richColors />
       </body>
