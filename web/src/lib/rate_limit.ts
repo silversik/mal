@@ -56,3 +56,10 @@ export const commentRateLimiter = createRateLimiter({
   maxPerWindow: 10,
   minGapMs: 3_000,
 });
+
+// 문의 게시판 전용 인스턴스 — 10초 1건 + 5분 3건
+export const contactRateLimiter = createRateLimiter({
+  windowMs: 300_000,
+  maxPerWindow: 3,
+  minGapMs: 10_000,
+});

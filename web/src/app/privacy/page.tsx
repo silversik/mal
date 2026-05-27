@@ -9,7 +9,6 @@ export const metadata: Metadata = {
 
 const EFFECTIVE_DATE = "2024년 1월 1일";
 const UPDATED_DATE = "2026년 5월 1일";
-const CONTACT_EMAIL = "s@typer.kr";
 
 export default function PrivacyPage() {
   return (
@@ -130,13 +129,10 @@ export default function PrivacyPage() {
         <h2 className="text-base font-semibold">7. 개인정보 보호 책임자</h2>
         <p className="text-sm leading-relaxed text-foreground/90">
           개인정보 관련 문의는{" "}
-          <a
-            href={`mailto:${CONTACT_EMAIL}`}
-            className="text-primary underline underline-offset-2 hover:opacity-80"
-          >
-            {CONTACT_EMAIL}
+          <a href="/contact" className="text-primary underline underline-offset-2 hover:opacity-80">
+            문의 페이지
           </a>
-          으로 연락 주시기 바랍니다.
+          를 통해 접수해 주시기 바랍니다.
         </p>
       </section>
 

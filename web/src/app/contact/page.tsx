@@ -1,79 +1,117 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { listContactPosts, PAGE_SIZE } from "@/lib/contact";
 
 export const metadata: Metadata = {
-  title: "문의",
-  description: "mal.kr 서비스 관련 문의는 이메일로 연락해 주세요.",
+  title: "문의 게시판",
+  description: "mal.kr 서비스 관련 문의, 데이터 오류 신고, 제안 사항을 남겨주세요.",
   alternates: { canonical: "/contact" },
 };
 
-const CONTACT_EMAIL = "s@typer.kr";
+export const dynamic = "force-dynamic";
 
-export default function ContactPage() {
+const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
+  pending:     { label: "접수됨",  cls: "bg-muted text-muted-foreground" },
+  in_progress: { label: "처리중",  cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+  resolved:    { label: "완료",    cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
+};
+
+export default async function ContactPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: pageStr } = await searchParams;
+  const page = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
+  const { posts, total } = await listContactPosts(page);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10 space-y-8">
-      <header>
-        <h1 className="text-xl font-bold tracking-tight">문의</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          서비스 관련 문의, 데이터 오류 신고, 제안 사항을 보내주세요.
-        </p>
-      </header>
-
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold">이메일 문의</h2>
-        <p className="text-sm leading-relaxed text-foreground/90">
-          아래 이메일로 문의해 주시면 영업일 기준 3일 이내 답변 드립니다.
-        </p>
-        <a
-          href={`mailto:${CONTACT_EMAIL}`}
-          className="inline-flex items-center gap-2 rounded-[10px] border border-border bg-card px-4 py-3 text-sm font-semibold transition hover:border-primary/40 hover:text-primary"
+    <div className="mx-auto max-w-3xl px-4 py-10 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">문의 게시판</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            서비스 문의, 데이터 오류 신고, 기능 제안을 남겨주세요.
+          </p>
+        </div>
+        <Link
+          href="/contact/new"
+          className="inline-flex items-center gap-1.5 rounded-[10px] bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            aria-hidden="true"
-          >
-            <rect x="2" y="4" width="20" height="16" rx="2" />
-            <polyline points="2,4 12,14 22,4" />
-          </svg>
-          {CONTACT_EMAIL}
-        </a>
-      </section>
+          새 문의 작성
+        </Link>
+      </div>
 
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold">문의 유형별 안내</h2>
-        <ul className="text-sm leading-relaxed text-foreground/90 space-y-2 list-disc list-inside">
-          <li>
-            <strong>데이터 오류 신고</strong>: 경주 결과, 마필·기수·조교사 정보의 오류를 발견하신
-            경우 페이지 URL과 함께 알려주세요.
-          </li>
-          <li>
-            <strong>기능 제안</strong>: 새로운 기능이나 분석 지표에 대한 제안을 환영합니다.
-          </li>
-          <li>
-            <strong>개인정보 관련</strong>: 개인정보 열람·삭제 요청은{" "}
-            <a href="/privacy" className="text-primary underline underline-offset-2 hover:opacity-80">
-              개인정보처리방침
-            </a>
-            을 참고해 주세요.
-          </li>
-          <li>
-            <strong>광고·제휴 문의</strong>: 서비스 관련 제휴·광고 문의도 이메일로 해주세요.
-          </li>
-        </ul>
-      </section>
+      {posts.length === 0 ? (
+        <div className="rounded-[10px] border border-border bg-card py-16 text-center text-sm text-muted-foreground">
+          아직 등록된 문의가 없습니다.
+        </div>
+      ) : (
+        <div className="rounded-[10px] border border-border bg-card overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="border-b border-border bg-muted/40">
+              <tr>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground w-14 font-mono tabular-nums">번호</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">제목</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground hidden sm:table-cell w-24">작성자</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground hidden md:table-cell w-28">날짜</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground w-20">상태</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {posts.map((post) => {
+                const s = STATUS_LABEL[post.status] ?? STATUS_LABEL.pending;
+                const date = post.created_at.slice(0, 10);
+                return (
+                  <tr key={post.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3 font-mono tabular-nums text-muted-foreground">
+                      {post.id}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/contact/${post.id}`}
+                        className="font-medium hover:text-primary transition-colors line-clamp-1"
+                      >
+                        {post.title}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell truncate max-w-[6rem]">
+                      {post.author_name}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs tabular-nums text-muted-foreground hidden md:table-cell">
+                      {date}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${s.cls}`}>
+                        {s.label}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold">답변이 늦어질 경우</h2>
-        <p className="text-sm leading-relaxed text-foreground/90">
-          문의량이 많거나 공휴일 연휴 기간에는 답변이 늦어질 수 있습니다. 스팸 필터로 인해
-          메일이 차단될 수 있으니, 제목에 "mal.kr 문의"를 포함해 보내주시면 빠르게 확인
-          가능합니다.
-        </p>
-      </section>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-1">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <Link
+              key={p}
+              href={`/contact?page=${p}`}
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-mono tabular-nums transition ${
+                p === page
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-muted text-muted-foreground"
+              }`}
+            >
+              {p}
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
