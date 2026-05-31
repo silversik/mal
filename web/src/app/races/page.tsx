@@ -517,7 +517,7 @@ export default async function RacesPage({
                   )}
                   <Card className="overflow-hidden py-0">
                 <div className="relative overflow-x-auto rounded-[inherit]">
-                  <table className="w-full border-collapse text-[13px]">
+                  <table data-table="race-entries" className="w-full border-collapse text-[13px]">
                     <thead>
                       <tr className="bg-muted">
                         <th className="border-b border-border px-2 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 52 }}>
