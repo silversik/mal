@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
+import { DisplaySettings } from "@/components/display-settings";
+
 type NavItem = {
   href: string;
   label: string;
@@ -113,6 +115,9 @@ export function MobileBottomNav() {
               {label}
             </Link>
           ))}
+          <div className="flex items-center justify-center py-4">
+            <DisplaySettings />
+          </div>
         </div>
       </div>
 

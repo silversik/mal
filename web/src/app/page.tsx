@@ -133,20 +133,20 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
   const empty = featureRaces.length === 0 && !useStakesFallback;
 
   return (
-    <section className="border-b border-[#e7e7e2] px-5 py-8 md:py-12">
+    <section className="border-b border-border px-5 py-8 md:py-12">
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#1f6b47]">
+            <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-secondary">
               {label} · {heroDate}
             </div>
-            <h1 className="mt-1.5 text-2xl font-extrabold tracking-tight text-[#191a18] md:text-3xl">
+            <h1 className="mt-1.5 text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
               {title}
             </h1>
           </div>
           <Link
             href={moreHref}
-            className="shrink-0 text-sm font-semibold text-[#1f6b47] transition hover:underline"
+            className="shrink-0 text-sm font-semibold text-secondary transition hover:underline"
           >
             더보기 &rarr;
           </Link>
@@ -177,8 +177,8 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
 function HeroMetaItem({ label, value }: { label: string; value: string }) {
   return (
     <span className="flex items-baseline gap-1">
-      <span className="text-[10px] uppercase tracking-wide text-[#9b9e99]">{label}</span>
-      <span className="font-mono text-sm font-semibold tabular-nums text-[#191a18]">{value}</span>
+      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="font-mono text-sm font-semibold tabular-nums text-foreground">{value}</span>
     </span>
   );
 }
@@ -189,17 +189,17 @@ function HeroFeatureCard({ race }: { race: RaceInfo }) {
   const href = `/races?date=${race.race_date}&venue=${encodeURIComponent(race.meet)}&race=${race.race_no}`;
   const statusCls =
     status === "진행중"
-      ? "bg-[#1f6b47] text-white"
+      ? "bg-secondary text-secondary-foreground"
       : status === "예정"
-        ? "border border-[#1f6b47] text-[#1f6b47]"
-        : "bg-[#f1f1ed] text-[#6b6e6a]";
+        ? "border border-secondary text-secondary"
+        : "bg-muted text-muted-foreground";
   return (
     <Link
       href={href}
-      className="group block rounded-xl border border-[#e7e7e2] bg-white p-4 transition-all hover:border-[#1f6b47]/50 hover:shadow-sm"
+      className="group block rounded-xl border border-border bg-card p-4 transition-all hover:border-secondary/50 hover:shadow-sm"
     >
       <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-[#191a18]">
+        <div className="flex items-center gap-1.5 text-foreground">
           <VenueIcon meet={race.meet} size={16} />
           <span className="text-sm font-semibold">{race.meet}</span>
         </div>
@@ -208,11 +208,11 @@ function HeroFeatureCard({ race }: { race: RaceInfo }) {
         </span>
       </div>
       <h3
-        className={`text-base font-bold ${stakes ? "text-[#1f6b47]" : "text-[#191a18] group-hover:text-[#1f6b47]"}`}
+        className={`text-base font-bold ${stakes ? "text-secondary" : "text-foreground group-hover:text-secondary"}`}
       >
         {race.race_name ?? `${race.race_no}R 메인 경주`}
       </h3>
-      <div className="mt-3 flex items-center gap-4 border-t border-dashed border-[#e7e7e2] pt-3">
+      <div className="mt-3 flex items-center gap-4 border-t border-dashed border-border pt-3">
         <HeroMetaItem label="R" value={`${race.race_no}`} />
         {race.start_time && <HeroMetaItem label="출발" value={race.start_time} />}
         <HeroMetaItem label="출주" value={`${race.entry_count ?? "-"}두`} />
@@ -227,21 +227,21 @@ function HeroStakeCard({ stake }: { stake: UpcomingStake }) {
   return (
     <Link
       href={`/races?date=${stake.race_date}`}
-      className="group block rounded-xl border border-[#e7e7e2] bg-white p-4 transition-all hover:border-[#1f6b47]/50 hover:shadow-sm"
+      className="group block rounded-xl border border-border bg-card p-4 transition-all hover:border-secondary/50 hover:shadow-sm"
     >
       <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-[#191a18]">
+        <div className="flex items-center gap-1.5 text-foreground">
           <VenueIcon meet={stake.meet} size={16} />
           <span className="text-sm font-semibold">{stake.meet}</span>
         </div>
         {tierBadge && (
-          <span className="rounded-full border border-[#1f6b47] px-2 py-0.5 text-[11px] font-semibold text-[#1f6b47]">
+          <span className="rounded-full border border-secondary px-2 py-0.5 text-[11px] font-semibold text-secondary">
             {tierBadge}
           </span>
         )}
       </div>
-      <h3 className="text-base font-bold text-[#1f6b47]">{displayName}</h3>
-      <div className="mt-3 flex items-center gap-4 border-t border-dashed border-[#e7e7e2] pt-3">
+      <h3 className="text-base font-bold text-secondary">{displayName}</h3>
+      <div className="mt-3 flex items-center gap-4 border-t border-dashed border-border pt-3">
         <HeroMetaItem label="일자" value={stake.race_date} />
         {stake.distance && <HeroMetaItem label="거리" value={`${stake.distance}m`} />}
         {stake.age_cond && <HeroMetaItem label="조건" value={stake.age_cond} />}
@@ -259,8 +259,8 @@ function HeroCommentPanel({
 }) {
   if (comments.length === 0) return null;
   return (
-    <div className="flex flex-col rounded-xl border border-[#e7e7e2] bg-white p-4">
-      <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[#6b6e6a]">
+    <div className="flex flex-col rounded-xl border border-border bg-card p-4">
+      <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
         최신 댓글
       </div>
       <div className="flex flex-col gap-1">
@@ -268,13 +268,13 @@ function HeroCommentPanel({
           <Link
             key={String(c.id)}
             href={c.entity_href}
-            className="rounded-lg px-2.5 py-2 transition-colors hover:bg-[#f1f1ed]"
+            className="rounded-lg px-2.5 py-2 transition-colors hover:bg-muted"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-[12px] font-semibold text-[#1f6b47]">{c.entity_name}</span>
-              <time className="shrink-0 font-mono text-[10px] tabular-nums text-[#6b6e6a]">{commentTimeAgo(c.created_at)}</time>
+              <span className="truncate text-[12px] font-semibold text-secondary">{c.entity_name}</span>
+              <time className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground">{commentTimeAgo(c.created_at)}</time>
             </div>
-            <p className="line-clamp-1 text-[12px] text-[#6b6e6a]">{c.content}</p>
+            <p className="line-clamp-1 text-[12px] text-muted-foreground">{c.content}</p>
           </Link>
         ))}
       </div>
@@ -346,7 +346,7 @@ async function RecentCommentsSection() {
     <Section title="최신 댓글" href="#" tier="l1">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {comments.map((c) => (
-          <Link key={c.id} href={c.entity_href} className="group block rounded-lg border border-primary/8 bg-white p-3 hover:border-secondary/50 hover:shadow-sm transition-all">
+          <Link key={c.id} href={c.entity_href} className="group block rounded-lg border border-primary/8 bg-card p-3 hover:border-secondary/50 hover:shadow-sm transition-all">
             <div className="mb-1 flex items-center justify-between gap-2">
               <span className="text-xs font-semibold truncate group-hover:text-primary transition-colors">{c.entity_name}</span>
               <time className="shrink-0 text-[10px] text-muted-foreground tabular-nums">{commentTimeAgo(c.created_at)}</time>
@@ -379,15 +379,15 @@ async function TopJockeysSection() {
 
 function HeroSkeleton() {
   return (
-    <section className="border-b border-[#e7e7e2] px-5 py-8 md:py-12">
+    <section className="border-b border-border px-5 py-8 md:py-12">
       <div className="mx-auto max-w-6xl">
         <div className="mb-6">
-          <div className="h-3 w-40 animate-pulse rounded bg-[#e7e7e2]" />
-          <div className="mt-2 h-8 w-56 animate-pulse rounded bg-[#e7e7e2]" />
+          <div className="h-3 w-40 animate-pulse rounded bg-border" />
+          <div className="mt-2 h-8 w-56 animate-pulse rounded bg-border" />
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-32 animate-pulse rounded-xl border border-[#e7e7e2] bg-white" />
+            <div key={i} className="h-32 animate-pulse rounded-xl border border-border bg-card" />
           ))}
         </div>
       </div>
@@ -403,7 +403,7 @@ function SwiperSkeleton() {
       </div>
       <div className="flex gap-3 overflow-hidden sm:gap-4">
         {[0, 1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-56 w-[55%] shrink-0 animate-pulse rounded-xl border border-primary/8 bg-white sm:w-48" />
+          <div key={i} className="h-56 w-[55%] shrink-0 animate-pulse rounded-xl border border-primary/8 bg-card sm:w-48" />
         ))}
       </div>
     </section>
@@ -415,7 +415,7 @@ function RowsSkeleton({ title, href }: { title: string; href: string }) {
     <Section title={title} href={href} tier="l1">
       <div className="space-y-2">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-3 rounded-lg border border-primary/5 bg-white p-3">
+          <div key={i} className="flex items-center gap-3 rounded-lg border border-primary/5 bg-card p-3">
             <div className="h-10 w-10 shrink-0 animate-pulse rounded bg-muted" />
             <div className="flex-1 space-y-1.5">
               <div className="h-4 w-32 animate-pulse rounded bg-muted" />
@@ -487,7 +487,7 @@ const RANK_BADGE_STYLE: Record<number, string> = {
 function HorseRow({ horse }: { horse: RecentWinner }) {
   return (
     <Link href={`/horse/${horse.horse_no}`}>
-      <div className="flex items-center gap-3 p-3 bg-white border border-primary/5 rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
+      <div className="flex items-center gap-3 p-3 bg-card border border-primary/5 rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
         <HorseMark
           size={40}
           radius={8}
@@ -514,7 +514,7 @@ function HorseRow({ horse }: { horse: RecentWinner }) {
 function JockeyRow({ jockey, rank }: { jockey: Jockey; rank: number }) {
   return (
     <Link href={`/jockey/${jockey.jk_no}`}>
-      <div className="flex items-center gap-3 p-3 bg-white border border-primary/5 rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
+      <div className="flex items-center gap-3 p-3 bg-card border border-primary/5 rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
         <span
           className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-mono text-xs font-bold tabular-nums ${
             RANK_BADGE_STYLE[rank] ?? "bg-muted text-foreground"

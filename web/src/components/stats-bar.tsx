@@ -81,14 +81,14 @@ export function StatsBar({
         {place > 0 && (
           <div
             className="h-full"
-            style={{ width: widthFor(place), background: "#cbd5e1" }}
+            style={{ width: widthFor(place), background: "var(--muted-ink)" }}
             title={`2착 ${place}회 (${placeRate.toFixed(1)}%)`}
           />
         )}
         {show > 0 && (
           <div
             className="h-full"
-            style={{ width: widthFor(show), background: "#b45309" }}
+            style={{ width: widthFor(show), background: "var(--brown-pale)" }}
             title={`3착 ${show}회 (${showRate.toFixed(1)}%)`}
           />
         )}
@@ -102,8 +102,8 @@ export function StatsBar({
           count={win}
           rate={winRate}
         />
-        <LegendItem color="#cbd5e1" label="2착" count={place} rate={placeRate} />
-        <LegendItem color="#b45309" label="3착" count={show} rate={showRate} />
+        <LegendItem color="var(--muted-ink)" label="2착" count={place} rate={placeRate} />
+        <LegendItem color="var(--brown-pale)" label="3착" count={show} rate={showRate} />
         <LegendItem
           color="var(--muted)"
           label="미입상"

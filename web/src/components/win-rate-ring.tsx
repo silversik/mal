@@ -23,7 +23,7 @@ export function WinRateRing({
           cx={size / 2}
           cy={size / 2}
           r={r}
-          stroke="rgba(29, 51, 78, 0.08)"
+          stroke="var(--hairline)"
           strokeWidth={8}
           fill="none"
         />

@@ -26,11 +26,11 @@ export function InlineRatingChart({
 
   return (
     <div
-      className="rounded-[10px] border bg-[linear-gradient(180deg,rgba(252,223,104,0.25),rgba(252,223,104,0.06))] px-3.5 py-2.5"
-      style={{ borderColor: "rgba(251, 212, 54, 0.55)", width }}
+      className="rounded-[10px] border bg-secondary/10 px-3.5 py-2.5"
+      style={{ borderColor: "color-mix(in srgb, var(--brown) 40%, transparent)", width }}
     >
       <div className="mb-1 flex items-baseline justify-between">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-gold-ink)]">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-secondary">
           레이팅 추이 · {points.length}점
         </span>
         <span className="inline-flex items-baseline gap-1.5 font-mono text-base font-extrabold tabular-nums text-primary">
