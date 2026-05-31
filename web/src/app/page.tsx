@@ -177,7 +177,7 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
 function HeroMetaItem({ label, value }: { label: string; value: string }) {
   return (
     <span className="flex items-baseline gap-1">
-      <span className="text-[10px] uppercase tracking-wide text-[#9b9e99]">{label}</span>
+      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</span>
       <span className="font-mono text-sm font-semibold tabular-nums text-foreground">{value}</span>
     </span>
   );
@@ -192,7 +192,7 @@ function HeroFeatureCard({ race }: { race: RaceInfo }) {
       ? "bg-secondary text-secondary-foreground"
       : status === "예정"
         ? "border border-secondary text-secondary"
-        : "bg-[#f1f1ed] text-[#6b6e6a]";
+        : "bg-muted text-muted-foreground";
   return (
     <Link
       href={href}
@@ -260,7 +260,7 @@ function HeroCommentPanel({
   if (comments.length === 0) return null;
   return (
     <div className="flex flex-col rounded-xl border border-border bg-card p-4">
-      <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[#6b6e6a]">
+      <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
         최신 댓글
       </div>
       <div className="flex flex-col gap-1">
@@ -268,13 +268,13 @@ function HeroCommentPanel({
           <Link
             key={String(c.id)}
             href={c.entity_href}
-            className="rounded-lg px-2.5 py-2 transition-colors hover:bg-[#f1f1ed]"
+            className="rounded-lg px-2.5 py-2 transition-colors hover:bg-muted"
           >
             <div className="flex items-center justify-between gap-2">
               <span className="truncate text-[12px] font-semibold text-secondary">{c.entity_name}</span>
-              <time className="shrink-0 font-mono text-[10px] tabular-nums text-[#6b6e6a]">{commentTimeAgo(c.created_at)}</time>
+              <time className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground">{commentTimeAgo(c.created_at)}</time>
             </div>
-            <p className="line-clamp-1 text-[12px] text-[#6b6e6a]">{c.content}</p>
+            <p className="line-clamp-1 text-[12px] text-muted-foreground">{c.content}</p>
           </Link>
         ))}
       </div>

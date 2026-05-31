@@ -519,7 +519,7 @@ export default async function RacesPage({
                 <div className="relative overflow-x-auto rounded-[inherit]">
                   <table className="w-full border-collapse text-[13px]">
                     <thead>
-                      <tr className="bg-[#faf7ef]">
+                      <tr className="bg-muted">
                         <th className="border-b border-border px-2 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 52 }}>
                           {entriesPhase === "pre" ? "출전" : "착순"}
                         </th>
@@ -571,11 +571,11 @@ export default async function RacesPage({
                       {entries.map((e, i) => {
                         const rowBg =
                           entriesPhase === "post" && e.rank === 1
-                            ? "bg-[#fff8df]"
+                            ? "bg-secondary/10"
                             : entriesPhase === "post" && e.rank === 2
-                              ? "bg-[#f0f1f4]"
+                              ? "bg-muted"
                               : entriesPhase === "post" && e.rank === 3
-                                ? "bg-[#f8eedf]"
+                                ? "bg-secondary/5"
                                 : "";
                         return (
                           <tr
