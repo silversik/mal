@@ -4,9 +4,10 @@
 
 | # | 일자 | 페이즈 | 주제 |
 |---|---|---|---|
-| [0001](0001-phase-7-mock-betting.md) | 2026-04-26 | Phase 7 | 모의배팅 시스템 |
+| [0001](0001-phase-7-mock-betting.md) | 2026-04-26 | Phase 7 | 모의배팅 시스템 (→ 0004 에서 제거) |
 | [0002](0002-phase-8-favorites-news.md) | 2026-05-01 | Phase 8 | 즐겨찾기 · 알림 · 네이버 뉴스 |
 | [0003](0003-phase-9-ui-perf-crawler-stability.md) | 2026-05-08 ~ 09 | Phase 9 | UI 폴리시 · 성능 · 크롤러 안정성 · 타임존 |
+| [0004](0004-remove-mock-betting.md) | 2026-05-31 | — | 모의배팅 시스템 전면 제거 |
 
 ## 파일 규칙
 

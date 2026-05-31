@@ -1,6 +1,6 @@
 # mal — 배포 가이드
 
-`mal.kr` (KRA 경마 데이터 + 모의배팅) 운영 절차. 통합 서버 `49.50.138.31` 의 `/srv/services/mal` 에 2 개 컨테이너 (`mal-web`, `mal-crawler`) 로 가동.
+`mal.kr` (KRA 경마 데이터 아카이빙·분석) 운영 절차. 통합 서버 `49.50.138.31` 의 `/srv/services/mal` 에 2 개 컨테이너 (`mal-web`, `mal-crawler`) 로 가동.
 
 원본 운영 상태: `/Users/esik/Documents/ops/HANDOVER.md`
 페이즈별 작업 히스토리: [../tasks/](../tasks/)
@@ -85,7 +85,7 @@ mal 크롤러는 **카탈로그 + 데코레이터 + 스케줄러** 3 단 구조:
 ```python
 # 1. JOB_CATALOG 에 한 줄 추가 — crawler/src/monitoring.py
 JOB_CATALOG["mal.sync_<name>"] = {
-    "category": "<kra_openapi | rss | youtube | mock_betting>",
+    "category": "<kra_openapi | naver_search | youtube | kma_openapi | notifications>",
     "description": "...",
     "expected_interval_sec": 86400,
 }
@@ -114,7 +114,7 @@ TRIGGER_JOBS["mal.sync_<name>"] = run_sync_<name>
 
 5. git push → Jenkins `mal` 자동 빌드 (마이그레이션 단계 통과 후 mal-crawler 재기동)
 
-잡 키 컨벤션: `mal.<verb>_<noun>` (예: `mal.sync_news`, `mal.settle_bets`).
+잡 키 컨벤션: `mal.<verb>_<noun>` (예: `mal.sync_news`, `mal.sync_weather`).
 
 ### 대시보드 확인
 
@@ -134,15 +134,9 @@ open https://49.50.138.31:8444    # htpasswd: ops
 # 즉시 1 회 실행 (스케줄 외)
 ssh ... 'docker exec mal-crawler python -m src.main periodic-news'
 ssh ... 'docker exec mal-crawler python -m src.main sync-today'
-ssh ... 'docker exec mal-crawler python -m src.main settle-bets'
 
 # 마이그레이션 강제 재실행
 ssh ... 'docker exec mal-crawler bash /app/db/run-migrations.sh'
-
-# 모의배팅 정산 잡 직접 호출
-ssh ... 'docker exec mal-crawler python -c "
-from src.jobs.periodic import run_settle_bets
-run_settle_bets()"'
 
 # scraper_runs 조회
 ssh ... 'docker exec stack-db psql -U postgres -d app -c \
