@@ -124,8 +124,8 @@ export function ProfileTag({
   children: ReactNode;
 }) {
   const cls = {
-    gold: "bg-[rgba(252,223,104,0.25)] text-[var(--color-gold-ink)] border-[rgba(251,212,54,0.55)]",
-    navy: "bg-[rgba(29,51,78,0.05)] text-primary border-[rgba(29,51,78,0.14)]",
+    gold: "bg-secondary/15 text-secondary border-secondary/40",
+    navy: "bg-muted text-foreground border-border",
     muted: "bg-muted text-muted-foreground border-border",
     "solid-navy": "bg-primary text-primary-foreground border-primary",
   }[tone];

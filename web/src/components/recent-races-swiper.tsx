@@ -285,7 +285,7 @@ function SwiperOverlayArrow({
       aria-label={direction === "prev" ? "이전" : "다음"}
       tabIndex={visible ? 0 : -1}
       aria-hidden={!visible}
-      className={`absolute top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-primary/15 bg-white/90 text-primary shadow-md backdrop-blur-sm transition-all hover:bg-primary hover:text-white ${
+      className={`absolute top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-primary/15 bg-card/90 text-primary shadow-md backdrop-blur-sm transition-all hover:bg-primary hover:text-white ${
         direction === "prev" ? "left-1" : "right-1"
       } ${visible ? "opacity-100" : "pointer-events-none opacity-0"}`}
     >
@@ -321,7 +321,7 @@ function RecentRaceCard({
   return (
     <Link
       href={href}
-      className="group block overflow-hidden rounded-xl border border-primary/8 bg-white transition-all hover:border-primary/20 hover:shadow-md"
+      className="group block overflow-hidden rounded-xl border border-primary/8 bg-card transition-all hover:border-primary/20 hover:shadow-md"
     >
       <div className="relative aspect-video overflow-hidden bg-muted">
         {video ? (

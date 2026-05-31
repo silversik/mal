@@ -376,7 +376,7 @@ export function BetForm(props: BetFormProps) {
                           title={e.horse_name}
                           className={`flex h-9 w-9 items-center justify-center rounded-md border text-sm font-mono tabular-nums transition ${
                             sel
-                              ? "border-primary bg-primary text-white"
+                              ? "border-primary bg-primary text-primary-foreground"
                               : "border-border bg-background hover:bg-muted"
                           }`}
                         >

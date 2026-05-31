@@ -5,14 +5,14 @@ interface RecentFormDotsProps {
   count?: number;
 }
 
-// 1착=brand gold, 2착=slate, 3착=copper-amber, 기타/미완주=neutral.
+// 1착=accent brown, 2착=muted neutral, 3착=brown-pale, 기타/미완주=hairline.
 const RANK_COLOR: Record<string, { bg: string; border?: string }> = {
-  "1": { bg: "var(--color-gold)", border: "var(--color-gold-deep)" },
-  "2": { bg: "#cbd5e1" },
-  "3": { bg: "#b45309" },
+  "1": { bg: "var(--brown)", border: "var(--brown-deep)" },
+  "2": { bg: "var(--muted-ink)" },
+  "3": { bg: "var(--brown-pale)", border: "var(--brown-deep)" },
 };
-const RANK_OTHER: { bg: string; border?: string } = { bg: "#e2e8f0" };
-const RANK_MISS: { bg: string; border?: string } = { bg: "#e5e7eb" };
+const RANK_OTHER: { bg: string; border?: string } = { bg: "var(--hairline)" };
+const RANK_MISS: { bg: string; border?: string } = { bg: "var(--hairline)" };
 
 export function RecentFormDots({ ranks, count = 10 }: RecentFormDotsProps) {
   const recent = ranks.slice(0, count);

@@ -24,7 +24,7 @@ export function AgeSelect({
       onChange={(e) =>
         router.push(`/horses?sort=${activeSort}&age=${e.target.value}`)
       }
-      className="h-[34px] rounded-lg border border-primary/10 bg-white px-3 text-sm font-semibold text-slate-grey transition hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+      className="h-[34px] rounded-lg border border-primary/10 bg-card px-3 text-sm font-semibold text-slate-grey transition hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
     >
       {AGE_OPTIONS.map(({ value, label }) => (
         <option key={value} value={value}>

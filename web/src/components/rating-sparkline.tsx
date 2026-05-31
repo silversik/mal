@@ -87,7 +87,7 @@ export function RatingSparkline({ points, width = 240, height = 56 }: Props) {
         className="overflow-visible"
         onMouseLeave={() => setHover(null)}
       >
-        <path d={area} fill="rgba(252, 223, 104, 0.45)" />
+        <path d={area} fill="var(--brown)" fillOpacity={0.25} />
         <path
           d={line}
           fill="none"

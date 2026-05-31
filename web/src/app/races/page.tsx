@@ -354,7 +354,7 @@ export default async function RacesPage({
                           className={[
                             "inline-flex h-8 min-w-9 items-center justify-center rounded-md border px-2 text-xs font-bold tabular-nums transition",
                             isSelected
-                              ? "border-primary bg-primary text-white shadow-sm"
+                              ? "border-primary bg-primary text-primary-foreground shadow-sm"
                               : stakes
                                 ? "border-champagne-gold/60 bg-champagne-gold/10 text-gold-ink hover:bg-champagne-gold/20"
                                 : status === "종료"

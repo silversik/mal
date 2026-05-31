@@ -53,7 +53,7 @@ export async function CommentSection({ entityType, entityId, entityName }: Props
       ) : (
         <ul className="space-y-3">
           {comments.map((c) => (
-            <li key={c.id} className="rounded-lg border border-primary/8 bg-white p-4">
+            <li key={c.id} className="rounded-lg border border-primary/8 bg-card p-4">
               <div className="mb-1.5 flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold text-foreground">
                   {c.author_name ?? "알 수 없음"}

@@ -218,9 +218,9 @@ export function RaceChip({
 }) {
   const cls =
     tone === "gold"
-      ? "border-[rgba(252,223,104,0.45)] bg-[rgba(252,223,104,0.18)] text-[var(--color-gold-ink)]"
+      ? "border-secondary/40 bg-secondary/15 text-secondary"
       : tone === "condition"
-        ? "border-transparent bg-[#eef4fb] text-[#2a4a72]"
+        ? "border-transparent bg-muted text-foreground"
         : "border-transparent bg-muted text-foreground";
   return (
     <span
@@ -366,10 +366,10 @@ export function PoolSalesTiles({
 function PopChip({ rank, num, odd }: { rank: number; num: string; odd: string }) {
   const style =
     rank === 1
-      ? { bg: "var(--color-gold)", color: "var(--color-navy)", border: "var(--color-gold-deep)" }
+      ? { bg: "var(--brown)", color: "var(--brown-fg)", border: "var(--brown-deep)" }
       : rank === 2
-        ? { bg: "#d6dae2", color: "#1f2937", border: "#c4c8d2" }
-        : { bg: "#ddc4a2", color: "#1f2937", border: "#b07a40" };
+        ? { bg: "var(--muted)", color: "var(--muted-foreground)", border: "var(--hairline)" }
+        : { bg: "var(--brown-pale)", color: "var(--ink)", border: "var(--brown-deep)" };
   return (
     <span className="inline-flex items-center gap-1 text-[11px]">
       <span
@@ -464,9 +464,9 @@ export function PopularityChart({
                     style={{
                       width: `${widthPct}%`,
                       background: isFav
-                        ? "linear-gradient(90deg, var(--color-gold-deep), var(--color-gold))"
-                        : "linear-gradient(90deg, var(--color-navy), var(--color-navy-mid))",
-                      color: isFav ? "var(--color-navy)" : "#ffffff",
+                        ? "linear-gradient(90deg, var(--brown-deep), var(--brown))"
+                        : "var(--muted-ink)",
+                      color: isFav ? "var(--brown-fg)" : "var(--paper)",
                     }}
                   >
                     {r.win.toFixed(1)}

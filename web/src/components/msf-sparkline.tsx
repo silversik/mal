@@ -42,7 +42,7 @@ export function MsfSparkline({
         viewBox={`0 0 ${width} ${height}`}
         aria-label="mal지수 추세"
       >
-        <path d={area} fill="rgba(252, 223, 104, 0.45)" />
+        <path d={area} fill="var(--brown)" fillOpacity={0.25} />
         <line
           x1={0}
           y1={baselineY}

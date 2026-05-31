@@ -116,8 +116,8 @@ function PedigreeSection({
             if (e.target === e.currentTarget) setExpanded(false);
           }}
         >
-          <div className="relative max-h-[92vh] w-full max-w-6xl overflow-auto rounded-xl bg-white shadow-2xl">
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-4 py-3">
+          <div className="relative max-h-[92vh] w-full max-w-6xl overflow-auto rounded-xl bg-card shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-card px-4 py-3">
               <h3 className="text-sm font-semibold">족보 (크게 보기)</h3>
               <button
                 type="button"
