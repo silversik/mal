@@ -212,6 +212,24 @@ html { font-size: calc(16px * var(--scale)); }
   }
 }
 
+/* 큰글씨(lg) 에서 race entries 데이터 테이블 가독성 보정.
+   인라인 px 너비(<th style="width:52px"> 등)가 rem 스케일을 안 따라가서 셀이
+   좁아 헤더가 세로로 회전 + 내용 wrap 됨. lg 에서는 px 제약 해제 + 헤더
+   nowrap 으로 자연 너비 허용. 가로 스크롤은 부모 .overflow-x-auto 에서
+   기존대로 작동 — 50대+ 타깃에 셀이 읽히는 게 우선. 마명 열만 wrap 허용. */
+[data-scale="lg"] [data-table="race-entries"] {
+  table-layout: auto;
+}
+[data-scale="lg"] [data-table="race-entries"] :is(th, td) {
+  width: auto !important;
+  min-width: max-content;
+  white-space: nowrap;
+}
+[data-scale="lg"] [data-table="race-entries"] :is(th, td):nth-child(3) {
+  white-space: normal;
+  min-width: 10rem;
+}
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;
