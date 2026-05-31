@@ -4,7 +4,6 @@
 
 | 기능 | 문서 |
 |---|---|
-| 모의배팅 시스템 (가상화폐 P, 마권 7종) | [mock-betting.md](mock-betting.md) |
 | 즐겨찾기 마필 · 인앱 알림 | [favorites-notifications.md](favorites-notifications.md) |
 | 뉴스 (네이버 검색 통합) | [news.md](news.md) |
 | 마필 상세 — 조건별 성적 분석 | [horse-form-breakdown.md](horse-form-breakdown.md) |

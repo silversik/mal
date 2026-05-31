@@ -5,7 +5,6 @@ import NextAuth, { type DefaultSession } from "next-auth";
 import type {} from "next-auth/jwt";
 import Kakao from "next-auth/providers/kakao";
 
-import { grantSignupBonusIfNeeded } from "@/lib/balances";
 import { query } from "@/lib/db";
 import { withTransaction } from "@/lib/db_tx";
 
@@ -111,15 +110,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           provider,
           providerAccountId,
         );
-      }
-
-      // 가입 보너스 100만P (없으면) — user_balances row + SIGNUP_GRANT 원장.
-      // 멱등성 보장: 두 번째 로그인부터는 no-op.
-      try {
-        await grantSignupBonusIfNeeded(userId);
-      } catch (e) {
-        // 잔액 row 생성 실패해도 로그인 자체는 막지 않음 — 첫 베팅 시도 때 다시 시도된다.
-        console.warn("grantSignupBonusIfNeeded failed", e);
       }
 
       // jwt 콜백으로 DB 사용자 id 를 넘기기 위한 채널.

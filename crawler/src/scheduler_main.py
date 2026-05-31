@@ -19,11 +19,9 @@ from apscheduler.triggers.interval import IntervalTrigger
 from crawler_core import client as dash
 
 from .jobs.periodic import (
-    run_audit_combo_dividends,
     run_build_favorite_notifications,
     run_backfill_races_from_entries,
     run_chunked_dividends_backfill,
-    run_settle_bets,
     run_sync_horse_rank_changes,
     run_sync_horse_ratings,
     run_sync_horses_backfill,
@@ -74,13 +72,6 @@ def main() -> None:
     # 30분 주기
     sched.add_job(
         run_sync_news, IntervalTrigger(minutes=30), id="mal.sync_news", **common,
-    )
-    # 10분 주기 — 모의배팅 정산. 결과 적재 직후 자동으로 PENDING bets 정산.
-    sched.add_job(
-        run_settle_bets,
-        IntervalTrigger(minutes=10),
-        id="mal.settle_bets",
-        **common,
     )
     # 3시간 주기
     sched.add_job(
@@ -247,13 +238,6 @@ def main() -> None:
         id="mal.sync_videos_backfill",
         **common,
     )
-    # 모의배팅 복식 배당 누락 자가진단(23:10) — 결과·배당 백필 완료 후, 어제 race 점검.
-    sched.add_job(
-        run_audit_combo_dividends,
-        CronTrigger(hour=23, minute=10),
-        id="mal.audit_combo_dividends",
-        **common,
-    )
     # KRBC 업로드 플레이리스트 1년 walk — 월 1회(매월 1일 04:00 KST) 일괄 적재.
     # 영상 폭주(race day 30+ 영상)로 sync_videos head 에서 밀린 누락 영구 cover.
     # 수동 "지금 실행" 트리거로도 호출 가능.
@@ -308,8 +292,6 @@ def main() -> None:
         "mal.sync_race_corners": run_sync_race_corners,
         "mal.backfill_races_from_entries": run_backfill_races_from_entries,
         "mal.chunked_dividends_backfill": run_chunked_dividends_backfill,
-        "mal.settle_bets": run_settle_bets,
-        "mal.audit_combo_dividends": run_audit_combo_dividends,
         "mal.build_favorite_notifications": run_build_favorite_notifications,
         "mal.sync_weather": run_sync_weather,
     }

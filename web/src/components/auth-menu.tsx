@@ -3,7 +3,6 @@ import Link from "next/link";
 import { auth, signOut } from "@/auth";
 import { getUserById } from "@/lib/users";
 
-import { BalanceChip } from "./balance-chip";
 import { NotificationsBell } from "./notifications-bell";
 
 // 우측 상단 로그인/로그아웃 영역.
@@ -18,7 +17,6 @@ export async function AuthMenu() {
       profile?.display_name ?? session.user.name ?? "회원";
     return (
       <div className="flex items-center gap-3">
-        <BalanceChip />
         <NotificationsBell />
         <Link
           href="/me"

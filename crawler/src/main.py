@@ -16,7 +16,6 @@ import typer
 from .clients.horse_detail import HorseDetailClient
 from .jobs.periodic import (
     run_chunked_dividends_backfill,
-    run_settle_bets,
     run_sync_horse_rank_changes,
     run_sync_horse_ratings,
     run_sync_horses_backfill,
@@ -524,13 +523,6 @@ def cmd_periodic_horse_ratings() -> None:
     """[scheduled] sync_horse_ratings — 주간 레이팅 공시."""
     n = run_sync_horse_ratings()
     typer.echo(f"upserted {n} horse_rating rows")
-
-
-@app.command("periodic-settle-bets")
-def cmd_periodic_settle_bets() -> None:
-    """[scheduled] settle_bets — 모의배팅 정산 트리거 (Next.js 호출)."""
-    n = run_settle_bets()
-    typer.echo(f"settled+void {n} bets")
 
 
 @app.command("sync-weather")

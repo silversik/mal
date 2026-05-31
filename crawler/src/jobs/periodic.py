@@ -9,10 +9,8 @@ migration 에 seed row 를 넣고 여기에 래퍼를 추가.
 """
 from __future__ import annotations
 
-import os
 from datetime import date, timedelta
 
-import httpx
 from sqlalchemy import text
 
 from ..config import settings
@@ -156,9 +154,6 @@ def run_sync_yesterday_catchup() -> int:
     다음날 아침에 전날 데이터를 재수집해 빈 날짜를 채운다.
     upsert 이므로 데이터가 이미 존재해도 안전하게 재실행.
 
-    결과 적재 직후 모의배팅 정산도 즉시 트리거 — 10분 주기 잡을 기다리지 않도록.
-    정산 실패해도 catchup 자체는 성공으로 본다 (정산 잡이 다음 cycle 에 재시도).
-
     Invariant fail-loud: catchup 후에도 어제 race_entries(출전표)는 있는데
     race_results 가 0건이면 RuntimeError. 5/8 사고처럼 22:00 sync_races_today
     잡 자체가 안 돌거나 sync_races_live 도 등록 안 된 채로 race day 결과가
@@ -174,10 +169,6 @@ def run_sync_yesterday_catchup() -> int:
     races = sync_date_all_meets(yesterday)
     dividends = sync_dividends_all_meets(yesterday)
     sales = sync_race_sales_all_meets(yesterday)
-    try:
-        run_settle_bets()
-    except Exception as e:  # noqa: BLE001
-        log.warning("yesterday_catchup_settle_failed", err=str(e))
     log.info("yesterday_catchup_done", date=str(yesterday), races=races, dividends=dividends, sales=sales)
 
     with session_scope() as s:
@@ -369,125 +360,6 @@ def run_sync_videos_bulk() -> int:
     수동 트리거 / 월 1회 cron 용도 (race day 잡 자체는 sync_videos 가 처리).
     """
     return bulk_backfill_videos(months_back=12)
-
-
-@track_job("mal.settle_bets")
-def run_settle_bets() -> int:
-    """모의배팅 정산 — Next.js `/api/internal/settle` 호출.
-
-    정산 비즈니스 로직(적중 판정·배당 lookup·잔액 ledger)은 web 쪽 한 곳에만 있고,
-    여기는 단순 트리거. 결과 row 가 있는데 race_settlements 에 없는 race 모두 처리.
-    개별 race 는 web 쪽에서 자체 트랜잭션 + 멱등성(race_settlements PK + idem_key) 보장.
-
-    env:
-      MAL_WEB_INTERNAL_URL — 컨테이너 네트워크 내 Next.js (예: http://mal-web:4000)
-      CRAWLER_SECRET       — X-Crawler-Secret 헤더 (timing-safe 검증)
-
-    반환: bets_settled + bets_void (대시보드 rows_upserted 표시용).
-    """
-    base = os.environ.get("MAL_WEB_INTERNAL_URL", "").rstrip("/")
-    secret = os.environ.get("CRAWLER_SECRET", "")
-    if not base or not secret:
-        log.warning(
-            "settle_bets_skipped_missing_config",
-            reason="MAL_WEB_INTERNAL_URL / CRAWLER_SECRET 미설정",
-        )
-        return 0
-    url = f"{base}/api/internal/settle"
-    try:
-        resp = httpx.post(
-            url,
-            headers={"x-crawler-secret": secret, "content-type": "application/json"},
-            content=b"",
-            timeout=httpx.Timeout(60.0, connect=5.0),
-        )
-    except httpx.HTTPError as e:
-        log.error("settle_bets_http_error", url=url, err=str(e))
-        raise
-    if resp.status_code != 200:
-        log.error(
-            "settle_bets_non_200",
-            url=url,
-            status=resp.status_code,
-            body=resp.text[:300],
-        )
-        resp.raise_for_status()
-    payload = resp.json()
-    races = int(payload.get("races", 0) or 0)
-    settled = int(payload.get("bets_settled", 0) or 0)
-    void = int(payload.get("bets_void", 0) or 0)
-    voided_races = payload.get("voided_races") or []
-    log.info("settle_bets_done", races=races, bets_settled=settled, bets_void=void)
-
-    # VOID 발생 시 Telegram 알림 — 운영자가 odds 누락 race 즉시 인지하도록.
-    # 정산은 race 당 1회만 카운트되므로(race_settlements PK 가드) 중복 알림 없음.
-    if void > 0 and voided_races:
-        from crawler_core.client import notify_telegram
-
-        lines = [
-            f"- {v.get('race_date')} {v.get('meet')} {v.get('race_no')}R · {v.get('bets_void')}건"
-            for v in voided_races[:10]
-        ]
-        more = "" if len(voided_races) <= 10 else f"\n... 외 {len(voided_races) - 10}건"
-        notify_telegram(
-            "모의배팅 정산 VOID",
-            f"odds 누락으로 환급 처리:\n" + "\n".join(lines) + more,
-        )
-
-    return settled + void
-
-
-@track_job("mal.audit_combo_dividends")
-def run_audit_combo_dividends() -> int:
-    """복식 배당 누락 자가진단 — 어제 결과 확정 race 중 race_combo_dividends 0건 탐지.
-
-    `run_settle_bets` 가 odds 누락을 발견했을 때는 이미 VOID 환급이 발생한 뒤다.
-    이 잡은 그 *전*에 데이터 무결성 결함을 찾아 운영자에게 알린다.
-
-    반환: 누락 race 개수 (대시보드 rows_upserted 표시용).
-    """
-    from sqlalchemy import text
-
-    from ..db import session_scope
-
-    sql = text(
-        """
-        WITH finished AS (
-          SELECT DISTINCT r.race_date, r.meet, r.race_no
-            FROM races r
-            JOIN race_results rr USING (race_date, meet, race_no)
-           WHERE r.race_date = ((NOW() AT TIME ZONE 'Asia/Seoul')::date - 1)
-             AND rr.rank IS NOT NULL
-        )
-        SELECT f.race_date, f.meet, f.race_no
-          FROM finished f
-          LEFT JOIN race_combo_dividends c USING (race_date, meet, race_no)
-         GROUP BY f.race_date, f.meet, f.race_no
-        HAVING COUNT(c.*) = 0
-         ORDER BY f.meet, f.race_no
-        """
-    )
-    with session_scope() as session:
-        rows = session.execute(sql).all()
-
-    missing = len(rows)
-    log.info("audit_combo_dividends_done", missing_races=missing)
-
-    if missing > 0:
-        from crawler_core.client import notify_telegram
-
-        lines = [
-            f"- {r.race_date} {r.meet} {r.race_no}R" for r in rows[:10]
-        ]
-        more = "" if missing <= 10 else f"\n... 외 {missing - 10}건"
-        notify_telegram(
-            "모의배팅 배당 누락 감지",
-            "어제 결과 확정 race 중 race_combo_dividends 0건:\n"
-            + "\n".join(lines)
-            + more,
-        )
-
-    return missing
 
 
 @track_job("mal.build_favorite_notifications")

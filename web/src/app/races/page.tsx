@@ -9,13 +9,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "/races" },
 };
 
-import { auth } from "@/auth";
 import { RaceDatePicker } from "@/components/race-date-picker";
 import { VenueIcon } from "@/components/venue-icon";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { getDailyBetTotalP, getUserBalance } from "@/lib/balances";
-import { getRaceBetState } from "@/lib/bets";
 import {
   getAllRaceDates,
   getRaceDataSyncedAt,
@@ -64,8 +61,6 @@ import {
 import { getRaceCorner } from "@/lib/race_corners";
 import { Suspense } from "react";
 import { CommentSection } from "@/components/comment-section";
-
-import { BetForm } from "./bet-form";
 
 type SearchParams = { date?: string; venue?: string; race?: string };
 
@@ -206,26 +201,12 @@ export default async function RacesPage({
         null
       : null;
 
-  const session = await auth();
-  const userId = session?.user?.id ?? null;
-
-  // 1일 한도 표시용 — KST 기준 오늘 (선택된 race_date 가 아니라 *현재* 일자가 한도 단위).
-  const todayKst = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-
   const [
     entriesResult,
     raceVideo,
     syncedAt,
     comboDividends,
     poolSales,
-    betState,
-    userBalance,
-    dailyTotalP,
     raceCorner,
   ] = selectedRace
     ? await Promise.all([
@@ -234,9 +215,6 @@ export default async function RacesPage({
         getRaceDataSyncedAt(currentDate, selectedRace.meet, selectedRace.race_no),
         getRaceComboDividends(currentDate, selectedRace.meet, selectedRace.race_no),
         getRacePoolSales(currentDate, selectedRace.meet, selectedRace.race_no),
-        getRaceBetState(currentDate, selectedRace.meet, selectedRace.race_no),
-        userId ? getUserBalance(userId) : Promise.resolve(null),
-        userId ? getDailyBetTotalP(userId, todayKst) : Promise.resolve(null),
         getRaceCorner(currentDate, selectedRace.meet, selectedRace.race_no),
       ])
     : [
@@ -245,9 +223,6 @@ export default async function RacesPage({
         null,
         [] as RaceComboDividend[],
         [] as RacePoolSales[],
-        null,
-        null,
-        null,
         null,
       ];
   const entries = entriesResult.entries;
@@ -738,22 +713,6 @@ export default async function RacesPage({
               </CardContent>
             </Card>
           )}
-
-              {betState && (
-                <BetForm
-                  raceDate={currentDate}
-                  meet={selectedRace.meet}
-                  raceNo={selectedRace.race_no}
-                  entries={entries
-                    .filter((e): e is typeof e & { chul_no: number } => e.chul_no != null)
-                    .map((e) => ({ chul_no: e.chul_no, horse_name: e.horse_name }))}
-                  state={betState}
-                  loggedIn={!!userId}
-                  balanceP={userBalance?.balance_p ?? null}
-                  dailyTotalP={dailyTotalP}
-                  startTime={selectedRace.start_time ?? null}
-                />
-              )}
 
               {raceCorner && (
                 <div>

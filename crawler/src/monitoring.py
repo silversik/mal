@@ -176,16 +176,6 @@ JOB_CATALOG: dict[str, dict] = {
         "description": "KRBC 업로드 플레이리스트 1년 walk — kra_videos 일괄 적재",
         "expected_interval_sec": 86400 * 35,  # 월 1회 + 여유
     },
-    "mal.settle_bets": {
-        "category": "mock_betting",
-        "description": "모의배팅 정산 — 결과 확정된 경주의 PENDING bets → /api/internal/settle",
-        "expected_interval_sec": 600,  # 10min
-    },
-    "mal.audit_combo_dividends": {
-        "category": "mock_betting",
-        "description": "복식 배당 누락 자가진단 — 어제 결과 확정 race 중 race_combo_dividends 0건 탐지",
-        "expected_interval_sec": 86400,  # daily
-    },
     "mal.build_favorite_notifications": {
         "category": "notifications",
         "description": "즐겨찾기 마필 다음 경기 출주 → 인앱 알림 적재",
