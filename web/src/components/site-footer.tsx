@@ -28,10 +28,6 @@ export function SiteFooter() {
           <span>경마 데이터: 한국마사회(KRA) 공공데이터포털</span>
         </div>
       </div>
-      <div className="mx-auto mt-4 max-w-[1080px] border-t border-border pt-3 text-[11px] leading-relaxed text-muted-foreground">
-        본 서비스의 베팅 기능은 실제 현금이 오가지 않는 <strong className="font-semibold text-foreground">비현금성 모의 시뮬레이션</strong>입니다.
-        실제 마권 구매·환급과 무관하며, 어떠한 금전적 수익도 발생하지 않습니다.
-      </div>
     </footer>
   );
 }

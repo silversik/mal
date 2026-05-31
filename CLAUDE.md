@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트
 
-`mal.kr` — 한국마사회(KRA) 공공데이터 기반 경마 데이터 아카이빙 + 분석 + **비현금성** 모의배팅. 데이터 소스: KRA OpenAPI (data.go.kr) · 기상청 ASOS · 네이버 검색 · YouTube Data v3.
+`mal.kr` — 한국마사회(KRA) 공공데이터 기반 경마 데이터 아카이빙 + 분석. 데이터 소스: KRA OpenAPI (data.go.kr) · 기상청 ASOS · 네이버 검색 · YouTube Data v3.
 
 ## 스택 한 줄
 
@@ -55,7 +55,6 @@ PostgreSQL `mal` schema (races, race_results, jockeys, horses, ...)
    ▼
 Next.js web (mal-web, :4000 → nginx → mal.kr)
    - /races, /jockeys, /horses 조회 페이지
-   - 시뮬 베팅 (NextAuth 세션 기반, 비현금성)
    - sitemap.xml index 구조 (chunk 분할 — Search Console fetch 안정화, 2026-05 추가)
 ```
 

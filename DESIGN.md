@@ -4,11 +4,11 @@
 > 생성: 2026-05-22 (`/design-consultation`, 전면 비주얼 리프레시).
 
 ## Product Context
-- **What this is:** 한국마사회(KRA) 공공데이터 기반 경마 데이터 아카이브 + 분석 + 비현금성 모의배팅.
+- **What this is:** 한국마사회(KRA) 공공데이터 기반 경마 데이터 아카이브 + 분석.
 - **Who it's for:** 한국 경마 팬·데이터 사용자(모바일 우세). **핵심 코호트: 50대+ 고령 팬** —
   한국 경마 관중층이 고령이고 KRA 공식 사이트는 관료적. 가독성·접근성이 경쟁 wedge.
 - **Space/industry:** 스포츠/경마 데이터 레퍼런스 (FanGraphs/Statiz 류, 단 KRA 도메인).
-- **Project type:** data-dense web app (조회·분석 + 시뮬 베팅).
+- **Project type:** data-dense web app (조회·분석).
 - **Memorable thesis:** *한국 경마 데이터의 가장 신뢰할 수 있고 **가장 읽기 편한** 레퍼런스 —
   숫자가 주인공인, 고령 팬도 편한 차분한 도구.*
 

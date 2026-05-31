@@ -35,10 +35,6 @@ export default function PrivacyPage() {
             서버 로그 정보 (Google Analytics를 통해 익명 집계).
           </li>
           <li>
-            <strong>모의배팅 이용 시</strong>: 베팅 선택 기록, 누적 포인트 등 서비스 내
-            시뮬레이션 데이터.
-          </li>
-          <li>
             <strong>댓글 작성 시</strong>: 카카오 계정 닉네임, 작성 내용, 작성 일시.
           </li>
         </ul>
@@ -48,7 +44,6 @@ export default function PrivacyPage() {
         <h2 className="text-base font-semibold">2. 수집 목적</h2>
         <ul className="text-sm leading-relaxed text-foreground/90 space-y-1 list-disc list-inside">
           <li>로그인 인증 및 회원 식별</li>
-          <li>모의배팅 기록 저장 및 통계 제공</li>
           <li>댓글 서비스 운영</li>
           <li>서비스 품질 개선 및 이용 통계 분석</li>
         </ul>
