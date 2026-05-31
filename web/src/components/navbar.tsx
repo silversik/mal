@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AuthMenu } from "@/components/auth-menu";
+import { DisplaySettings } from "@/components/display-settings";
 import { NavLinks } from "@/components/nav-links";
 
 export function Navbar() {
@@ -19,7 +20,10 @@ export function Navbar() {
           <NavLinks />
         </div>
 
-        <AuthMenu />
+        <div className="flex items-center gap-3">
+          <DisplaySettings />
+          <AuthMenu />
+        </div>
       </div>
     </header>
   );
