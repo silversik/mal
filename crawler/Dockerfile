@@ -7,7 +7,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     UV_SYSTEM_PYTHON=1 \
-    UV_LINK_MODE=copy
+    UV_LINK_MODE=copy \
+    TZ=Asia/Seoul
 
 # uv 만 최소 설치
 RUN apt-get update -qq && apt-get install -y --no-install-recommends \

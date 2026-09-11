@@ -44,6 +44,9 @@ services:
     environment:
       DATABASE_URL: ${MAL_DATABASE_URL:?set in /srv/stack/.env}
       DASHBOARD_URL: ${DASHBOARD_URL:-http://crawler-dashboard:3100}
+      # 잡 본체가 date.today() 로 KST 날짜를 가정한다 — 스케줄러(APScheduler)는 Asia/Seoul
+      # 이지만 프로세스 TZ 가 UTC 면 07:30 KST catchup 이 "그저께"를 보정하는 사고가 남.
+      TZ: Asia/Seoul
       # KRA OpenAPI / KRBC YouTube — src/config.py 가 KRA_SERVICE_KEY · YOUTUBE_API_KEY 를
       # os.environ 로 직접 읽는다. `*_FILE` 패턴은 앱에서 파싱 코드가 없어서 무효였음 —
       # 값은 /srv/stack/.env 로 관리하고 그대로 주입한다.

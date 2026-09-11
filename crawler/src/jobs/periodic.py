@@ -338,13 +338,14 @@ def run_chunked_dividends_backfill() -> int:
 @track_job("mal.sync_videos_backfill")
 def run_sync_videos_backfill() -> int:
     """누락된 경주 영상을 YouTube search 로 매칭 — 23:00 KST."""
+    # run_sync_videos 와 동일 — env 미설정은 silent skip 이 아니라 명시적 실패.
     if not settings.youtube_api_key or not settings.youtube_krbc_channel_id:
-        log.warning(
-            "sync_videos_backfill_skipped_missing_config",
-            reason="YOUTUBE_API_KEY / YOUTUBE_KRBC_CHANNEL_ID 미설정",
+        raise RuntimeError(
+            "YOUTUBE_API_KEY / YOUTUBE_KRBC_CHANNEL_ID 미설정 — .env 에 추가 필요"
         )
-        return 0
-    return backfill_missing_race_videos(days_back=30, limit=50)
+    # days_back 은 함수 기본값(365)과 맞춘다 — 30일 창은 오래된 누락(영광의월드 1년 공백
+    # 사례)을 영구 방치한다. limit=50 이 실행당 쿼터를 캡하므로 창을 넓혀도 비용 동일.
+    return backfill_missing_race_videos(days_back=365, limit=50)
 
 
 @track_job("mal.sync_videos_bulk")
