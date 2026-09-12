@@ -16,6 +16,8 @@ export type FamNode = {
   horse_no: string | null;
   name: string;
   gender: "Male" | "Female" | "Unknown";
+  /** 원문 성별("수4"·"암3"·"거6"). 있으면 노드 글자 표기에 gender 보다 우선(거세마 구분). */
+  sex?: string | null;
   birthYear?: string | null;
   country?: string | null;
   isCurrent?: boolean;
@@ -138,18 +140,17 @@ export function FamilyTreeDiagram({
   };
 
   /* ── Node visuals ───────────────────────────────────────── */
+  // 색은 토큰만(다크 flip) — 성별은 색이 아니라 2번째 줄 글자(수/암/거)로 인코딩.
+  // 액센트는 현재 말(focal) 하나뿐. 선택 노드는 stroke 만 accent, focal 은 fill 틴트+점선 내부링.
   const fillOf = (n: FamNode) => {
-    if (n.isCurrent) return "#fefce8";
-    if (n.gender === "Male") return "#eff6ff";
-    if (n.gender === "Female") return "#fdf2f8";
-    return "#fafafa";
+    if (n.isCurrent) return "color-mix(in srgb, var(--brown) 14%, var(--card))";
+    if (n.gender === "Unknown") return "var(--muted)";
+    return "var(--card)";
   };
   const strokeOf = (n: FamNode) => {
-    if (n.isCurrent) return "#ca8a04";
-    if (popup?.node.id === n.id) return "#ca8a04"; // highlight selected
-    if (n.gender === "Male") return "#60a5fa";
-    if (n.gender === "Female") return "#f472b6";
-    return "#a1a1aa";
+    if (n.isCurrent) return "var(--brown)";
+    if (popup?.node.id === n.id) return "var(--ring)"; // highlight selected
+    return "var(--hairline)";
   };
 
   /* Node SVG element */
@@ -171,19 +172,23 @@ export function FamilyTreeDiagram({
         />
         {node.isCurrent && (
           <rect x={1.5} y={1.5} width={NW - 3} height={NH - 3}
-            rx={4} fill="none" stroke="#fbbf24" strokeWidth={1} strokeDasharray="3,2" />
+            rx={4} fill="none" stroke="var(--brown-pale)" strokeWidth={1} strokeDasharray="3,2" />
         )}
         <text x={8} y={NH / 2 - 1} dy="-0.18em"
-          fontSize={12} fontWeight={node.isCurrent ? 700 : 600} fill="#111827"
+          fontSize={12} fontWeight={node.isCurrent ? 700 : 600} fill="var(--foreground)"
           style={{ userSelect: "none" }}>
           {trunc(node.name, 9)}
         </text>
-        {(node.country || node.birthYear) && (
-          <text x={8} y={NH / 2 - 1} dy="1.0em"
-            fontSize={9.5} fill="#6b7280" style={{ userSelect: "none" }}>
-            {[node.country, node.birthYear].filter(Boolean).join(" · ")}
-          </text>
-        )}
+        {(() => {
+          // 성별 글자는 2번째 줄 맨 앞 — 이름 줄(12px, 9자 trunc)엔 공간이 없다.
+          const meta = [sexGlyph(node), node.country, node.birthYear].filter(Boolean).join(" · ");
+          return meta ? (
+            <text x={8} y={NH / 2 - 1} dy="1.0em"
+              fontSize={9.5} fill="var(--muted-foreground)" style={{ userSelect: "none" }}>
+              {meta}
+            </text>
+          ) : null;
+        })()}
       </g>
     );
   };
@@ -219,7 +224,7 @@ export function FamilyTreeDiagram({
   return (
     <div
       ref={containerRef}
-      className="relative cursor-grab overflow-x-auto rounded-lg border bg-white p-3 active:cursor-grabbing select-none"
+      className="relative cursor-grab overflow-x-auto rounded-lg border bg-background p-3 active:cursor-grabbing select-none"
       onPointerDown={(e) => {
         // 터치는 native horizontal scroll 에 맡김 — 커스텀 핸들러는 mouse 전용.
         // (이전에 pan-y touchAction + setPointerCapture 조합이 모바일 swipe 를
@@ -274,13 +279,13 @@ export function FamilyTreeDiagram({
             const rcx = kidCX(N - 1) + dx;
             return (
               <>
-                <line x1={scx} y1={Y1 + NH} x2={scx} y2={kidBusY} stroke="#93c5fd" />
-                <line x1={lcx} y1={kidBusY} x2={rcx} y2={kidBusY} stroke="#93c5fd" />
+                <line x1={scx} y1={Y1 + NH} x2={scx} y2={kidBusY} stroke="var(--muted-ink)" />
+                <line x1={lcx} y1={kidBusY} x2={rcx} y2={kidBusY} stroke="var(--muted-ink)" />
                 {kids.map((_, i) => (
                   <line key={i}
                     x1={kidCX(i) + dx} y1={kidBusY}
                     x2={kidCX(i) + dx} y2={Y2}
-                    stroke="#93c5fd" />
+                    stroke="var(--muted-ink)" />
                 ))}
               </>
             );
@@ -290,39 +295,39 @@ export function FamilyTreeDiagram({
           {dam && fullChildIdxs.map((i) => (
             <path key={`dam-${i}`}
               d={`M${dcx},${Y1 + NH} V${damElbowY} H${kidCX(i) + dx} V${Y2}`}
-              stroke="#fbcfe8" />
+              stroke="var(--muted-ink)" strokeDasharray="4 3" />
           ))}
 
           {/* Sire parents → sire */}
           {sire && ss_cx != null && sd_cx != null && (
             <>
-              <line x1={ss_cx + dx} y1={Y0 + NH} x2={ss_cx + dx} y2={parentBusY} stroke="#93c5fd" />
-              <line x1={sd_cx + dx} y1={Y0 + NH} x2={sd_cx + dx} y2={parentBusY} stroke="#fbcfe8" />
-              <line x1={ss_cx + dx} y1={parentBusY} x2={sd_cx + dx} y2={parentBusY} stroke="#d4d4d8" />
-              <line x1={scx} y1={parentBusY} x2={scx} y2={Y1} stroke="#93c5fd" />
+              <line x1={ss_cx + dx} y1={Y0 + NH} x2={ss_cx + dx} y2={parentBusY} stroke="var(--muted-ink)" />
+              <line x1={sd_cx + dx} y1={Y0 + NH} x2={sd_cx + dx} y2={parentBusY} stroke="var(--muted-ink)" strokeDasharray="4 3" />
+              <line x1={ss_cx + dx} y1={parentBusY} x2={sd_cx + dx} y2={parentBusY} stroke="var(--muted-ink)" strokeOpacity={0.45} />
+              <line x1={scx} y1={parentBusY} x2={scx} y2={Y1} stroke="var(--muted-ink)" />
             </>
           )}
           {sire && ss_cx != null && sd_cx == null && (
-            <path d={`M${ss_cx + dx},${Y0 + NH} V${parentBusY} H${scx} V${Y1}`} stroke="#93c5fd" />
+            <path d={`M${ss_cx + dx},${Y0 + NH} V${parentBusY} H${scx} V${Y1}`} stroke="var(--muted-ink)" />
           )}
           {sire && sd_cx != null && ss_cx == null && (
-            <path d={`M${sd_cx + dx},${Y0 + NH} V${parentBusY} H${scx} V${Y1}`} stroke="#fbcfe8" />
+            <path d={`M${sd_cx + dx},${Y0 + NH} V${parentBusY} H${scx} V${Y1}`} stroke="var(--muted-ink)" strokeDasharray="4 3" />
           )}
 
           {/* Dam parents → dam */}
           {dam && ds_cx != null && dd_cx != null && (
             <>
-              <line x1={ds_cx + dx} y1={Y0 + NH} x2={ds_cx + dx} y2={parentBusY} stroke="#93c5fd" />
-              <line x1={dd_cx + dx} y1={Y0 + NH} x2={dd_cx + dx} y2={parentBusY} stroke="#fbcfe8" />
-              <line x1={ds_cx + dx} y1={parentBusY} x2={dd_cx + dx} y2={parentBusY} stroke="#d4d4d8" />
-              <line x1={dcx} y1={parentBusY} x2={dcx} y2={Y1} stroke="#fbcfe8" />
+              <line x1={ds_cx + dx} y1={Y0 + NH} x2={ds_cx + dx} y2={parentBusY} stroke="var(--muted-ink)" />
+              <line x1={dd_cx + dx} y1={Y0 + NH} x2={dd_cx + dx} y2={parentBusY} stroke="var(--muted-ink)" strokeDasharray="4 3" />
+              <line x1={ds_cx + dx} y1={parentBusY} x2={dd_cx + dx} y2={parentBusY} stroke="var(--muted-ink)" strokeOpacity={0.45} />
+              <line x1={dcx} y1={parentBusY} x2={dcx} y2={Y1} stroke="var(--muted-ink)" strokeDasharray="4 3" />
             </>
           )}
           {dam && ds_cx != null && dd_cx == null && (
-            <path d={`M${ds_cx + dx},${Y0 + NH} V${parentBusY} H${dcx} V${Y1}`} stroke="#93c5fd" />
+            <path d={`M${ds_cx + dx},${Y0 + NH} V${parentBusY} H${dcx} V${Y1}`} stroke="var(--muted-ink)" />
           )}
           {dam && dd_cx != null && ds_cx == null && (
-            <path d={`M${dd_cx + dx},${Y0 + NH} V${parentBusY} H${dcx} V${Y1}`} stroke="#fbcfe8" />
+            <path d={`M${dd_cx + dx},${Y0 + NH} V${parentBusY} H${dcx} V${Y1}`} stroke="var(--muted-ink)" strokeDasharray="4 3" />
           )}
         </g>
 
@@ -344,11 +349,11 @@ export function FamilyTreeDiagram({
         {/* +N indicators */}
         {extraBefore > 0 && (
           <text x={kidCX(0) + dx - NW / 2 - 6} y={Y2 + NH / 2 + 4}
-            textAnchor="end" fontSize={10} fill="#9ca3af">+{extraBefore}</text>
+            textAnchor="end" fontSize={10} fill="var(--muted-foreground)">+{extraBefore}</text>
         )}
         {extraAfter > 0 && (
           <text x={kidCX(N - 1) + dx + NW / 2 + 6} y={Y2 + NH / 2 + 4}
-            fontSize={10} fill="#9ca3af">+{extraAfter}</text>
+            fontSize={10} fill="var(--muted-foreground)">+{extraAfter}</text>
         )}
       </svg>
 
@@ -371,7 +376,7 @@ export function FamilyTreeDiagram({
               </button>
             </div>
             <p className="text-xs text-muted-foreground">
-              {popup.node.gender === "Male" ? "수·거" : popup.node.gender === "Female" ? "암" : ""}
+              {sexGlyph(popup.node)}
               {popup.node.country && ` · ${popup.node.country}`}
               {popup.node.birthYear && ` · ${popup.node.birthYear}년생`}
             </p>
@@ -391,7 +396,7 @@ export function FamilyTreeDiagram({
       )}
 
       <p className="mt-1.5 text-[11px] text-muted-foreground">
-        노드 클릭 → 미리보기 팝업 · 파란선 = 父계 · 분홍선 = 母계
+        노드 클릭 → 미리보기 팝업 · 실선 = 父계 · 점선 = 母계 · 수/암/거 = 성별
       </p>
     </div>
   );
@@ -399,4 +404,13 @@ export function FamilyTreeDiagram({
 
 function trunc(s: string, n: number) {
   return s.length > n ? s.slice(0, Math.max(1, n - 1)) + "…" : s;
+}
+
+/** 수/암/거 — 원문 sex 우선, 없으면 gender 폴백(조상은 씨수말=수 · 씨암말=암). SexBullet 과 동일 글자. */
+function sexGlyph(n: FamNode): string {
+  const s = n.sex?.trim() ?? "";
+  if (s.startsWith("거")) return "거";
+  if (s.startsWith("암")) return "암";
+  if (s.startsWith("수")) return "수";
+  return n.gender === "Male" ? "수" : n.gender === "Female" ? "암" : "";
 }

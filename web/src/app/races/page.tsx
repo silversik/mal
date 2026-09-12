@@ -465,23 +465,26 @@ export default async function RacesPage({
 
           {/* 2-열 그리드 — lg+ 에선 우측 사이드바(영상·풀별매출·인기분포),
               그 아래선 단일 컬럼. 사이드바는 데스크탑에서 sticky 로 따라온다. */}
-          <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
-            <div className="min-w-0 space-y-5">
-              {/* 모바일·태블릿(lg 미만)에선 영상이 메인 컬럼 상단. 데스크탑에선 사이드바로 이동. */}
-              {raceVideo && (
-                <div className="overflow-hidden rounded-xl border bg-card shadow-sm lg:hidden">
-                  <div className="aspect-video w-full bg-black">
-                    <iframe
-                      src={youtubeEmbedUrl(raceVideo.video_id)}
-                      title={raceVideo.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="h-full w-full"
-                    />
-                  </div>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[auto_1fr] lg:gap-x-6 lg:gap-y-4">
+            {/* 영상은 그리드 직속 단일 노드 — 모바일은 1열 최상단, lg 는 우측 상단(사이드바 위).
+                예전엔 lg:hidden / hidden lg:block 두 벌이라 iframe 이 2번 마운트됐음(단일 반응형 트리).
+                lg 행이 [auto 1fr] 인 이유: 전부 auto 면 row-span-2 메인 높이가 두 행에 균등 분배돼
+                영상↔사이드바 사이가 벌어진다. */}
+            {raceVideo && (
+              <div className="overflow-hidden rounded-xl border bg-card shadow-sm lg:col-start-2 lg:row-start-1">
+                <div className="aspect-video w-full bg-black">
+                  <iframe
+                    src={youtubeEmbedUrl(raceVideo.video_id)}
+                    title={raceVideo.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="h-full w-full"
+                  />
                 </div>
-              )}
+              </div>
+            )}
 
+            <div className="min-w-0 space-y-5 lg:col-start-1 lg:row-start-1 lg:row-span-2">
               {entries.length > 0 ? (
                 <>
                   {entriesPhase === "pre" && (
@@ -736,23 +739,13 @@ export default async function RacesPage({
             </div>
 
             {/* ── 사이드바 (lg+) / 메인 컬럼 아래(mobile) ──
-                영상·풀별매출·인기분포처럼 "한눈 정보" 는 우측으로 빠져
-                메인 컬럼 상단을 출전표가 차지. */}
-            <aside className="mt-6 space-y-4 lg:mt-0 lg:sticky lg:top-4 lg:self-start">
-              {raceVideo && (
-                <div className="hidden overflow-hidden rounded-xl border bg-card shadow-sm lg:block">
-                  <div className="aspect-video w-full bg-black">
-                    <iframe
-                      src={youtubeEmbedUrl(raceVideo.video_id)}
-                      title={raceVideo.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="h-full w-full"
-                    />
-                  </div>
-                </div>
-              )}
-
+                풀별매출·인기분포처럼 "한눈 정보" 는 우측으로 빠져 메인 컬럼 상단을 출전표가 차지.
+                (영상은 그리드 직속 — 위 참고.) 영상이 없으면 1행부터 span 해 row-gap 공백을 흡수. */}
+            <aside
+              className={`space-y-4 lg:col-start-2 lg:sticky lg:top-4 lg:self-start ${
+                raceVideo ? "lg:row-start-2" : "lg:row-start-1 lg:row-span-2"
+              }`}
+            >
               {poolSales.length > 0 && (
                 <div>
                   <div className="mb-2 flex items-baseline justify-between">
