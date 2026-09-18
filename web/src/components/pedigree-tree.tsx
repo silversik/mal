@@ -443,14 +443,14 @@ export function PedigreeTree({
             color: "white",
             padding: "8px 10px",
             borderRadius: 6,
-            fontSize: 12,
+            fontSize: "0.75rem",
             maxWidth: 260,
             zIndex: 10,
             boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
           }}
         >
           <div style={{ fontWeight: 600, marginBottom: 4 }}>{hover.node.name}</div>
-          <div style={{ opacity: 0.75, fontSize: 11 }}>
+          <div style={{ opacity: 0.75, fontSize: "0.6875rem" }}>
             {hover.node.gender === "Male" ? "父계" : hover.node.gender === "Female" ? "母계" : ""}
             {hover.node.country ? ` · ${hover.node.country}` : ""}
             {hover.node.birthYear ? ` · ${hover.node.birthYear}` : ""}

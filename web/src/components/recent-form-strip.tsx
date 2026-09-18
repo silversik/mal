@@ -12,7 +12,7 @@ export function RecentFormStrip({
 }) {
   if (finishes.length === 0) return <span className="text-muted-foreground text-xs">기록 없음</span>;
 
-  const cls = size === "md" ? "h-7 w-7 text-sm" : "h-5 w-5 text-[10px]";
+  const cls = size === "md" ? "h-7 w-7 text-sm" : "h-5 w-5 text-caption";
   return (
     <div className="inline-flex items-center gap-1" aria-label="최근 착순">
       {finishes.map((r, i) => (

@@ -30,14 +30,14 @@ export function InlineRatingChart({
       style={{ borderColor: "color-mix(in srgb, var(--brown) 40%, transparent)", width }}
     >
       <div className="mb-1 flex items-baseline justify-between">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-secondary">
+        <span className="text-caption font-bold uppercase tracking-wider text-secondary">
           레이팅 추이 · {points.length}점
         </span>
         <span className="inline-flex items-baseline gap-1.5 font-mono text-base font-extrabold tabular-nums text-primary">
           {r4}
           {delta != null && delta !== 0 && (
             <span
-              className={`inline-flex items-center gap-0.5 text-[11px] font-bold ${
+              className={`inline-flex items-center gap-0.5 text-caption font-bold ${
                 delta > 0 ? "text-emerald-700" : "text-destructive"
               }`}
             >

@@ -363,7 +363,7 @@ export default async function RacesPage({
               <div className="flex items-center gap-3">
                 <RoundBadge no={selectedRace.race_no} />
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                  <div className="flex items-center gap-2 text-small text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <VenueIcon meet={selectedRace.meet} size={13} />
                       {selectedRace.meet}
@@ -379,7 +379,7 @@ export default async function RacesPage({
                       </>
                     )}
                   </div>
-                  <h2 className="mt-0.5 text-xl font-extrabold leading-tight tracking-tight sm:text-[22px]">
+                  <h2 className="mt-0.5 text-xl font-extrabold leading-tight tracking-tight sm:text-[1.375rem]">
                     {selectedRace.race_name ?? `${selectedRace.race_no}R`}
                   </h2>
                 </div>
@@ -426,7 +426,7 @@ export default async function RacesPage({
               )}
               {syncedAt && (
                 <span
-                  className="text-[11px] text-muted-foreground/70 tabular-nums"
+                  className="text-caption text-muted-foreground/70 tabular-nums"
                   title={`데이터 수집 시각: ${syncedAt}`}
                 >
                   데이터 업데이트{" "}
@@ -492,52 +492,52 @@ export default async function RacesPage({
                   )}
                   <Card className="overflow-hidden py-0">
                 <div className="relative overflow-x-auto rounded-[inherit]">
-                  <table data-table="race-entries" className="w-full border-collapse text-[13px]">
+                  <table data-table="race-entries" className="w-full border-collapse text-small">
                     <thead>
                       <tr className="bg-muted">
-                        <th className="border-b border-border px-2 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 52 }}>
+                        <th className="border-b border-border px-2 py-2.5 text-center text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 52 }}>
                           {entriesPhase === "pre" ? "출전" : "착순"}
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 44 }}>
+                        <th className="border-b border-border px-2 py-2.5 text-center text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 44 }}>
                           번호
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <th className="border-b border-border px-2 py-2.5 text-left text-caption font-bold uppercase tracking-wider text-muted-foreground">
                           마명
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 160 }}>
+                        <th className="border-b border-border px-2 py-2.5 text-left text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 160 }}>
                           기수 / 조교사
                         </th>
-                        <th className="hidden border-b border-border px-2 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 50 }}>
+                        <th className="hidden border-b border-border px-2 py-2.5 text-center text-caption font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 50 }}>
                           연령
                         </th>
-                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 64 }}>
+                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 64 }}>
                           레이팅
                         </th>
-                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 56 }}>
+                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 56 }}>
                           부담
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 88 }}>
+                        <th className="border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 88 }}>
                           기록
                         </th>
-                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground md:table-cell" style={{ width: 60 }}>
+                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground md:table-cell" style={{ width: 60 }}>
                           착차
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 86 }}>
+                        <th className="border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 86 }}>
                           마체중
                         </th>
                         {hasMsf && (
                           <th
-                            className="hidden border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground md:table-cell"
+                            className="hidden border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground md:table-cell"
                             style={{ width: 78 }}
                             title="최근 10전 평균 / 최고 mal지수"
                           >
                             지수
                           </th>
                         )}
-                        <th className="border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 110 }}>
+                        <th className="border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 110 }}>
                           단승
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 110 }}>
+                        <th className="border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 110 }}>
                           연승
                         </th>
                       </tr>
@@ -574,7 +574,7 @@ export default async function RacesPage({
                               >
                                 {e.horse_name}
                               </Link>
-                              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-caption text-muted-foreground">
                                 <span className="inline-flex items-center gap-1">
                                   <SexBullet sex={e.sex} />
                                   {e.age && (
@@ -616,7 +616,7 @@ export default async function RacesPage({
                               </div>
                             </td>
                             <td className="px-2 py-2.5 align-middle leading-tight">
-                              <div className="flex items-center gap-1.5 text-[13px]">
+                              <div className="flex items-center gap-1.5 text-small">
                                 {e.jockey_name ? (
                                   e.jockey_no ? (
                                     <Link
@@ -641,7 +641,7 @@ export default async function RacesPage({
                                   />
                                 )}
                               </div>
-                              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                              <div className="mt-0.5 text-caption text-muted-foreground">
                                 {e.trainer_name ? (
                                   e.trainer_no ? (
                                     <Link
@@ -683,7 +683,7 @@ export default async function RacesPage({
                             </td>
                             {hasMsf && (
                               <td
-                                className="hidden px-2 py-2.5 text-right align-middle font-mono text-[11px] tabular-nums leading-tight md:table-cell"
+                                className="hidden px-2 py-2.5 text-right align-middle font-mono text-caption tabular-nums leading-tight md:table-cell"
                                 title="최근 10전 평균 / 최고 mal지수"
                               >
                                 <MsfCell
@@ -790,7 +790,7 @@ export default async function RacesPage({
                     <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       인기 분포
                     </h3>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-caption text-muted-foreground">
                       단승 기준
                     </span>
                   </div>
@@ -860,7 +860,7 @@ function MsfCell({
   return (
     <div className="flex flex-col items-end leading-tight">
       <span className={avgCls}>{avg === null ? "-" : avg.toFixed(1)}</span>
-      <span className="text-[10px] opacity-60">
+      <span className="text-caption opacity-60">
         {best === null ? "-" : best.toFixed(1)}
       </span>
     </div>
@@ -898,7 +898,7 @@ function JockeyChangeBadge({
     .join(" ");
   return (
     <span
-      className="inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/10 px-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400"
+      className="inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/10 px-1 text-caption font-semibold text-amber-700 dark:text-amber-400"
       title={title}
     >
       교체
@@ -959,13 +959,13 @@ function UpcomingStakesPanel({
                   return (
                     <li key={s.id} className="flex items-center gap-2 px-3 py-2 text-sm">
                       {s.tier && (
-                        <span className="shrink-0 rounded bg-champagne-gold/20 px-1.5 py-0.5 text-[10px] font-bold text-gold-ink">
+                        <span className="shrink-0 rounded bg-champagne-gold/20 px-1.5 py-0.5 text-caption font-bold text-gold-ink">
                           {s.tier}
                         </span>
                       )}
                       <span className="min-w-0 flex-1 truncate font-medium">{display}</span>
                       {s.distance && (
-                        <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
+                        <span className="shrink-0 font-mono text-caption tabular-nums text-muted-foreground">
                           {s.distance}m
                         </span>
                       )}

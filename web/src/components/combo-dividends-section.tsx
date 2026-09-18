@@ -164,7 +164,7 @@ export function ComboDividendsSection({
                 onClick={() => toggleBucket(b)}
                 aria-pressed={isActive}
                 title={`${BUCKET_LABEL[b]} 배당 (${BUCKET_RANGE[b]})`}
-                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition ${
+                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-caption font-medium transition ${
                   isActive
                     ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
                     : "border-border bg-transparent text-muted-foreground opacity-50 hover:opacity-80"
@@ -215,7 +215,7 @@ function PoolCard({
           {POOL_LABEL[pool]}{" "}
           <span className="ml-1 font-mono opacity-70">{pool}</span>
         </span>
-        <span className="font-mono text-[10px] opacity-60">
+        <span className="font-mono text-caption opacity-60">
           {items.length}건
         </span>
       </div>
@@ -260,7 +260,7 @@ function ComboMoreDialog({
       <Dialog.Trigger asChild>
         <button
           type="button"
-          className="w-full rounded-md border border-dashed border-border bg-card px-2 py-1 text-[11px] font-semibold text-muted-foreground transition hover:border-primary/40 hover:bg-muted hover:text-primary"
+          className="w-full rounded-md border border-dashed border-border bg-card px-2 py-1 text-caption font-semibold text-muted-foreground transition hover:border-primary/40 hover:bg-muted hover:text-primary"
         >
           +{hidden}건 더보기 →
         </button>
