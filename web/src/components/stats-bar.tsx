@@ -34,7 +34,7 @@ export function StatsBar({
       {/* 상단: 출전 + 승률 / 입상률 */}
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
         <div className="flex items-baseline gap-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
             통산 출전
           </span>
           <span className="font-mono text-2xl font-bold tabular-nums text-foreground">
@@ -95,7 +95,7 @@ export function StatsBar({
       </div>
 
       {/* 범례 + 카운트 */}
-      <div className="mt-2 grid grid-cols-4 gap-2 text-[11px]">
+      <div className="mt-2 grid grid-cols-4 gap-2 text-caption">
         <LegendItem
           color="var(--color-gold)"
           label="1착"

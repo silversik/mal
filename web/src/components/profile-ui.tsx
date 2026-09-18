@@ -56,15 +56,15 @@ export function KpiTile({
           {icon}
         </span>
       )}
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
       <div
-        className={`mt-0.5 font-mono text-[19px] font-bold leading-tight tabular-nums ${valueColor}`}
+        className={`mt-0.5 font-mono text-[1.1875rem] font-bold leading-tight tabular-nums ${valueColor}`}
       >
         {value}
         {sub && (
-          <span className="ml-1 align-baseline text-[11px] font-medium text-muted-foreground">
+          <span className="ml-1 align-baseline text-caption font-medium text-muted-foreground">
             {sub}
           </span>
         )}
@@ -95,13 +95,13 @@ export function MetaTile({
         </span>
       )}
       <div className="min-w-0">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
           {label}
         </div>
-        <div className="truncate text-[13px] font-semibold text-foreground">
+        <div className="truncate text-small font-semibold text-foreground">
           {value}
           {sub && (
-            <span className="ml-1 text-[11px] font-medium text-muted-foreground">
+            <span className="ml-1 text-caption font-medium text-muted-foreground">
               {sub}
             </span>
           )}
@@ -131,7 +131,7 @@ export function ProfileTag({
   }[tone];
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-[2px] text-[11px] font-semibold ${cls}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-[2px] text-caption font-semibold ${cls}`}
     >
       {icon}
       {children}

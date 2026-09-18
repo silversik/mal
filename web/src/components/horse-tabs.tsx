@@ -294,7 +294,7 @@ function RaceWithMsfsSection({
                               </span>
                             </>
                           ) : (
-                            <span className="flex h-full w-full items-center justify-center text-[10px] font-medium text-muted-foreground/60">
+                            <span className="flex h-full w-full items-center justify-center text-caption font-medium text-muted-foreground/60">
                               경주 보기 →
                             </span>
                           )}

@@ -59,7 +59,7 @@ export async function CommentSection({ entityType, entityId, entityName }: Props
                   {c.author_name ?? "알 수 없음"}
                 </span>
                 <div className="flex items-center gap-2">
-                  <time className="text-[10px] text-muted-foreground" dateTime={c.created_at}>
+                  <time className="text-caption text-muted-foreground" dateTime={c.created_at}>
                     {timeAgo(c.created_at)}
                   </time>
                   {userId === c.user_id && (
@@ -71,7 +71,7 @@ export async function CommentSection({ entityType, entityId, entityName }: Props
                     >
                       <button
                         type="submit"
-                        className="text-[10px] text-muted-foreground hover:text-destructive transition"
+                        className="text-caption text-muted-foreground hover:text-destructive transition"
                       >
                         삭제
                       </button>

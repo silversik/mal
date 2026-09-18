@@ -105,7 +105,7 @@ function NewsRow({ item }: { item: NewsItem }) {
         <h3 className="truncate text-base font-semibold leading-snug">{item.title}</h3>
         <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
           {item.category && (
-            <Badge variant="outline" className="h-5 px-1.5 py-0 text-[11px] font-normal">
+            <Badge variant="outline" className="h-5 px-1.5 py-0 text-caption font-normal">
               {item.category}
             </Badge>
           )}

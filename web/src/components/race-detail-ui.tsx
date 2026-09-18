@@ -124,7 +124,7 @@ export function WeightDelta({ diff }: { diff: number | null }) {
   if (diff === null) return null;
   if (diff === 0) {
     return (
-      <span className="ml-1 inline-block rounded bg-muted px-1 py-px font-mono text-[10px] tabular-nums text-muted-foreground">
+      <span className="ml-1 inline-block rounded bg-muted px-1 py-px font-mono text-caption tabular-nums text-muted-foreground">
         ±0
       </span>
     );
@@ -132,7 +132,7 @@ export function WeightDelta({ diff }: { diff: number | null }) {
   const positive = diff > 0;
   return (
     <span
-      className={`ml-1 inline-block rounded px-1 py-px font-mono text-[10px] tabular-nums ${
+      className={`ml-1 inline-block rounded px-1 py-px font-mono text-caption tabular-nums ${
         positive ? "bg-destructive/10 text-destructive" : "bg-emerald-50 text-emerald-700"
       }`}
     >
@@ -281,13 +281,13 @@ export function PoolSalesTiles({
               return (
                 <li key={r.pool} className="px-1.5 py-1.5">
                   <div className="flex items-center gap-2">
-                    <span className="w-12 shrink-0 text-[11px] font-semibold text-muted-foreground">
+                    <span className="w-12 shrink-0 text-caption font-semibold text-muted-foreground">
                       {display.name}
                     </span>
-                    <span className="flex-1 font-mono text-[12px] font-bold tabular-nums">
+                    <span className="flex-1 font-mono text-xs font-bold tabular-nums">
                       {formatAmount(r.amount)}
                     </span>
-                    <span className="w-10 shrink-0 text-right font-mono text-[10px] tabular-nums text-muted-foreground">
+                    <span className="w-10 shrink-0 text-right font-mono text-caption tabular-nums text-muted-foreground">
                       {pct.toFixed(1)}%
                     </span>
                   </div>
@@ -327,18 +327,18 @@ export function PoolSalesTiles({
             const popular = parsePopularChips(r.odds_summary);
             return (
               <div key={r.pool} className="flex flex-col gap-1 bg-card p-3">
-                <span className="text-[11px] font-semibold text-muted-foreground">
+                <span className="text-caption font-semibold text-muted-foreground">
                   {display.name}
                   {display.code && (
-                    <span className="ml-1 font-mono text-[10px] opacity-60">
+                    <span className="ml-1 font-mono text-caption opacity-60">
                       {display.code}
                     </span>
                   )}
                 </span>
-                <span className="font-mono text-[15px] font-bold tabular-nums">
+                <span className="font-mono text-[0.9375rem] font-bold tabular-nums">
                   {formatAmount(r.amount)}
                 </span>
-                <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                <span className="font-mono text-caption tabular-nums text-muted-foreground">
                   {pct.toFixed(1)}%
                 </span>
                 <span className="block h-1 rounded-sm bg-muted">
@@ -371,9 +371,9 @@ function PopChip({ rank, num, odd }: { rank: number; num: string; odd: string })
         ? { bg: "var(--muted)", color: "var(--muted-foreground)", border: "var(--hairline)" }
         : { bg: "var(--brown-pale)", color: "var(--ink)", border: "var(--brown-deep)" };
   return (
-    <span className="inline-flex items-center gap-1 text-[11px]">
+    <span className="inline-flex items-center gap-1 text-caption">
       <span
-        className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 font-mono text-[10px] font-bold tabular-nums"
+        className="inline-flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full px-1 font-mono text-caption font-bold tabular-nums"
         style={{ background: style.bg, color: style.color, border: `1px solid ${style.border}` }}
       >
         {num}
@@ -447,20 +447,20 @@ export function PopularityChart({
                 className={`flex items-center ${compact ? "gap-1.5" : "gap-2.5"}`}
               >
                 <div
-                  className={`flex flex-none items-center ${compact ? "w-[88px] gap-1" : "w-[120px] gap-2"}`}
+                  className={`flex flex-none items-center ${compact ? "w-[5.5rem] gap-1" : "w-[7.5rem] gap-2"}`}
                 >
                   <GateNum n={r.chul_no} size={compact ? 18 : 22} />
                   <span
-                    className={`truncate font-semibold ${compact ? "text-[11px]" : "text-xs"}`}
+                    className={`truncate font-semibold ${compact ? "text-caption" : "text-xs"}`}
                   >
                     {r.horse_name}
                   </span>
                 </div>
                 <div
-                  className={`relative flex-1 overflow-hidden rounded bg-muted ${compact ? "h-[14px]" : "h-[18px]"}`}
+                  className={`relative flex-1 overflow-hidden rounded bg-muted ${compact ? "h-[0.875rem]" : "h-[1.125rem]"}`}
                 >
                   <div
-                    className={`absolute inset-y-0 left-0 flex items-center justify-start rounded font-mono font-bold tabular-nums ${compact ? "px-1.5 text-[10px]" : "px-2 text-[11px]"}`}
+                    className={`absolute inset-y-0 left-0 flex items-center justify-start rounded font-mono font-bold tabular-nums ${compact ? "px-1.5 text-caption" : "px-2 text-caption"}`}
                     style={{
                       width: `${widthPct}%`,
                       background: isFav
@@ -473,11 +473,11 @@ export function PopularityChart({
                   </div>
                 </div>
                 {compact ? (
-                  <div className="w-9 flex-none text-right font-mono text-[10px] tabular-nums text-muted-foreground">
+                  <div className="w-9 flex-none text-right font-mono text-caption tabular-nums text-muted-foreground">
                     <strong className="text-foreground">{i + 1}</strong>위
                   </div>
                 ) : (
-                  <div className="w-[88px] flex-none text-right font-mono text-[11px] tabular-nums text-muted-foreground">
+                  <div className="w-[5.5rem] flex-none text-right font-mono text-caption tabular-nums text-muted-foreground">
                     인기 <strong className="text-foreground">{i + 1}</strong> ·{" "}
                     {impliedPct.toFixed(1)}%
                   </div>
@@ -538,7 +538,7 @@ export function PodiumCard({ podium }: { podium: PodiumEntry[] }) {
                       {e.horse_name}
                     </Link>
                   </div>
-                  <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <div className="mt-0.5 flex items-center gap-1.5 text-caption text-muted-foreground">
                     {e.jockey_name &&
                       (e.jockey_no ? (
                         <Link
@@ -560,7 +560,7 @@ export function PodiumCard({ podium }: { podium: PodiumEntry[] }) {
                 </div>
                 {e.win_rate && (
                   <div className="text-right">
-                    <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <div className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
                       단승
                     </div>
                     <div className="font-mono text-sm font-bold tabular-nums">

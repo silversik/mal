@@ -85,7 +85,7 @@ export function JockeyMonthlyChart({
           );
         })}
       </svg>
-      <div className="mt-1 px-2 text-right text-[11px] font-mono tabular-nums text-muted-foreground">
+      <div className="mt-1 px-2 text-right text-caption font-mono tabular-nums text-muted-foreground">
         연 누계 <span className="font-bold text-foreground">{total}</span>회
       </div>
     </div>

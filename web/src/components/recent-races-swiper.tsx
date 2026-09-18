@@ -338,7 +338,7 @@ function RecentRaceCard({
           </div>
         )}
         <div className="absolute bottom-1.5 left-1.5">
-          <span className="rounded bg-black/70 px-1.5 py-0.5 font-mono text-[10px] font-bold text-white tabular-nums">
+          <span className="rounded bg-black/70 px-1.5 py-0.5 font-mono text-caption font-bold text-white tabular-nums">
             {r.race_no}R
           </span>
         </div>
@@ -355,7 +355,7 @@ function RecentRaceCard({
 
       <div className="space-y-1 p-3">
         {finishers.length === 0 ? (
-          <div className="py-2 text-center text-[11px] text-slate-grey/70">결과 수집 대기</div>
+          <div className="py-2 text-center text-caption text-slate-grey/70">결과 수집 대기</div>
         ) : (
           finishers.slice(0, 3).map((f) => (
             <div key={f.horse_no} className="flex items-center gap-2 text-xs">
@@ -369,7 +369,7 @@ function RecentRaceCard({
                 {f.horse_name}
               </span>
               {f.jockey_name && (
-                <span className="shrink-0 truncate text-[11px] text-slate-grey">{f.jockey_name}</span>
+                <span className="shrink-0 truncate text-caption text-slate-grey">{f.jockey_name}</span>
               )}
             </div>
           ))

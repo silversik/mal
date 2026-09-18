@@ -73,7 +73,7 @@ export function WinRateBars({
     <div className={`grid gap-2.5 ${className}`}>
       {rows.map((r) => (
         <div key={r.label}>
-          <div className="mb-1 flex items-center justify-between text-[11px]">
+          <div className="mb-1 flex items-center justify-between text-caption">
             <span className="font-semibold text-muted-foreground">{r.label}</span>
             <span className="font-mono font-bold tabular-nums text-primary">
               {r.value.toFixed(1)}%

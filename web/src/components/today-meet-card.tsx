@@ -65,7 +65,7 @@ export function TodayMeetCard({ meet, date, races, byRace, phase }: TodayMeetCar
         </div>
         <Badge
           variant="outline"
-          className={`border text-[11px] ${
+          className={`border text-caption ${
             phase === "post"
               ? "border-primary/20 bg-muted text-slate-grey"
               : "border-champagne-gold/40 bg-champagne-gold/10 text-gold-ink"
@@ -168,11 +168,11 @@ function RaceTile({
         )}
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {race.distance && (
-            <span className="font-mono text-[11px] text-muted-foreground">
+            <span className="font-mono text-caption text-muted-foreground">
               {race.distance}m
             </span>
           )}
-          <span className="text-[11px] text-muted-foreground">{entries.length}두</span>
+          <span className="text-caption text-muted-foreground">{entries.length}두</span>
         </div>
       </div>
 
@@ -182,7 +182,7 @@ function RaceTile({
       ) : (
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-primary/5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+            <tr className="border-b border-primary/5 text-caption font-semibold uppercase tracking-wider text-muted-foreground/70">
               <th className="w-14 px-3 py-2.5 text-center">{phase === "post" ? "착순" : "#"}</th>
               <th className="px-3 py-2.5 text-center">마명</th>
               <th className="px-3 py-2.5 text-center">기수</th>
