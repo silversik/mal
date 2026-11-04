@@ -2,7 +2,7 @@
 
 `mal.kr` (KRA 경마 데이터 아카이빙·분석) 운영 절차. 통합 서버 `49.50.138.31` 의 `/srv/services/mal` 에 2 개 컨테이너 (`mal-web`, `mal-crawler`) 로 가동.
 
-원본 운영 상태: `/Users/esik/Documents/ops/HANDOVER.md`
+원본 운영 상태: `/Users/esik/Documents/_/ops/HANDOVER.md`
 페이즈별 작업 히스토리: [../tasks/](../tasks/)
 
 ---
