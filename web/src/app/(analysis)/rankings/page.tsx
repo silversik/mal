@@ -68,8 +68,9 @@ export default async function RankingsPage({
     overrides: Partial<{ entity: RankingEntity; scope: RankingScope; year: number }>,
     opts?: { omitPeriod?: boolean },
   ) =>
-    // 폴백 화면(= 기간을 고른 적 없음)에서 대상 탭은 omitPeriod 로 scope/year 를 싣지 않는다
-    // → 새 대상도 올해 기준으로 다시 폴백 판단 (직전 연도가 "명시 선택"으로 고정되는 것 방지).
+    // 기간을 직접 고른 적 없는 기본 진입(폴백 여부 무관)에서 대상 탭은 omitPeriod 로
+    // scope/year 를 싣지 않는다 → 새 대상도 기본 진입으로 취급돼 올해 기준 폴백 판단을 다시 한다
+    // (예: 1월 마필 0건→2026 폴백, 기수는 2027 데이터 있음 → 기수 탭은 2027 로 열려야 함).
     buildRankingsHref(
       {
         entity: overrides.entity ?? entity,
@@ -91,7 +92,7 @@ export default async function RankingsPage({
           {ENTITIES.map((e) => (
             <TabLink
               key={e.key}
-              href={buildHref({ entity: e.key }, { omitPeriod: ranking.fellBack })}
+              href={buildHref({ entity: e.key }, { omitPeriod: !explicit })}
               active={e.key === entity}
             >
               {e.label}
