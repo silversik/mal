@@ -28,8 +28,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # mal.kr 는 4000 번대. compose 에서 PORT env 로 override 도 가능.
 ENV PORT=4000
 ENV HOSTNAME=0.0.0.0
+# alpine 은 zoneinfo 가 없어 TZ=Asia/Seoul 이 무시된다 → tzdata 설치.
+ENV TZ=Asia/Seoul
 
-RUN addgroup -S app && adduser -S app -G app
+RUN apk add --no-cache tzdata \
+ && addgroup -S app && adduser -S app -G app
 USER app
 
 COPY --from=build --chown=app:app /app/.next/standalone ./

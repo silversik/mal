@@ -15,6 +15,8 @@ services:
       # Next.js 는 PORT env 를 그대로 따른다 — mal.kr = 4000 번대.
       PORT: "4000"
       HOSTNAME: "0.0.0.0"
+      # 서버 렌더의 "오늘/올해" 가 09:00 KST 가 아닌 자정에 바뀌도록 (Dockerfile 의 tzdata 필요).
+      TZ: Asia/Seoul
       # mal_app role 로 접속 → ALTER ROLE 의 search_path = mal, public 자동 적용
       DATABASE_URL: ${MAL_DATABASE_URL:?set in /srv/stack/.env}
       # NextAuth v5 — nginx 뒤에 있으므로 호스트 헤더 검증을 신뢰한다.

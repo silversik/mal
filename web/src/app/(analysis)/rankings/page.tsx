@@ -10,11 +10,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { kstYear } from "@/lib/kst";
 import {
-  getRanking,
+  getRankingWithFallback,
   type RankingEntity,
   type RankingScope,
 } from "@/lib/rankings";
+import { buildRankingsHref } from "@/lib/rankings-shared";
 
 export const metadata: Metadata = {
   title: "랭킹",
@@ -34,10 +36,9 @@ const SCOPES: { key: RankingScope; label: string }[] = [
   { key: "all", label: "통산" },
 ];
 
-function clampYear(input: string | undefined): number {
-  const now = new Date();
+function clampYear(input: string | undefined, currentYear: number): number {
   const y = Number(input ?? "");
-  if (!Number.isFinite(y) || y < 2000 || y > now.getFullYear()) return now.getFullYear();
+  if (!Number.isFinite(y) || y < 2000 || y > currentYear) return currentYear;
   return y;
 }
 
@@ -51,26 +52,33 @@ export default async function RankingsPage({
     (ENTITIES.find((e) => e.key === sp.entity)?.key ?? "horse");
   const scope: RankingScope =
     (SCOPES.find((s) => s.key === sp.scope)?.key ?? "year");
-  const currentYear = new Date().getFullYear();
-  const year = scope === "ytd" ? currentYear : clampYear(sp.year);
-
-  const rows = await getRanking(entity, scope, year, 50);
+  // 서버 TZ 와 무관하게 KST 기준 올해.
+  const currentYear = kstYear();
+  const requestedYear = scope === "ytd" ? currentYear : clampYear(sp.year, currentYear);
+  // 연도/기간을 직접 고른 경우(?year= / ?scope=)는 그대로 존중 — 기본 진입만 직전 연도 폴백.
+  const explicit = sp.year !== undefined || sp.scope !== undefined;
+  // 폴백은 0건일 때만 (50행 표) — 규칙은 lib/rankings-shared.ts 참고.
+  const ranking = await getRankingWithFallback(entity, scope, requestedYear, 50, { explicit });
+  const { rows, year } = ranking;
 
   const yearOptions: number[] = [];
   for (let y = currentYear; y >= currentYear - 6; y--) yearOptions.push(y);
 
-  const buildHref = (overrides: Partial<{ entity: RankingEntity; scope: RankingScope; year: number }>) => {
-    const next = {
-      entity: overrides.entity ?? entity,
-      scope: overrides.scope ?? scope,
-      year: overrides.year ?? year,
-    };
-    const params = new URLSearchParams();
-    params.set("entity", next.entity);
-    params.set("scope", next.scope);
-    if (next.scope === "year") params.set("year", String(next.year));
-    return `/rankings?${params.toString()}`;
-  };
+  const buildHref = (
+    overrides: Partial<{ entity: RankingEntity; scope: RankingScope; year: number }>,
+    opts?: { omitPeriod?: boolean },
+  ) =>
+    // 기간을 직접 고른 적 없는 기본 진입(폴백 여부 무관)에서 대상 탭은 omitPeriod 로
+    // scope/year 를 싣지 않는다 → 새 대상도 기본 진입으로 취급돼 올해 기준 폴백 판단을 다시 한다
+    // (예: 1월 마필 0건→2026 폴백, 기수는 2027 데이터 있음 → 기수 탭은 2027 로 열려야 함).
+    buildRankingsHref(
+      {
+        entity: overrides.entity ?? entity,
+        scope: overrides.scope ?? scope,
+        year: overrides.year ?? year,
+      },
+      opts,
+    );
 
   return (
     <div>
@@ -84,7 +92,7 @@ export default async function RankingsPage({
           {ENTITIES.map((e) => (
             <TabLink
               key={e.key}
-              href={buildHref({ entity: e.key })}
+              href={buildHref({ entity: e.key }, { omitPeriod: !explicit })}
               active={e.key === entity}
             >
               {e.label}
@@ -118,6 +126,17 @@ export default async function RankingsPage({
           </TabGroup>
         )}
       </div>
+
+      {ranking.fellBack && (
+        <p
+          role="status"
+          className="mt-4 rounded-md border bg-card px-3 py-2 text-base text-muted-foreground"
+        >
+          <span className="font-mono tabular-nums">{ranking.requestedYear}</span>년 집계 전이라{" "}
+          <span className="font-mono font-semibold tabular-nums text-foreground">{year}</span>년
+          랭킹을 보여드립니다.
+        </p>
+      )}
 
       <div className="mt-6">
         {rows.length === 0 ? (
