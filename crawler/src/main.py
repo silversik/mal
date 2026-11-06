@@ -49,7 +49,13 @@ from .jobs.sync_weather import sync_recent as sync_weather_recent
 from .logging import configure_logging, get_logger
 from .monitoring import check_stale, register_all_jobs
 
-app = typer.Typer(add_completion=False, help="mal.kr KRA data collector")
+# pretty_exceptions_show_locals=False — 수동 실행 중 예외 시 typer(rich) traceback 이
+# 프레임 locals(params dict 의 serviceKey 등)를 터미널에 그대로 찍지 않도록.
+app = typer.Typer(
+    add_completion=False,
+    help="mal.kr KRA data collector",
+    pretty_exceptions_show_locals=False,
+)
 configure_logging()
 log = get_logger("main")
 

@@ -13,6 +13,7 @@ from ..config import settings
 from ..db import session_scope
 from ..logging import get_logger
 from ..models import KraVideo, SyncMeta
+from ..redact import redact
 
 log = get_logger(__name__)
 SOURCE = "youtube_krbc"
@@ -108,7 +109,8 @@ def sync_videos(*, max_results: int = 20) -> int:
             )
         count = upsert_videos(videos)
     except Exception as exc:
-        error = f"{type(exc).__name__}: {exc}"
+        # sync_meta.last_error 로 DB 에 남으므로 YouTube key= 마스킹.
+        error = redact(f"{type(exc).__name__}: {exc}")
         log.error("kra_videos_sync_failed", error=error)
         raise
     finally:
