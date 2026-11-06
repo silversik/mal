@@ -6,10 +6,15 @@ Usage:
     uv run python -m src.main sync-race-date <YYYY-MM-DD>
     uv run python -m src.main seed-sample
     uv run python -m src.main smoke
+
+미처리 예외는 `run()` 이 API 키를 마스킹(src/redact.py)해서 stderr 로 출력한다.
 """
 from __future__ import annotations
 
+import sys
+import traceback
 from datetime import datetime
+from types import TracebackType
 
 import typer
 
@@ -48,6 +53,7 @@ from .jobs.sync_weather import backfill as backfill_weather
 from .jobs.sync_weather import sync_recent as sync_weather_recent
 from .logging import configure_logging, get_logger
 from .monitoring import register_all_jobs
+from .redact import redact
 
 # pretty_exceptions_show_locals=False — 수동 실행 중 예외 시 typer(rich) traceback 이
 # 프레임 locals(params dict 의 serviceKey 등)를 터미널에 그대로 찍지 않도록.
@@ -549,5 +555,42 @@ def cmd_register_dashboard_jobs() -> None:
     typer.echo("dashboard jobs registered")
 
 
+def _print_redacted_exception(
+    exc_type: type[BaseException], exc: BaseException, tb: TracebackType | None
+) -> None:
+    """미처리 예외의 메시지·traceback(체인 포함)을 API 키 마스킹 후 stderr 로.
+
+    httpx `HTTPStatusError` 메시지엔 serviceKey/key 가 실린 전체 URL 이 들어 있어
+    typer/기본 excepthook 그대로면 수동 실행 터미널·CI 로그에 키가 찍힌다.
+    """
+    text = "".join(traceback.format_exception(exc_type, exc, tb))
+    sys.stderr.write(redact(text))
+    sys.stderr.flush()
+
+
+def _redacting_excepthook(
+    exc_type: type[BaseException], exc: BaseException, tb: TracebackType | None
+) -> None:
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc, tb)
+        return
+    _print_redacted_exception(exc_type, exc, tb)
+
+
+def run() -> None:
+    """CLI 진입점 — `app()` 을 감싸 미처리 예외를 마스킹해서 출력하고 exit 1.
+
+    typer 는 `app()` 호출 시 자체 excepthook(rich traceback)을 설치하므로 hook 교체만으론
+    부족하다 — 여기서 먼저 잡아 출력한다. click 의 사용법 오류/`typer.Exit` 는 click 이
+    SystemExit 로 처리하므로 그대로 통과.
+    """
+    sys.excepthook = _redacting_excepthook
+    try:
+        app()
+    except Exception as exc:  # noqa: BLE001 — 마스킹 출력 후 비정상 종료
+        _print_redacted_exception(type(exc), exc, exc.__traceback__)
+        raise SystemExit(1) from None
+
+
 if __name__ == "__main__":
-    app()
+    run()

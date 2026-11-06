@@ -42,6 +42,28 @@ class KraApiError(RuntimeError):
         self.code = code
 
 
+# data.go.kr resultCode "03" = NODATA_ERROR — 비경주일·미발표·미공개는 실패가 아니라 0건.
+# 비교는 zero-padding 정규화 후 (`"3"` / `"03"` / `"003"` 모두 동일).
+_KRA_NO_DATA_CODES = frozenset({"3"})
+
+
+def normalize_kra_code(code: object) -> str | None:
+    """resultCode 의 앞쪽 0 을 떼어 정규화 (`"03"` → `"3"`, `"00"` → `"0"`). 없으면 None."""
+    if code is None:
+        return None
+    s = str(code).strip()
+    if not s:
+        return None
+    return s.lstrip("0") or "0"
+
+
+def is_kra_no_data(exc: BaseException) -> bool:
+    """KRA NODATA 응답(resultCode 03 또는 메시지에 NODATA)인지."""
+    return isinstance(exc, KraApiError) and (
+        normalize_kra_code(exc.code) in _KRA_NO_DATA_CODES or "NODATA" in str(exc).upper()
+    )
+
+
 # data.go.kr 공통 오류코드 22 = LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR
 # (일일 트래픽 초과). `_raise_for_api_error` 가 `KRA API error 22: <msg>` 로 올린다.
 _QUOTA_CODE22_RE = re.compile(r"KRA API error 0*22\b")
@@ -116,10 +138,7 @@ class KraClient:
         resp.raise_for_status()
 
         ctype = resp.headers.get("content-type", "")
-        if "json" in ctype:
-            data = resp.json()
-        else:
-            data = xmltodict.parse(resp.text)
+        data = resp.json() if "json" in ctype else xmltodict.parse(resp.text)
 
         self._raise_for_api_error(data)
         return data

@@ -26,7 +26,7 @@ from sqlalchemy import func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from ..clients.horse_detail import HorseDetailClient, api_item_to_horse_fields
-from ..clients.kra_base import KraApiError, is_quota_error
+from ..clients.kra_base import is_kra_no_data, is_quota_error
 from ..db import session_scope
 from ..logging import get_logger
 from ..models import Horse, SyncMeta
@@ -41,8 +41,6 @@ NOT_FOUND_MAX_ATTEMPTS = 3
 EXHAUSTED_RETRY_DAYS = 30
 # 경주결과 sync 안에서 붙는 enrich 1회 상한 (live 30분 틱마다 돌므로 작게).
 INLINE_BACKFILL_LIMIT = 50
-# data.go.kr resultCode 03 = NODATA_ERROR
-_NODATA_CODES = {"03"}
 
 FetchOutcome = Literal["ok", "not_found", "quota", "error"]
 
@@ -108,8 +106,8 @@ def _fetch_one(
     except Exception as e:  # noqa: BLE001 — 분류 후 호출부가 집계/실패 처리
         if is_quota_error(e):
             return "quota", None, str(e)
-        if isinstance(e, KraApiError) and e.code in _NODATA_CODES:
-            return "not_found", None, f"nodata_{e.code}"
+        if is_kra_no_data(e):
+            return "not_found", None, f"nodata_{getattr(e, 'code', None) or 'msg'}"
         return "error", None, str(e)
     if not item:
         return "not_found", None, "empty"

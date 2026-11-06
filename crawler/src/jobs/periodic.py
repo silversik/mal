@@ -198,16 +198,51 @@ def run_sync_yesterday_catchup() -> int:
     통째로 비는 상황을 즉시 감지. KRA 발표 지연(드물게)도 포함되지만, 사람이
     인지하고 sync-race-date 수동 재시도 판단이 필요한 상황이라 알림이 맞다.
     """
-    from ..db import session_scope
+    # KST 기준 어제 — 컨테이너 TZ 와 무관 (07:30 KST = 전날 22:30 UTC).
+    yesterday = datetime.now(KST).date() - timedelta(days=1)
 
-    yesterday = date.today() - timedelta(days=1)
-    races = sync_date_all_meets(yesterday)
-    dividends = sync_dividends_all_meets(yesterday)
-    sales = sync_race_sales_all_meets(yesterday)
+    # 각 단계는 fail-loud(전 meet 실패 시 raise) — 어느 단계가 실패해도 나머지 단계와
+    # 아래 invariant 검사는 반드시 돌린다 (결과 0건 사고가 다른 단계 오류에 가려지지 않게).
+    counts: dict[str, int] = {}
+    failures: list[tuple[str, Exception]] = []
+    for name, step in (
+        ("races", sync_date_all_meets),
+        ("dividends", sync_dividends_all_meets),
+        ("sales", sync_race_sales_all_meets),
+    ):
+        try:
+            counts[name] = step(yesterday)
+        except Exception as e:  # noqa: BLE001 — invariant 검사 뒤 재전파
+            counts[name] = 0
+            failures.append((name, e))
+            log.warning(f"yesterday_catchup_{name}_failed", date=str(yesterday), err=str(e))
     log.info(
         "yesterday_catchup_done",
-        date=str(yesterday), races=races, dividends=dividends, sales=sales,
+        date=str(yesterday),
+        **counts,
+        failed=[n for n, _ in failures],
     )
+
+    try:
+        invariant_msg = _yesterday_results_invariant(yesterday)
+    except Exception as e:  # noqa: BLE001 — 검사 쿼리 자체 실패도 단계 오류와 함께 보고
+        failures.append(("invariant_check", e))
+        invariant_msg = None
+
+    if not invariant_msg and len(failures) == 1:
+        raise failures[0][1]  # 단일 실패는 원래 예외 그대로
+    if invariant_msg or failures:
+        parts = [invariant_msg] if invariant_msg else []
+        parts += [f"{n} 실패: {type(e).__name__}: {e}" for n, e in failures]
+        cause = failures[0][1] if failures else None
+        raise RuntimeError(" | 추가로 ".join(parts)) from cause
+
+    return sum(counts.values())
+
+
+def _yesterday_results_invariant(yesterday: date) -> str | None:
+    """어제 출전표는 있는데 순위 있는 결과가 0건이면 실패 메시지, 정상이면 None."""
+    from ..db import session_scope
 
     with session_scope() as s:
         row = s.execute(
@@ -223,14 +258,13 @@ def run_sync_yesterday_catchup() -> int:
             {"d": yesterday},
         ).one()
     if row.entries > 0 and row.results == 0:
-        raise RuntimeError(
+        return (
             f"yesterday_catchup_incomplete: {yesterday} 출전표 {row.entries}건 "
             f"있는데 결과 0건. 당일 sync_races_live/sync_races_today 미실행 또는 KRA 발표 "
             f"지연 가능성 — `python -m src.main sync-race-date {yesterday}` 또는 "
             f"대시보드에서 sync_yesterday_catchup 재실행 필요."
         )
-
-    return races + dividends + sales
+    return None
 
 
 @track_job("mal.sync_jockeys")
