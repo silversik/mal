@@ -79,6 +79,15 @@ def _clean(value: Any) -> Any:
     return value
 
 
+def plan_item_date(item: dict[str, Any]) -> date | None:
+    """경주 시행일. 실제 응답은 `pgDate`(YYYYMMDD) — 나머지는 Swagger 후보 폴백."""
+    for key in ("pgDate", "rc_date", "rcDate", "raceDate"):
+        d = _parse_date(item.get(key))
+        if d is not None:
+            return d
+    return None
+
+
 def api_item_to_race_plan_fields(item: dict[str, Any], *, year: int) -> dict[str, Any]:
     """Map a raceAnnualPlan item into `race_plans` columns.
 

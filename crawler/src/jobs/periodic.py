@@ -29,7 +29,7 @@ from .backfill_races_from_entries import backfill_races_metadata_from_entries
 from .sync_race_entries import sync_upcoming as sync_upcoming_race_entries
 from .sync_race_info import backfill_races_metadata
 from .sync_race_today_meta import sync_today_meta
-from .sync_race_plan import sync_current_year as sync_current_race_plan
+from .sync_race_plan import sync_scheduled_years as sync_race_plan_years
 from .sync_race_dividends import sync_date_all_meets as sync_dividends_all_meets
 from .sync_race_sales import sync_date_all_meets as sync_race_sales_all_meets
 from .sync_race_corners import sync_date_all_meets as sync_race_corners_all_meets
@@ -213,7 +213,8 @@ def run_sync_horses_refresh() -> int:
 
 @track_job("mal.sync_race_plan")
 def run_sync_race_plan() -> int:
-    return sync_current_race_plan()
+    """대상경주 계획 — 올해 + 11~12월엔 내년도 (KST 기준)."""
+    return sync_race_plan_years()
 
 
 @track_job("mal.sync_race_entries")
