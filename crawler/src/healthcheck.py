@@ -655,8 +655,10 @@ def check_weather(db: RowProvider, now: datetime) -> Check:
 
     name = "날씨 (weather_observations)"
     today = now.date()
-    # KMA 시간자료는 전날까지만 — 03:00 잡이 끝나면 어제 관측까지 있어야 한다.
-    expected = today - timedelta(days=1 if now.time() >= WEATHER_FETCH_DONE else 2)
+    # KMA 시간자료는 전날까지만 제공하고, 전날 관측은 다음 날 정오 무렵에야 확정된다
+    # (sync_weather docstring). 03:00 잡 직후엔 그저께까지만 있는 게 정상 → 기대치는
+    # 03:00 이후 D-2, 이전 D-3. 그보다 하루 더 밀리면 WARN, 이틀이면 FAIL.
+    expected = today - timedelta(days=2 if now.time() >= WEATHER_FETCH_DONE else 3)
     latest = {
         int(r["station_id"]): _kst(r["latest"]).date()
         for r in db.rows("weather_latest") if r.get("latest") is not None
@@ -754,13 +756,14 @@ def check_ledgers(ledgers: dict[str, dict[str, Any]]) -> Check:
     if errored:
         parts.append(f"last_error: {', '.join(errored)}")
     detail = " · ".join(parts)
-    if exhausted or errored:
-        hint = []
-        if exhausted:
-            hint.append("exhausted gap 은 수동 확인 (원장 row 삭제 시 재시도)")
-        if errored:
-            hint.append("last_error 소스의 최근 실행 확인")
-        return Check("기타", name, Status.WARN, f"{detail} — {'; '.join(hint)}")
+    # exhausted gap 은 설계상 365일 창 안에 계속 남는다 (KRA 가 combo 를 안 주는 조합) —
+    # 매번 WARN 이면 exit 2 가 상시가 돼 의미가 없으니 정보로만 표시.
+    if errored:
+        return Check(
+            "기타", name, Status.WARN, f"{detail} — last_error 소스의 최근 실행 확인",
+        )
+    if exhausted:
+        detail += " — exhausted 는 정보 (원장 row 삭제 시 재시도)"
     return Check("기타", name, Status.OK, detail)
 
 

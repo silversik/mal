@@ -507,9 +507,10 @@ def _obs(d: date, hour: int = 23) -> datetime:
     ("now", "days_back", "expected"),
     [
         (NOW, 1, Status.OK),  # 10:00 — 어제까지 있음
-        (NOW, 2, Status.WARN),  # 하루 지연
-        (NOW, 3, Status.FAIL),
-        (NOW.replace(hour=2), 2, Status.OK),  # 03:00 잡 전에는 그저께까지면 정상
+        (NOW, 2, Status.OK),  # 전날 관측은 정오 무렵 확정 → 그저께까지면 정상
+        (NOW, 3, Status.WARN),  # 하루 지연
+        (NOW, 4, Status.FAIL),
+        (NOW.replace(hour=2), 3, Status.OK),  # 03:00 잡 전에는 D-3 까지면 정상
     ],
 )
 def test_weather_freshness(now: datetime, days_back: int, expected: Status) -> None:
@@ -579,6 +580,15 @@ def test_ledgers_exhausted_and_errors_warn() -> None:
     assert c.status == Status.WARN
     assert "exhausted 2" in c.detail
     assert "youtube:krbc" in c.detail
+
+
+def test_ledgers_exhausted_only_is_info() -> None:
+    """exhausted gap 은 설계상 상시 존재 — 오류가 없으면 OK (exit 2 상시화 방지)."""
+    data = healthy_data()
+    data["sync_meta"][1].update({"attempts": 5, "exhausted": 2})
+    c = _by_name(_collect(data), "sync_meta 원장")
+    assert c.status == Status.OK
+    assert "exhausted 2" in c.detail
 
 
 # ── 4. 대시보드 ─────────────────────────────────────────────────────────────────
