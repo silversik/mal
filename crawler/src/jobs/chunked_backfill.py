@@ -21,6 +21,7 @@ from typing import Any
 from sqlalchemy import exists, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+from ..clients.race_result import _MEET_NAMES
 from ..db import session_scope
 from ..logging import get_logger
 from ..models import RaceResult
@@ -69,13 +70,16 @@ def _save_state(next_date: date, empty_cells: set[tuple[str, int]]) -> None:
 def _has_data(d: date, meet: int) -> bool:
     """race_results 에 (date, meet) 로우가 하나라도 있으면 스킵 대상.
 
-    `meet` 컬럼은 text/varchar — 숫자 비교가 아니라 문자열 비교로 붙여야 함.
+    `meet` 컬럼은 한글 라벨("서울"/"제주"/"부경") 로 저장된다 (race_result 클라이언트가
+    정규화) — 코드(1/2/3) 를 라벨로 변환한 뒤 비교해야 한다. `str(meet)` 비교는 항상
+    False 라 이미 적재된 날짜도 매번 재호출·재작성했다.
     """
     with session_scope() as s:
         q = s.execute(
             select(
                 exists().where(
-                    RaceResult.race_date == d, RaceResult.meet == str(meet)
+                    RaceResult.race_date == d,
+                    RaceResult.meet == _MEET_NAMES[str(meet)],
                 )
             )
         )

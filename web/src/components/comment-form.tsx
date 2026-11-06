@@ -50,7 +50,7 @@ export function CommentForm({ entityType, entityId, entityName }: Props) {
           rows={3}
           placeholder="댓글을 입력하세요"
           disabled={isPending}
-          className="w-full resize-none rounded-lg border border-primary/15 bg-white px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
+          className="w-full resize-none rounded-lg border border-primary/15 bg-card text-foreground px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
         />
         <span className="absolute bottom-2 right-3 text-[10px] text-muted-foreground tabular-nums">
           {content.length}/{CONTENT_MAX}
