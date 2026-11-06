@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, ResolvingMetadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cache, Suspense } from "react";
@@ -62,7 +62,12 @@ import {
 import { getRaceCorner } from "@/lib/race_corners";
 import { CommentSection } from "@/components/comment-section";
 
-type SearchParams = { date?: string; venue?: string; race?: string };
+// 같은 키가 반복되면(?date=a&date=b) Next 는 배열을 넘긴다 — 반드시 정규화 후 사용.
+type SearchParams = {
+  date?: string | string[];
+  venue?: string | string[];
+  race?: string | string[];
+};
 
 // generateMetadata 와 페이지 본체가 같은 날짜를 조회하므로 cache 로 요청당 한 번만 실행.
 const fetchRacesByDate = cache((date: string) => getRacesByDate(date));
@@ -70,36 +75,51 @@ const fetchRacesByDate = cache((date: string) => getRacesByDate(date));
 const DEFAULT_DESCRIPTION =
   "한국마사회 경주 결과 — 일자·경마장별 출전마, 기수, 조교사, 배당 데이터를 한 곳에서.";
 
-export async function generateMetadata({
-  searchParams,
-}: {
-  searchParams: Promise<SearchParams>;
-}): Promise<Metadata> {
+/** KST(UTC+9) 기준 오늘 YYYY-MM-DD. 컨테이너 TZ(UTC)와 무관. */
+function kstToday(): string {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+export async function generateMetadata(
+  { searchParams }: { searchParams: Promise<SearchParams> },
+  parent: ResolvingMetadata,
+): Promise<Metadata> {
   const p = normalizeRaceParams(await searchParams);
   const canonical = buildRaceCanonical(p);
 
-  // 경주 상세가 아니면(날짜만 / 파라미터 없음·불량) 정적 기본값.
-  if (!p.date || !p.venue || p.race === null) {
-    const title = p.date ? `${p.date} 경주 결과` : "경주 결과";
-    return {
-      title,
-      description: DEFAULT_DESCRIPTION,
-      alternates: { canonical },
-    };
+  let title = "경주 결과";
+  let description = DEFAULT_DESCRIPTION;
+  // 데이터가 없는 날짜·경주 조합은 색인 제외 (링크는 따라가도록 follow 유지).
+  // 유효한 날짜면 무엇이든 200 이라 index 로 두면 빈 페이지가 무한히 색인된다.
+  let indexable = true;
+  if (p.date) {
+    const races = await fetchRacesByDate(p.date);
+    if (p.venue && p.race !== null) {
+      const info =
+        races.find((r) => r.meet === p.venue && r.race_no === p.race) ?? null;
+      title = buildRaceTitle(p.date, p.venue, p.race, info);
+      description = buildRaceDescription(p.date, p.venue, p.race, info);
+      indexable = info !== null;
+    } else {
+      title = `${p.date} 경주 결과`;
+      indexable = races.length > 0;
+    }
   }
 
-  const races = await fetchRacesByDate(p.date);
-  const info =
-    races.find((r) => r.meet === p.venue && r.race_no === p.race) ?? null;
-  const title = buildRaceTitle(p.date, p.venue, p.race, info);
-  const description = buildRaceDescription(p.date, p.venue, p.race, info);
+  // openGraph/twitter 는 layout 과 얕은 병합(통째 교체)이라, 루트
+  // opengraph-image.tsx 가 넣어 둔 이미지를 parent 에서 받아 그대로 이어 붙인다.
+  // (빠뜨리면 카카오톡·X 미리보기에서 썸네일이 사라진다.)
+  const { openGraph: parentOg, twitter: parentTwitter } = await parent;
+  const ogImages = parentOg?.images;
+  const twitterImages = parentTwitter?.images?.length
+    ? parentTwitter.images
+    : ogImages;
+
   return {
     title,
     description,
     alternates: { canonical },
-    // 존재하지 않는 경주 조합은 색인 제외 (링크는 따라가도록 follow 유지).
-    ...(info ? {} : { robots: { index: false, follow: true } }),
-    // openGraph 는 layout 과 얕은 병합이라 공통 필드를 다시 채운다.
+    ...(indexable ? {} : { robots: { index: false, follow: true } }),
     openGraph: {
       type: "website",
       locale: "ko_KR",
@@ -107,6 +127,13 @@ export async function generateMetadata({
       title,
       description,
       url: canonical,
+      ...(ogImages?.length ? { images: ogImages } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      ...(twitterImages?.length ? { images: twitterImages } : {}),
     },
   };
 }
@@ -199,12 +226,17 @@ export default async function RacesPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const { date, venue, race } = await searchParams;
+  const sp = await searchParams;
+  // venue/race 도 배열(?venue=a&venue=b)로 올 수 있어 첫 값만 쓴다.
+  const venue = Array.isArray(sp.venue) ? sp.venue[0] : sp.venue;
+  const race = Array.isArray(sp.race) ? sp.race[0] : sp.race;
   // KST(UTC+9) 기준 오늘. UTC 자정~9시 사이에 어제로 잘못 잡혀 isToday 가
   // 거짓 falsy → KRBC 라이브 버튼 미노출, 검색 버튼 노출 같은 표시 오류를 방지.
-  const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const today = kstToday();
   // 형식 불량 date(크롤러 junk 등)는 DB 캐스팅 500 대신 기본 진입으로 돌린다.
-  if (date !== undefined && !normalizeRaceDate(date)) redirect("/races");
+  // 이후로는 원본 대신 정규화 값만 쓴다(배열 ?date=a&date=b 가 DB 로 가면 500).
+  const date = normalizeRaceDate(sp.date) ?? undefined;
+  if (sp.date !== undefined && !date) redirect("/races");
   const currentDate = date ?? today;
   const isToday = currentDate === today;
 
@@ -242,6 +274,18 @@ export default async function RacesPage({
     const prevRaceDay = [...raceDates].reverse().find((d) => d < currentDate) ?? null;
     const jumpTo = nextRaceDay ?? prevRaceDay;
     if (jumpTo) redirect(`/races?date=${jumpTo}`);
+  }
+
+  /*
+   * date 없이 venue/race 만 온 경우(?venue=서울&race=3)는 오늘 경주를 보여주므로
+   * 명시적 날짜 URL 로 보낸다 — 날짜 없는 URL 이 매일 다른 경주를 가리키며
+   * canonical(/races) 과 어긋나는 것을 막는다. 불량 venue/race 는
+   * buildRaceCanonical 이 떨궈 날짜 URL 로 간다.
+   */
+  if (!date && (venue !== undefined || race !== undefined)) {
+    redirect(
+      buildRaceCanonical({ ...normalizeRaceParams(sp), date: currentDate }),
+    );
   }
 
   const selectedRace =

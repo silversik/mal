@@ -13,6 +13,8 @@
  *
  * lastmod 는 데이터에서 온 값만 쓴다(마필 updated_at · 경주일). 매 요청 "now"
  * 는 크롤러에 잘못된 신호라 정적 페이지는 lastmod 를 생략한다.
+ * timestamptz → "...Z" 문자열은 반드시 `AT TIME ZONE 'UTC'` 로 변환 후 포맷한다
+ * (세션 TimeZone 이 KST 면 to_char 가 KST 벽시계에 Z 를 붙여 9시간 어긋난다).
  */
 import { query } from "@/lib/db";
 import { raceDetailPath } from "@/lib/race-seo";
@@ -134,15 +136,15 @@ export async function getSitemapIndexEntries(): Promise<SitemapIndexEntry[]> {
 export async function buildStaticAndSmallChunk(): Promise<SitemapUrl[]> {
   const [jockeys, trainers, owners] = await Promise.all([
     query<{ jk_no: string; updated_at: string }>(
-      `SELECT jk_no, to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
+      `SELECT jk_no, to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
          FROM jockeys`,
     ),
     query<{ tr_no: string; updated_at: string }>(
-      `SELECT tr_no, to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
+      `SELECT tr_no, to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
          FROM trainers`,
     ),
     query<{ ow_no: string; updated_at: string }>(
-      `SELECT ow_no, to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
+      `SELECT ow_no, to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
          FROM owners`,
     ),
   ]);
@@ -194,7 +196,7 @@ export async function buildStaticAndSmallChunk(): Promise<SitemapUrl[]> {
 export async function buildHorseChunk(chunkIndex: number): Promise<SitemapUrl[]> {
   const horses = await query<{ horse_no: string; updated_at: string }>(
     `SELECT horse_no,
-            to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
+            to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
        FROM horses
        ORDER BY horse_no
        OFFSET $1 LIMIT $2`,
