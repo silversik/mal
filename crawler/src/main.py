@@ -6,6 +6,7 @@ Usage:
     uv run python -m src.main sync-race-date <YYYY-MM-DD>
     uv run python -m src.main seed-sample
     uv run python -m src.main smoke
+    uv run python -m src.main healthcheck   # 읽기 전용 ops 점검 (exit 0/1/2)
 """
 from __future__ import annotations
 
@@ -586,6 +587,23 @@ def cmd_check_stale(
     typer.echo(f"found {len(stale)} stale job(s):")
     for r in stale:
         typer.echo(f"  · {r['job_key']} (since_sec={int(r['since_sec'] or 0)})")
+
+
+@app.command("healthcheck")
+def cmd_healthcheck(
+    json_output: bool = typer.Option(False, "--json", help="표 대신 JSON 으로 출력"),
+    dashboard: bool = typer.Option(
+        True, "--dashboard/--no-dashboard", help="crawler-dashboard GET (3초) 점검 여부",
+    ),
+) -> None:
+    """[ops] 읽기 전용 헬스체크 — env·DB·데이터 신선도. exit 0=OK, 1=FAIL, 2=WARN 만.
+
+    prod: `docker exec mal-crawler python -m src.main healthcheck`.
+    외부 API 호출·DB 쓰기 없음 (모든 쿼리는 READ ONLY 트랜잭션 + rollback).
+    """
+    from .healthcheck import run_healthcheck
+
+    raise typer.Exit(run_healthcheck(json_output=json_output, check_dashboard_url=dashboard))
 
 
 if __name__ == "__main__":

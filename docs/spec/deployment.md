@@ -150,6 +150,37 @@ ssh ... 'docker exec stack-db psql -U mal_app -d app -c \
    SELECT \"horses\",count(*) FROM mal.horses ORDER BY 1"'
 ```
 
+### 크롤러 헬스체크 (읽기 전용)
+
+dev 에서는 prod 에 닿지 않으므로, 배포 직후·알림 수신 시 운영자가 prod 호스트에서 직접 돌린다.
+
+```bash
+ssh ... 'docker exec mal-crawler python -m src.main healthcheck'                 # 표
+ssh ... 'docker exec mal-crawler python -m src.main healthcheck --json'          # 기계 판독
+ssh ... 'docker exec mal-crawler python -m src.main healthcheck --no-dashboard'  # 대시보드 GET 생략
+echo $?   # 0 = 전부 OK · 1 = FAIL 하나 이상 · 2 = WARN 만
+```
+
+- **읽기 전용** — KRA/KMA/YouTube/Naver 호출 없음, DB 쓰기 없음. 쿼리마다 `SET TRANSACTION READ ONLY`
+  + `statement_timeout 15s` / `lock_timeout 2s` 트랜잭션 후 rollback (`application_name=mal-healthcheck`).
+  네트워크는 선택적인 `DASHBOARD_URL` GET(3초) 하나뿐.
+- 코드: `crawler/src/healthcheck.py` (임계값 상수는 파일 상단). 경주일은 요일 하드코딩 없이
+  `races ∪ race_entries ∪ race_results` 에서 도출한다.
+
+| 영역 | 점검 | 판정 |
+|---|---|---|
+| 설정 | 잡 그룹별 env 있음/없음 (값은 출력 안 함), 프로세스 TZ | 필수 env 없음·TZ≠KST = FAIL · Telegram/DASHBOARD_URL 없음 = WARN |
+| DB | 연결, DB TimeZone·CURRENT_DATE vs KST 오늘, `_migrations_applied` 최신 파일 | 연결 실패 = FAIL (데이터 점검 생략) · 추적 테이블 없음 = WARN |
+| 경주 | 다음 경주일 출전표 완비, 지난주 같은 요일 대비 빈 경주일 | 오늘 경주 출전표 누락 = FAIL · 예정 경주일 없이 직전 경주일 +4일 = WARN, +10일 = FAIL |
+| 결과 | 직전 경주일 결과, 출전표有·결과無 30일(catchup 불변식), 직전 경주일 배당·복식·매출·구간기록 커버리지 | 직전 경주일 결과 전무 = FAIL · 일부 누락 = WARN (12:30 전엔 residual 진행 중) · 배당/복식/매출 0건 = FAIL, 구간기록 0건 = WARN |
+| 마필 | horse_ratings ≤8일, 등급변동·기수변경 갱신, raw NULL vs not-found 원장 | 레이팅 >8일 WARN / >15일 FAIL 등 |
+| 외부 | 날씨(관측소별 최신 ≥ 어제, 03:30 전엔 그저께), 뉴스 ≤1일, 경주 매칭 영상 vs 직전 경주일 | 날씨 하루 지연 = WARN · 뉴스 >3일 = FAIL · 영상 7일 이상 뒤처짐 = FAIL |
+| 기타 | race_plans 올해 / 11~12월엔 내년, sync_meta 원장(배당 백필 exhausted, last_error) | 올해 계획 없음 = FAIL(1월은 WARN) · 내년 계획 없음 = WARN |
+| 대시보드 | `GET DASHBOARD_URL` (3초) | 실패해도 WARN 만 |
+
+FAIL 행의 내용 열에 다음 조치(예: `sync-race-date YYYY-MM-DD`)가 같이 찍힌다. WARN 은 휴장·KRA 공개 지연
+처럼 정상일 수 있는 상황 — 맥락을 보고 판단.
+
 ---
 
 ## 7. nginx / 도메인
