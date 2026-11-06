@@ -6,10 +6,15 @@ Usage:
     uv run python -m src.main sync-race-date <YYYY-MM-DD>
     uv run python -m src.main seed-sample
     uv run python -m src.main smoke
+
+미처리 예외는 `run()` 이 API 키를 마스킹(src/redact.py)해서 stderr 로 출력한다.
 """
 from __future__ import annotations
 
+import sys
+import traceback
 from datetime import datetime
+from types import TracebackType
 
 import typer
 
@@ -31,11 +36,11 @@ from .jobs.periodic import (
     run_sync_race_today_meta,
     run_sync_races_live,
     run_sync_races_today,
-    run_sync_yesterday_catchup,
     run_sync_trainers,
     run_sync_videos,
     run_sync_videos_backfill,
     run_sync_videos_bulk,
+    run_sync_yesterday_catchup,
 )
 from .jobs.sync_horses import backfill_missing_raw, sync_by_name, sync_by_no, upsert_horses
 from .jobs.sync_jockeys import sync_all_jockeys
@@ -48,6 +53,7 @@ from .jobs.sync_weather import backfill as backfill_weather
 from .jobs.sync_weather import sync_recent as sync_weather_recent
 from .logging import configure_logging, get_logger
 from .monitoring import check_stale, register_all_jobs
+from .redact import redact
 
 # pretty_exceptions_show_locals=False — 수동 실행 중 예외 시 typer(rich) traceback 이
 # 프레임 locals(params dict 의 serviceKey 등)를 터미널에 그대로 찍지 않도록.
@@ -116,10 +122,7 @@ def cmd_sync_race_date(
         typer.echo("Invalid date format. Use YYYY-MM-DD or YYYYMMDD.")
         raise typer.Exit(code=1)
 
-    if meet is not None:
-        n = sync_date(d, meet=meet)
-    else:
-        n = sync_date_all_meets(d)
+    n = sync_date(d, meet=meet) if meet is not None else sync_date_all_meets(d)
     typer.echo(f"upserted {n} race result rows")
 
 
@@ -369,7 +372,8 @@ def cmd_sync_dividend_date(
     meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 3곳 모두)"),
 ) -> None:
     """Ad-hoc: 특정 날짜 확정배당율을 fetch & upsert."""
-    from .jobs.sync_race_dividends import sync_date as sync_div, sync_date_all_meets as sync_div_all
+    from .jobs.sync_race_dividends import sync_date as sync_div
+    from .jobs.sync_race_dividends import sync_date_all_meets as sync_div_all
     for fmt in ("%Y-%m-%d", "%Y%m%d"):
         try:
             d = datetime.strptime(rc_date, fmt).date()
@@ -457,7 +461,8 @@ def cmd_sync_race_sales_date(
     meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 3곳 모두)"),
 ) -> None:
     """Ad-hoc: 특정 날짜 풀별 매출액을 fetch & upsert."""
-    from .jobs.sync_race_sales import sync_date as sync_sales, sync_date_all_meets as sync_sales_all
+    from .jobs.sync_race_sales import sync_date as sync_sales
+    from .jobs.sync_race_sales import sync_date_all_meets as sync_sales_all
     for fmt in ("%Y-%m-%d", "%Y%m%d"):
         try:
             d = datetime.strptime(rc_date, fmt).date()
@@ -588,5 +593,42 @@ def cmd_check_stale(
         typer.echo(f"  · {r['job_key']} (since_sec={int(r['since_sec'] or 0)})")
 
 
+def _print_redacted_exception(
+    exc_type: type[BaseException], exc: BaseException, tb: TracebackType | None
+) -> None:
+    """미처리 예외의 메시지·traceback(체인 포함)을 API 키 마스킹 후 stderr 로.
+
+    httpx `HTTPStatusError` 메시지엔 serviceKey/key 가 실린 전체 URL 이 들어 있어
+    typer/기본 excepthook 그대로면 수동 실행 터미널·CI 로그에 키가 찍힌다.
+    """
+    text = "".join(traceback.format_exception(exc_type, exc, tb))
+    sys.stderr.write(redact(text))
+    sys.stderr.flush()
+
+
+def _redacting_excepthook(
+    exc_type: type[BaseException], exc: BaseException, tb: TracebackType | None
+) -> None:
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc, tb)
+        return
+    _print_redacted_exception(exc_type, exc, tb)
+
+
+def run() -> None:
+    """CLI 진입점 — `app()` 을 감싸 미처리 예외를 마스킹해서 출력하고 exit 1.
+
+    typer 는 `app()` 호출 시 자체 excepthook(rich traceback)을 설치하므로 hook 교체만으론
+    부족하다 — 여기서 먼저 잡아 출력한다. click 의 사용법 오류/`typer.Exit` 는 click 이
+    SystemExit 로 처리하므로 그대로 통과.
+    """
+    sys.excepthook = _redacting_excepthook
+    try:
+        app()
+    except Exception as exc:  # noqa: BLE001 — 마스킹 출력 후 비정상 종료
+        _print_redacted_exception(type(exc), exc, exc.__traceback__)
+        raise SystemExit(1) from None
+
+
 if __name__ == "__main__":
-    app()
+    run()

@@ -161,6 +161,15 @@ def test_nodata_code_counts_as_not_found(env: dict[str, Any]) -> None:
     assert env["ledger"]["H1"]["reason"] == "nodata_03"
 
 
+def test_unpadded_nodata_code_counts_as_not_found(env: dict[str, Any]) -> None:
+    # data.go.kr 가 resultCode 를 zero-padding 없이 "3" 으로 줘도 같은 NODATA
+    env["missing"] = ["H1"]
+    env["behavior"] = {"H1": KraApiError("KRA API error 3: NO DATA", code="3")}
+    assert mod.backfill_missing_raw(sleep_sec=0) == 0
+    assert env["ledger"]["H1"]["n"] == 1
+    assert env["ledger"]["H1"]["reason"] == "nodata_3"
+
+
 def test_unmappable_item_counts_as_not_found(
     env: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:

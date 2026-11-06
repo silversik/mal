@@ -17,25 +17,25 @@ from sqlalchemy import text
 from ..config import settings
 from ..logging import get_logger
 from ..monitoring import track_job
+from .backfill_races_from_entries import backfill_races_metadata_from_entries
+from .chunked_backfill_dividends import run_chunk as run_chunked_dividends_chunk
+from .sync_favorite_notifications import build_favorite_notifications
 from .sync_horse_rank_changes import sync_all as sync_horse_rank_changes_all
 from .sync_horse_ratings import sync_all_meets as sync_horse_ratings_all_meets
 from .sync_horses import backfill_missing_raw, refresh_stale_horses
-from .sync_jockeys import sync_all_jockeys
 from .sync_jockey_changes import sync_recent as sync_jockey_changes_recent
-from .sync_owners import sync_all_owners
-from .sync_trainers import sync_all_trainers
-from .sync_favorite_notifications import build_favorite_notifications
+from .sync_jockeys import sync_all_jockeys
 from .sync_naver_news import sync_naver_news
-from .backfill_races_from_entries import backfill_races_metadata_from_entries
+from .sync_owners import sync_all_owners
+from .sync_race_corners import sync_date_all_meets as sync_race_corners_all_meets
+from .sync_race_dividends import sync_date_all_meets as sync_dividends_all_meets
 from .sync_race_entries import sync_upcoming as sync_upcoming_race_entries
 from .sync_race_info import backfill_races_metadata
-from .sync_race_today_meta import sync_today_meta
 from .sync_race_plan import sync_scheduled_years as sync_race_plan_years
-from .sync_race_dividends import sync_date_all_meets as sync_dividends_all_meets
 from .sync_race_sales import sync_date_all_meets as sync_race_sales_all_meets
-from .sync_race_corners import sync_date_all_meets as sync_race_corners_all_meets
+from .sync_race_today_meta import sync_today_meta
 from .sync_races import sync_date_all_meets
-from .chunked_backfill_dividends import run_chunk as run_chunked_dividends_chunk
+from .sync_trainers import sync_all_trainers
 from .sync_videos import sync_videos
 from .sync_videos_backfill import backfill_missing_race_videos
 from .sync_videos_bulk import bulk_backfill_videos
@@ -174,15 +174,44 @@ def run_sync_yesterday_catchup() -> int:
     인지하고 sync-race-date 수동 재시도 판단이 필요한 상황이라 알림이 맞다.
     """
     from datetime import timedelta
-    from sqlalchemy import text
-
-    from ..db import session_scope
 
     yesterday = date.today() - timedelta(days=1)
     races = sync_date_all_meets(yesterday)
     dividends = sync_dividends_all_meets(yesterday)
-    sales = sync_race_sales_all_meets(yesterday)
-    log.info("yesterday_catchup_done", date=str(yesterday), races=races, dividends=dividends, sales=sales)
+    # 매출은 fail-loud(전 meet 실패 시 raise) — 예외가 나도 아래 invariant 검사는 반드시
+    # 돌린다 (결과 0건 사고가 매출 오류에 가려지지 않게). 검사 후 원래 예외를 다시 올림.
+    sales = 0
+    sales_exc: Exception | None = None
+    try:
+        sales = sync_race_sales_all_meets(yesterday)
+    except Exception as e:  # noqa: BLE001 — invariant 검사 뒤 재전파
+        sales_exc = e
+        log.warning("yesterday_catchup_sales_failed", date=str(yesterday), err=str(e))
+    log.info(
+        "yesterday_catchup_done",
+        date=str(yesterday),
+        races=races,
+        dividends=dividends,
+        sales=sales,
+        sales_failed=sales_exc is not None,
+    )
+
+    invariant_msg = _yesterday_results_invariant(yesterday)
+    if invariant_msg and sales_exc is not None:
+        raise RuntimeError(
+            f"{invariant_msg} | 추가로 race_sales 실패: {type(sales_exc).__name__}: {sales_exc}"
+        ) from sales_exc
+    if invariant_msg:
+        raise RuntimeError(invariant_msg)
+    if sales_exc is not None:
+        raise sales_exc
+
+    return races + dividends + sales
+
+
+def _yesterday_results_invariant(yesterday: date) -> str | None:
+    """어제 출전표는 있는데 순위 있는 결과가 0건이면 실패 메시지, 정상이면 None."""
+    from ..db import session_scope
 
     with session_scope() as s:
         row = s.execute(
@@ -198,14 +227,13 @@ def run_sync_yesterday_catchup() -> int:
             {"d": yesterday},
         ).one()
     if row.entries > 0 and row.results == 0:
-        raise RuntimeError(
+        return (
             f"yesterday_catchup_incomplete: {yesterday} 출전표 {row.entries}건 "
             f"있는데 결과 0건. 22:00 KST sync_races_today 미실행 또는 KRA 발표 "
             f"지연 가능성 — `python -m src.main sync-race-date {yesterday}` 또는 "
             f"대시보드에서 sync_yesterday_catchup 재실행 필요."
         )
-
-    return races + dividends + sales
+    return None
 
 
 @track_job("mal.sync_jockeys")

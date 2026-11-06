@@ -1,4 +1,5 @@
 import { query } from "./db";
+import { kstYear } from "./kst";
 
 export type Horse = {
   horse_no: string;
@@ -86,7 +87,8 @@ export async function searchHorses(q: string, limit = 60): Promise<HorseSearchHi
   if (ageMatch) {
     const age = Number(ageMatch[1]);
     if (age >= 1 && age <= 30) {
-      const birthYear = new Date().getFullYear() - age;
+      // KST 연도 기준 — UTC 컨테이너에서 1/1 00:00~09:00 KST 에 작년으로 계산되던 문제 방지.
+      const birthYear = kstYear() - age;
       const rows = await query<Horse>(
         `SELECT ${HORSE_COLUMNS}
            FROM ${HORSE_FROM}

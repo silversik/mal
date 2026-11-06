@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from ..clients.kra_base import KraApiError
+from ..clients.kra_base import KraApiError, is_kra_no_data
 from ..clients.race_annual_plan import (
     RaceAnnualPlanClient,
     api_item_to_race_plan_fields,
@@ -28,9 +28,6 @@ NEXT_YEAR_MONTHS = frozenset({11, 12})
 # 1월엔 새해 계획이 1/1 이후에 공개될 수 있어 올해 NODATA 도 경고만 (그 외 달은 실패).
 SOFT_CURRENT_YEAR_MONTHS = frozenset({1})
 
-# data.go.kr resultCode "03" = NODATA_ERROR (아직 미공개).
-_NO_DATA_CODES = frozenset({"03"})
-
 
 def kst_today() -> date:
     # 컨테이너 TZ 에 의존하지 않고 KST 기준 날짜를 명시
@@ -42,10 +39,6 @@ def target_years(today: date) -> list[int]:
     if today.month in NEXT_YEAR_MONTHS:
         return [today.year, today.year + 1]
     return [today.year]
-
-
-def _is_no_data(exc: KraApiError) -> bool:
-    return exc.code in _NO_DATA_CODES or "NODATA" in str(exc).upper()
 
 
 def filter_items_for_year(
@@ -129,7 +122,7 @@ def sync_year(
             try:
                 items = client.list_by_year(year, meet=m)
             except KraApiError as exc:
-                if not (allow_no_data and _is_no_data(exc)):
+                if not (allow_no_data and is_kra_no_data(exc)):
                     raise
                 if is_current:
                     log.warning(
