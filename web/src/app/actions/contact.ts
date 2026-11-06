@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { createContactPost } from "@/lib/contact";
 import { TITLE_MAX, CONTENT_MAX, AUTHOR_MAX } from "@/lib/contact-shared";
 import { contactRateLimiter } from "@/lib/rate_limit";
-import { sendTelegram } from "@/lib/telegram";
+import { escapeHtml, sendTelegram } from "@/lib/telegram";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
@@ -52,12 +52,12 @@ export async function createContactPostAction(
     user_id: session?.user?.id ?? null,
   });
 
-  // 텔레그램 알림 (실패해도 무시)
+  // 텔레그램 알림 (실패해도 무시) — 사용자 입력은 HTML 이스케이프 필수
   await sendTelegram(
     `📬 <b>새 문의가 등록되었습니다</b>\n\n` +
-    `<b>제목:</b> ${title}\n` +
-    `<b>작성자:</b> ${author_name}\n` +
-    `<b>내용:</b>\n${content.slice(0, 300)}${content.length > 300 ? "…" : ""}\n\n` +
+    `<b>제목:</b> ${escapeHtml(title)}\n` +
+    `<b>작성자:</b> ${escapeHtml(author_name)}\n` +
+    `<b>내용:</b>\n${escapeHtml(content.slice(0, 300))}${content.length > 300 ? "…" : ""}\n\n` +
     `https://mal.kr/contact/${id}`,
   );
 

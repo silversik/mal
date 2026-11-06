@@ -25,6 +25,10 @@ services:
       # 카카오 OAuth (선택) — 없으면 로그인만 막힘, 앱은 기동.
       AUTH_KAKAO_ID: ${MAL_AUTH_KAKAO_ID:-}
       AUTH_KAKAO_SECRET: ${MAL_AUTH_KAKAO_SECRET:-}
+      # 운영 알림 Telegram — 문의 접수(actions/contact.ts) + SSR 미캐치 에러(instrumentation.ts).
+      # crawler 와 같은 봇/채팅 재사용. 비어 있으면 알림만 skip.
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
     ports:
       - "127.0.0.1:4000:4000"
     networks: [appnet]
