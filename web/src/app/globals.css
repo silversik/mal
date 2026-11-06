@@ -69,6 +69,12 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
 
+  /* DESIGN.md 타입 스케일 중 Tailwind 기본에 없는 2단(px 기준 caption 11 · small 13).
+     rem 이라 [data-scale] 축(14/16/20px 루트)을 따른다. line-height 키는 일부러 두지 않아
+     예전 `text-[11px]` 처럼 font-size 만 바꾼다. 9·10px 리터럴도 caption 으로 올림(최소값). */
+  --text-caption: 0.6875rem;
+  --text-small: 0.8125rem;
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);

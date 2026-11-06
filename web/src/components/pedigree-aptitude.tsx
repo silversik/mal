@@ -32,7 +32,7 @@ function ParentLine({ agg }: { agg: ParentChildAggregate }) {
     <Card className="py-0">
       <CardContent className="flex items-center justify-between gap-3 p-3">
         <div className="min-w-0">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="text-caption font-bold uppercase tracking-wider text-muted-foreground">
             {sideLabel} 자손 통계
           </div>
           <Link
@@ -58,7 +58,7 @@ function ParentLine({ agg }: { agg: ParentChildAggregate }) {
 function Cell({ label, value }: { label: string; value: string | number }) {
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+      <div className="text-caption uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
       <div className="font-mono font-semibold tabular-nums">{value}</div>

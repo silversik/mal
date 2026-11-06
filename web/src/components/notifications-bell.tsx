@@ -33,7 +33,7 @@ export async function NotificationsBell() {
       </svg>
       {unread > 0 && (
         <span
-          className="absolute -right-0.5 -top-0.5 inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-[18px] text-white"
+          className="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-caption font-semibold leading-[1.125rem] text-white"
           aria-hidden="true"
         >
           {unread > 99 ? "99+" : unread}

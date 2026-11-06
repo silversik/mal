@@ -94,10 +94,10 @@ function ToolTile({
         </span>
         <div className="min-w-0">
           <h3 className="truncate text-sm font-bold tracking-tight group-hover:text-primary">{title}</h3>
-          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{desc}</p>
+          <p className="mt-0.5 text-caption leading-snug text-muted-foreground">{desc}</p>
         </div>
       </div>
-      <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-primary opacity-0 transition group-hover:opacity-100">
+      <span className="mt-2 inline-flex items-center gap-1 text-caption font-semibold text-primary opacity-0 transition group-hover:opacity-100">
         열기
         <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden="true">
           <path d="M3 2 L7 6 L3 10" stroke="currentColor" strokeWidth="1.6" fill="none" />
@@ -138,7 +138,7 @@ function TopList({
           icon={<IconActivity size={13} />}
           label={title}
           right={
-            <Link href={moreHref} className="text-[11px] font-semibold text-muted-foreground hover:text-primary">
+            <Link href={moreHref} className="text-caption font-semibold text-muted-foreground hover:text-primary">
               전체 →
             </Link>
           }
@@ -156,7 +156,7 @@ function TopList({
                     className="group flex items-center gap-2 py-2 text-sm transition hover:bg-muted/40 -mx-2 px-2 rounded"
                   >
                     <span
-                      className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tabular-nums ${
+                      className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-caption font-bold tabular-nums ${
                         RANK_MEDAL_STYLE[rank] ?? "bg-muted text-muted-foreground"
                       }`}
                     >
@@ -166,7 +166,7 @@ function TopList({
                       {r.name}
                     </span>
                     {r.sub && (
-                      <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                      <span className="font-mono text-caption tabular-nums text-muted-foreground">
                         {r.sub}
                       </span>
                     )}

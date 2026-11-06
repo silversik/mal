@@ -363,7 +363,7 @@ export default async function RacesPage({
               <div className="flex items-center gap-3">
                 <RoundBadge no={selectedRace.race_no} />
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                  <div className="flex items-center gap-2 text-small text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <VenueIcon meet={selectedRace.meet} size={13} />
                       {selectedRace.meet}
@@ -379,7 +379,7 @@ export default async function RacesPage({
                       </>
                     )}
                   </div>
-                  <h2 className="mt-0.5 text-xl font-extrabold leading-tight tracking-tight sm:text-[22px]">
+                  <h2 className="mt-0.5 text-xl font-extrabold leading-tight tracking-tight sm:text-[1.375rem]">
                     {selectedRace.race_name ?? `${selectedRace.race_no}R`}
                   </h2>
                 </div>
@@ -426,7 +426,7 @@ export default async function RacesPage({
               )}
               {syncedAt && (
                 <span
-                  className="text-[11px] text-muted-foreground/70 tabular-nums"
+                  className="text-caption text-muted-foreground/70 tabular-nums"
                   title={`데이터 수집 시각: ${syncedAt}`}
                 >
                   데이터 업데이트{" "}
@@ -465,23 +465,26 @@ export default async function RacesPage({
 
           {/* 2-열 그리드 — lg+ 에선 우측 사이드바(영상·풀별매출·인기분포),
               그 아래선 단일 컬럼. 사이드바는 데스크탑에서 sticky 로 따라온다. */}
-          <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
-            <div className="min-w-0 space-y-5">
-              {/* 모바일·태블릿(lg 미만)에선 영상이 메인 컬럼 상단. 데스크탑에선 사이드바로 이동. */}
-              {raceVideo && (
-                <div className="overflow-hidden rounded-xl border bg-card shadow-sm lg:hidden">
-                  <div className="aspect-video w-full bg-black">
-                    <iframe
-                      src={youtubeEmbedUrl(raceVideo.video_id)}
-                      title={raceVideo.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="h-full w-full"
-                    />
-                  </div>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[auto_1fr] lg:gap-x-6 lg:gap-y-4">
+            {/* 영상은 그리드 직속 단일 노드 — 모바일은 1열 최상단, lg 는 우측 상단(사이드바 위).
+                예전엔 lg:hidden / hidden lg:block 두 벌이라 iframe 이 2번 마운트됐음(단일 반응형 트리).
+                lg 행이 [auto 1fr] 인 이유: 전부 auto 면 row-span-2 메인 높이가 두 행에 균등 분배돼
+                영상↔사이드바 사이가 벌어진다. */}
+            {raceVideo && (
+              <div className="overflow-hidden rounded-xl border bg-card shadow-sm lg:col-start-2 lg:row-start-1">
+                <div className="aspect-video w-full bg-black">
+                  <iframe
+                    src={youtubeEmbedUrl(raceVideo.video_id)}
+                    title={raceVideo.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="h-full w-full"
+                  />
                 </div>
-              )}
+              </div>
+            )}
 
+            <div className="min-w-0 space-y-5 lg:col-start-1 lg:row-start-1 lg:row-span-2">
               {entries.length > 0 ? (
                 <>
                   {entriesPhase === "pre" && (
@@ -492,52 +495,52 @@ export default async function RacesPage({
                   )}
                   <Card className="overflow-hidden py-0">
                 <div className="relative overflow-x-auto rounded-[inherit]">
-                  <table data-table="race-entries" className="w-full border-collapse text-[13px]">
+                  <table data-table="race-entries" className="w-full border-collapse text-small">
                     <thead>
                       <tr className="bg-muted">
-                        <th className="border-b border-border px-2 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 52 }}>
+                        <th className="border-b border-border px-2 py-2.5 text-center text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 52 }}>
                           {entriesPhase === "pre" ? "출전" : "착순"}
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 44 }}>
+                        <th className="border-b border-border px-2 py-2.5 text-center text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 44 }}>
                           번호
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <th className="border-b border-border px-2 py-2.5 text-left text-caption font-bold uppercase tracking-wider text-muted-foreground">
                           마명
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 160 }}>
+                        <th className="border-b border-border px-2 py-2.5 text-left text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 160 }}>
                           기수 / 조교사
                         </th>
-                        <th className="hidden border-b border-border px-2 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 50 }}>
+                        <th className="hidden border-b border-border px-2 py-2.5 text-center text-caption font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 50 }}>
                           연령
                         </th>
-                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 64 }}>
+                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 64 }}>
                           레이팅
                         </th>
-                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 56 }}>
+                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 56 }}>
                           부담
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 88 }}>
+                        <th className="border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 88 }}>
                           기록
                         </th>
-                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground md:table-cell" style={{ width: 60 }}>
+                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground md:table-cell" style={{ width: 60 }}>
                           착차
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 86 }}>
+                        <th className="border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 86 }}>
                           마체중
                         </th>
                         {hasMsf && (
                           <th
-                            className="hidden border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground md:table-cell"
+                            className="hidden border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground md:table-cell"
                             style={{ width: 78 }}
                             title="최근 10전 평균 / 최고 mal지수"
                           >
                             지수
                           </th>
                         )}
-                        <th className="border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 110 }}>
+                        <th className="border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 110 }}>
                           단승
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 110 }}>
+                        <th className="border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 110 }}>
                           연승
                         </th>
                       </tr>
@@ -574,7 +577,7 @@ export default async function RacesPage({
                               >
                                 {e.horse_name}
                               </Link>
-                              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-caption text-muted-foreground">
                                 <span className="inline-flex items-center gap-1">
                                   <SexBullet sex={e.sex} />
                                   {e.age && (
@@ -616,7 +619,7 @@ export default async function RacesPage({
                               </div>
                             </td>
                             <td className="px-2 py-2.5 align-middle leading-tight">
-                              <div className="flex items-center gap-1.5 text-[13px]">
+                              <div className="flex items-center gap-1.5 text-small">
                                 {e.jockey_name ? (
                                   e.jockey_no ? (
                                     <Link
@@ -641,7 +644,7 @@ export default async function RacesPage({
                                   />
                                 )}
                               </div>
-                              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                              <div className="mt-0.5 text-caption text-muted-foreground">
                                 {e.trainer_name ? (
                                   e.trainer_no ? (
                                     <Link
@@ -683,7 +686,7 @@ export default async function RacesPage({
                             </td>
                             {hasMsf && (
                               <td
-                                className="hidden px-2 py-2.5 text-right align-middle font-mono text-[11px] tabular-nums leading-tight md:table-cell"
+                                className="hidden px-2 py-2.5 text-right align-middle font-mono text-caption tabular-nums leading-tight md:table-cell"
                                 title="최근 10전 평균 / 최고 mal지수"
                               >
                                 <MsfCell
@@ -736,23 +739,13 @@ export default async function RacesPage({
             </div>
 
             {/* ── 사이드바 (lg+) / 메인 컬럼 아래(mobile) ──
-                영상·풀별매출·인기분포처럼 "한눈 정보" 는 우측으로 빠져
-                메인 컬럼 상단을 출전표가 차지. */}
-            <aside className="mt-6 space-y-4 lg:mt-0 lg:sticky lg:top-4 lg:self-start">
-              {raceVideo && (
-                <div className="hidden overflow-hidden rounded-xl border bg-card shadow-sm lg:block">
-                  <div className="aspect-video w-full bg-black">
-                    <iframe
-                      src={youtubeEmbedUrl(raceVideo.video_id)}
-                      title={raceVideo.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="h-full w-full"
-                    />
-                  </div>
-                </div>
-              )}
-
+                풀별매출·인기분포처럼 "한눈 정보" 는 우측으로 빠져 메인 컬럼 상단을 출전표가 차지.
+                (영상은 그리드 직속 — 위 참고.) 영상이 없으면 1행부터 span 해 row-gap 공백을 흡수. */}
+            <aside
+              className={`space-y-4 lg:col-start-2 lg:sticky lg:top-4 lg:self-start ${
+                raceVideo ? "lg:row-start-2" : "lg:row-start-1 lg:row-span-2"
+              }`}
+            >
               {poolSales.length > 0 && (
                 <div>
                   <div className="mb-2 flex items-baseline justify-between">
@@ -790,7 +783,7 @@ export default async function RacesPage({
                     <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       인기 분포
                     </h3>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-caption text-muted-foreground">
                       단승 기준
                     </span>
                   </div>
@@ -860,7 +853,7 @@ function MsfCell({
   return (
     <div className="flex flex-col items-end leading-tight">
       <span className={avgCls}>{avg === null ? "-" : avg.toFixed(1)}</span>
-      <span className="text-[10px] opacity-60">
+      <span className="text-caption opacity-60">
         {best === null ? "-" : best.toFixed(1)}
       </span>
     </div>
@@ -898,7 +891,7 @@ function JockeyChangeBadge({
     .join(" ");
   return (
     <span
-      className="inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/10 px-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400"
+      className="inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/10 px-1 text-caption font-semibold text-amber-700 dark:text-amber-400"
       title={title}
     >
       교체
@@ -959,13 +952,13 @@ function UpcomingStakesPanel({
                   return (
                     <li key={s.id} className="flex items-center gap-2 px-3 py-2 text-sm">
                       {s.tier && (
-                        <span className="shrink-0 rounded bg-champagne-gold/20 px-1.5 py-0.5 text-[10px] font-bold text-gold-ink">
+                        <span className="shrink-0 rounded bg-champagne-gold/20 px-1.5 py-0.5 text-caption font-bold text-gold-ink">
                           {s.tier}
                         </span>
                       )}
                       <span className="min-w-0 flex-1 truncate font-medium">{display}</span>
                       {s.distance && (
-                        <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
+                        <span className="shrink-0 font-mono text-caption tabular-nums text-muted-foreground">
                           {s.distance}m
                         </span>
                       )}

@@ -213,7 +213,7 @@ export default async function JockeyDetailPage({
                 icon={<IconUserPlus size={13} />}
                 label="조교사별 동승"
                 right={
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-caption text-muted-foreground">
                     5회 이상
                   </span>
                 }
@@ -337,7 +337,7 @@ function JockeyProfileCard({
 
         {recentRanks.length > 0 && (
           <div className="mt-3 rounded-[10px] border border-border bg-card px-3 py-2">
-            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="mb-1 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
               최근 폼 ({Math.min(recentRanks.length, 15)}경기)
             </div>
             <RecentFormDots ranks={recentRanks} count={15} />

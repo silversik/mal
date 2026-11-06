@@ -146,7 +146,7 @@ export function HeroTodayCarousel({ date, meets }: HeroTodayCarouselProps) {
                         type="button"
                         onClick={() => scrollToIdx(idx)}
                         aria-label={`${m} ${r.race_no}R 로 이동`}
-                        className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition ${
+                        className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-caption font-semibold transition ${
                           active
                             ? "border-champagne-gold bg-champagne-gold text-primary"
                             : "border-white/15 bg-white/5 text-white/70 hover:border-champagne-gold/40 hover:text-champagne-gold"
@@ -154,7 +154,7 @@ export function HeroTodayCarousel({ date, meets }: HeroTodayCarouselProps) {
                       >
                         <span className="font-mono tabular-nums">{r.race_no}R</span>
                         {r.start_time && (
-                          <span className="font-mono text-[10px] tabular-nums opacity-80">
+                          <span className="font-mono text-caption tabular-nums opacity-80">
                             {r.start_time}
                           </span>
                         )}
@@ -233,21 +233,21 @@ function RaceTile({
     <div className="flex h-full flex-col overflow-hidden rounded-xl bg-white/95 shadow-lg ring-1 ring-white/20">
       {/* 헤더 — 한 줄: [경마장] [라운드] [거리] [flex 공간] [더보기]. 발주시각/race_name 은 라운드 네비/상세 페이지에 노출. */}
       <div className="flex items-center gap-2 border-b border-primary/10 bg-primary/5 px-3 py-2">
-        <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-primary">
+        <span className="inline-flex shrink-0 items-center gap-1 text-caption font-semibold text-primary">
           <VenueIcon meet={meet} size={12} className="opacity-70" />
           {meet}
         </span>
-        <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-primary">
+        <span className="shrink-0 font-mono text-caption font-bold tabular-nums text-primary">
           {race.race_no}R
         </span>
         {race.distance && (
-          <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
+          <span className="shrink-0 font-mono text-caption tabular-nums text-muted-foreground">
             {race.distance}m
           </span>
         )}
         <Link
           href={href}
-          className="ml-auto inline-flex shrink-0 items-center gap-0.5 rounded bg-champagne-gold/20 px-2 py-0.5 text-[10px] font-bold text-gold-ink transition hover:bg-champagne-gold/30"
+          className="ml-auto inline-flex shrink-0 items-center gap-0.5 rounded bg-champagne-gold/20 px-2 py-0.5 text-caption font-bold text-gold-ink transition hover:bg-champagne-gold/30"
         >
           더보기
           <span aria-hidden>→</span>
@@ -259,7 +259,7 @@ function RaceTile({
       ) : (
         <table className="w-full table-fixed text-xs">
           <thead>
-            <tr className="border-b border-primary/5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+            <tr className="border-b border-primary/5 text-caption font-semibold uppercase tracking-wider text-muted-foreground/70">
               <th className="w-9 px-1.5 py-1.5 text-center">{phase === "post" ? "착순" : "#"}</th>
               <th className="px-1.5 py-1.5 text-center">마명</th>
               <th className="px-1.5 py-1.5 text-center">기수</th>

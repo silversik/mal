@@ -33,7 +33,7 @@ export default async function LoginPage() {
           >
             <button
               type="submit"
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#FEE500] text-[15px] font-semibold text-[#191919] transition hover:brightness-95"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#FEE500] text-[0.9375rem] font-semibold text-[#191919] transition hover:brightness-95"
             >
               카카오로 시작하기
             </button>

@@ -197,6 +197,7 @@ function horseToFamNode(h: Horse, isCurrent = false): FamNode {
     horse_no: h.horse_no,
     name: h.horse_name,
     gender: sexToGender(h.sex),
+    sex: h.sex,
     birthYear: h.birth_date?.slice(0, 4) ?? null,
     country: h.country,
     dam_name: h.dam_name,
@@ -294,7 +295,7 @@ function RaceWithMsfsSection({
                               </span>
                             </>
                           ) : (
-                            <span className="flex h-full w-full items-center justify-center text-[10px] font-medium text-muted-foreground/60">
+                            <span className="flex h-full w-full items-center justify-center text-caption font-medium text-muted-foreground/60">
                               경주 보기 →
                             </span>
                           )}
