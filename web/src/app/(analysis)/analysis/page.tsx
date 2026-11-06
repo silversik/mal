@@ -9,7 +9,9 @@ import {
   IconTrend,
   IconActivity,
 } from "@/components/profile-ui";
-import { getRanking } from "@/lib/rankings";
+import { kstYear } from "@/lib/kst";
+import { getRankingWithFallback, type RankingEntity } from "@/lib/rankings";
+import { rankingYearLabel, type YearFallbackResult } from "@/lib/rankings-shared";
 
 export const metadata: Metadata = {
   title: "분석 · mal.kr",
@@ -18,11 +20,12 @@ export const metadata: Metadata = {
 };
 
 export default async function AnalysisPage() {
-  const currentYear = new Date().getFullYear();
+  // KST 기준 올해. 연초 올해 집계가 비면 카드별로 직전 연도 폴백.
+  const currentYear = kstYear();
   const [topJockeys, topTrainers, topHorses] = await Promise.all([
-    getRanking("jockey", "ytd", currentYear, 5),
-    getRanking("trainer", "ytd", currentYear, 5),
-    getRanking("horse", "ytd", currentYear, 5),
+    getRankingWithFallback("jockey", "ytd", currentYear, 5),
+    getRankingWithFallback("trainer", "ytd", currentYear, 5),
+    getRankingWithFallback("horse", "ytd", currentYear, 5),
   ]);
 
   return (
@@ -35,9 +38,9 @@ export default async function AnalysisPage() {
 
       <section className="grid gap-3 md:grid-cols-3">
         <TopList
-          title={`TOP 기수 · ${currentYear}`}
-          moreHref={`/rankings?entity=jockey&scope=ytd`}
-          rows={topJockeys.map((r) => ({
+          title={`TOP 기수 · ${rankingYearLabel(topJockeys)}`}
+          moreHref={rankingsHref("jockey", topJockeys)}
+          rows={topJockeys.rows.map((r) => ({
             no: r.no,
             href: `/jockey/${r.no}`,
             name: r.name,
@@ -46,9 +49,9 @@ export default async function AnalysisPage() {
           }))}
         />
         <TopList
-          title={`TOP 마필 · ${currentYear}`}
-          moreHref={`/rankings?entity=horse&scope=ytd`}
-          rows={topHorses.map((r) => ({
+          title={`TOP 마필 · ${rankingYearLabel(topHorses)}`}
+          moreHref={rankingsHref("horse", topHorses)}
+          rows={topHorses.rows.map((r) => ({
             no: r.no,
             href: `/horse/${r.no}`,
             name: r.name,
@@ -57,9 +60,9 @@ export default async function AnalysisPage() {
           }))}
         />
         <TopList
-          title={`TOP 조교사 · ${currentYear}`}
-          moreHref={`/rankings?entity=trainer&scope=ytd`}
-          rows={topTrainers.map((r) => ({
+          title={`TOP 조교사 · ${rankingYearLabel(topTrainers)}`}
+          moreHref={rankingsHref("trainer", topTrainers)}
+          rows={topTrainers.rows.map((r) => ({
             no: r.no,
             href: `/trainer/${r.no}`,
             name: r.name,
@@ -70,6 +73,13 @@ export default async function AnalysisPage() {
       </section>
     </div>
   );
+}
+
+// 폴백 시 "전체 →" 도 실제 보여준 연도의 연도별 랭킹으로 보낸다 (올해 탭은 비어 있으므로).
+function rankingsHref(entity: RankingEntity, r: YearFallbackResult<unknown>): string {
+  return r.fellBack
+    ? `/rankings?entity=${entity}&scope=year&year=${r.year}`
+    : `/rankings?entity=${entity}&scope=ytd`;
 }
 
 function ToolTile({

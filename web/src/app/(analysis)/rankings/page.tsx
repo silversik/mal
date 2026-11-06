@@ -10,8 +10,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { kstYear } from "@/lib/kst";
 import {
-  getRanking,
+  getRankingWithFallback,
   type RankingEntity,
   type RankingScope,
 } from "@/lib/rankings";
@@ -34,10 +35,9 @@ const SCOPES: { key: RankingScope; label: string }[] = [
   { key: "all", label: "통산" },
 ];
 
-function clampYear(input: string | undefined): number {
-  const now = new Date();
+function clampYear(input: string | undefined, currentYear: number): number {
   const y = Number(input ?? "");
-  if (!Number.isFinite(y) || y < 2000 || y > now.getFullYear()) return now.getFullYear();
+  if (!Number.isFinite(y) || y < 2000 || y > currentYear) return currentYear;
   return y;
 }
 
@@ -51,10 +51,13 @@ export default async function RankingsPage({
     (ENTITIES.find((e) => e.key === sp.entity)?.key ?? "horse");
   const scope: RankingScope =
     (SCOPES.find((s) => s.key === sp.scope)?.key ?? "year");
-  const currentYear = new Date().getFullYear();
-  const year = scope === "ytd" ? currentYear : clampYear(sp.year);
-
-  const rows = await getRanking(entity, scope, year, 50);
+  // 서버 TZ 와 무관하게 KST 기준 올해.
+  const currentYear = kstYear();
+  const requestedYear = scope === "ytd" ? currentYear : clampYear(sp.year, currentYear);
+  // 연도/기간을 직접 고른 경우(?year= / ?scope=)는 그대로 존중 — 기본 진입만 직전 연도 폴백.
+  const explicit = sp.year !== undefined || sp.scope !== undefined;
+  const ranking = await getRankingWithFallback(entity, scope, requestedYear, 50, explicit);
+  const { rows, year } = ranking;
 
   const yearOptions: number[] = [];
   for (let y = currentYear; y >= currentYear - 6; y--) yearOptions.push(y);
@@ -118,6 +121,17 @@ export default async function RankingsPage({
           </TabGroup>
         )}
       </div>
+
+      {ranking.fellBack && (
+        <p
+          role="status"
+          className="mt-4 rounded-md border bg-card px-3 py-2 text-sm text-muted-foreground"
+        >
+          <span className="font-mono tabular-nums">{ranking.requestedYear}</span>년 집계 전이라{" "}
+          <span className="font-mono font-semibold tabular-nums text-foreground">{year}</span>년
+          랭킹을 보여드립니다.
+        </p>
+      )}
 
       <div className="mt-6">
         {rows.length === 0 ? (

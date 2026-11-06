@@ -1,4 +1,5 @@
 import { query } from "./db";
+import { withPrevYearFallback, type YearFallbackResult } from "./rankings-shared";
 
 export type RankingScope = "year" | "ytd" | "all";
 export type RankingEntity = "horse" | "jockey" | "trainer";
@@ -94,4 +95,22 @@ export async function getRanking(
       LIMIT ${limit}`,
     params,
   );
+}
+
+/**
+ * getRanking + 직전 연도 폴백. explicit(사용자가 연도/기간을 직접 고름)면 폴백 없음.
+ * 연초 올해 집계가 비어 화면이 텅 비는 것을 막는다.
+ */
+export async function getRankingWithFallback(
+  entity: RankingEntity,
+  scope: RankingScope,
+  year: number,
+  limit = 50,
+  explicit = false,
+): Promise<YearFallbackResult<RankingRow>> {
+  return withPrevYearFallback((y) => getRanking(entity, scope, y, limit), {
+    scope,
+    year,
+    explicit,
+  });
 }
