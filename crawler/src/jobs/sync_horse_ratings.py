@@ -1,11 +1,16 @@
 """Sync 경주마 레이팅 (15057323) → `horse_ratings` 테이블.
 
-API 응답에 공시일자가 없으므로 fetch 시점(`snapshot_date = CURRENT_DATE`)을
+API 응답에 공시일자가 없으므로 fetch 시점의 KST 날짜(`snapshot_date`)를
 PK 의 일부로 묶어 시계열 누적. 같은 날 재실행은 update, 다른 날은 새 row insert.
+
+snapshot_date 는 DB CURRENT_DATE 에 맡기지 않고 여기서 KST 로 계산해 넣는다.
+DB/컨테이너가 UTC 면 토 07:30 KST 실행이 금요일(UTC 22:30)로 찍히기 때문.
 """
 from __future__ import annotations
 
+from datetime import date, datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -29,15 +34,24 @@ _UPDATE_COLS = (
 )
 
 
-# 8 columns / row × _BATCH < 65535 (psycopg 파라미터 한계)
+# 9 columns / row × _BATCH < 65535 (psycopg 파라미터 한계)
 _BATCH = 2000
 
+KST = ZoneInfo("Asia/Seoul")
 
-def upsert_ratings(items: list[dict[str, Any]]) -> int:
+
+def kst_today() -> date:
+    return datetime.now(KST).date()
+
+
+def upsert_ratings(items: list[dict[str, Any]], snapshot_date: date | None = None) -> int:
     rows = [api_item_to_rating_fields(it) for it in items]
     rows = [r for r in rows if r and r.get("horse_no")]
     if not rows:
         return 0
+    snap = snapshot_date or kst_today()
+    for r in rows:
+        r["snapshot_date"] = snap
 
     # 같은 호출 안에서 horse_no 중복 시 마지막 값 채택.
     dedup: dict[str, dict[str, Any]] = {}
@@ -52,8 +66,8 @@ def upsert_ratings(items: list[dict[str, Any]]) -> int:
             set_ = {c: getattr(stmt.excluded, c) for c in _UPDATE_COLS}
             set_["fetched_at"] = func.now()
             set_["updated_at"] = func.now()
-            # snapshot_date 는 server_default = CURRENT_DATE 로 자동 채워짐.
-            # 같은 날 재실행은 (horse_no, snapshot_date) 에서 충돌 → update,
+            # snapshot_date 는 위에서 KST 날짜로 명시 지정.
+            # 같은 날(KST) 재실행은 (horse_no, snapshot_date) 에서 충돌 → update,
             # 다른 날은 신규 row insert (시계열 누적).
             stmt = stmt.on_conflict_do_update(
                 index_elements=["horse_no", "snapshot_date"], set_=set_,

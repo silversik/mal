@@ -20,6 +20,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -555,18 +556,22 @@ class JockeyChange(Base):
 class HorseRating(Base):
     """경주마 레이팅 스냅샷 시계열 — KRA API77/raceHorseRating (dataset 15057323).
 
-    응답에 공시일자가 없으므로 fetch 시점(`snapshot_date = fetched_at::date`)을
+    응답에 공시일자가 없으므로 fetch 시점의 KST 날짜(`snapshot_date`)를
     PK 의 일부로 사용. 같은 날 재실행은 update, 다른 날은 insert (시계열 누적).
     rating1~rating4 는 의미 미공개 — raw 보존.
 
-    See: db/migrations/016_horse_ratings_timeseries.sql
+    See: db/migrations/016_horse_ratings_timeseries.sql,
+         db/migrations/033_horse_ratings_snapshot_kst.sql
     """
 
     __tablename__ = "horse_ratings"
 
     horse_no: Mapped[str] = mapped_column(String(20), primary_key=True)
+    # 기본값도 KST 날짜 (DB timezone 무관). 잡은 KST 날짜를 명시로 넣는다.
     snapshot_date: Mapped[date] = mapped_column(
-        Date, primary_key=True, server_default=func.current_date()
+        Date,
+        primary_key=True,
+        server_default=text("((now() AT TIME ZONE 'Asia/Seoul')::date)"),
     )
     horse_name: Mapped[str | None] = mapped_column(String(100))
     meet: Mapped[str | None] = mapped_column(String(20))
