@@ -175,38 +175,46 @@ def run_sync_yesterday_catchup() -> int:
     """
     from datetime import timedelta
 
-    yesterday = date.today() - timedelta(days=1)
-    races = sync_date_all_meets(yesterday)
-    dividends = sync_dividends_all_meets(yesterday)
-    # 매출은 fail-loud(전 meet 실패 시 raise) — 예외가 나도 아래 invariant 검사는 반드시
-    # 돌린다 (결과 0건 사고가 매출 오류에 가려지지 않게). 검사 후 원래 예외를 다시 올림.
-    sales = 0
-    sales_exc: Exception | None = None
-    try:
-        sales = sync_race_sales_all_meets(yesterday)
-    except Exception as e:  # noqa: BLE001 — invariant 검사 뒤 재전파
-        sales_exc = e
-        log.warning("yesterday_catchup_sales_failed", date=str(yesterday), err=str(e))
+    # KST 기준 어제 — 컨테이너 TZ 와 무관 (07:30 KST = 전날 22:30 UTC).
+    yesterday = datetime.now(KST).date() - timedelta(days=1)
+
+    # 각 단계는 fail-loud(전 meet 실패 시 raise) — 어느 단계가 실패해도 나머지 단계와
+    # 아래 invariant 검사는 반드시 돌린다 (결과 0건 사고가 다른 단계 오류에 가려지지 않게).
+    counts: dict[str, int] = {}
+    failures: list[tuple[str, Exception]] = []
+    for name, step in (
+        ("races", sync_date_all_meets),
+        ("dividends", sync_dividends_all_meets),
+        ("sales", sync_race_sales_all_meets),
+    ):
+        try:
+            counts[name] = step(yesterday)
+        except Exception as e:  # noqa: BLE001 — invariant 검사 뒤 재전파
+            counts[name] = 0
+            failures.append((name, e))
+            log.warning(f"yesterday_catchup_{name}_failed", date=str(yesterday), err=str(e))
     log.info(
         "yesterday_catchup_done",
         date=str(yesterday),
-        races=races,
-        dividends=dividends,
-        sales=sales,
-        sales_failed=sales_exc is not None,
+        **counts,
+        failed=[n for n, _ in failures],
     )
 
-    invariant_msg = _yesterday_results_invariant(yesterday)
-    if invariant_msg and sales_exc is not None:
-        raise RuntimeError(
-            f"{invariant_msg} | 추가로 race_sales 실패: {type(sales_exc).__name__}: {sales_exc}"
-        ) from sales_exc
-    if invariant_msg:
-        raise RuntimeError(invariant_msg)
-    if sales_exc is not None:
-        raise sales_exc
+    try:
+        invariant_msg = _yesterday_results_invariant(yesterday)
+    except Exception as e:  # noqa: BLE001 — 검사 쿼리 자체 실패도 단계 오류와 함께 보고
+        failures.append(("invariant_check", e))
+        invariant_msg = None
 
-    return races + dividends + sales
+    if not invariant_msg and len(failures) == 1:
+        raise failures[0][1]  # 단일 실패는 원래 예외 그대로
+    if invariant_msg or failures:
+        parts = [invariant_msg] if invariant_msg else []
+        parts += [f"{n} 실패: {type(e).__name__}: {e}" for n, e in failures]
+        cause = failures[0][1] if failures else None
+        raise RuntimeError(" | 추가로 ".join(parts)) from cause
+
+    return sum(counts.values())
 
 
 def _yesterday_results_invariant(yesterday: date) -> str | None:

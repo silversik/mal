@@ -96,6 +96,63 @@ def test_sales_error_and_invariant_combined(env: dict[str, Any]) -> None:
     assert isinstance(ei.value.__cause__, ValueError)
 
 
+def test_races_step_error_still_runs_other_steps_and_invariant(
+    env: dict[str, Any], periodic: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[str] = []
+
+    def races_boom(d: Any) -> int:
+        raise RuntimeError("race_results: 전부 실패")
+
+    def divs(d: Any) -> int:
+        calls.append("div")
+        return 3
+
+    monkeypatch.setattr(periodic, "sync_date_all_meets", races_boom)
+    monkeypatch.setattr(periodic, "sync_dividends_all_meets", divs)
+    env["entries"], env["results"] = 12, 0
+    with pytest.raises(RuntimeError) as ei:
+        env["run"]()
+    msg = str(ei.value)
+    assert "yesterday_catchup_incomplete" in msg and "races 실패" in msg
+    assert calls == ["div"] and env["sql"] == 1
+
+
+def test_invariant_query_error_keeps_step_error(
+    env: dict[str, Any], periodic: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env["sales"] = ValueError("sales boom")
+
+    def broken(_d: Any) -> None:
+        raise ConnectionError("db down")
+
+    monkeypatch.setattr(periodic, "_yesterday_results_invariant", broken)
+    with pytest.raises(RuntimeError) as ei:
+        env["run"]()
+    msg = str(ei.value)
+    assert "sales boom" in msg and "db down" in msg
+
+
+def test_uses_kst_yesterday(
+    env: dict[str, Any], periodic: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import datetime as dt
+
+    seen: list[Any] = []
+    monkeypatch.setattr(periodic, "sync_date_all_meets", lambda d: seen.append(d) or 0)
+
+    class _Fake(dt.datetime):
+        @classmethod
+        def now(cls, tz=None):  # noqa: ANN001, ANN206
+            # UTC 11/6 22:30 = KST 11/7 07:30 → 어제(KST) = 11/6
+            base = dt.datetime(2026, 11, 6, 22, 30, tzinfo=dt.UTC)
+            return base.astimezone(tz) if tz else base.replace(tzinfo=None)
+
+    monkeypatch.setattr(periodic, "datetime", _Fake)
+    env["run"]()
+    assert seen == [dt.date(2026, 11, 6)]
+
+
 def test_no_entries_with_sales_error_reraises_sales(env: dict[str, Any]) -> None:
     env["sales"] = KeyError("x")
     with pytest.raises(KeyError):
