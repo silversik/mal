@@ -80,17 +80,17 @@ def upsert_horses(items: list[dict[str, Any]]) -> int:
     return len(rows)
 
 
-def sync_by_name(horse_name: str, *, meet: int | None = None) -> int:
+def sync_by_name(horse_name: str) -> int:
     """Fetch horses matching `horse_name` from KRA and upsert."""
     with HorseDetailClient() as client:
-        items = client.search_by_name(horse_name, meet=meet)
-    log.info("horses_fetched", name=horse_name, meet=meet, count=len(items))
+        items = client.search_by_name(horse_name)
+    log.info("horses_fetched", name=horse_name, count=len(items))
     return upsert_horses(items)
 
 
-def sync_by_no(horse_no: str, *, meet: int | None = None) -> int:
+def sync_by_no(horse_no: str) -> int:
     with HorseDetailClient() as client:
-        item = client.get_by_no(horse_no, meet=meet)
+        item = client.get_by_no(horse_no)
     if not item:
         log.warning("horse_not_found", horse_no=horse_no)
         return 0

@@ -2,22 +2,29 @@
 # E2E 용 빈 DB 를 만들고 db/migrations/0*.sql 을 번호 순으로 적용한다.
 #
 # prod 와 같은 레이아웃: 테이블은 `mal` 스키마, DB 기본 search_path = mal, public
-# (prod 컨테이너는 mal_app role 의 search_path = mal, public). 일부 크롤러 SQL 이
-# `mal.` 을 하드코딩하고 있어 (backfill_races_from_entries) public 레이아웃에선 깨진다.
+# (prod 컨테이너는 mal_app role 의 search_path = mal, public).
 #
 # 사용 (libpq 환경변수로 서버 지정):
 #   PGHOST=localhost PGPORT=5432 PGUSER=mal PGPASSWORD=mal_dev_pw \
 #     bash crawler/tests/e2e/setup_db.sh mal_e2e
 #
-# ⚠ 대상 DB 를 DROP 후 재생성한다 — 운영/공용 DB 이름은 거부.
+# ⚠ 대상 DB 를 DROP 후 재생성한다 — 이름에 e2e/test 가 없거나 운영 호스트면 거부
+#   (conftest._assert_safe_target 과 같은 규칙).
 # 011_move_scraper_to_crawler_schema.sql 은 통합 서버 전용(crawler 스키마 의존)이라
 # 실패해도 무시한다 (크롤러 잡은 scraper_* 테이블을 쓰지 않음 — 대시보드 HTTP 리포트).
 set -euo pipefail
 
 DB="${1:?usage: setup_db.sh <dbname>}"
 case "$DB" in
-  app|mal|postgres|template0|template1)
-    echo "[e2e] refusing to drop '$DB'" >&2
+  *e2e*|*test*) ;;
+  *)
+    echo "[e2e] refusing to drop '$DB' — DB 이름에 e2e 또는 test 가 있어야 합니다" >&2
+    exit 1
+    ;;
+esac
+case "${PGHOST:-}" in
+  49.50.138.*|*mal.kr*)
+    echo "[e2e] refusing to touch production host '$PGHOST'" >&2
     exit 1
     ;;
 esac

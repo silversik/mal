@@ -713,9 +713,13 @@ class FakeWeb:
         return items
 
     def _horse(self, p):
-        self._need(p, "hr_no")
-        item = self.w.horse_detail(p["hr_no"], self.clock.now)
-        return [item] if item else []
+        if "hr_name" in p:  # CLI sync-horse-name — 마명 검색
+            nos = [h.no for h in HORSE_BY_NO.values() if h.name == p["hr_name"]]
+        else:
+            self._need(p, "hr_no")
+            nos = [p["hr_no"]]
+        items = [self.w.horse_detail(no, self.clock.now) for no in nos]
+        return [it for it in items if it]
 
     def _trainers_xml(self, p):
         page, size = int(p["pageNo"]), int(p["numOfRows"])

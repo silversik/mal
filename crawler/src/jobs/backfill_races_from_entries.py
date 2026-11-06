@@ -48,19 +48,19 @@ def backfill_races_metadata_from_entries() -> int:
                  -- "출발 :10:35" → "10:35"; 형식이 다양해서 정규식이 안전.
                  (regexp_match(raw->>'stTime', '([0-9]{1,2}:[0-9]{2})'))[1] AS start_time,
                  NULLIF(raw->>'ageCond','')             AS age_cond
-            FROM mal.race_entries
+            FROM race_entries
            WHERE raw IS NOT NULL
         )
-        INSERT INTO mal.races (race_date, meet, race_no, distance, grade, race_name, start_time)
+        INSERT INTO races (race_date, meet, race_no, distance, grade, race_name, start_time)
         SELECT race_date, meet, race_no, distance, grade, race_name, start_time
           FROM unique_races
           WHERE distance IS NOT NULL OR grade IS NOT NULL
                 OR race_name IS NOT NULL OR start_time IS NOT NULL
         ON CONFLICT (race_date, meet, race_no) DO UPDATE
-           SET distance   = COALESCE(mal.races.distance,   EXCLUDED.distance),
-               grade      = COALESCE(mal.races.grade,      EXCLUDED.grade),
-               race_name  = COALESCE(mal.races.race_name,  EXCLUDED.race_name),
-               start_time = COALESCE(mal.races.start_time, EXCLUDED.start_time)
+           SET distance   = COALESCE(races.distance,   EXCLUDED.distance),
+               grade      = COALESCE(races.grade,      EXCLUDED.grade),
+               race_name  = COALESCE(races.race_name,  EXCLUDED.race_name),
+               start_time = COALESCE(races.start_time, EXCLUDED.start_time)
         """,
     )
 

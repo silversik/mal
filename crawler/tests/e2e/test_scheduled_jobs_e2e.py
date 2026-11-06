@@ -24,8 +24,6 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
-import pytest
-
 from src.monitoring import JOB_CATALOG
 
 KST = ZoneInfo("Asia/Seoul")
@@ -401,7 +399,8 @@ def test_23_horses_refresh_stale(e2e):
 def test_24_yesterday_catchup(e2e):
     D = _d(e2e)
     n = e2e.run("mal.sync_yesterday_catchup", _d1(e2e), 7, 30)
-    assert n == 9 + 9 + 21  # 결과 + 단·연 배당 + 매출 (부경 2R 여전히 미공표)
+    # 결과 + 단·연 배당 + 매출 + 구간기록 (부경 2R 여전히 미공표)
+    assert n == 9 + 9 + 21 + 3
     assert {r.params["rc_date"] for r in e2e.web.kra_calls()} == {D.strftime("%Y%m%d")}
     unresolved = e2e.q("""
         SELECT r.meet, r.race_no FROM races r WHERE r.race_date=:d AND NOT EXISTS (
@@ -413,7 +412,8 @@ def test_24_yesterday_catchup(e2e):
 def test_25_yesterday_residual_fetches_late_race(e2e):
     D = _d(e2e)
     n = e2e.run("mal.sync_yesterday_residual", _d1(e2e), 9, 0)
-    assert n == 12 + 12
+    # 결과 12 + 단·연 배당 12 + 매출 4경주×7풀 + 구간기록 4경주 (전 경주 upsert 재수집)
+    assert n == 12 + 12 + 28 + 4
     b2 = e2e.q("SELECT horse_no, rank FROM race_results WHERE race_date=:d AND meet='부경' "
                "AND race_no=2 ORDER BY rank", d=D)
     assert [r["horse_no"] for r in b2] == ["0041010", "0041011", "0041012"]
@@ -479,7 +479,10 @@ def test_28b_race_info_monday_canary(e2e):
 
 def test_29_race_entries_upcoming_week(e2e):
     w = e2e.world
-    n = e2e.run("mal.sync_race_entries", w.real_today, 12, 0)
+    # 출전표는 경주일 3일 전부터 공표 — 실제 오늘이 일·월이면 U(다음 금)가 4~5일 뒤라
+    # 아직 비어 있으므로, 공표 이후 시점(max(오늘, U-3))에 수집한다.
+    when = max(w.real_today, w.U - timedelta(days=3))
+    n = e2e.run("mal.sync_race_entries", when, 12, 0)
     assert n == 3
     rows = e2e.q("SELECT horse_no, chul_no FROM race_entries WHERE race_date=:u ORDER BY chul_no",
                  u=w.U)
@@ -941,7 +944,7 @@ def test_45_healthcheck_data_checks(e2e):
     """src.healthcheck 데이터 점검을 시나리오 시각(D+1 12:00 KST)으로 실행 — FAIL 0.
 
     실제 시각으로 돌리면 가짜 시계로 수집한 날씨가 "오래됨" 으로 FAIL 이라 시나리오 시각을 쓴다.
-    WARN 허용: 내년 대상경주 계획 미공개 · 부경 2R 매출/구간기록 누락(아래 xfail 참고).
+    WARN 허용: 내년 대상경주 계획 미공개.
     """
     from src.healthcheck import SqlRowProvider, Status, check_data
 
@@ -950,19 +953,15 @@ def test_45_healthcheck_data_checks(e2e):
     checks = check_data(SqlRowProvider(e2e.engine), now)
     bad = [(c.status.value, c.name, c.detail) for c in checks if c.status != Status.OK]
     assert not [b for b in bad if b[0] == "FAIL"], bad
-    allowed = {"대상경주 계획 (race_plans)", "풀별 매출 (race_pool_sales)",
-               "구간기록 (race_corners)"}
+    allowed = {"대상경주 계획 (race_plans)"}
     assert {b[1] for b in bad} <= allowed, bad
 
 
-# ============================================== 발견한 production 버그 (xfail strict)
+# ============================================== E2E 가 발견해 고친 production 버그 (회귀 방지)
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "BUG: 다음날 07:30 catchup 이후 공표된 경주(부경 2R)는 race_pool_sales / race_corners 를 "
-    "영영 못 받는다 — residual(09~12시)은 결과·배당만 재수집, corners 는 당일 22:55 1회뿐."
-))
-def test_bug_late_published_race_never_gets_sales_or_corners(e2e):
+def test_late_published_race_gets_sales_and_corners(e2e):
+    """07:30 catchup 이후 공표된 경주(부경 2R)도 residual 이 매출·구간기록까지 받는다."""
     D = e2e.world.D
     sales = e2e.one("SELECT COUNT(*) AS n FROM race_pool_sales WHERE race_date=:d "
                     "AND meet='부경' AND race_no=2", d=D)
@@ -971,22 +970,15 @@ def test_bug_late_published_race_never_gets_sales_or_corners(e2e):
     assert (sales["n"], corners["n"]) == (7, 1)
 
 
-@pytest.mark.xfail(strict=True, raises=TypeError, reason=(
-    "BUG: sync_horses.sync_by_name/sync_by_no 가 HorseDetailClient.search_by_name/get_by_no 에 "
-    "없는 meet= 키워드를 넘김 → CLI `sync-horse-name` / `sync-horse-no` 가 항상 TypeError."
-))
-def test_bug_cli_sync_horse_name_typeerror(e2e):
+def test_cli_sync_horse_name(e2e):
+    """sync_by_name 이 클라이언트에 없는 meet= 를 넘겨 TypeError 나던 버그."""
     from src.jobs.sync_horses import sync_by_name
 
     assert sync_by_name("녹색신호") == 1
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "BUG(경미): api_item_to_race_plan_fields 가 실제 응답 날짜 키 pgDate 를 안 봐서 "
-    "race_plans.race_date 가 항상 NULL (같은 모듈 plan_item_date 는 pgDate 를 읽음). "
-    "웹은 raw->>'pgDate' 로 우회 중."
-))
-def test_bug_race_plans_race_date_ignores_pgdate(e2e):
+def test_race_plans_race_date_from_pgdate(e2e):
+    """race_date 를 응답의 pgDate 로 채운다 (예전엔 항상 NULL)."""
     row = e2e.one("SELECT race_date, raw->>'pgDate' AS pg FROM race_plans "
                   "WHERE race_name='부산일보배'")
     assert row["race_date"] is not None

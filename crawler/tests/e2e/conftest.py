@@ -249,7 +249,16 @@ def e2e() -> Any:
     import src.scheduler_main as scheduler_main
     from src.config import settings
 
-    world = FakeWorld(_dt.datetime.now(ZoneInfo("Asia/Seoul")))
+    # E2E_REAL_NOW=YYYY-MM-DD 로 "실제 오늘" 을 고정해 요일별 동작을 재현할 수 있다.
+    # DB 쪽 NOW()/CURRENT_DATE 는 못 바꾸므로 실제 날짜 ±2일 안에서만 의미가 있다
+    # (그보다 과거로 두면 다음 경주일 U 가 DB 기준 과거가 돼 웹·알림 쿼리가 빈다).
+    pinned = os.environ.get("E2E_REAL_NOW")
+    real_now = (
+        _dt.datetime.combine(_dt.date.fromisoformat(pinned), _dt.time(12),
+                             tzinfo=ZoneInfo("Asia/Seoul"))
+        if pinned else _dt.datetime.now(ZoneInfo("Asia/Seoul"))
+    )
+    world = FakeWorld(real_now)
     clock = Clock()
     web = FakeWeb(world, clock)
     dash = DashRecorder()
