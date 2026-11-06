@@ -50,7 +50,6 @@ quota 판정: HTTP 429(상태코드) · "quota exceeded" · data.go.kr 레거시
 from __future__ import annotations
 
 import os
-import re
 import sys
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
@@ -59,6 +58,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import exists, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+from ..clients.kra_base import is_quota_error
 from ..db import session_scope
 from ..logging import get_logger
 from ..models import RaceComboDividend, RaceResult, SyncMeta
@@ -82,23 +82,8 @@ def _kst_today() -> date:
     return datetime.now(KST).date()
 
 
-# data.go.kr 공통 오류코드 22 = LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR
-# (일일 트래픽 초과). kra_base 가 `KRA API error 22: <msg>` 로 올린다.
-_QUOTA_CODE22_RE = re.compile(r"KRA API error 0*22\b")
-
-
-def _is_quota_error(exc: BaseException) -> bool:
-    # HTTP 429 는 상태코드로만 본다 — 메시지의 "429" 부분일치는 URL 의 rc_date=…0429
-    # (4월 29일) 같은 5xx/404 를 쿼터로 오판해 같은 gap 에 영원히 머무르게 한다.
-    resp = getattr(exc, "response", None)
-    if getattr(resp, "status_code", None) == 429:
-        return True
-    errmsg = str(exc)
-    return (
-        "quota exceeded" in errmsg.lower()
-        or "LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS" in errmsg.upper()
-        or _QUOTA_CODE22_RE.search(errmsg) is not None
-    )
+# 쿼터 판정은 kra_base 공용 (sync_horses 도 같은 규칙 사용)
+_is_quota_error = is_quota_error
 
 
 def _gap_key(d: date, meet_name: str) -> str:

@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from ..clients.race_result import RaceResultClient, api_item_to_race_result_fields
 from ..db import session_scope
-from ..jobs.sync_horses import backfill_missing_raw, upsert_horses
+from ..jobs.sync_horses import INLINE_BACKFILL_LIMIT, backfill_missing_raw, upsert_horses
 from ..jobs.sync_race_info import backfill_races_from_results
 from ..logging import get_logger
 from ..models import RaceResult
@@ -112,10 +112,16 @@ def sync_date_all_meets(rc_date: date) -> int:
 
     스텁으로 삽입된 새 마필(raw NULL)이 있다면 API42_1 으로 enrich 해 모색/특징까지
     채워둔다 — 아바타에 색이 누락되는 일을 방지.
+    live 잡이 30분마다 부르므로 enrich 는 `INLINE_BACKFILL_LIMIT` 건만 (잔여는 06:30
+    mal.sync_horses_backfill 담당). enrich 전부 실패는 경주결과·배당 sync 를 막지 않게
+    경고로만 남긴다 — 실패 신호는 06:30 전용 잡이 RuntimeError 로 올린다.
     """
     total = 0
     for meet in (1, 2, 3):
         total += sync_date(rc_date, meet=meet)
     backfill_races_from_results()
-    backfill_missing_raw()
+    try:
+        backfill_missing_raw(limit=INLINE_BACKFILL_LIMIT)
+    except RuntimeError as e:
+        log.warning("horses_inline_backfill_failed", date=str(rc_date), err=str(e))
     return total

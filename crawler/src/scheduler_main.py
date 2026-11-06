@@ -173,7 +173,7 @@ def main() -> None:
     )
     # 경기일 실시간 결과·배당 동기화 — KST 10:00~22:30 매 30분.
     # 단일 22:00 sync_races_today 잡 실패 시 그날 결과가 통째로 비는 사고를
-    # 방지하기 위한 in-day backstop. 비경기일이면 함수 내부에서 _has_races_on
+    # 방지하기 위한 in-day backstop. 비경기일이면 함수 내부에서 _race_meets_on
     # 게이트로 즉시 skip — KRA 호출도, 실패 알림도 발생하지 않는다.
     sched.add_job(
         run_sync_races_live,

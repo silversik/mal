@@ -10,6 +10,7 @@ API 호출 1회 (per date+meet) 의 응답에서:
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import date
 from typing import Any
 
@@ -74,8 +75,11 @@ def sync_date(rc_date: date, meet: int) -> int:
     return upsert_race_dividends(items)
 
 
-def sync_date_all_meets(rc_date: date) -> int:
+def sync_date_all_meets(
+    rc_date: date, meets: Iterable[int] = (1, 2, 3)
+) -> int:
+    """meets 로 호출 대상 경마장 한정 (live 잡은 오늘 경주 있는 곳만 넘김)."""
     total = 0
-    for meet in (1, 2, 3):
+    for meet in meets:
         total += sync_date(rc_date, meet=meet)
     return total
