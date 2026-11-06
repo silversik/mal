@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.6
 # mal 크롤러 (Python 3.12 + uv, KRA OpenAPI / RSS / YouTube).
 # Build context = 모노레포 루트(..) — crawler/core 를 editable 로 설치하기 위함.
 
