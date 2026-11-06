@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getContactPost } from "@/lib/contact";
+import { parsePositiveInt } from "@/lib/params";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +17,9 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const post = await getContactPost(Number(id));
+  const id = parsePositiveInt((await params).id);
+  // 숫자 아닌 id 는 DB 로 보내지 않는다 (bigint 캐스팅 실패 → 500).
+  const post = id === null ? null : await getContactPost(id);
   if (!post) return { title: "문의 없음" };
   return {
     title: post.title,
@@ -30,8 +32,9 @@ export default async function ContactPostPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  const post = await getContactPost(Number(id));
+  const id = parsePositiveInt((await params).id);
+  if (id === null) notFound();
+  const post = await getContactPost(id);
   if (!post) notFound();
 
   const s = STATUS_LABEL[post.status] ?? STATUS_LABEL.pending;

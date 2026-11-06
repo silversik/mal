@@ -22,9 +22,9 @@ WORKDIR /app
 # pyproject.toml 의 `./_crawler_core` 와 대응.
 COPY crawler/core /app/_crawler_core
 
-# deps layer — lockfile 기반 reproducible install
+# deps layer — lockfile 기반 reproducible install. 재해석 fallback 없음 (lock 문제는 빌드 실패로 드러나게).
 COPY mal/crawler/pyproject.toml mal/crawler/uv.lock* ./
-RUN uv sync --no-dev --no-install-project --frozen || uv sync --no-dev --no-install-project
+RUN uv sync --no-dev --no-install-project --frozen
 
 # 앱 코드
 COPY mal/crawler/src ./src
