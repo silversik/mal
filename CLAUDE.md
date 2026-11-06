@@ -26,11 +26,12 @@ cd crawler && uv sync
 uv run python -m src.main smoke               # 키·네트워크·파싱 스모크
 uv run python -m src.main sync-race-date 2026-06-07
 uv run python -m src.main sync-horse-name "녹색신호"
+uv run python -m src.main healthcheck         # 읽기 전용 수집 상태 점검 (exit 0/1/2, KRA 호출 없음)
 # 컨테이너 상시 스케줄러 (유일한 스케줄러)
 uv run python -m src.scheduler_main
 ```
 
-마이그레이션은 prod 에서 Jenkins `Migrate DB` stage 가 자동 적용 (`db/migrations/run-migrations.sh`, `_migrations_applied` 테이블로 idempotent). 로컬은 docker `initdb` 가 적용.
+마이그레이션은 prod 에서 Jenkins `Migrate DB` stage 가 자동 적용 (`db/run-migrations.sh`, `_migrations_applied` 테이블로 idempotent). 로컬은 docker `initdb` 가 적용.
 
 ## 절대 어기지 말 것
 
@@ -50,9 +51,11 @@ uv run python -m src.scheduler_main
 - **`crawler/`** — `uv run` 기반 Python. **모듈 루트는 `src`** (`python -m src.main` / `python -m src.scheduler_main`).
   - `src/jobs/` 가 잡 본체. `periodic.py` 가 `@track_job("mal.<name>")` 로 감싼 "스케줄 진입점"(`run_*`), `scheduler_main.py`(컨테이너 내장 APScheduler) 가 cron/interval 로 호출. `src/main.py` 는 typer 수동 CLI.
   - `src/clients/` — API별 HTTP 클라이언트 (`kra_base.py` 공통: 재시도·XML 폴백·페이징).
+  - `src/healthcheck.py` — 읽기 전용 운영 점검 (`healthcheck` CLI). prod: `docker exec mal-crawler python -m src.main healthcheck`.
   - `src/monitoring.py` — `JOB_CATALOG` + `@track_job` 데코레이터. run 시작/종료를 통합 **crawler-dashboard** 에 HTTP 리포트, 실패 시 Telegram 알림(`crawler_core` 가 처리). 대시보드 down 이어도 잡은 계속.
   - systemd 타이머(`crawler/systemd/`)는 제거됨 — 스케줄은 `scheduler_main.py` 내장 APScheduler 가 유일. 새 잡 = `monitoring.JOB_CATALOG` + `scheduler_main` `add_job` + `TRIGGER_JOBS`.
-- **`db/migrations/`** — `NNN_*.sql` 번호 순(현재 `034`까지). `run-migrations.sh` 가 `_migrations_applied` 체크 후 미적용분만 실행. 새 마이그레이션은 마지막 번호+1.
+- **`db/migrations/`** — `NNN_*.sql` 번호 순(현재 `034`까지). `db/run-migrations.sh` 가 `_migrations_applied` 체크 후 미적용분만 실행. 새 마이그레이션은 마지막 번호+1.
+- **`db/backup-mal.sh` · `db/restore-rehearsal.sh`** — `mal` 스키마 pg_dump 백업(+스키마 밖 트리거 함수 sidecar) · 임시 DB 복원 리허설. 서버 cron 설정은 `docs/spec/backup.md`.
 - **`docker/`** — **로컬 개발 전용** (Postgres 16 단독). prod 는 루트 `docker-compose.yml`(mal-web :4000 / mal-crawler) 을 `/srv/stack/docker-compose.yml` 이 include 로 통합.
 - **`docs/`** — `api/`(외부 API 4종) · `spec/`(아키텍처·배포) · `feature/`(기능 정의서) · `tasks/`(`NNNN-*` 페이즈 히스토리).
 
