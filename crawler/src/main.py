@@ -41,6 +41,7 @@ from .jobs.sync_horses import backfill_missing_raw, sync_by_name, sync_by_no, up
 from .jobs.sync_jockeys import sync_all_jockeys
 from .jobs.sync_naver_news import sync_naver_news
 from .jobs.sync_race_info import sync_races_by_year
+from .jobs.sync_race_plan import sync_year as sync_race_plan_year
 from .jobs.sync_races import sync_date, sync_date_all_meets
 from .jobs.sync_videos import smoke_videos, sync_videos
 from .jobs.sync_weather import backfill as backfill_weather
@@ -299,9 +300,19 @@ def cmd_backfill_history_33y() -> None:
 
 @app.command("periodic-race-plan")
 def cmd_periodic_race_plan() -> None:
-    """[scheduled] sync_race_plan — 대상경주 연간계획."""
+    """[scheduled] sync_race_plan — 대상경주 연간계획 (올해 + 11~12월엔 내년도)."""
     n = run_sync_race_plan()
     typer.echo(f"upserted {n} race plan rows")
+
+
+@app.command("sync-race-plan")
+def cmd_sync_race_plan(
+    year: int = typer.Argument(..., help="연도 (예: 2027)"),
+    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 3곳 모두)"),
+) -> None:
+    """[ad-hoc] 특정 연도 대상경주 계획 수동 조회. KRA 미공개(NODATA)는 0건으로 처리."""
+    n = sync_race_plan_year(year, meet=meet, allow_no_data=True)
+    typer.echo(f"upserted {n} race plan rows ({year})")
 
 
 @app.command("periodic-race-entries")
