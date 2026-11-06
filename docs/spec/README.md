@@ -4,6 +4,7 @@ mal.kr 의 시스템 구조, 운영 절차, 배포 파이프라인을 정리한�
 
 | 문서 | 내용 |
 |---|---|
+| [backup.md](backup.md) | DB 백업 (`db/backup-mal.sh`) · 복구 리허설 (`db/restore-rehearsal.sh`) |
 | [architecture.md](architecture.md) | 컨테이너 토폴로지, DB 스키마, 데이터 흐름 |
 | [deployment.md](deployment.md) | Jenkins 자동 배포, SSH 접속, 수동 우회, 운영 명령 |
 
