@@ -18,6 +18,7 @@ from ..clients.youtube import YoutubeClient, YoutubeVideo
 from ..config import settings
 from ..db import session_scope
 from ..logging import get_logger
+from ._failloud import UnitFailures
 from .sync_videos import upsert_videos
 
 log = get_logger(__name__)
@@ -82,7 +83,7 @@ def backfill_missing_race_videos(
     )
 
     total = 0
-    failed = 0
+    fails = UnitFailures("videos_backfill")
     with YoutubeClient(settings.youtube_api_key) as client:
         for row in missing:
             rd: date = row["race_date"]
@@ -95,18 +96,15 @@ def backfill_missing_race_videos(
                     channel_id=settings.youtube_krbc_channel_id,
                     max_results=1,
                 )
-            except Exception as exc:
-                failed += 1
-                log.warning(
-                    "videos_backfill_search_failed",
-                    query=query,
-                    err=str(exc),
-                )
+            except Exception as exc:  # noqa: BLE001
+                fails.fail(exc, "videos_backfill_search_failed", query=query)
                 continue
+            fails.ok()
             if not videos:
                 log.info("videos_backfill_no_match", query=query)
                 continue
             total += upsert_videos(videos)
 
-    log.info("videos_backfill_done", upserted=total, failed=failed)
+    log.info("videos_backfill_done", upserted=total, failed=fails.failed)
+    fails.raise_if_all_failed()
     return total

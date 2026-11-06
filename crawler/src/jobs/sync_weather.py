@@ -23,6 +23,7 @@ from ..clients.kma_asos import (
 from ..db import session_scope
 from ..logging import get_logger
 from ..models import WeatherObservation
+from ._failloud import UnitFailures
 
 log = get_logger(__name__)
 
@@ -77,15 +78,19 @@ def sync_range(start_date: date, end_date: date) -> int:
     start = _kst(start_date, 0)
     end = _kst(end_date, 23)
     total = 0
+    fails = UnitFailures("weather")
     with KmaAsosClient() as client:
         for stn in ALL_STATIONS:
             try:
                 total += _fetch_station(client, stn, start, end)
             except Exception as e:  # noqa: BLE001
-                log.warning(
-                    "weather_station_failed",
-                    station=stn, start=str(start), end=str(end), err=str(e),
+                fails.fail(
+                    e, "weather_station_failed",
+                    station=stn, start=str(start), end=str(end),
                 )
+                continue
+            fails.ok()
+    fails.raise_if_all_failed()
     return total
 
 

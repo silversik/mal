@@ -15,6 +15,7 @@ from ..config import settings
 from ..db import session_scope
 from ..logging import get_logger
 from ..models import KraNews
+from ._failloud import UnitFailures
 
 log = get_logger(__name__)
 
@@ -68,6 +69,7 @@ def sync_naver_news(keywords: tuple[str, ...] = DEFAULT_KEYWORDS) -> int:
         )
 
     seen: dict[str, NaverNewsItem] = {}
+    fails = UnitFailures("naver_news")
     with NaverNewsSearchClient(
         settings.naver_search_client_id,
         settings.naver_search_client_secret,
@@ -76,14 +78,16 @@ def sync_naver_news(keywords: tuple[str, ...] = DEFAULT_KEYWORDS) -> int:
             try:
                 items = client.search(kw, display=100, sort="date")
             except Exception as e:  # noqa: BLE001
-                log.warning("naver_search_failed", keyword=kw, err=str(e))
+                fails.fail(e, "naver_search_failed", keyword=kw)
                 continue
+            fails.ok()
             for it in items:
                 # guid 가 같으면 더 최신 것으로 덮어씀 (다중 검색에서의 중복 처리).
                 cur = seen.get(it.guid)
                 if cur is None or it.published_at > cur.published_at:
                     seen[it.guid] = it
             log.info("naver_search_done", keyword=kw, fetched=len(items))
+    fails.raise_if_all_failed()
 
     inserted = _upsert(list(seen.values()))
     log.info("naver_news_upserted", count=inserted, distinct=len(seen))

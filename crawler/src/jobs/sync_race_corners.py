@@ -20,6 +20,7 @@ from ..clients.race_result_corner import (
 from ..db import session_scope
 from ..logging import get_logger
 from ..models import RaceCorner
+from ._failloud import UnitFailures
 
 log = get_logger(__name__)
 
@@ -98,28 +99,30 @@ def sync_date(rc_date: date, meet: int) -> int:
 
 def sync_date_all_meets(rc_date: date) -> int:
     total = 0
+    fails = UnitFailures("race_corners")
     for meet in (1, 2, 3):
         try:
             total += sync_date(rc_date, meet=meet)
         except Exception as e:  # noqa: BLE001
-            log.warning(
-                "race_corners_meet_failed",
-                date=rc_date.isoformat(), meet=meet, err=str(e),
-            )
+            fails.fail(e, "race_corners_meet_failed", date=rc_date.isoformat(), meet=meet)
+            continue
+        fails.ok()
+    fails.raise_if_all_failed()
     return total
 
 
 def backfill_recent_days(days: int = 30) -> int:
     today = date.today()
     total = 0
+    fails = UnitFailures("race_corners_backfill")
     for i in range(days):
         d = today - timedelta(days=i)
         try:
             total += sync_date_all_meets(d)
         except Exception as e:  # noqa: BLE001
-            log.warning(
-                "race_corners_backfill_day_failed",
-                date=d.isoformat(), err=str(e),
-            )
+            fails.fail(e, "race_corners_backfill_day_failed", date=d.isoformat())
+            continue
+        fails.ok()
+    fails.raise_if_all_failed()
     log.info("race_corners_backfill_done", days=days, upserted=total)
     return total
