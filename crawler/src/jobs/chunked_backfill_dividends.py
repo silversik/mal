@@ -3,9 +3,10 @@
 운영 배경
 ---------
 API301(`Dividend_rate_total`) 한 번 호출이 (date, meet) 단위로 ~30~65 페이지를 burn 한다.
-일일 쿼터 1000회 기준으로 한 번에 ~15 (date, meet) 까지만 안전. `backfill_dividends`
-원샷은 daily quota 를 너머서 silently 끊겼던 사례가 있어 (2026-04-23 09:11 ~16개 day 만
-적재 후 종료), 야간 청크 잡으로 분할.
+일일 쿼터 1000회 기준으로 한 번에 ~15 (date, meet) 까지만 안전. 예전 원샷
+`backfill_dividends`(제거됨)는 daily quota 를 너머서 silently 끊겼던 사례가 있어
+(2026-04-23 09:11 ~16개 day 만 적재 후 종료), 야간 청크 잡으로 분할했다. 수동 범위
+백필도 이 모듈의 `chunked-dividends-backfill --budget/--lookback-days` CLI 를 쓴다.
 
 Gap 기반
 --------

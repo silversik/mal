@@ -20,7 +20,7 @@ idempotent 하게 upsert 한다. job_key 는 전역 유니크 — 'mal.sync_news
 Telegram 실패 알림은 `crawler_core.client.safe_finish_run(job_key=...)` 내부에서
 `maybe_notify_failure` 로 dedupe 처리. 이 모듈은 job_key 만 넘겨주면 됨.
 
-check_stale 은 대시보드가 자체적으로 보여주므로 별도 로직은 제거.
+stale 판정은 대시보드가 expected_interval_sec 으로 자체 수행한다.
 """
 from __future__ import annotations
 
@@ -63,7 +63,8 @@ def _expected_interval(max_gap_sec: int) -> int:
 # ── JOB 메타 카탈로그 ──────────────────────────────────────────────────────────
 # 여기 한 곳에서 선언하고 @track_job 에서 lookup. 컨테이너 기동 시 (또는 첫 호출 시)
 # 대시보드에 idempotent upsert. mal 서비스 prefix 로 전역 유니크 키 구성.
-# 추가 job 은 이 dict 에 한 줄만 넣고 periodic.py / main.py 에서 @track_job("mal.<name>") 사용.
+# 새 job = 이 dict 에 스펙 추가 + periodic.py 에 @track_job("mal.<name>") 래퍼
+#        + scheduler_main.py 의 add_job 과 TRIGGER_JOBS 등록.
 JOB_CATALOG: dict[str, dict] = {
     "mal.sync_news": {
         "category": "naver_search",
@@ -79,8 +80,8 @@ JOB_CATALOG: dict[str, dict] = {
     },
     "mal.sync_races_today": {
         "category": "kra_openapi",
-        "description": "오늘 경주결과 (API4, 3개 경마장)",
-        # 매일 22:00
+        "description": "오늘 경주결과 backstop (live 가 커버한 경기일은 skip)",
+        # 매일 23:05
         "expected_interval_sec": _expected_interval(_DAY),
     },
     "mal.sync_races_live": {
@@ -122,11 +123,6 @@ JOB_CATALOG: dict[str, dict] = {
         # 매일 07:00
         "expected_interval_sec": _expected_interval(_DAY),
     },
-    "mal.backfill_history": {
-        "category": "kra_openapi",
-        "description": "최근 33년 race_results + horses 일괄 부트스트랩 (수동 트리거)",
-        "expected_interval_sec": 86400 * 365,  # 사실상 1회용 — stale 경고 방지용 큰 값
-    },
     "mal.sync_race_plan": {
         "category": "kra_openapi",
         "description": "연간 대상경주 계획",
@@ -141,9 +137,11 @@ JOB_CATALOG: dict[str, dict] = {
     },
     "mal.sync_race_info": {
         "category": "kra_openapi",
-        "description": "경주 메타(이름/거리/등급/주로/발주시각) API187 백필 — 05:30·22:30 KST 2회",
-        # 05:30·22:30 — 최대 공백 05:30→22:30
-        "expected_interval_sec": _expected_interval(17 * _HOUR),
+        "description": (
+            "경주 메타(이름/거리/등급/주로/발주시각) API187 백필 — 주 1회 canary (월 05:30 KST)"
+        ),
+        # 매주 월 05:30
+        "expected_interval_sec": _expected_interval(7 * _DAY),
     },
     "mal.backfill_races_from_entries": {
         "category": "kra_openapi",
@@ -161,7 +159,7 @@ JOB_CATALOG: dict[str, dict] = {
     },
     "mal.sync_race_dividends": {
         "category": "kra_openapi",
-        "description": "확정배당율 (API301/Dividend_rate_total)",
+        "description": "확정배당율 (API301/Dividend_rate_total) — 오늘 경기 경마장만",
         # 매일 22:45
         "expected_interval_sec": _expected_interval(_DAY),
     },
@@ -217,7 +215,7 @@ JOB_CATALOG: dict[str, dict] = {
     },
     "mal.sync_videos_backfill": {
         "category": "youtube",
-        "description": "누락된 경주 영상 YouTube search 로 매칭",
+        "description": "최근 35일 누락 경주 영상 YouTube search 로 매칭 (실행당 20건)",
         # 매일 23:00
         "expected_interval_sec": _expected_interval(_DAY),
     },
@@ -310,8 +308,3 @@ def register_all_jobs() -> None:
     for job_key in JOB_CATALOG:
         _ensure_registered(job_key)
 
-
-def check_stale(*, multiplier: float = 1.5) -> list[dict]:
-    """통합 대시보드가 자체적으로 stale 판정/UI 표시하므로 여기서는 no-op."""
-    log.info("check_stale_delegated_to_dashboard", multiplier=multiplier)
-    return []

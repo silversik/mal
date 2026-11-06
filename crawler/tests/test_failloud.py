@@ -16,6 +16,7 @@ from src.jobs import (
     sync_naver_news,
     sync_race_corners,
     sync_race_entries,
+    sync_race_info,
     sync_race_sales,
     sync_videos_backfill,
     sync_weather,
@@ -52,6 +53,9 @@ class _Fake:
     # 잡별 클라이언트 메서드 — 모두 같은 응답 함수로
     def list_by_date(self, d: date, meet: int | None = None) -> Any:
         return self._call(d, meet)
+
+    def list_by_year(self, year: int, meet: int | None = None) -> Any:
+        return self._call(year, meet)
 
     def fetch_hourly(self, stn: int, start: datetime, end: datetime) -> Any:
         return self._call(stn)
@@ -306,6 +310,43 @@ def test_videos_no_match_is_ok(videos):
     assert sync_videos_backfill.backfill_missing_race_videos() == 0
 
 
+# ------------------------------------------------------------ race_info 주간 canary (API187)
+
+
+@pytest.fixture
+def race_info(monkeypatch):
+    def use(respond):
+        fake = _Fake(respond)
+        monkeypatch.setattr(sync_race_info, "RaceInfoClient", fake)
+        return fake
+
+    return use
+
+
+def test_race_info_all_meets_fail_raises(race_info):
+    fake = race_info(lambda y, m: BOOM)
+    with pytest.raises(RuntimeError, match="race_info: 시도한 3개 단위 전부 실패") as ei:
+        sync_race_info.backfill_races_metadata(2026)
+    assert "SECRETKEY123" not in str(ei.value)
+    assert [m for _, m in fake.calls] == [1, 2, 3]
+
+
+def test_race_info_partial_fail_is_ok(race_info):
+    race_info(lambda y, m: BOOM if m == 2 else [])
+    assert sync_race_info.backfill_races_metadata(2026) == 0
+
+
+def test_race_info_empty_response_is_ok(race_info):
+    # 2026-05~ API187 의 실제 상태 — 빈 응답은 canary 정상 0건
+    race_info(lambda y, m: [])
+    assert sync_race_info.backfill_races_metadata(2026) == 0
+
+
+def test_race_info_nodata_is_ok(race_info):
+    race_info(lambda y, m: NODATA)
+    assert sync_race_info.backfill_races_metadata(2026) == 0
+
+
 # ------------------------------------------------------------ periodic 진입점 전파
 
 
@@ -354,6 +395,7 @@ def test_periodic_entrypoints_propagate_all_fail(periodic, monkeypatch):
         lambda *_: [{"race_date": date(2026, 11, 1), "meet": "서울", "race_no": 1}],
     )
     monkeypatch.setattr(sync_videos_backfill, "YoutubeClient", _Fake(lambda q: BOOM))
+    monkeypatch.setattr(sync_race_info, "RaceInfoClient", _Fake(lambda y, m: BOOM))
 
     runs = [
         mod.run_sync_race_sales,
@@ -362,6 +404,7 @@ def test_periodic_entrypoints_propagate_all_fail(periodic, monkeypatch):
         mod.run_sync_race_entries,
         mod.run_sync_news,
         mod.run_sync_videos_backfill,
+        mod.run_sync_race_info,
     ]
     for run in runs:
         with pytest.raises(RuntimeError, match="전부 실패"):
