@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { kstToday, kstYear } from "../kst";
 import {
-  rankingYearLabel,
+  buildRankingsHref,
   shouldFallbackToPrevYear,
   withPrevYearFallback,
 } from "../rankings-shared";
@@ -56,7 +56,6 @@ describe("withPrevYearFallback", () => {
     const r = await withPrevYearFallback(fn, { scope: "ytd", year: 2027, explicit: false });
     expect(r).toEqual({ rows: ["a", "b"], year: 2026, requestedYear: 2027, fellBack: true });
     expect(fn).toHaveBeenCalledTimes(2);
-    expect(rankingYearLabel(r)).toBe("2026 (2027 집계 전)");
   });
 
   it("명시 연도는 재조회하지 않는다", async () => {
@@ -73,7 +72,6 @@ describe("withPrevYearFallback", () => {
     const r = await withPrevYearFallback(fn, { scope: "year", year: 2026, explicit: false });
     expect(r).toEqual({ rows: ["a", "b"], year: 2026, requestedYear: 2026, fellBack: false });
     expect(fn).toHaveBeenCalledTimes(1);
-    expect(rankingYearLabel(r)).toBe("2026");
   });
 
   it("직전 연도도 비면 원래 연도(빈 결과) 유지", async () => {
@@ -83,5 +81,55 @@ describe("withPrevYearFallback", () => {
       explicit: false,
     });
     expect(r).toEqual({ rows: [], year: 2027, requestedYear: 2027, fellBack: false });
+  });
+});
+
+describe("minRows (/analysis TOP 카드 = 3)", () => {
+  const byYear: Record<number, string[]> = {
+    2026: ["a", "b", "c", "d", "e"],
+    2027: ["x", "y"],
+  };
+  const fetchYear = (y: number) => Promise.resolve(byYear[y] ?? []);
+
+  it("shouldFallbackToPrevYear: rowCount < minRows 이면 폴백", () => {
+    expect(shouldFallbackToPrevYear({ scope: "ytd", rowCount: 2, explicit: false, minRows: 3 })).toBe(true);
+    expect(shouldFallbackToPrevYear({ scope: "ytd", rowCount: 3, explicit: false, minRows: 3 })).toBe(false);
+    expect(shouldFallbackToPrevYear({ scope: "ytd", rowCount: 2, explicit: true, minRows: 3 })).toBe(false);
+    expect(shouldFallbackToPrevYear({ scope: "all", rowCount: 0, explicit: false, minRows: 3 })).toBe(false);
+  });
+
+  it("기본(minRows 1, /rankings)은 1~2행이어도 올해 유지", async () => {
+    const fn = vi.fn(fetchYear);
+    const r = await withPrevYearFallback(fn, { scope: "ytd", year: 2027 });
+    expect(r).toEqual({ rows: ["x", "y"], year: 2027, requestedYear: 2027, fellBack: false });
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it("minRows 3: 올해 2행 → 직전 연도 5행으로 폴백", async () => {
+    const r = await withPrevYearFallback(fetchYear, { scope: "ytd", year: 2027, minRows: 3 });
+    expect(r).toEqual({ rows: ["a", "b", "c", "d", "e"], year: 2026, requestedYear: 2027, fellBack: true });
+  });
+
+  it("minRows 3: 직전 연도가 올해보다 많지 않으면 올해 유지", async () => {
+    const thin = (y: number) => Promise.resolve(y === 2027 ? ["x", "y"] : ["p"]);
+    const r = await withPrevYearFallback(thin, { scope: "ytd", year: 2027, minRows: 3 });
+    expect(r).toEqual({ rows: ["x", "y"], year: 2027, requestedYear: 2027, fellBack: false });
+  });
+});
+
+describe("buildRankingsHref", () => {
+  it("기본: entity + scope (+ year 는 연도별일 때만)", () => {
+    expect(buildRankingsHref({ entity: "jockey", scope: "year", year: 2026 })).toBe(
+      "/rankings?entity=jockey&scope=year&year=2026",
+    );
+    expect(buildRankingsHref({ entity: "horse", scope: "ytd", year: 2027 })).toBe(
+      "/rankings?entity=horse&scope=ytd",
+    );
+  });
+
+  it("폴백 화면의 대상 탭(omitPeriod)은 scope/year 를 빼 새 대상도 폴백 판단을 다시 하게", () => {
+    expect(
+      buildRankingsHref({ entity: "trainer", scope: "year", year: 2026 }, { omitPeriod: true }),
+    ).toBe("/rankings?entity=trainer");
   });
 });

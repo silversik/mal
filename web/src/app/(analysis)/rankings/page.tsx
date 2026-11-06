@@ -16,6 +16,7 @@ import {
   type RankingEntity,
   type RankingScope,
 } from "@/lib/rankings";
+import { buildRankingsHref } from "@/lib/rankings-shared";
 
 export const metadata: Metadata = {
   title: "랭킹",
@@ -56,24 +57,27 @@ export default async function RankingsPage({
   const requestedYear = scope === "ytd" ? currentYear : clampYear(sp.year, currentYear);
   // 연도/기간을 직접 고른 경우(?year= / ?scope=)는 그대로 존중 — 기본 진입만 직전 연도 폴백.
   const explicit = sp.year !== undefined || sp.scope !== undefined;
-  const ranking = await getRankingWithFallback(entity, scope, requestedYear, 50, explicit);
+  // 폴백은 0건일 때만 (50행 표) — 규칙은 lib/rankings-shared.ts 참고.
+  const ranking = await getRankingWithFallback(entity, scope, requestedYear, 50, { explicit });
   const { rows, year } = ranking;
 
   const yearOptions: number[] = [];
   for (let y = currentYear; y >= currentYear - 6; y--) yearOptions.push(y);
 
-  const buildHref = (overrides: Partial<{ entity: RankingEntity; scope: RankingScope; year: number }>) => {
-    const next = {
-      entity: overrides.entity ?? entity,
-      scope: overrides.scope ?? scope,
-      year: overrides.year ?? year,
-    };
-    const params = new URLSearchParams();
-    params.set("entity", next.entity);
-    params.set("scope", next.scope);
-    if (next.scope === "year") params.set("year", String(next.year));
-    return `/rankings?${params.toString()}`;
-  };
+  const buildHref = (
+    overrides: Partial<{ entity: RankingEntity; scope: RankingScope; year: number }>,
+    opts?: { omitPeriod?: boolean },
+  ) =>
+    // 폴백 화면(= 기간을 고른 적 없음)에서 대상 탭은 omitPeriod 로 scope/year 를 싣지 않는다
+    // → 새 대상도 올해 기준으로 다시 폴백 판단 (직전 연도가 "명시 선택"으로 고정되는 것 방지).
+    buildRankingsHref(
+      {
+        entity: overrides.entity ?? entity,
+        scope: overrides.scope ?? scope,
+        year: overrides.year ?? year,
+      },
+      opts,
+    );
 
   return (
     <div>
@@ -87,7 +91,7 @@ export default async function RankingsPage({
           {ENTITIES.map((e) => (
             <TabLink
               key={e.key}
-              href={buildHref({ entity: e.key })}
+              href={buildHref({ entity: e.key }, { omitPeriod: ranking.fellBack })}
               active={e.key === entity}
             >
               {e.label}
@@ -125,7 +129,7 @@ export default async function RankingsPage({
       {ranking.fellBack && (
         <p
           role="status"
-          className="mt-4 rounded-md border bg-card px-3 py-2 text-sm text-muted-foreground"
+          className="mt-4 rounded-md border bg-card px-3 py-2 text-base text-muted-foreground"
         >
           <span className="font-mono tabular-nums">{ranking.requestedYear}</span>년 집계 전이라{" "}
           <span className="font-mono font-semibold tabular-nums text-foreground">{year}</span>년

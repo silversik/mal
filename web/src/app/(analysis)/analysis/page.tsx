@@ -11,7 +11,7 @@ import {
 } from "@/components/profile-ui";
 import { kstYear } from "@/lib/kst";
 import { getRankingWithFallback, type RankingEntity } from "@/lib/rankings";
-import { rankingYearLabel, type YearFallbackResult } from "@/lib/rankings-shared";
+import { buildRankingsHref, type YearFallbackResult } from "@/lib/rankings-shared";
 
 export const metadata: Metadata = {
   title: "분석 · mal.kr",
@@ -19,13 +19,18 @@ export const metadata: Metadata = {
   alternates: { canonical: "/analysis" },
 };
 
+// TOP 5 카드: 올해 집계가 3행 미만(연초 HAVING 최소 출전수로 1~2행만 남는 구간)이면
+// 직전 연도로 폴백. /rankings 표는 0건일 때만 폴백 — 규칙은 lib/rankings-shared.ts 참고.
+const TOP_CARD_MIN_ROWS = 3;
+
 export default async function AnalysisPage() {
-  // KST 기준 올해. 연초 올해 집계가 비면 카드별로 직전 연도 폴백.
+  // KST 기준 올해. 카드별로 직전 연도 폴백 판단.
   const currentYear = kstYear();
+  const opts = { minRows: TOP_CARD_MIN_ROWS };
   const [topJockeys, topTrainers, topHorses] = await Promise.all([
-    getRankingWithFallback("jockey", "ytd", currentYear, 5),
-    getRankingWithFallback("trainer", "ytd", currentYear, 5),
-    getRankingWithFallback("horse", "ytd", currentYear, 5),
+    getRankingWithFallback("jockey", "ytd", currentYear, 5, opts),
+    getRankingWithFallback("trainer", "ytd", currentYear, 5, opts),
+    getRankingWithFallback("horse", "ytd", currentYear, 5, opts),
   ]);
 
   return (
@@ -38,7 +43,8 @@ export default async function AnalysisPage() {
 
       <section className="grid gap-3 md:grid-cols-3">
         <TopList
-          title={`TOP 기수 · ${rankingYearLabel(topJockeys)}`}
+          title={`TOP 기수 · ${topJockeys.year}`}
+          ranking={topJockeys}
           moreHref={rankingsHref("jockey", topJockeys)}
           rows={topJockeys.rows.map((r) => ({
             no: r.no,
@@ -49,7 +55,8 @@ export default async function AnalysisPage() {
           }))}
         />
         <TopList
-          title={`TOP 마필 · ${rankingYearLabel(topHorses)}`}
+          title={`TOP 마필 · ${topHorses.year}`}
+          ranking={topHorses}
           moreHref={rankingsHref("horse", topHorses)}
           rows={topHorses.rows.map((r) => ({
             no: r.no,
@@ -60,7 +67,8 @@ export default async function AnalysisPage() {
           }))}
         />
         <TopList
-          title={`TOP 조교사 · ${rankingYearLabel(topTrainers)}`}
+          title={`TOP 조교사 · ${topTrainers.year}`}
+          ranking={topTrainers}
           moreHref={rankingsHref("trainer", topTrainers)}
           rows={topTrainers.rows.map((r) => ({
             no: r.no,
@@ -77,9 +85,7 @@ export default async function AnalysisPage() {
 
 // 폴백 시 "전체 →" 도 실제 보여준 연도의 연도별 랭킹으로 보낸다 (올해 탭은 비어 있으므로).
 function rankingsHref(entity: RankingEntity, r: YearFallbackResult<unknown>): string {
-  return r.fellBack
-    ? `/rankings?entity=${entity}&scope=year&year=${r.year}`
-    : `/rankings?entity=${entity}&scope=ytd`;
+  return buildRankingsHref({ entity, scope: r.fellBack ? "year" : "ytd", year: r.year });
 }
 
 function ToolTile({
@@ -134,10 +140,13 @@ type TopListRow = {
 
 function TopList({
   title,
+  ranking,
   moreHref,
   rows,
 }: {
   title: string;
+  /** 폴백 여부/요청 연도 — 폴백이면 제목 아래 별도 muted 줄로 "(올해) 집계 전" 표기. */
+  ranking: Pick<YearFallbackResult<unknown>, "year" | "requestedYear" | "fellBack">;
   moreHref: string;
   rows: TopListRow[];
 }) {
@@ -153,6 +162,13 @@ function TopList({
             </Link>
           }
         />
+        {ranking.fellBack && (
+          // 좁은 3열 카드에서 제목이 줄바꿈되지 않게 제목과 분리한 보조 줄 (DESIGN small 13).
+          <p className="-mt-1.5 mb-2 text-small text-muted-foreground">
+            <span className="font-mono tabular-nums">{ranking.requestedYear}</span> 집계 전 ·{" "}
+            <span className="font-mono tabular-nums">{ranking.year}</span> 기준
+          </p>
+        )}
         {rows.length === 0 ? (
           <p className="py-2 text-center text-xs text-muted-foreground">데이터 없음</p>
         ) : (
