@@ -79,7 +79,10 @@ def _parse_decimal(value: Any) -> str | None:
     return s
 
 
-_MEET_NAMES = {"1": "서울", "2": "제주", "3": "부경", "서울": "서울", "제주": "제주", "부경": "부경", "부산경남": "부경"}
+_MEET_NAMES = {
+    "1": "서울", "2": "제주", "3": "부경",
+    "서울": "서울", "제주": "제주", "부경": "부경", "부산경남": "부경",
+}
 
 
 def api_item_to_corner_fields(item: dict[str, Any]) -> dict[str, Any]:

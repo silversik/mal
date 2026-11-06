@@ -10,7 +10,7 @@ data.go.kr 계열이라 인증/페이지네이션 패턴은 동일하다.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import unquote
 

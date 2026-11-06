@@ -21,7 +21,8 @@ _INSERT_SQL = text(
     SELECT
         s.user_id,
         'horse_upcoming_race' AS kind,
-        s.horse_no || '|' || s.race_date::text || '|' || s.meet || '|' || s.race_no::text AS dedup_key,
+        s.horse_no || '|' || s.race_date::text || '|' || s.meet
+          || '|' || s.race_no::text AS dedup_key,
         '즐겨찾기 마필 출주 — ' || COALESCE(h.horse_name, s.horse_no) AS title,
         s.race_date::text || ' · ' || s.meet || ' · ' || s.race_no || 'R' AS body,
         '/races?date=' || s.race_date::text

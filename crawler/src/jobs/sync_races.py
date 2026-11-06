@@ -4,12 +4,11 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from ..clients.race_result import RaceResultClient, api_item_to_race_result_fields
 from ..db import session_scope
-from ..jobs.sync_horses import INLINE_BACKFILL_LIMIT, backfill_missing_raw, upsert_horses
+from ..jobs.sync_horses import INLINE_BACKFILL_LIMIT, backfill_missing_raw
 from ..jobs.sync_race_info import backfill_races_from_results
 from ..logging import get_logger
 from ..models import RaceResult
