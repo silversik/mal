@@ -147,7 +147,7 @@ def items_to_dividend_rows(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """API 응답 item 리스트 → race_dividends row dict 리스트 (WIN+PLC only)."""
     bucket = bucket_horse_dividends(items)
     rows: list[dict[str, Any]] = []
-    for key, slot in bucket.items():
+    for slot in bucket.values():
         rows.append(
             {
                 "race_date": slot["race_date"],
