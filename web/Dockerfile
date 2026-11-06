@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.6
 # mal.kr web (Next.js 16 standalone).  Build context = ./web (서브디렉터리)
 
 # ── deps ──────────────────────────────────────────────────────────────────
