@@ -163,7 +163,7 @@ JOB_CATALOG: dict[str, dict] = {
     },
     "mal.chunked_dividends_backfill": {
         "category": "kra_openapi",
-        "description": "확정배당율 야간 청크 백필 (6개월 윈도우, 일일 ~15 day×meet)",
+        "description": "확정배당율 누락 gap 야간 백필 (365일 윈도우, 일일 ~15 day×meet)",
         "expected_interval_sec": 86400,  # daily
     },
     "mal.sync_videos_backfill": {
