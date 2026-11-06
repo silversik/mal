@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { listContactPosts, PAGE_SIZE } from "@/lib/contact";
+import { parsePositiveInt } from "@/lib/params";
 
 export const metadata: Metadata = {
   title: "문의 게시판",
@@ -22,7 +23,8 @@ export default async function ContactPage({
   searchParams: Promise<{ page?: string }>;
 }) {
   const { page: pageStr } = await searchParams;
-  const page = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
+  // 상한 없이 parseInt 하면 ?page=1e20 같은 값이 OFFSET bigint 범위를 넘어 500 — 검증 헬퍼로 제한.
+  const page = parsePositiveInt(pageStr, 100_000) ?? 1;
   const { posts, total } = await listContactPosts(page);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
