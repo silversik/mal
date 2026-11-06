@@ -95,13 +95,16 @@ JOB_CATALOG: dict[str, dict] = {
     },
     "mal.sync_yesterday_catchup": {
         "category": "kra_openapi",
-        "description": "전날 경주결과·배당·매출 누락 보정 (07:30 KST)",
+        "description": "전날 경주결과·배당·매출·통과순위 누락 보정 (07:30 KST)",
         # 매일 07:30
         "expected_interval_sec": _expected_interval(_DAY),
     },
     "mal.sync_yesterday_residual": {
         "category": "kra_openapi",
-        "description": "전날 결과 잔여 catchup — 09~12시 1시간마다, 미해결 race 있을 때만 KRA 호출",
+        "description": (
+            "전날 결과 잔여 catchup — 09~12시 1시간마다, "
+            "미해결 race 있을 때만 결과·배당·매출·통과순위 재수집"
+        ),
         # 09~12시 매시 — 최대 공백 12:00→익일 09:00
         "expected_interval_sec": _expected_interval(21 * _HOUR),
     },

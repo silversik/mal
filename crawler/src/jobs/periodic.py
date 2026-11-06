@@ -10,6 +10,7 @@
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -172,20 +173,22 @@ def run_sync_yesterday_residual() -> int:
     07:30 sync_yesterday_catchup 이 메인 보정이고, 이 잡은 KRA 가 결과를 더 늦게
     publish 하는 케이스를 잡기 위한 추가 시도. DB 에 어제 미해결(race_results 0건)
     race 가 남아 있을 때만 KRA 호출. 모두 채워지면 즉시 skip.
+
+    결과뿐 아니라 매출·통과순위도 다시 받는다 — 07:30 이후 공표된 경주는 이 잡이
+    아니면 race_pool_sales / race_corners 를 받을 기회가 없다.
     """
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = datetime.now(KST).date() - timedelta(days=1)
     if not _has_unresolved_races_on(yesterday):
         log.info("yesterday_residual_skip_complete", date=str(yesterday))
         return 0
-    races = sync_date_all_meets(yesterday)
-    dividends = sync_dividends_all_meets(yesterday)
-    log.info("yesterday_residual_done", date=str(yesterday), races=races, dividends=dividends)
-    return races + dividends
+    counts, failures = _run_day_steps("yesterday_residual", yesterday)
+    _raise_collected(failures)
+    return sum(counts.values())
 
 
 @track_job("mal.sync_yesterday_catchup")
 def run_sync_yesterday_catchup() -> int:
-    """전날 경주결과·배당·매출 누락 보정 — 매일 07:30 KST.
+    """전날 경주결과·배당·매출·통과순위 누락 보정 — 매일 07:30 KST.
 
     당일 sync (live 22:30 / sync_races_today 23:05) 가 실패하거나 KRA API 가 결과
     공표를 지연한 경우,
@@ -203,25 +206,7 @@ def run_sync_yesterday_catchup() -> int:
 
     # 각 단계는 fail-loud(전 meet 실패 시 raise) — 어느 단계가 실패해도 나머지 단계와
     # 아래 invariant 검사는 반드시 돌린다 (결과 0건 사고가 다른 단계 오류에 가려지지 않게).
-    counts: dict[str, int] = {}
-    failures: list[tuple[str, Exception]] = []
-    for name, step in (
-        ("races", sync_date_all_meets),
-        ("dividends", sync_dividends_all_meets),
-        ("sales", sync_race_sales_all_meets),
-    ):
-        try:
-            counts[name] = step(yesterday)
-        except Exception as e:  # noqa: BLE001 — invariant 검사 뒤 재전파
-            counts[name] = 0
-            failures.append((name, e))
-            log.warning(f"yesterday_catchup_{name}_failed", date=str(yesterday), err=str(e))
-    log.info(
-        "yesterday_catchup_done",
-        date=str(yesterday),
-        **counts,
-        failed=[n for n, _ in failures],
-    )
+    counts, failures = _run_day_steps("yesterday_catchup", yesterday)
 
     try:
         invariant_msg = _yesterday_results_invariant(yesterday)
@@ -229,15 +214,61 @@ def run_sync_yesterday_catchup() -> int:
         failures.append(("invariant_check", e))
         invariant_msg = None
 
-    if not invariant_msg and len(failures) == 1:
-        raise failures[0][1]  # 단일 실패는 원래 예외 그대로
-    if invariant_msg or failures:
-        parts = [invariant_msg] if invariant_msg else []
+    _raise_collected(failures, invariant_msg)
+    return sum(counts.values())
+
+
+def _day_steps() -> tuple[tuple[str, Callable[[date], int]], ...]:
+    """하루치 결과 보정 단계 — 결과 → 배당 → 매출 → 통과순위·구간기록.
+
+    호출 시점에 모듈 전역을 읽어야 테스트의 monkeypatch 가 먹는다.
+    """
+    return (
+        ("races", sync_date_all_meets),
+        ("dividends", sync_dividends_all_meets),
+        ("sales", sync_race_sales_all_meets),
+        ("corners", sync_race_corners_all_meets),
+    )
+
+
+# 실패해도 보정 잡 자체는 실패로 치지 않는 단계. 통과순위·구간기록(API6_1)은 별도
+# 활용신청 API 라 장애·미승인이 결과 보정과 무관하고, 22:55 mal.sync_race_corners 가
+# 이미 fail-loud 로 알린다 — 07:30/09~12시 잡까지 같이 빨개지면 중복 알림만 늘어난다.
+_BEST_EFFORT_STEPS = frozenset({"corners"})
+
+
+def _run_day_steps(
+    event: str, day: date
+) -> tuple[dict[str, int], list[tuple[str, Exception]]]:
+    """모든 단계를 실행하고 (단계별 건수, 실패 목록) 반환. 한 단계가 실패해도 계속.
+
+    _BEST_EFFORT_STEPS 의 실패는 경고만 남기고 실패 목록에 넣지 않는다.
+    """
+    counts: dict[str, int] = {}
+    failures: list[tuple[str, Exception]] = []
+    for name, step in _day_steps():
+        try:
+            counts[name] = step(day)
+        except Exception as e:  # noqa: BLE001 — 호출자가 모아서 재전파
+            counts[name] = 0
+            if name not in _BEST_EFFORT_STEPS:
+                failures.append((name, e))
+            log.warning(f"{event}_{name}_failed", date=str(day), err=str(e))
+    log.info(f"{event}_done", date=str(day), **counts, failed=[n for n, _ in failures])
+    return counts, failures
+
+
+def _raise_collected(
+    failures: list[tuple[str, Exception]], extra_msg: str | None = None
+) -> None:
+    """실패가 하나뿐이면 원래 예외 그대로, 여럿이거나 extra_msg 가 있으면 합쳐서 raise."""
+    if not extra_msg and len(failures) == 1:
+        raise failures[0][1]
+    if extra_msg or failures:
+        parts = [extra_msg] if extra_msg else []
         parts += [f"{n} 실패: {type(e).__name__}: {e}" for n, e in failures]
         cause = failures[0][1] if failures else None
         raise RuntimeError(" | 추가로 ".join(parts)) from cause
-
-    return sum(counts.values())
 
 
 def _yesterday_results_invariant(yesterday: date) -> str | None:
@@ -364,7 +395,7 @@ def run_sync_race_dividends() -> int:
 @track_job("mal.sync_race_sales")
 def run_sync_race_sales() -> int:
     """오늘 경주의 풀별 매출 적재 — race_dividends (22:45) 직후 22:50 KST."""
-    return sync_race_sales_all_meets(date.today())
+    return sync_race_sales_all_meets(datetime.now(KST).date())
 
 
 @track_job("mal.sync_race_corners")
@@ -373,8 +404,9 @@ def run_sync_race_corners() -> int:
 
     KRA API6_1/raceDetailSectionRecord_1 (publicDataPk=15057847) — 별도 활용신청.
     응답 빈 경우 0 반환 — 활용신청 완료 시점에 자동 적재 시작.
+    22:55 이후 공표된 경주는 다음날 07:30 catchup / 09~12시 residual 이 보정.
     """
-    return sync_race_corners_all_meets(date.today())
+    return sync_race_corners_all_meets(datetime.now(KST).date())
 
 
 @track_job("mal.sync_trainers")

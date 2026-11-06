@@ -158,7 +158,7 @@ def main() -> None:
         id="mal.sync_horse_ratings",
         **common,
     )
-    # 전날 경주결과·배당·매출 누락 보정 — 당일 sync 실패/KRA 지연 대비 다음날 07:30 재수집.
+    # 전날 경주결과·배당·매출·통과순위 누락 보정 — 당일 sync 실패/KRA 지연 대비 다음날 07:30 재수집.
     sched.add_job(
         run_sync_yesterday_catchup,
         CronTrigger(hour=7, minute=30),
@@ -184,8 +184,8 @@ def main() -> None:
         **common,
     )
     # 다음날 09~12시 잔여 catchup — sync_yesterday_catchup(07:30) 이후에도
-    # KRA publish 지연으로 결과 누락이 남는 케이스 보충. DB 에 미해결 race
-    # 가 있을 때만 KRA 호출, 모두 채워지면 즉시 skip.
+    # KRA publish 지연으로 결과 누락이 남는 케이스 보충 (결과·배당·매출·통과순위).
+    # DB 에 미해결 race 가 있을 때만 KRA 호출, 모두 채워지면 즉시 skip.
     sched.add_job(
         run_sync_yesterday_residual,
         CronTrigger(hour="9-12", minute=0),

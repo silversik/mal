@@ -97,9 +97,7 @@ def api_item_to_race_plan_fields(item: dict[str, Any], *, year: int) -> dict[str
     return {
         "meet": _MEET_NAMES.get(meet_raw, _clean(meet_raw) or "알수없음"),
         "year": _parse_int(item.get("rc_year")) or year,
-        "race_date": _parse_date(
-            item.get("rc_date") or item.get("rcDate") or item.get("raceDate")
-        ),
+        "race_date": plan_item_date(item),
         "race_no": _parse_int(item.get("rc_no") or item.get("rcNo")),
         "race_name": str(
             item.get("rc_name") or item.get("rcName") or item.get("raceName") or ""
