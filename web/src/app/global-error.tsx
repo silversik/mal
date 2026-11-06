@@ -4,10 +4,10 @@ import { useEffect } from "react";
 
 export default function GlobalError({
   error,
-  unstable_retry,
+  retry,
 }: {
   error: Error & { digest?: string };
-  unstable_retry: () => void;
+  retry: () => void;
 }) {
   useEffect(() => {
     console.error("[global-error]", error);
@@ -27,7 +27,7 @@ export default function GlobalError({
             </p>
           )}
           <button
-            onClick={() => unstable_retry()}
+            onClick={() => retry()}
             className="mt-4 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
           >
             다시 시도
