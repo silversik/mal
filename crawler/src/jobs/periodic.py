@@ -325,11 +325,13 @@ def run_sync_horse_ratings() -> int:
 
 @track_job("mal.chunked_dividends_backfill")
 def run_chunked_dividends_backfill() -> int:
-    """야간 청크 백필 — race_dividends 6개월 윈도우 역시간 진행.
+    """야간 gap 백필 — 결과는 있는데 combo 배당이 빠진 (date, meet) 를 최신순 보정.
 
     매일 KST 02:30 (자정 쿼터 리셋 직후, 모닝 sync 잡들 전) 1회 실행.
     각 호출 = 최대 ~15 (date, meet) sync_date 호출 = ~450~900 API page calls.
-    cursor 는 mal.sync_meta(source='chunked_backfill_dividends') 에 영속.
+    매 실행마다 DB 에서 gap 계산 (cursor 없음, 365일 윈도우). combo 를 못 만든 시도는
+    sync_meta 원장에 누적, 3회 실패 gap 은 exhausted 로 skip + 경고 로그.
+    gap 이 있었는데 시도가 (quota 외) 전부 실패면 RuntimeError → failure 기록.
     반환값: 이번 청크에서 upsert 한 row 수.
     """
     summary = run_chunked_dividends_chunk()

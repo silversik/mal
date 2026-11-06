@@ -85,7 +85,7 @@ Next.js web (mal-web, PORT 4000 → nginx → mal.kr)  ·  로컬 dev :3000
 ## 사고 패턴 (재발 방지)
 
 - **마이그레이션 누락 prod 500 × 2회** — owner/nickname 추가 후 web 이 PRE-migration 코드를 가리킴 → undefined column. → `Migrate DB` stage 자동화 (2026-04).
-- **백필 잡 분당 한도 초과** — KRBC 1년 walk 통째 windowing → KRA OpenAPI 한도 초과 → timeout. → 작은 chunk + 지수 백오프 (예: `chunked_backfill_dividends` 6개월 윈도우 야간 청크).
+- **백필 잡 분당 한도 초과** — KRBC 1년 walk 통째 windowing → KRA OpenAPI 한도 초과 → timeout. → 작은 chunk + 지수 백오프 (예: `chunked_backfill_dividends` — 365일 윈도우 gap 기반, 하룻밤 15 call 예산, 성공했는데 combo 없는 gap 은 3회 후 skip).
 - **잡이 조용히 0건 success** — env 미설정 시 silent skip(return 0) 하면 대시보드가 success 로 기록해 미수집 사고를 못 잡음 (4/25 `KRA_CHULMA_OPERATION` 미설정으로 race_entries 0건). → env 미설정은 명시적 실패로. 새 env 를 읽는 잡을 추가하면 루트 `docker-compose.yml` 의 mal-crawler `environment` 에도 반드시 주입.
 - **UTC 기준 날짜 어긋남** — 스케줄러는 KST 지만 컨테이너 TZ·DB `CURRENT_DATE` 가 UTC 라 `date.today()` 가 하루 밀림 (07:30 catchup 이 D-2 보정, 토 레이팅 snapshot 이 금요일로 기록). → 크롤러 `TZ=Asia/Seoul` + 날짜는 `datetime.now(ZoneInfo("Asia/Seoul"))` 로 명시 (2026-11, `033`/`034`). 외부 API 의 "전날까지만 제공" 한도(KMA ASOS 시간자료)도 KST 어제로 끊는다.
 - **sitemap.xml fetch 타임아웃** — 전체 races 단일 XML 800KB+ → Search Console crawler timeout. → index→chunk 분할 (2026-05).

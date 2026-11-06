@@ -401,16 +401,13 @@ def cmd_backfill_dividends(
 @app.command("chunked-dividends-backfill")
 def cmd_chunked_dividends_backfill(
     budget: int = typer.Option(15, help="이번 청크에서 호출할 최대 sync_date 수"),
-    lookback_days: int = typer.Option(186, help="윈도우 (오늘 - N일)"),
+    lookback_days: int = typer.Option(365, help="gap 탐색 윈도우 (KST 오늘 - N일 ~ 어제)"),
+    max_attempts: int = typer.Option(3, help="combo 미생성 gap 을 exhausted 로 볼 시도 횟수"),
 ) -> None:
-    """[manual] race_dividends 야간 청크 1회 수동 실행 (스케줄러 02:30 KST 와 동일)."""
-    from .jobs.chunked_backfill_dividends import run_chunk
-    s = run_chunk(max_calls=budget, lookback_days=lookback_days)
-    typer.echo(
-        f"cursor={s['cursor']} next={s['next_cursor']} calls={s['calls']} "
-        f"added={s['added_rows']} skipped_existing={s['skipped_existing']} "
-        f"errors={s['errors']} quota_hit={s['quota_hit']} done={s['done']}"
-    )
+    """[manual] 배당 누락 (date, meet) gap 백필 1회 수동 실행 (스케줄러 02:30 KST 와 동일)."""
+    from .jobs.chunked_backfill_dividends import format_summary, run_chunk
+    s = run_chunk(max_calls=budget, lookback_days=lookback_days, max_attempts=max_attempts)
+    typer.echo(format_summary(s))
 
 
 @app.command("periodic-chunked-dividends")

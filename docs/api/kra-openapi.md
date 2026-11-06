@@ -46,4 +46,4 @@
 - **응답 메모리**: KRA 가 같은 race 를 중복 응답하는 케이스 (sales/dividends/corners) — upsert 직전 batch 내 dedupe 필수 ([sync_race_plan.py](../../crawler/src/jobs/sync_race_plan.py) 의 `seen` dict 패턴 재사용).
 - **meet 코드**: 요청 시 정수 1/2/3 (서울/제주/부경). 응답에서는 텍스트 "1"/"2"/"3" 또는 한글로 옴 — 클라이언트에서 `_MEET_NAMES` 매핑으로 한글로 정규화 후 저장.
 - **start_time / 발주시각**: API187 이 KST 한글 "HH시 MM분" 또는 "HH:MM" 양식. `crawler/src/jobs/sync_race_today_meta.py` 가 HTML 크롤링으로 fallback (API187 빈 응답 보완).
-- **쿼터**: KRA 일일 호출 한도 ~ 10,000. 야간 청크 백필 잡 (`mal.chunked_dividends_backfill`) 은 일일 ~700 예산으로 제한.
+- **쿼터**: KRA 일일 호출 한도 ~ 10,000. 야간 배당 gap 백필 잡 (`mal.chunked_dividends_backfill`, 02:30) 은 365일 윈도우에서 combo 배당이 빠진 (date, meet) 만 최신순으로 하루 최대 15 `sync_date` (≈ 450~900 page call) 로 제한. 3회 시도해도 combo 가 안 생기는 gap 은 exhausted 로 건너뜀 (`sync_meta` 원장). 429 / data.go.kr 코드 22 (`LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR`) 감지 시 즉시 중단.
