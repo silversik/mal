@@ -14,6 +14,7 @@ from ..clients.race_sales import (
 from ..db import session_scope
 from ..logging import get_logger
 from ..models import RacePoolSales
+from ._failloud import UnitFailures
 
 log = get_logger(__name__)
 
@@ -80,14 +81,15 @@ def sync_date(rc_date: date, *, meet: int | None = None) -> int:
 def sync_date_all_meets(rc_date: date) -> int:
     """전 경마장 합산 — 매일 결과 확정 후 cron 호출."""
     total = 0
+    fails = UnitFailures("race_sales")
     for meet in (1, 2, 3):
         try:
             total += sync_date(rc_date, meet=meet)
         except Exception as e:  # noqa: BLE001
-            log.warning(
-                "race_sales_meet_failed",
-                date=rc_date.isoformat(), meet=meet, err=str(e),
-            )
+            fails.fail(e, "race_sales_meet_failed", date=rc_date.isoformat(), meet=meet)
+            continue
+        fails.ok()
+    fails.raise_if_all_failed()
     return total
 
 
@@ -95,11 +97,15 @@ def backfill_recent_days(days: int = 180) -> int:
     """최근 N 일 일자별 백필 — 1차 적재용 (수동 1회 실행)."""
     today = date.today()
     total = 0
+    fails = UnitFailures("race_sales_backfill")
     for i in range(days):
         d = today - timedelta(days=i)
         try:
             total += sync_date_all_meets(d)
         except Exception as e:  # noqa: BLE001
-            log.warning("race_sales_backfill_day_failed", date=d.isoformat(), err=str(e))
+            fails.fail(e, "race_sales_backfill_day_failed", date=d.isoformat())
+            continue
+        fails.ok()
+    fails.raise_if_all_failed()
     log.info("race_sales_backfill_done", days=days, upserted=total)
     return total

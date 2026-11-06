@@ -15,6 +15,7 @@ from ..clients.race_chulma import RaceChulmaClient, api_item_to_race_entry_field
 from ..db import session_scope
 from ..logging import get_logger
 from ..models import Race, RaceEntry
+from ._failloud import UnitFailures
 
 log = get_logger(__name__)
 
@@ -112,17 +113,16 @@ def sync_upcoming(days_ahead: int = 10) -> int:
     today = date.today()
     dates = _upcoming_race_dates(today, days_ahead=days_ahead)
     total = 0
+    fails = UnitFailures("race_entries")
     with RaceChulmaClient() as client:
         for d in dates:
             for meet in (1, 2, 3):
                 try:
                     items = client.list_by_date(d, meet=meet)
-                except Exception as exc:
-                    log.warning(
-                        "race_entries_fetch_failed",
-                        date=str(d), meet=meet, err=str(exc),
-                    )
+                except Exception as exc:  # noqa: BLE001
+                    fails.fail(exc, "race_entries_fetch_failed", date=str(d), meet=meet)
                     continue
+                fails.ok()
                 log.info(
                     "race_entries_fetched",
                     date=str(d), meet=meet, count=len(items),
@@ -132,4 +132,5 @@ def sync_upcoming(days_ahead: int = 10) -> int:
                 # 출전표 수집 시점에 races 테이블에도 예정 경주 행을 즉시 만들어
                 # 메인 페이지 "다음 진행 예정 경기" 섹션에 반영되도록 한다.
                 upsert_races_skeleton(mapped)
+    fails.raise_if_all_failed()
     return total
