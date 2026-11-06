@@ -9,7 +9,8 @@ migration 에 seed row 를 넣고 여기에 래퍼를 추가.
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import text
 
@@ -42,6 +43,8 @@ from .sync_weather import sync_recent as sync_weather_recent
 
 log = get_logger(__name__)
 
+KST = ZoneInfo("Asia/Seoul")
+
 
 @track_job("mal.sync_news")
 def run_sync_news() -> int:
@@ -72,18 +75,20 @@ def run_sync_races_today() -> int:
     return sync_date_all_meets(date.today())
 
 
-def _has_races_on(d: date) -> bool:
-    """오늘(또는 d) 일자에 races 출주표 row 가 있는지. sync_race_plan(05:00 KST)
-    이 미리 채워두므로, 경기일이면 True. 비경기일이면 KRA OpenAPI 호출을 생략하기
-    위한 게이트."""
+# races.meet 는 한글명 저장 — API meet 코드로 역매핑 ("부산경남" 표기도 허용)
+_MEET_CODE = {"서울": 1, "제주": 2, "부경": 3, "부산경남": 3}
+
+
+def _race_meets_on(d: date) -> set[str]:
+    """d 일자 races 출주표에 등장하는 경마장(한글명) 집합. 비었으면 비경기일."""
     from ..db import session_scope
 
     with session_scope() as s:
-        row = s.execute(
-            text("SELECT 1 FROM races WHERE race_date = :d LIMIT 1"),
+        rows = s.execute(
+            text("SELECT DISTINCT meet FROM races WHERE race_date = :d"),
             {"d": d},
-        ).first()
-    return row is not None
+        ).scalars()
+        return {str(m) for m in rows if m}
 
 
 def _has_unresolved_races_on(d: date) -> bool:
@@ -117,14 +122,22 @@ def run_sync_races_live() -> int:
 
     DB races 테이블에 오늘 일자 row 가 있을 때만 KRA OpenAPI 호출. 비경기일이면
     즉시 skip — KRA 호출도, 실패 알림도 발생하지 않는다.
+    배당(API301, 1회 ~30~65 page)은 오늘 경주가 있는 경마장만 호출 — 쿼터 절약.
     """
-    today = date.today()
-    if not _has_races_on(today):
+    today = datetime.now(KST).date()
+    race_meets = _race_meets_on(today)
+    if not race_meets:
         log.info("races_live_skip_no_today_races", date=str(today))
         return 0
     races = sync_date_all_meets(today)
-    dividends = sync_dividends_all_meets(today)
-    log.info("races_live_done", races=races, dividends=dividends)
+    div_meets = sorted({_MEET_CODE[m] for m in race_meets if m in _MEET_CODE})
+    unknown = sorted(m for m in race_meets if m not in _MEET_CODE)
+    if unknown:
+        log.warning("races_live_unknown_meet", date=str(today), meets=unknown)
+    dividends = sync_dividends_all_meets(today, meets=div_meets) if div_meets else 0
+    log.info(
+        "races_live_done", races=races, dividends=dividends, dividend_meets=div_meets
+    )
     return races + dividends
 
 

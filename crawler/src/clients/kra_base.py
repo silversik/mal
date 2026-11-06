@@ -11,6 +11,7 @@ This base class wraps retry, error parsing, and the XML→dict fallback.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 from urllib.parse import unquote
 
@@ -39,6 +40,26 @@ class KraApiError(RuntimeError):
         super().__init__(message)
         # data.go.kr resultCode ("03" = NODATA 등) — 호출부가 분기할 수 있게 보존
         self.code = code
+
+
+# data.go.kr 공통 오류코드 22 = LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR
+# (일일 트래픽 초과). `_raise_for_api_error` 가 `KRA API error 22: <msg>` 로 올린다.
+_QUOTA_CODE22_RE = re.compile(r"KRA API error 0*22\b")
+
+
+def is_quota_error(exc: BaseException) -> bool:
+    """쿼터/트래픽 초과 오류인지 — 호출부가 즉시 중단할 때 사용."""
+    # HTTP 429 는 상태코드로만 본다 — 메시지의 "429" 부분일치는 URL 의 rc_date=…0429
+    # (4월 29일) 같은 5xx/404 를 쿼터로 오판한다.
+    resp = getattr(exc, "response", None)
+    if getattr(resp, "status_code", None) == 429:
+        return True
+    errmsg = str(exc)
+    return (
+        "quota exceeded" in errmsg.lower()
+        or "LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS" in errmsg.upper()
+        or _QUOTA_CODE22_RE.search(errmsg) is not None
+    )
 
 
 class KraClient:
