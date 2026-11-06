@@ -1,4 +1,6 @@
 import { query } from "./db";
+import { kstYear } from "./kst";
+import { parsePositiveInt } from "./params";
 
 /**
  * 연간 대상경주(특별/대상) 계획 — race_plans 테이블 (KRA API40 기반).
@@ -67,6 +69,19 @@ export async function listRacePlanYears(): Promise<number[]> {
     `SELECT DISTINCT year FROM race_plans ORDER BY year DESC`,
   );
   return rows.map((r) => r.year);
+}
+
+/**
+ * /races/schedule 표시 연도 — ?year= (검증 통과 시) → DB 최신 연도 → KST 올해.
+ * 불량 year(?year=abc → NaN)가 int 파라미터로 가면 500 이라 검증 실패 시 기본값으로.
+ * 마지막 폴백은 process TZ(UTC 컨테이너)가 아닌 KST 연도 — 12/31 15:00 UTC 이후는 새해.
+ */
+export function resolvePlanYear(
+  raw: string | string[] | undefined,
+  years: number[],
+  now: Date = new Date(),
+): number {
+  return parsePositiveInt(raw, 9999) ?? years[0] ?? kstYear(now);
 }
 
 /**

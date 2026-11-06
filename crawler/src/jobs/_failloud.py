@@ -9,20 +9,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..clients.kra_base import KraApiError
+from ..clients.kra_base import is_kra_no_data
 from ..logging import get_logger
 from ..redact import redact
 
+__all__ = ["UnitFailures", "is_kra_no_data"]
+
 log = get_logger(__name__)
-
-# data.go.kr resultCode "03" = NODATA — 비경주일·미발표는 실패가 아니라 0건.
-_KRA_NO_DATA_CODES = frozenset({"03"})
-
-
-def is_kra_no_data(exc: BaseException) -> bool:
-    return isinstance(exc, KraApiError) and (
-        exc.code in _KRA_NO_DATA_CODES or "NODATA" in str(exc).upper()
-    )
 
 
 class UnitFailures:

@@ -30,7 +30,7 @@ mal.kr 의 시스템 구조 · 컨테이너 토폴로지 · 데이터 흐름 · 
 
 - **nginx**: TLS 종단. Let's Encrypt. 호스트 헤더로 mal.kr 분기.
 - **mal-web**: Next.js 16 App Router. SSR + Server Actions. NextAuth v5 (Kakao OAuth).
-- **mal-crawler**: 단일 컨테이너에 APScheduler `BlockingScheduler` 가 모든 잡 스케줄 + Trigger polling. 호스트 systemd 타이머는 [docs/spec/ops-systemd.md](ops-systemd.md) 의 레거시.
+- **mal-crawler**: 단일 컨테이너에 APScheduler `BlockingScheduler` 가 모든 잡 스케줄 + Trigger polling. 스케줄은 `crawler/src/scheduler_main.py` 한 곳 (호스트 systemd 타이머는 제거됨).
 - **stack-db**: 통합 Postgres 16. 다른 서비스와 DB 공유하지만 권한은 mal_app role 로 mal 스키마만.
 - **crawler-dashboard**: 별도 서비스. JOB_CATALOG/scraper_runs 시각화 + "지금 실행" 트리거 (15초 polling).
 

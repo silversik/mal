@@ -396,7 +396,7 @@ def test_yesterday_results_partial_before_residual_deadline_warns() -> None:
 def test_today_results_checked_only_late_evening() -> None:
     data = healthy_data()  # 오늘(금) 결과 없음
     assert not [c for c in _collect(data) if c.name == "오늘 결과"]
-    late = NOW.replace(hour=23, minute=10)
+    late = NOW.replace(hour=23, minute=40)
     c = _by_name(_collect(healthy_data(late), now=late), "오늘 결과")
     assert c.status == Status.WARN
 

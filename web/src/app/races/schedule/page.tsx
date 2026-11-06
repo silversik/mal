@@ -11,10 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { parsePositiveInt } from "@/lib/params";
 import {
   listRacePlanYears,
   listRacePlans,
+  resolvePlanYear,
   TIER_ORDER,
   type RacePlan,
   type Tier,
@@ -65,9 +65,8 @@ export default async function RaceSchedulePage({
 }) {
   const sp = await searchParams;
   const years = await listRacePlanYears();
-  // 불량 year(?year=abc → NaN)가 int 파라미터로 가면 500 — 검증 실패 시 기본 연도.
-  const currentYear =
-    parsePositiveInt(sp.year, 9999) ?? years[0] ?? new Date().getFullYear();
+  // ?year= 검증 → DB 최신 연도 → KST 올해 (불량 year 는 500 대신 기본 연도).
+  const currentYear = resolvePlanYear(sp.year, years);
   const selectedMeet = sp.meet && MEET_OPTIONS.includes(sp.meet as (typeof MEET_OPTIONS)[number])
     ? sp.meet
     : null;

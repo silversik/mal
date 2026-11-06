@@ -56,3 +56,15 @@ export const contactRateLimiter = createRateLimiter({
   maxPerWindow: 3,
   minGapMs: 10_000,
 });
+
+/**
+ * rate limit 키용 클라이언트 IP — `X-Forwarded-For` 의 **가장 오른쪽** 값.
+ * nginx 가 `$proxy_add_x_forwarded_for` 로 붙이든 `$remote_addr` 로 덮어쓰든, 맨 오른쪽은
+ * 단일 프록시(nginx)가 직접 본 주소라 클라이언트가 위조할 수 없다. (헤더 문자열 전체를
+ * 키로 쓰면 클라이언트가 앞쪽 값을 매번 바꿔 제한을 우회할 수 있었다.)
+ * nginx 가 XFF 를 아예 안 붙이는 구성이면 클라이언트 값이 그대로지만, 이전보다 나빠지진 않는다.
+ */
+export function clientIpFromXff(xff: string | null | undefined): string {
+  const last = (xff ?? "").split(",").map((s) => s.trim()).filter(Boolean).pop();
+  return last && last.length <= 64 ? last : "unknown";
+}

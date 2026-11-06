@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { createRateLimiter } from "../rate_limit";
+import { clientIpFromXff, createRateLimiter } from "../rate_limit";
 
 describe("createRateLimiter", () => {
   describe("min gap (per-second)", () => {
@@ -35,5 +35,17 @@ describe("createRateLimiter", () => {
       // 첫 호출이 윈도우 밖으로 나가면 한 슬롯 회복
       expect(rl.check("u1", 60_001)).toBe("OK");
     });
+  });
+});
+
+describe("clientIpFromXff", () => {
+  it("맨 오른쪽(프록시가 붙인) 값을 쓴다 — 앞쪽 위조값 무시", () => {
+    expect(clientIpFromXff("6.6.6.6, 1.2.3.4")).toBe("1.2.3.4");
+    expect(clientIpFromXff(" 1.2.3.4 ")).toBe("1.2.3.4");
+  });
+  it("비었거나 이상하면 unknown", () => {
+    expect(clientIpFromXff(null)).toBe("unknown");
+    expect(clientIpFromXff(" , ")).toBe("unknown");
+    expect(clientIpFromXff("x".repeat(100))).toBe("unknown");
   });
 });

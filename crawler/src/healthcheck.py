@@ -65,8 +65,8 @@ NEXT_DAY_FAIL_GAP_DAYS = 10
 WEEKLY_PATTERN_BACK_DAYS = 3
 # 어제 결과 잔여 catchup(sync_yesterday_residual 09~12시) 이 끝나는 시각.
 RESIDUAL_DEADLINE = time(12, 30)
-# 당일 결과(22:00 sync_races_today + live 22:30) 를 점검하기 시작하는 시각.
-TODAY_RESULTS_AFTER = time(23, 0)
+# 당일 결과(live 22:30 + backstop sync_races_today 23:05) 를 점검하기 시작하는 시각.
+TODAY_RESULTS_AFTER = time(23, 30)
 INVARIANT_LOOKBACK_DAYS = 30
 RATINGS_WARN_DAYS = 8  # 토 07:30 주 1회 → 8일 초과면 한 주 누락
 RATINGS_FAIL_DAYS = 15  # 두 주 연속 누락
@@ -481,7 +481,7 @@ def check_last_day_results(cal: RaceCalendar, now: datetime) -> Check:
     if missing == total:
         return Check(
             "결과", name, Status.FAIL,
-            f"{head} — 결과 전무 (22:00 sync_races_today·live·07:30 catchup 모두 미수집) → {hint}",
+            f"{head} — 결과 전무 (live·23:05 sync_races_today·07:30 catchup 모두 미수집) → {hint}",
         )
     yesterday = now.date() - timedelta(days=1)
     if last == yesterday and now.time() < RESIDUAL_DEADLINE:

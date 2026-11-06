@@ -26,7 +26,7 @@ cd crawler && uv sync
 uv run python -m src.main smoke               # 키·네트워크·파싱 스모크
 uv run python -m src.main sync-race-date 2026-06-07
 uv run python -m src.main sync-horse-name "녹색신호"
-# 컨테이너 상시 스케줄러 (systemd 타이머 대체)
+# 컨테이너 상시 스케줄러 (유일한 스케줄러)
 uv run python -m src.scheduler_main
 ```
 
@@ -51,10 +51,10 @@ uv run python -m src.scheduler_main
   - `src/jobs/` 가 잡 본체. `periodic.py` 가 `@track_job("mal.<name>")` 로 감싼 "스케줄 진입점"(`run_*`), `scheduler_main.py`(컨테이너 내장 APScheduler) 가 cron/interval 로 호출. `src/main.py` 는 typer 수동 CLI.
   - `src/clients/` — API별 HTTP 클라이언트 (`kra_base.py` 공통: 재시도·XML 폴백·페이징).
   - `src/monitoring.py` — `JOB_CATALOG` + `@track_job` 데코레이터. run 시작/종료를 통합 **crawler-dashboard** 에 HTTP 리포트, 실패 시 Telegram 알림(`crawler_core` 가 처리). 대시보드 down 이어도 잡은 계속.
-  - `src/systemd/` — **레거시**. 현재는 `scheduler_main.py` 내장 스케줄러가 대체 (settle-bets 타이머 등 일부는 mock betting 제거로 dead).
+  - systemd 타이머(`crawler/systemd/`)는 제거됨 — 스케줄은 `scheduler_main.py` 내장 APScheduler 가 유일. 새 잡 = `monitoring.JOB_CATALOG` + `scheduler_main` `add_job` + `TRIGGER_JOBS`.
 - **`db/migrations/`** — `NNN_*.sql` 번호 순(현재 `034`까지). `run-migrations.sh` 가 `_migrations_applied` 체크 후 미적용분만 실행. 새 마이그레이션은 마지막 번호+1.
 - **`docker/`** — **로컬 개발 전용** (Postgres 16 단독). prod 는 루트 `docker-compose.yml`(mal-web :4000 / mal-crawler) 을 `/srv/stack/docker-compose.yml` 이 include 로 통합.
-- **`docs/`** — `api/`(외부 API 4종) · `spec/`(아키텍처·배포·systemd 레거시) · `feature/`(기능 정의서) · `tasks/`(`NNNN-*` 페이즈 히스토리).
+- **`docs/`** — `api/`(외부 API 4종) · `spec/`(아키텍처·배포) · `feature/`(기능 정의서) · `tasks/`(`NNNN-*` 페이즈 히스토리).
 
 ## 빅픽처 아키텍처
 
@@ -103,4 +103,4 @@ Next.js web (mal-web, PORT 4000 → nginx → mal.kr)  ·  로컬 dev :3000
 - **[web/README.md](web/README.md)** · **[web/AGENTS.md](web/AGENTS.md)** — Next.js 16 주의사항.
 - **[crawler/README.md](crawler/README.md)** — 잡/구조 (일부 outdated, 코드 기준은 `src/`).
 - **[DESIGN.md](DESIGN.md)** — 디자인 단일 진실원.
-- **[docs/](docs/)** — `api/`(KRA·KMA·네이버·YouTube) · `feature/` · `spec/`(architecture·deployment·ops-systemd) · `tasks/`(페이즈 히스토리).
+- **[docs/](docs/)** — `api/`(KRA·KMA·네이버·YouTube) · `feature/` · `spec/`(architecture·deployment) · `tasks/`(페이즈 히스토리).

@@ -29,4 +29,4 @@ YOUTUBE_KRBC_CHANNEL_ID=          # UC...로 시작하는 KRBC 채널 ID
 ## 쿼터
 
 - YouTube Data API v3 일일 10,000 unit. search 호출 = 100 unit, videos.list = 1 unit. search 남용 주의.
-- 신규 업로드 모니터링은 가벼움. 백필은 search 위주라 비용 큼 — `mal.sync_videos_backfill` 은 일일 1회만.
+- 신규 업로드 모니터링은 가벼움. 백필은 search 위주라 비용 큼 — `mal.sync_videos_backfill` 은 일일 1회(23:00), 최근 35일·실행당 20건(≤2,000 unit)만. 그보다 오래된 누락은 월 1회 `mal.sync_videos_bulk` (업로드 플레이리스트 12개월 walk, ~80 unit) 가 cover.

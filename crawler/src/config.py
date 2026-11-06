@@ -17,7 +17,6 @@ class Settings:
     database_url: str
     kra_key_horse_detail: str
     kra_key_race_result: str
-    kra_key_horse_race_history: str
     kra_key_jockey: str
     kra_key_race_info: str
     kra_key_race_dividend: str
@@ -57,9 +56,6 @@ class Settings:
             database_url=db_url,
             kra_key_horse_detail=os.environ.get("KRA_SERVICE_KEY_HORSE_DETAIL", default_key),
             kra_key_race_result=os.environ.get("KRA_SERVICE_KEY_RACE_RESULT", default_key),
-            kra_key_horse_race_history=os.environ.get(
-                "KRA_SERVICE_KEY_HORSE_RACE_HISTORY", default_key
-            ),
             kra_key_jockey=os.environ.get("KRA_SERVICE_KEY_JOCKEY", default_key),
             kra_key_race_info=os.environ.get("KRA_SERVICE_KEY_RACE_INFO", default_key),
             kra_key_race_dividend=os.environ.get("KRA_SERVICE_KEY_RACE_DIVIDEND", default_key),
@@ -82,7 +78,8 @@ class Settings:
             # KRBC 한국마사회 경마방송 — UC...로 시작하는 채널 ID를 .env에 박아둘 것.
             # 미설정 시 채널 핸들 lookup이 추가 호출 1회를 소비하므로 운영시엔 항상 지정.
             youtube_krbc_channel_id=os.environ.get("YOUTUBE_KRBC_CHANNEL_ID", ""),
-            # 출전표 API26_2 의 operation 이름 — Swagger 확인 후 설정. 비어있으면 job skip.
+            # 출전표 API26_2 의 operation 이름 — Swagger 확인 후 설정. 비어있으면
+            # sync_race_entries job 이 명시적으로 실패 (silent skip 금지 — 4/25 사고).
             kra_chulma_operation=os.environ.get("KRA_CHULMA_OPERATION", ""),
             # 네이버 검색 OpenAPI — https://developers.naver.com/apps. 둘 다 있어야
             # sync_naver_news 가 동작. 미설정 시 잡이 명시적으로 실패 (silent skip 금지).
