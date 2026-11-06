@@ -24,14 +24,15 @@ check_stale 은 대시보드가 자체적으로 보여주므로 별도 로직은
 """
 from __future__ import annotations
 
-import time
 import traceback
 from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
 from crawler_core import client as dash
+
 from .logging import get_logger
+from .redact import redact
 
 log = get_logger(__name__)
 
@@ -52,7 +53,7 @@ JOB_CATALOG: dict[str, dict] = {
     "mal.sync_videos": {
         "category": "youtube",
         "description": "KRBC YouTube 최신 업로드",
-        "expected_interval_sec": 3600,
+        "expected_interval_sec": 10800,  # 3h (IntervalTrigger hours=3)
     },
     "mal.sync_races_today": {
         "category": "kra_openapi",
@@ -61,8 +62,12 @@ JOB_CATALOG: dict[str, dict] = {
     },
     "mal.sync_races_live": {
         "category": "kra_openapi",
-        "description": "경기일 실시간 결과+배당 갱신 (KST 10:00~22:30 매 30분, DB races 게이트로 비경기일 skip)",
-        "expected_interval_sec": 1800,
+        "description": (
+            "경기일 실시간 결과+배당 갱신 (KST 10:00~22:30 매 30분, "
+            "DB races 게이트로 비경기일 skip)"
+        ),
+        # 10:00~22:30 에만 돈다 — 최대 공백 22:30→익일 10:00 (11.5h) → 12h 여유로 클램프.
+        "expected_interval_sec": 43200,
     },
     "mal.sync_yesterday_catchup": {
         "category": "kra_openapi",
@@ -102,7 +107,7 @@ JOB_CATALOG: dict[str, dict] = {
     "mal.sync_race_entries": {
         "category": "kra_openapi",
         "description": "예정 경주 출전표",
-        "expected_interval_sec": 14400,
+        "expected_interval_sec": 10800,  # 3h (IntervalTrigger hours=3)
     },
     "mal.sync_race_info": {
         "category": "kra_openapi",
@@ -113,13 +118,15 @@ JOB_CATALOG: dict[str, dict] = {
     "mal.backfill_races_from_entries": {
         "category": "kra_openapi",
         "description": "races 메타 백필 — race_entries.raw 의 rcDist/rank/rcName/stTime 추출",
-        "expected_interval_sec": 14400,
+        "expected_interval_sec": 10800,  # 3h (IntervalTrigger hours=3)
     },
     "mal.sync_race_today_meta": {
         "category": "kra_openapi",
-        "description": "당일 발주시각·거리 HTML 크롤링 (race.kra.co.kr/seoulMain.do) — API187 빈 응답 fallback",
-        # 06~21시 매시 정각 → 1시간 간격. 안전여유 2h 클램프.
-        "expected_interval_sec": 7200,
+        "description": (
+            "당일 발주시각·거리 HTML 크롤링 (race.kra.co.kr/seoulMain.do) — API187 빈 응답 fallback"
+        ),
+        # 06~21시 매시 5분 → 최대 공백 21:05→익일 06:05 (9h) → 10h 여유로 클램프.
+        "expected_interval_sec": 36000,
     },
     "mal.sync_race_dividends": {
         "category": "kra_openapi",
@@ -133,7 +140,9 @@ JOB_CATALOG: dict[str, dict] = {
     },
     "mal.sync_race_corners": {
         "category": "kra_openapi",
-        "description": "경주 구간별 성적 (API6_1/raceDetailSectionRecord_1, 15057847) — 페이스 맵 의존",
+        "description": (
+            "경주 구간별 성적 (API6_1/raceDetailSectionRecord_1, 15057847) — 페이스 맵 의존"
+        ),
         "expected_interval_sec": 86400,
     },
     "mal.sync_trainers": {
@@ -223,17 +232,18 @@ def track_job(job_key: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             _ensure_registered(job_key)
             run_id = dash.safe_start_run(job_key)
-            t0 = time.monotonic()
             try:
                 result = fn(*args, **kwargs)
             except Exception as exc:
                 err = f"{type(exc).__name__}: {exc}"
                 tb = traceback.format_exc()
                 # safe_finish_run(job_key=...) 가 내부적으로 Telegram 알림까지 dedupe 발화.
+                # HTTPStatusError 메시지엔 serviceKey/key 포함 전체 URL 이 있어 마스킹 후 전송.
+                # 자르기 전에 마스킹 — 4000자 경계에서 키 일부만 남는 일 방지.
                 dash.safe_finish_run(
                     run_id,
                     status="failed",
-                    error_message=(err + "\n\n" + tb)[:4000],
+                    error_message=redact(err + "\n\n" + tb)[:4000],
                     job_key=job_key,
                 )
                 raise
@@ -253,7 +263,7 @@ def register_all_jobs() -> None:
     런타임에 @track_job 이 첫 호출에서 lazy 등록하므로 필수는 아니지만,
     대시보드 UI 에 cold-start 상태에서도 job 목록이 보이도록 미리 등록하는 용도.
     """
-    for job_key in JOB_CATALOG.keys():
+    for job_key in JOB_CATALOG:
         _ensure_registered(job_key)
 
 
