@@ -37,8 +37,10 @@ E2E_DATABASE_URL='postgresql+psycopg://mal:mal_dev_pw@localhost:5432/mal_e2e' \
   항상 거부한다.
 - 테스트 함수 순서가 곧 타임라인이다. `-k` 로 일부만 고르면 앞 단계 상태가 없어서
   실패하므로, 파일 전체를 돌린다.
-- 테이블이 `public` 에 있는 레이아웃(옛 docker initdb)은 시작 시 거부한다. 크롤러
-  SQL 일부가 `mal.` 스키마를 하드코딩하기 때문이다(`backfill_races_from_entries`).
+- 테이블이 `public` 에 있는 레이아웃(옛 docker initdb)은 시작 시 거부한다. prod 와
+  같은 레이아웃(mal 스키마 + search_path)에서만 검증한다.
+- `E2E_REAL_NOW=YYYY-MM-DD` 로 "실제 오늘" 을 고정해 요일별 동작을 재현할 수 있다.
+  DB `NOW()` 는 못 바꾸므로 그날의 D < 실제 오늘 <= U 일 때만 허용한다(아니면 중단).
 
 ## 가짜 세계
 
@@ -57,5 +59,13 @@ backfill 창, 즐겨찾기 알림, 웹 `KST_TODAY` 다. 그래서 D 는 과거, 
 
 ## 버그 기록
 
-`test_bug_*` 은 **production 버그를 재현하는 `xfail(strict=True)`** 다. 버그를 고치면
-XPASS 로 실패하니, 그때 marker 를 지운다.
+E2E 가 찾아 고친 production 버그는 회귀 테스트로 남아 있다:
+
+- `test_late_published_race_gets_sales_and_corners` — 07:30 이후 공표된 경주가
+  매출·통과순위를 영영 못 받던 것 (residual 이 결과·배당만 재수집).
+- `test_cli_sync_horse_name` / `test_cli_sync_horse_no` — CLI 가 클라이언트에 없는
+  `meet=` 를 넘겨 항상 TypeError.
+- `test_race_plans_race_date_from_pgdate` — `race_plans.race_date` 가 항상 NULL
+  (응답의 `pgDate` 를 안 읽음, 기존 행은 마이그레이션 035 로 보정).
+
+새 버그를 찾으면 `xfail(strict=True)` 로 재현해 두고, 고칠 때 marker 를 지운다.

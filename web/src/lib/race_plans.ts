@@ -5,8 +5,8 @@ import { parsePositiveInt } from "./params";
 /**
  * 연간 대상경주(특별/대상) 계획 — race_plans 테이블 (KRA API40 기반).
  *
- * KRA 원본에 race_date / 상금이 비어있는 해가 많아 `race_date`, `prize_1st`,
- * `total_prize` 는 nullable. 그레이드(G1/G2/G3/L) 는 `race_name` 내
+ * KRA 원본에 상금이 비어있는 해가 많아 `prize_1st`, `total_prize` 는 nullable.
+ * `race_date` 는 응답의 pgDate 로 채운다 (마이그레이션 035 이전 행은 NULL 이었음). 그레이드(G1/G2/G3/L) 는 `race_name` 내
  * `(G1)`/`(G2)`/`(G3)`/`(L)`/`(특)` 마커에서 추출.
  */
 export type RacePlan = {
@@ -87,7 +87,8 @@ export function resolvePlanYear(
 /**
  * 다가오는 대상경주 목록 (race_plans.raw.pgDate >= today, 오름차순).
  * race_plans.meet 은 "부산경남" 을 쓰므로 UI 일관성을 위해 "부경" 으로 치환.
- * race_plans.race_date 컬럼은 대부분 NULL — 실제 일정은 raw.pgDate 에 YYYYMMDD 문자열로 들어있음.
+ * 일정은 raw.pgDate(YYYYMMDD) 기준 — race_date 컬럼도 035 이후 같은 값으로 채워지지만,
+ * 원본을 직접 읽는 편이 크롤러 매핑 변화에 덜 민감하다.
  */
 export type UpcomingStake = {
   id: number;

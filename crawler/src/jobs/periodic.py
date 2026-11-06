@@ -231,10 +231,19 @@ def _day_steps() -> tuple[tuple[str, Callable[[date], int]], ...]:
     )
 
 
+# 실패해도 보정 잡 자체는 실패로 치지 않는 단계. 통과순위·구간기록(API6_1)은 별도
+# 활용신청 API 라 장애·미승인이 결과 보정과 무관하고, 22:55 mal.sync_race_corners 가
+# 이미 fail-loud 로 알린다 — 07:30/09~12시 잡까지 같이 빨개지면 중복 알림만 늘어난다.
+_BEST_EFFORT_STEPS = frozenset({"corners"})
+
+
 def _run_day_steps(
     event: str, day: date
 ) -> tuple[dict[str, int], list[tuple[str, Exception]]]:
-    """모든 단계를 실행하고 (단계별 건수, 실패 목록) 반환. 한 단계가 실패해도 계속."""
+    """모든 단계를 실행하고 (단계별 건수, 실패 목록) 반환. 한 단계가 실패해도 계속.
+
+    _BEST_EFFORT_STEPS 의 실패는 경고만 남기고 실패 목록에 넣지 않는다.
+    """
     counts: dict[str, int] = {}
     failures: list[tuple[str, Exception]] = []
     for name, step in _day_steps():
@@ -242,7 +251,8 @@ def _run_day_steps(
             counts[name] = step(day)
         except Exception as e:  # noqa: BLE001 — 호출자가 모아서 재전파
             counts[name] = 0
-            failures.append((name, e))
+            if name not in _BEST_EFFORT_STEPS:
+                failures.append((name, e))
             log.warning(f"{event}_{name}_failed", date=str(day), err=str(e))
     log.info(f"{event}_done", date=str(day), **counts, failed=[n for n, _ in failures])
     return counts, failures

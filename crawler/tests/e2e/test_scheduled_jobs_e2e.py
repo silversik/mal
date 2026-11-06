@@ -977,6 +977,17 @@ def test_cli_sync_horse_name(e2e):
     assert sync_by_name("녹색신호") == 1
 
 
+def test_cli_sync_horse_no(e2e):
+    """sync_by_no 도 같은 meet= 버그 — CLI `sync-horse-no` 경로까지 확인."""
+    from typer.testing import CliRunner
+
+    from src.main import app
+
+    r = CliRunner().invoke(app, ["sync-horse-no", "0041001"])
+    assert r.exit_code == 0, r.output
+    assert "upserted 1 rows" in r.output
+
+
 def test_race_plans_race_date_from_pgdate(e2e):
     """race_date 를 응답의 pgDate 로 채운다 (예전엔 항상 NULL)."""
     row = e2e.one("SELECT race_date, raw->>'pgDate' AS pg FROM race_plans "

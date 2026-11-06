@@ -199,19 +199,57 @@ def test_residual_skips_when_resolved(residual: dict[str, Any]) -> None:
     assert residual["calls"] == []
 
 
-def test_residual_corners_failure_does_not_block_other_steps(residual: dict[str, Any]) -> None:
-    boom = RuntimeError("race_corners: 시도한 3개 단위 전부 실패")
-    residual["corners_err"] = boom
-    residual["sales_err"] = None
+def test_residual_corners_failure_is_best_effort(residual: dict[str, Any]) -> None:
+    """구간기록(별도 승인 API) 실패는 경고만 — 22:55 sync_race_corners 가 따로 알린다."""
+    residual["corners_err"] = RuntimeError("race_corners: 시도한 3개 단위 전부 실패")
+    assert residual["run"]() == 12
+    assert residual["calls"] == ["races", "dividends", "sales", "corners"]
+
+
+def test_residual_single_failure_reraised_as_is(residual: dict[str, Any]) -> None:
+    boom = RuntimeError("sync_race_sales: 시도한 3개 단위 전부 실패")
+    residual["sales_err"] = boom
+    residual["corners_err"] = RuntimeError("corners down")  # best-effort — 합쳐지지 않음
     with pytest.raises(RuntimeError) as ei:
         residual["run"]()
-    assert ei.value is boom  # 단일 실패는 원래 예외 그대로
+    assert ei.value is boom
     assert residual["calls"] == ["races", "dividends", "sales", "corners"]
 
 
 def test_residual_multiple_failures_are_combined(residual: dict[str, Any]) -> None:
     residual["races_err"] = RuntimeError("races down")
-    residual["corners_err"] = RuntimeError("corners down")
-    with pytest.raises(RuntimeError, match="races 실패.*추가로 corners 실패"):
+    residual["sales_err"] = RuntimeError("sales down")
+    with pytest.raises(RuntimeError, match="races 실패.*추가로 sales 실패"):
         residual["run"]()
     assert residual["calls"] == ["races", "dividends", "sales", "corners"]
+
+
+def test_residual_uses_kst_yesterday(
+    residual: dict[str, Any], periodic: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """UTC 11/5 15:30 = KST 11/6 00:30 → 어제는 11/5 (UTC 기준이면 11/4)."""
+    from datetime import UTC, date, datetime
+
+    class _Fake(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            t = datetime(2026, 11, 5, 15, 30, tzinfo=UTC)
+            return t.astimezone(tz) if tz else t.replace(tzinfo=None)
+
+    monkeypatch.setattr(periodic, "datetime", _Fake)
+    seen: list[Any] = []
+    monkeypatch.setattr(
+        periodic, "_has_unresolved_races_on", lambda d: seen.append(d) or False
+    )
+    residual["run"]()
+    assert seen == [date(2026, 11, 5)]
+
+
+def test_catchup_corners_failure_is_best_effort(env: dict[str, Any], periodic: Any,
+                                                monkeypatch: pytest.MonkeyPatch) -> None:
+    def boom(d: Any) -> int:
+        raise RuntimeError("race_corners: 시도한 3개 단위 전부 실패")
+
+    monkeypatch.setattr(periodic, "sync_race_corners_all_meets", boom)
+    env["entries"], env["results"] = 12, 12
+    assert env["run"]() == 35

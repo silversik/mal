@@ -250,8 +250,8 @@ def e2e() -> Any:
     from src.config import settings
 
     # E2E_REAL_NOW=YYYY-MM-DD 로 "실제 오늘" 을 고정해 요일별 동작을 재현할 수 있다.
-    # DB 쪽 NOW()/CURRENT_DATE 는 못 바꾸므로 실제 날짜 ±2일 안에서만 의미가 있다
-    # (그보다 과거로 두면 다음 경주일 U 가 DB 기준 과거가 돼 웹·알림 쿼리가 빈다).
+    # DB 쪽 NOW()/CURRENT_DATE 는 못 바꾸므로 고정한 날의 경주일 D 는 실제 오늘보다 과거,
+    # 예정일 U 는 실제 오늘 이후여야 한다 (아래에서 검사 — 범위는 요일마다 다름).
     pinned = os.environ.get("E2E_REAL_NOW")
     real_now = (
         _dt.datetime.combine(_dt.date.fromisoformat(pinned), _dt.time(12),
@@ -259,6 +259,14 @@ def e2e() -> Any:
         if pinned else _dt.datetime.now(ZoneInfo("Asia/Seoul"))
     )
     world = FakeWorld(real_now)
+    if pinned:
+        actual = _dt.datetime.now(ZoneInfo("Asia/Seoul")).date()
+        if not (world.D < actual <= world.U):
+            pytest.exit(
+                f"E2E_REAL_NOW={pinned} → D={world.D}, U={world.U} 가 실제 오늘 {actual} 을 "
+                f"감싸지 않음 (D < 오늘 <= U 필요) — DB NOW() 와 어긋나 결과가 무의미",
+                returncode=2,
+            )
     clock = Clock()
     web = FakeWeb(world, clock)
     dash = DashRecorder()
