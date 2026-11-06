@@ -45,18 +45,24 @@ def _no_data_error() -> KraApiError:
 )
 def test_scheduled_years_by_kst_clock(monkeypatch, utc_now, expected):
     monkeypatch.setattr(mod, "datetime", _fake_datetime(utc_now))
-    calls: list[tuple[int, bool]] = []
+    calls: list[tuple[int, bool, int | None]] = []
 
-    def fake_sync_year(year: int, *, meet=None, allow_no_data: bool = False) -> int:
-        calls.append((year, allow_no_data))
+    def fake_sync_year(
+        year: int, *, meet=None, allow_no_data: bool = False, current_year=None
+    ) -> int:
+        calls.append((year, allow_no_data, current_year))
         return 1
 
     monkeypatch.setattr(mod, "sync_year", fake_sync_year)
 
-    assert mod.target_years(mod.kst_today()) == expected
+    today = mod.kst_today()
+    assert mod.target_years(today) == expected
     assert mod.sync_scheduled_years() == len(expected)
-    # 올해는 strict, 내년도만 NODATA 허용
-    assert calls == [(expected[0], False)] + [(y, True) for y in expected[1:]]
+    # 올해는 strict(1월만 NODATA 허용), 내년도는 항상 NODATA 허용
+    current = expected[0]
+    assert calls == [(current, today.month == 1, current)] + [
+        (y, True, current) for y in expected[1:]
+    ]
 
 
 @pytest.mark.parametrize(
@@ -99,8 +105,17 @@ class _FakeClient:
         return v
 
 
-def _item(year: int, name: str) -> dict[str, Any]:
-    return {"meet": "1", "rc_year": str(year), "rc_name": name, "rc_date": f"{year}0607"}
+def _item(year: int, name: str, *, mmdd: str = "1206", meet: str = "부산경남") -> dict[str, Any]:
+    """실제 raceAnnualPlan item 형태 — rc_year 없음, 날짜는 pgDate(YYYYMMDD), meet 은 한글."""
+    return {
+        "meet": meet,
+        "pgDate": f"{year}{mmdd}",
+        "rcNo": "7",
+        "rcName": name,
+        "rcDist": "2300",
+        "ageCond": "3세이상",
+        "chaksun1": "500000000",
+    }
 
 
 @pytest.fixture
@@ -153,6 +168,60 @@ def test_next_year_other_api_error_still_fails(monkeypatch, upserted):
     _install(monkeypatch, {2026: [_item(2026, "코리아컵")], 2027: err})
     with pytest.raises(KraApiError):
         mod.sync_scheduled_years(date(2026, 11, 20))
+
+
+def test_real_shaped_item_maps_to_requested_year(monkeypatch, upserted):
+    _install(monkeypatch, {2026: [_item(2026, "그랑프리")]})
+    assert mod.sync_scheduled_years(date(2026, 6, 1)) == 3
+    row = upserted[0]
+    assert row["year"] == 2026
+    assert row["meet"] == "부산경남"
+    assert row["race_name"] == "그랑프리"
+    assert row["raw"]["pgDate"] == "20261206"
+
+
+def test_next_year_request_returning_current_plan_upserts_nothing(monkeypatch, upserted):
+    # KRA 가 rc_year=2027 을 무시하고 2026 계획을 돌려주는 경우 → 2027 로 저장하면 중복
+    plan_2026 = [_item(2026, "그랑프리"), _item(2026, "코리아컵", mmdd="0907", meet="서울")]
+    _install(monkeypatch, {2026: plan_2026, 2027: plan_2026})
+    assert mod.sync_scheduled_years(date(2026, 11, 6)) == 6  # 올해분(3 meet × 2건)만
+    assert {r["year"] for r in upserted} == {2026}
+
+
+def test_sync_year_drops_mismatched_and_keeps_matching(monkeypatch, upserted):
+    _install(
+        monkeypatch,
+        {2027: [_item(2026, "그랑프리"), _item(2027, "그랑프리"), _item(2027, "코리아컵")]},
+    )
+    assert mod.sync_year(2027, meet=3, current_year=2026) == 2
+    assert [r["raw"]["pgDate"][:4] for r in upserted] == ["2027", "2027"]
+
+
+@pytest.mark.parametrize(("year", "kept"), [(2026, 1), (2027, 0)])
+def test_undated_items_only_kept_for_current_year(monkeypatch, upserted, year, kept):
+    undated = {k: v for k, v in _item(year, "그랑프리").items() if k != "pgDate"}
+    _install(monkeypatch, {year: [undated]})
+    assert mod.sync_year(year, meet=3, current_year=2026) == kept
+
+
+def test_january_current_year_no_data_is_soft(monkeypatch, upserted):
+    client = _install(monkeypatch, {2027: _no_data_error()})
+    assert mod.sync_scheduled_years(date(2027, 1, 2)) == 0
+    assert {y for y, _ in client.calls} == {2027}
+
+
+def test_january_current_year_other_error_still_fails(monkeypatch, upserted):
+    err = KraApiError("KRA API error 30: SERVICE_KEY_IS_NOT_REGISTERED_ERROR", code="30")
+    _install(monkeypatch, {2027: err})
+    with pytest.raises(KraApiError):
+        mod.sync_scheduled_years(date(2027, 1, 15))
+
+
+@pytest.mark.parametrize("today", [date(2027, 2, 1), date(2026, 6, 1), date(2026, 12, 10)])
+def test_current_year_no_data_strict_outside_january(monkeypatch, upserted, today):
+    _install(monkeypatch, {today.year: _no_data_error(), today.year + 1: []})
+    with pytest.raises(KraApiError):
+        mod.sync_scheduled_years(today)
 
 
 def test_june_does_not_touch_next_year(monkeypatch, upserted):
