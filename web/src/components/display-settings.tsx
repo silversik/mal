@@ -78,7 +78,7 @@ export function DisplaySettings() {
   return (
     <Popover>
       <PopoverTrigger
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        className="inline-flex min-h-[max(44px,2.75rem)] items-center gap-1.5 rounded-md border border-border px-3 text-xs font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         aria-label="화면 설정 — 테마와 글씨 크기"
       >
         <EyeIcon />
@@ -132,7 +132,7 @@ function SettingGroup<T extends string>({
               role="radio"
               aria-checked={active}
               onClick={() => onPick(opt.value)}
-              className={`min-h-11 rounded-[6px] px-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+              className={`min-h-[max(44px,2.75rem)] rounded-[6px] px-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
                 active
                   ? "bg-card text-foreground shadow-subtle ring-1 ring-secondary"
                   : "text-muted-foreground hover:text-foreground"

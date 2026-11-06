@@ -395,7 +395,7 @@ export function FamilyTreeDiagram({
         </div>
       )}
 
-      <p className="mt-1.5 text-[11px] text-muted-foreground">
+      <p className="mt-1.5 text-caption text-muted-foreground">
         노드 클릭 → 미리보기 팝업 · 실선 = 父계 · 점선 = 母계 · 수/암/거 = 성별
       </p>
     </div>

@@ -36,7 +36,7 @@ export function PreRaceBanner({
   }, [raceDate, startTime]);
 
   return (
-    <div className="mb-3 flex items-center gap-2 rounded-md border border-champagne-gold/50 bg-gradient-to-r from-champagne-gold/16 to-champagne-gold/6 px-3.5 py-2.5 text-[13px] text-gold-ink">
+    <div className="mb-3 flex items-center gap-2 rounded-md border border-champagne-gold/50 bg-gradient-to-r from-champagne-gold/16 to-champagne-gold/6 px-3.5 py-2.5 text-small text-gold-ink">
       <span className="relative flex h-2 w-2">
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-champagne-gold opacity-60" />
         <span className="relative inline-flex h-2 w-2 rounded-full bg-champagne-gold" />

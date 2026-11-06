@@ -261,7 +261,7 @@ function HorseCard({ horse, showWins }: { horse: Horse; showWins: boolean }) {
                       style={{ width: `${Math.min(100, Number(winRate))}%` }}
                     />
                   </div>
-                  <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                  <span className="font-mono text-caption tabular-nums text-muted-foreground">
                     {horse.total_race_count}전 {horse.first_place_count}승
                     {winRate ? ` (${winRate}%)` : ""}
                   </span>
@@ -271,12 +271,12 @@ function HorseCard({ horse, showWins }: { horse: Horse; showWins: boolean }) {
               {(horse.sire_name || horse.dam_name) && (
                 <div className="mt-2 flex flex-wrap items-center gap-1">
                   {horse.sire_name && (
-                    <Badge variant="outline" className="text-[10px] font-normal">
+                    <Badge variant="outline" className="text-caption font-normal">
                       父 {horse.sire_name}
                     </Badge>
                   )}
                   {horse.dam_name && (
-                    <Badge variant="outline" className="text-[10px] font-normal">
+                    <Badge variant="outline" className="text-caption font-normal">
                       母 {horse.dam_name}
                     </Badge>
                   )}

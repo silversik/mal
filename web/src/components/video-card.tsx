@@ -46,7 +46,7 @@ export function VideoRow({ video }: { video: VideoItem }) {
             <YoutubeIcon />
           </span>
           {dur && (
-            <span className="absolute right-0.5 bottom-0.5 rounded bg-black/80 px-1 py-px font-mono text-[11px] leading-none text-white">
+            <span className="absolute right-0.5 bottom-0.5 rounded bg-black/80 px-1 py-px font-mono text-caption leading-none text-white">
               {dur}
             </span>
           )}

@@ -137,7 +137,7 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-secondary">
+            <div className="text-caption font-bold uppercase tracking-[0.12em] text-secondary">
               {label} · {heroDate}
             </div>
             <h1 className="mt-1.5 text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
@@ -177,7 +177,7 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
 function HeroMetaItem({ label, value }: { label: string; value: string }) {
   return (
     <span className="flex items-baseline gap-1">
-      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-caption uppercase tracking-wide text-muted-foreground">{label}</span>
       <span className="font-mono text-sm font-semibold tabular-nums text-foreground">{value}</span>
     </span>
   );
@@ -203,7 +203,7 @@ function HeroFeatureCard({ race }: { race: RaceInfo }) {
           <VenueIcon meet={race.meet} size={16} />
           <span className="text-sm font-semibold">{race.meet}</span>
         </div>
-        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusCls}`}>
+        <span className={`rounded-full px-2 py-0.5 text-caption font-semibold ${statusCls}`}>
           {status}
         </span>
       </div>
@@ -235,7 +235,7 @@ function HeroStakeCard({ stake }: { stake: UpcomingStake }) {
           <span className="text-sm font-semibold">{stake.meet}</span>
         </div>
         {tierBadge && (
-          <span className="rounded-full border border-secondary px-2 py-0.5 text-[11px] font-semibold text-secondary">
+          <span className="rounded-full border border-secondary px-2 py-0.5 text-caption font-semibold text-secondary">
             {tierBadge}
           </span>
         )}
@@ -260,7 +260,7 @@ function HeroCommentPanel({
   if (comments.length === 0) return null;
   return (
     <div className="flex flex-col rounded-xl border border-border bg-card p-4">
-      <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+      <div className="mb-2.5 text-caption font-bold uppercase tracking-[0.1em] text-muted-foreground">
         최신 댓글
       </div>
       <div className="flex flex-col gap-1">
@@ -271,10 +271,10 @@ function HeroCommentPanel({
             className="rounded-lg px-2.5 py-2 transition-colors hover:bg-muted"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-[12px] font-semibold text-secondary">{c.entity_name}</span>
-              <time className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground">{commentTimeAgo(c.created_at)}</time>
+              <span className="truncate text-xs font-semibold text-secondary">{c.entity_name}</span>
+              <time className="shrink-0 font-mono text-caption tabular-nums text-muted-foreground">{commentTimeAgo(c.created_at)}</time>
             </div>
-            <p className="line-clamp-1 text-[12px] text-muted-foreground">{c.content}</p>
+            <p className="line-clamp-1 text-xs text-muted-foreground">{c.content}</p>
           </Link>
         ))}
       </div>
@@ -349,10 +349,10 @@ async function RecentCommentsSection() {
           <Link key={c.id} href={c.entity_href} className="group block rounded-lg border border-primary/8 bg-card p-3 hover:border-secondary/50 hover:shadow-sm transition-all">
             <div className="mb-1 flex items-center justify-between gap-2">
               <span className="text-xs font-semibold truncate group-hover:text-primary transition-colors">{c.entity_name}</span>
-              <time className="shrink-0 text-[10px] text-muted-foreground tabular-nums">{commentTimeAgo(c.created_at)}</time>
+              <time className="shrink-0 text-caption text-muted-foreground tabular-nums">{commentTimeAgo(c.created_at)}</time>
             </div>
             <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{c.content}</p>
-            <p className="mt-1 text-[10px] text-muted-foreground/60">{c.author_name ?? "알 수 없음"}</p>
+            <p className="mt-1 text-caption text-muted-foreground/60">{c.author_name ?? "알 수 없음"}</p>
           </Link>
         ))}
       </div>
@@ -496,13 +496,13 @@ function HorseRow({ horse }: { horse: RecentWinner }) {
         />
         <div className="min-w-0 flex-1">
           <div className="font-bold truncate group-hover:text-primary transition-colors">{horse.horse_name}</div>
-          <div className="text-[11px] text-slate-grey uppercase tracking-wider font-semibold">
+          <div className="text-caption text-slate-grey uppercase tracking-wider font-semibold">
             {horse.country} · {horse.sex}
           </div>
         </div>
         <div className="text-right shrink-0">
           <div className="text-sm font-bold text-primary">{horse.win_count}승</div>
-          <div className="text-[10px] font-mono text-muted-foreground">
+          <div className="text-caption font-mono text-muted-foreground">
             {horse.last_win_date}
           </div>
         </div>
@@ -527,7 +527,7 @@ function JockeyRow({ jockey, rank }: { jockey: Jockey; rank: number }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="font-bold truncate group-hover:text-primary transition-colors">{jockey.jk_name}</div>
-          <div className="text-[11px] text-slate-grey font-semibold uppercase tracking-wider">{jockey.meet} 기수</div>
+          <div className="text-caption text-slate-grey font-semibold uppercase tracking-wider">{jockey.meet} 기수</div>
         </div>
         <div className="min-w-[70px] shrink-0">
           <WinRateBar rate={jockey.win_rate} />

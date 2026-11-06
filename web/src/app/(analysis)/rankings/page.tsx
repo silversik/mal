@@ -196,7 +196,7 @@ function TabGroup({
 }) {
   return (
     <div className="inline-flex items-center gap-1.5 rounded-md border bg-card px-2 py-1">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+      <span className="text-caption font-bold uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
       {children}

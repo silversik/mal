@@ -52,7 +52,7 @@ export function WinRateRing({
         </div>
         <div
           className="mt-1 font-semibold uppercase tracking-wider text-muted-foreground"
-          style={{ fontSize: 10 }}
+          style={{ fontSize: "0.6875rem" }}
         >
           {label}
         </div>

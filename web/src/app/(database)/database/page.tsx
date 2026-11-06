@@ -51,7 +51,7 @@ export default async function DatabasePage() {
               icon={<IconHorseshoe size={13} />}
               label="최근 1착 마필"
               right={
-                <Link href="/horses" className="text-[11px] font-semibold text-muted-foreground hover:text-primary">
+                <Link href="/horses" className="text-caption font-semibold text-muted-foreground hover:text-primary">
                   전체 →
                 </Link>
               }
@@ -59,7 +59,7 @@ export default async function DatabasePage() {
             <ul className="divide-y divide-border">
               {recentWinners.map((h, i) => (
                 <li key={h.horse_no} className="flex items-center gap-2 py-2 text-sm">
-                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold tabular-nums text-muted-foreground">
+                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-caption font-bold tabular-nums text-muted-foreground">
                     {i + 1}
                   </span>
                   <Link href={`/horse/${h.horse_no}`} className="flex-1 truncate font-semibold hover:text-primary">
@@ -80,7 +80,7 @@ export default async function DatabasePage() {
               icon={<IconUser size={13} />}
               label="TOP 기수"
               right={
-                <Link href="/jockeys" className="text-[11px] font-semibold text-muted-foreground hover:text-primary">
+                <Link href="/jockeys" className="text-caption font-semibold text-muted-foreground hover:text-primary">
                   전체 →
                 </Link>
               }
@@ -88,7 +88,7 @@ export default async function DatabasePage() {
             <ul className="divide-y divide-border">
               {topJockeys.map((j, i) => (
                 <li key={j.jk_no} className="flex items-center gap-2 py-2 text-sm">
-                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold tabular-nums text-muted-foreground">
+                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-caption font-bold tabular-nums text-muted-foreground">
                     {i + 1}
                   </span>
                   <Link href={`/jockey/${j.jk_no}`} className="flex-1 truncate font-semibold hover:text-primary">
@@ -111,7 +111,7 @@ export default async function DatabasePage() {
               icon={<IconUserPlus size={13} />}
               label="TOP 조교사"
               right={
-                <Link href="/trainer" className="text-[11px] font-semibold text-muted-foreground hover:text-primary">
+                <Link href="/trainer" className="text-caption font-semibold text-muted-foreground hover:text-primary">
                   전체 →
                 </Link>
               }
@@ -119,7 +119,7 @@ export default async function DatabasePage() {
             <ul className="divide-y divide-border">
               {topTrainers.map((t, i) => (
                 <li key={t.tr_no} className="flex items-center gap-2 py-2 text-sm">
-                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold tabular-nums text-muted-foreground">
+                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-caption font-bold tabular-nums text-muted-foreground">
                     {i + 1}
                   </span>
                   <Link href={`/trainer/${t.tr_no}`} className="flex-1 truncate font-semibold hover:text-primary">
@@ -140,7 +140,7 @@ export default async function DatabasePage() {
               icon={<IconCrown size={13} />}
               label="TOP 마주"
               right={
-                <Link href="/owner" className="text-[11px] font-semibold text-muted-foreground hover:text-primary">
+                <Link href="/owner" className="text-caption font-semibold text-muted-foreground hover:text-primary">
                   전체 →
                 </Link>
               }
@@ -148,7 +148,7 @@ export default async function DatabasePage() {
             <ul className="divide-y divide-border">
               {topOwners.map((o, i) => (
                 <li key={o.ow_no} className="flex items-center gap-2 py-2 text-sm">
-                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold tabular-nums text-muted-foreground">
+                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-caption font-bold tabular-nums text-muted-foreground">
                     {i + 1}
                   </span>
                   <Link href={`/owner/${o.ow_no}`} className="flex-1 truncate font-semibold hover:text-primary">
@@ -184,7 +184,7 @@ function CountTile({
       className="group block rounded-[10px] border border-border bg-card px-4 py-3 transition hover:border-primary/40"
     >
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
           {label}
         </span>
         <span className="text-muted-foreground opacity-40 group-hover:opacity-100 group-hover:text-primary">
@@ -193,7 +193,7 @@ function CountTile({
       </div>
       <div className="mt-1 font-mono text-xl font-bold leading-tight tabular-nums text-foreground">
         {value.toLocaleString()}
-        <span className="ml-1 text-[11px] font-medium text-muted-foreground">건</span>
+        <span className="ml-1 text-caption font-medium text-muted-foreground">건</span>
       </div>
     </Link>
   );

@@ -83,7 +83,7 @@ export default async function NotificationsPage() {
                       </p>
                     )}
                   </div>
-                  <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                  <span className="shrink-0 text-caption tabular-nums text-muted-foreground">
                     {n.created_at}
                   </span>
                 </div>

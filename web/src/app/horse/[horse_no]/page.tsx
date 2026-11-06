@@ -304,7 +304,7 @@ export default async function HorseDetailPage({
           {recentFinishes.length > 0 && (
             <Card>
               <CardContent className="p-3">
-                <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <h3 className="mb-2 text-caption font-bold uppercase tracking-wider text-muted-foreground">
                   최근 폼
                 </h3>
                 <RecentFormStrip finishes={recentFinishes} />
@@ -314,7 +314,7 @@ export default async function HorseDetailPage({
           {msfHistory.length >= 2 && (
             <Card>
               <CardContent className="p-3">
-                <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <h3 className="mb-2 text-caption font-bold uppercase tracking-wider text-muted-foreground">
                   mal지수 추세
                 </h3>
                 <MsfSparkline points={msfHistory} width={260} height={56} />
@@ -336,7 +336,7 @@ function AutoCommentBlock({ comment }: { comment: string }) {
   return (
     <div className="mt-4 rounded-md border border-primary/10 bg-primary/[0.02] px-4 py-3">
       <div className="flex items-start gap-2">
-        <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+        <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-caption font-bold text-primary">
           ai
         </span>
         <p className="text-sm leading-relaxed text-foreground">{comment}</p>
@@ -493,11 +493,11 @@ function ProfileCard({
 
         {characteristics.length > 0 && (
           <div className="mt-2.5 flex flex-wrap items-center gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
               특징
             </span>
             {characteristics.map((c) => (
-              <Badge key={c} variant="secondary" className="font-normal text-[11px]">
+              <Badge key={c} variant="secondary" className="font-normal text-caption">
                 {c}
               </Badge>
             ))}

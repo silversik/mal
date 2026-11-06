@@ -74,7 +74,7 @@ export function RatingSparkline({ points, width = 240, height = 56 }: Props) {
 
   return (
     <div className="inline-flex flex-col items-start gap-1">
-      <div className="text-[10px] text-muted-foreground tabular-nums">
+      <div className="text-caption text-muted-foreground tabular-nums">
         {currentPoint.label} · <strong className="text-foreground">{currentPoint.value}</strong>
         {hover === null && (
           <span className="ml-1 opacity-60">(최근 · {latest.snapshot_date})</span>
