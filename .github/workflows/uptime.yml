@@ -1,0 +1,58 @@
+# mal.kr 외부 가용성 · TLS 인증서 만료 모니터.
+# GitHub 호스팅 러너에서 30분마다 실행 — 실패하면 GitHub 가 저장소 소유자에게 알림(이메일/앱).
+# 운영 서버 안쪽 모니터(대시보드·Telegram)와 독립된 "바깥에서 본" 신호.
+name: uptime
+
+on:
+  schedule:
+    - cron: "7,37 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      HOST: mal.kr
+      CERT_WARN_DAYS: "14"
+    steps:
+      - name: HTTP checks
+        shell: bash
+        run: |
+          set -u
+          fail=0
+          check() {  # url expected_status must_contain
+            local url="$1" want="$2" needle="$3" body code
+            body="$(mktemp)"
+            code="$(curl -sS -L --max-time 20 -o "$body" -w '%{http_code}' "$url" || echo 000)"
+            if [ "$code" != "$want" ]; then
+              echo "::error::$url → HTTP $code (기대 $want)"; fail=1
+            elif [ -n "$needle" ] && ! grep -q -- "$needle" "$body"; then
+              echo "::error::$url → 본문에 '$needle' 없음"; fail=1
+            else
+              echo "ok  $url ($code)"
+            fi
+          }
+          check "https://$HOST/robots.txt" 200 "Sitemap"
+          check "https://$HOST/" 200 "<html"
+          check "https://$HOST/sitemap.xml" 200 "<sitemapindex"
+          check "https://$HOST/races" 200 "<html"
+          exit $fail
+      - name: TLS certificate expiry
+        shell: bash
+        run: |
+          set -euo pipefail
+          end="$(echo | openssl s_client -servername "$HOST" -connect "$HOST:443" 2>/dev/null \
+                 | openssl x509 -noout -enddate | cut -d= -f2)"
+          left=$(( ( $(date -d "$end" +%s) - $(date +%s) ) / 86400 ))
+          echo "인증서 만료: $end (${left}일 남음)"
+          if [ "$left" -lt "$CERT_WARN_DAYS" ]; then
+            echo "::error::TLS 인증서 ${left}일 후 만료 — 갱신(certbot 등) 확인"; exit 1
+          fi
