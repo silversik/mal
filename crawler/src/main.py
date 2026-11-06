@@ -201,8 +201,9 @@ def cmd_smoke_videos(
 
 
 # ============================================================================
-# Periodic entry points — systemd timer 가 호출. scraper_runs 에 기록됨.
-# 수동 ad-hoc 실행은 위의 `sync-news` / `sync-today` 등을 그대로 사용.
+# Periodic entry points — scheduler_main 이 호출하는 run_* 를 수동으로 1회 실행.
+# @track_job 으로 crawler-dashboard 에 run 이 기록된다.
+# 대시보드 기록 없이 ad-hoc 실행은 위의 `sync-news` / `sync-today` 등을 사용.
 # ============================================================================
 
 @app.command("periodic-news")
@@ -228,7 +229,7 @@ def cmd_periodic_races_today() -> None:
 
 @app.command("periodic-races-live")
 def cmd_periodic_races_live() -> None:
-    """[scheduled] sync_races_live — 매시 정각 10~21시 KST 실시간 결과·배당."""
+    """[scheduled] sync_races_live — KST 10:00~22:30 매 30분 실시간 결과·배당."""
     n = run_sync_races_live()
     typer.echo(f"live upserted {n} rows")
 

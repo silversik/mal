@@ -63,7 +63,8 @@ def _expected_interval(max_gap_sec: int) -> int:
 # ── JOB 메타 카탈로그 ──────────────────────────────────────────────────────────
 # 여기 한 곳에서 선언하고 @track_job 에서 lookup. 컨테이너 기동 시 (또는 첫 호출 시)
 # 대시보드에 idempotent upsert. mal 서비스 prefix 로 전역 유니크 키 구성.
-# 추가 job 은 이 dict 에 한 줄만 넣고 periodic.py / main.py 에서 @track_job("mal.<name>") 사용.
+# 새 job = 이 dict 에 스펙 추가 + periodic.py 에 @track_job("mal.<name>") 래퍼
+#        + scheduler_main.py 의 add_job 과 TRIGGER_JOBS 등록.
 JOB_CATALOG: dict[str, dict] = {
     "mal.sync_news": {
         "category": "naver_search",

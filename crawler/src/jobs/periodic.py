@@ -1,11 +1,12 @@
 """Periodic entry points wrapped with @track_job.
 
-이 모듈의 함수들은 systemd timer 가 직접 호출하는 "스케줄된" 실행 지점이며,
-각 실행은 `scraper_runs` 에 기록된다. 기존 CLI 명령 (`sync-news`, `sync-today`
-등) 은 ad-hoc 수동 용도로 남겨두고, 자동 실행은 이쪽으로 호출한다.
+이 모듈의 함수들은 `scheduler_main.py` (컨테이너 내장 APScheduler) 가 호출하는
+"스케줄된" 실행 지점이며, 각 실행은 @track_job 이 crawler-dashboard 에 리포트한다.
+기존 CLI 명령 (`sync-news`, `sync-today` 등) 은 ad-hoc 수동 용도로 남겨두고,
+자동 실행은 이쪽으로 호출한다.
 
-job_key 는 `scraper_jobs` seed 와 1:1 대응 — 새 job 을 추가하려면
-migration 에 seed row 를 넣고 여기에 래퍼를 추가.
+새 job 추가 = `monitoring.JOB_CATALOG` 에 스펙 1개 + 여기에 `@track_job("mal.<name>")`
+래퍼 + `scheduler_main.py` 의 `add_job` 과 `TRIGGER_JOBS` 등록 (마이그레이션 불필요).
 """
 from __future__ import annotations
 
@@ -58,10 +59,10 @@ def run_sync_news() -> int:
 
 @track_job("mal.sync_videos")
 def run_sync_videos() -> int:
-    # 환경변수 미설정 시 silent skip(return 0) 하면 scraper_runs 가 success 로
+    # 환경변수 미설정 시 silent skip(return 0) 하면 대시보드에 success 로
     # 기록되어 모니터링이 미수집 사고를 캐치하지 못한다 (mal.sync_race_entries
     # 의 KRA_CHULMA_OPERATION 미설정으로 4/25 이후 race_entries 0건 사고 참고).
-    # 명시적 RuntimeError 로 전환하면 scraper_runs 가 failed 로 떨어져 즉시
+    # 명시적 RuntimeError 로 전환하면 run 이 failed 로 떨어져 즉시
     # 대시보드에 빨간 신호로 보인다.
     if not settings.youtube_api_key or not settings.youtube_krbc_channel_id:
         raise RuntimeError(
@@ -236,7 +237,7 @@ def run_sync_race_entries() -> int:
     # success/0 으로 silent skip 되었고, race_entries 가 한 줄도 안 들어와
     # "오늘의 경주"·"다음 진행 예정 경기" 섹션이 빈 채로 노출된 사고가 있었음.
     # success/0 이라 모니터링이 캐치 못함 — 명시적 RuntimeError 로 전환해
-    # scraper_runs 에 failed 로 기록되도록.
+    # 대시보드에 failed 로 기록되도록.
     if not settings.kra_chulma_operation:
         raise RuntimeError(
             "KRA_CHULMA_OPERATION 미설정 — data.go.kr Swagger 의 API26_2 "

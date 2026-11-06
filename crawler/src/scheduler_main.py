@@ -1,12 +1,15 @@
-"""Container-internal APScheduler — replaces host systemd timers.
+"""Container-internal APScheduler — mal-crawler 의 유일한 스케줄러.
 
-기존 `systemd/mal-collector-*.timer` 스펙을 그대로 이식. 각 job 함수는 이미
-`@track_job` 로 감싸져 있어 대시보드 리포트는 자동. 이 모듈은 스케줄링만.
+각 job 함수는 이미 `@track_job` 로 감싸져 있어 대시보드 리포트는 자동.
+이 모듈은 스케줄링(+ 대시보드 "지금 실행" 트리거 폴링)만.
+
+새 job 추가 = `monitoring.JOB_CATALOG` 스펙 + `jobs/periodic.py` 의 `@track_job`
+래퍼 + 아래 `add_job` 과 `TRIGGER_JOBS` 등록.
 
 Usage:
     python -m src.scheduler_main
 
-Dockerfile CMD 에서 기동 — 호스트 systemd 타이머 의존성 제거.
+Dockerfile CMD 에서 기동.
 """
 from __future__ import annotations
 
@@ -65,7 +68,7 @@ def main() -> None:
 
     sched = BlockingScheduler(timezone=KST)
 
-    # 기존 systemd timer 와 동일한 스펙. `coalesce=True` 로 과거 누락된 실행은 1번만 재현.
+    # 시각은 모두 KST. `coalesce=True` 로 과거 누락된 실행은 1번만 재현.
     # `max_instances=1` 로 중복 실행 방지 (sleep_sec × 장시간 러닝 job 들).
     common = {"coalesce": True, "max_instances": 1, "misfire_grace_time": 600}
 
