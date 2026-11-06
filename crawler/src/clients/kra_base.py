@@ -35,6 +35,11 @@ DEFAULT_TIMEOUT = httpx.Timeout(15.0, connect=5.0)
 class KraApiError(RuntimeError):
     """Non-retryable API error surfaced from the response body."""
 
+    def __init__(self, message: str, *, code: str | None = None) -> None:
+        super().__init__(message)
+        # data.go.kr resultCode ("03" = NODATA 등) — 호출부가 분기할 수 있게 보존
+        self.code = code
+
 
 class KraClient:
     """Thin wrapper around httpx for a single KRA endpoint family."""
@@ -110,7 +115,10 @@ class KraClient:
             )
             code = header.get("returnReasonCode")
             msg = header.get("errMsg") or header.get("returnAuthMsg")
-            raise KraApiError(f"KRA API error {code}: {msg}")
+            raise KraApiError(
+                f"KRA API error {code}: {msg}",
+                code=str(code) if code is not None else None,
+            )
 
         # Normal response header
         response = payload.get("response", {})
@@ -118,7 +126,8 @@ class KraClient:
         result_code = header.get("resultCode")
         if result_code and result_code not in ("00", "0000"):
             raise KraApiError(
-                f"KRA API error {result_code}: {header.get('resultMsg')}"
+                f"KRA API error {result_code}: {header.get('resultMsg')}",
+                code=str(result_code),
             )
 
     # ------------------------------------------------------------- iteration
