@@ -264,8 +264,6 @@ def main() -> None:
 
     # 대시보드 "지금 실행" 트리거 폴링 — 15초마다 pending_trigger 확인해서 즉시 실행.
     # 각 job id 는 위 add_job 의 id 와 동일 key 를 사용 (대시보드 UI 와 1:1).
-    # 주의: `run_chunked_dividends_backfill` 과 `mal.backfill_history` 는 수동 전용이라
-    # 특수 취급 — history 는 별도 CLI 로 돌리던 것이지만 dash 트리거 오면 여기서 실행.
     TRIGGER_JOBS = {
         "mal.sync_news": run_sync_news,
         "mal.sync_videos": run_sync_videos,

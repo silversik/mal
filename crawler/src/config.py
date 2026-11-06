@@ -17,7 +17,6 @@ class Settings:
     database_url: str
     kra_key_horse_detail: str
     kra_key_race_result: str
-    kra_key_horse_race_history: str
     kra_key_jockey: str
     kra_key_race_info: str
     kra_key_race_dividend: str
@@ -57,9 +56,6 @@ class Settings:
             database_url=db_url,
             kra_key_horse_detail=os.environ.get("KRA_SERVICE_KEY_HORSE_DETAIL", default_key),
             kra_key_race_result=os.environ.get("KRA_SERVICE_KEY_RACE_RESULT", default_key),
-            kra_key_horse_race_history=os.environ.get(
-                "KRA_SERVICE_KEY_HORSE_RACE_HISTORY", default_key
-            ),
             kra_key_jockey=os.environ.get("KRA_SERVICE_KEY_JOCKEY", default_key),
             kra_key_race_info=os.environ.get("KRA_SERVICE_KEY_RACE_INFO", default_key),
             kra_key_race_dividend=os.environ.get("KRA_SERVICE_KEY_RACE_DIVIDEND", default_key),

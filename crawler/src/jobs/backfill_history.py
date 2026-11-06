@@ -13,7 +13,6 @@ import time
 from datetime import date, timedelta
 
 from ..logging import get_logger
-from ..monitoring import track_job
 from .sync_races import sync_date_all_meets
 
 log = get_logger(__name__)
@@ -53,10 +52,3 @@ def backfill_history(start: date, end: date, sleep_sec: float = 0.3) -> int:
     log.info("backfill_history_done", total_rows=total, errors=errors, days=days)
     return total
 
-
-@track_job("mal.backfill_history")
-def run_backfill_last_33y() -> int:
-    """One-shot: 최근 33년 (오늘 포함 X). 수동 트리거 (CLI / 대시보드) 전용."""
-    today = date.today()
-    start = today.replace(year=today.year - 33)
-    return backfill_history(start, today - timedelta(days=1))

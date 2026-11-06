@@ -20,7 +20,7 @@ idempotent 하게 upsert 한다. job_key 는 전역 유니크 — 'mal.sync_news
 Telegram 실패 알림은 `crawler_core.client.safe_finish_run(job_key=...)` 내부에서
 `maybe_notify_failure` 로 dedupe 처리. 이 모듈은 job_key 만 넘겨주면 됨.
 
-check_stale 은 대시보드가 자체적으로 보여주므로 별도 로직은 제거.
+stale 판정은 대시보드가 expected_interval_sec 으로 자체 수행한다.
 """
 from __future__ import annotations
 
@@ -121,11 +121,6 @@ JOB_CATALOG: dict[str, dict] = {
         "description": "updated_at > 30d stale horses 순환 재조회",
         # 매일 07:00
         "expected_interval_sec": _expected_interval(_DAY),
-    },
-    "mal.backfill_history": {
-        "category": "kra_openapi",
-        "description": "최근 33년 race_results + horses 일괄 부트스트랩 (수동 트리거)",
-        "expected_interval_sec": 86400 * 365,  # 사실상 1회용 — stale 경고 방지용 큰 값
     },
     "mal.sync_race_plan": {
         "category": "kra_openapi",
@@ -310,8 +305,3 @@ def register_all_jobs() -> None:
     for job_key in JOB_CATALOG:
         _ensure_registered(job_key)
 
-
-def check_stale(*, multiplier: float = 1.5) -> list[dict]:
-    """통합 대시보드가 자체적으로 stale 판정/UI 표시하므로 여기서는 no-op."""
-    log.info("check_stale_delegated_to_dashboard", multiplier=multiplier)
-    return []
