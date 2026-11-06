@@ -136,7 +136,7 @@ export async function getNextRaceDayRaces(): Promise<RaceInfo[]> {
  * 메인 페이지에서 (날짜 × 경마장) 단위로 묶어 보여줄 때 사용.
  *
  * "끝난 개최일" 판정: 결과(rank) 가 1건 이상 적재됐거나, KRBC 영상이 1건 이상
- * 등록된 날. 결과는 KRA OpenAPI(22:00 KST sync) 가 늦을 수 있어, 영상이 먼저
+ * 등록된 날. 결과는 KRA OpenAPI(live 30분 · 23:05 backstop) 가 늦을 수 있어, 영상이 먼저
  * 들어온 race day(예: 5/9 KRBC 라이브 후 결과 적재 전 시점) 도 즉시 "최근
  * 경기" 에 노출하기 위함. 영상만 있는 카드는 입상마 빈 채로 노출되지만 직접
  * 경기 페이지로 진입할 수 있다는 가치가 있음.

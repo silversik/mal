@@ -122,11 +122,24 @@ def test_live_unknown_meet_name_skips_dividends(live: dict[str, Any]) -> None:
 # ------------------------------------------------- 22:45 배당 · 23:05 races_today
 
 
-def test_races_today_skips_when_live_covered(live: dict[str, Any], periodic: Any) -> None:
+def test_races_today_skips_when_live_covered(
+    live: dict[str, Any], periodic: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
     live["meets"] = ["서울"]
+    monkeypatch.setattr(periodic, "_has_unresolved_races_on", lambda d: False)
     assert periodic.run_sync_races_today.__wrapped__() == 0
     assert live["race_dates"] == []  # KRA 결과 호출 없음
     assert live["sql"][0][1] == {"d": date(2026, 11, 7)}  # KST 오늘로 게이트
+
+
+def test_races_today_reruns_when_results_missing(
+    live: dict[str, Any], periodic: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """live 마지막 tick 실패 등으로 결과 빠진 경주가 남으면 backstop 이 다시 수집."""
+    live["meets"] = ["서울"]
+    monkeypatch.setattr(periodic, "_has_unresolved_races_on", lambda d: True)
+    periodic.run_sync_races_today.__wrapped__()
+    assert live["race_dates"] == [date(2026, 11, 7)]
 
 
 def test_races_today_runs_when_live_gated_out(live: dict[str, Any], periodic: Any) -> None:

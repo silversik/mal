@@ -77,13 +77,14 @@ def run_sync_races_today() -> int:
 
     경기일엔 sync_races_live 가 10:00~22:30 매 30분 같은 `sync_date_all_meets(today)`
     를 이미 돌렸다 (마지막 tick 22:30). live 게이트(`_race_meets_on`)가 오늘 경마장을
-    찾으면 live 가 커버한 날이라 중복 KRA 호출을 생략한다. 게이트가 비어 live 가 skip
-    한 날 (출전표 sync 실패 등으로 races 에 오늘 row 가 없는 날) 에만 결과를 직접 수집.
+    찾고 오늘 경주가 전부 결과를 받았으면 live 가 커버한 날이라 중복 KRA 호출을 생략한다.
+    결과 빠진 경주가 남아 있으면 (live 마지막 tick 실패·KRA 지연) 직접 재수집하고,
+    게이트가 비어 live 가 skip 한 날 (races 에 오늘 row 가 없는 날) 에도 직접 수집.
     잔여 누락은 다음날 07:30 sync_yesterday_catchup / 09~12시 residual 이 보정.
     """
     today = datetime.now(KST).date()
     race_meets = _race_meets_on(today)
-    if race_meets:
+    if race_meets and not _has_unresolved_races_on(today):
         log.info(
             "races_today_skip_live_covers", date=str(today), meets=sorted(race_meets)
         )
