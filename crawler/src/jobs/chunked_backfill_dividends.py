@@ -25,7 +25,9 @@ KRA 가 특정 (date, meet) 에 0건을 주거나 WIN/PLC 만 주고 combo 를 �
 영구히 안 채워진다. 원장이 없으면 매일 최신순으로 같은 gap 만 재시도해 15회 예산을
 전부 태우고 success 로 기록 — 고치려던 "조용히 멈춤" 상태가 재현된다.
 
-그래서 combo 를 못 만든 시도(0건·combo 없음·quota 외 오류)를
+그래서 호출은 성공했는데 combo 를 못 만든 시도(0건·WIN/PLC 만)를 센다. 오류(타임아웃·5xx·
+키/IP 오류)는 장애로 보고 횟수에 넣지 않는다 (장애 며칠 = 그 장애가 만든 gap 영구 skip 방지).
+이 원장을
 `mal.sync_meta(source='chunked_backfill_dividends').raw` (옛 cursor 와 같은 row, DB 라
 컨테이너 재시작에도 영속) 에 `{"attempts": {"YYYY-MM-DD:서울": {"n", "last", "reason"}}}`
 로 기록한다. `MAX_ATTEMPTS_DEFAULT` (3) 회 실패한 gap 은 "exhausted" 로 보고 건너뛰고
@@ -38,7 +40,7 @@ KRA 가 특정 (date, meet) 에 0건을 주거나 WIN/PLC 만 주고 combo 를 �
 
 실패 정책: gap 이 있었는데 시도한 호출이 전부 (quota 외) 실패하면 RuntimeError →
 @track_job 이 failure 로 기록. gap 0 은 정상 success(0).
-quota 판정: HTTP 429 · "quota exceeded" · data.go.kr 레거시 코드 22
+quota 판정: HTTP 429(상태코드) · "quota exceeded" · data.go.kr 레거시 코드 22
 (`KRA API error 22` / LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR) → 즉시 중단,
 원장에는 시도로 세지 않음.
 
@@ -85,10 +87,15 @@ def _kst_today() -> date:
 _QUOTA_CODE22_RE = re.compile(r"KRA API error 0*22\b")
 
 
-def _is_quota_error(errmsg: str) -> bool:
+def _is_quota_error(exc: BaseException) -> bool:
+    # HTTP 429 는 상태코드로만 본다 — 메시지의 "429" 부분일치는 URL 의 rc_date=…0429
+    # (4월 29일) 같은 5xx/404 를 쿼터로 오판해 같은 gap 에 영원히 머무르게 한다.
+    resp = getattr(exc, "response", None)
+    if getattr(resp, "status_code", None) == 429:
+        return True
+    errmsg = str(exc)
     return (
-        "429" in errmsg
-        or "quota exceeded" in errmsg.lower()
+        "quota exceeded" in errmsg.lower()
         or "LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS" in errmsg.upper()
         or _QUOTA_CODE22_RE.search(errmsg) is not None
     )
@@ -251,7 +258,7 @@ def run_chunk(
                 n = sync_date(d, meet=_MEET_CODE[meet_name])
             except Exception as exc:  # noqa: BLE001
                 errmsg = str(exc)
-                if _is_quota_error(errmsg):
+                if _is_quota_error(exc):
                     quota_hit = True
                     log.info(
                         "chunked_dividends_quota_hit",
@@ -260,7 +267,14 @@ def run_chunk(
                     break
                 errors += 1
                 failed.append(tag)
-                _record_miss(tag, f"error: {errmsg[:200]}")
+                # 오류(타임아웃·5xx·키/IP 오류 등)는 시도 횟수에 넣지 않는다 — KRA 장애가 며칠
+                # 이어지면 바로 그 장애로 생긴 gap 들이 exhausted 로 영구 skip 되기 때문.
+                # 최근 오류만 메모해 두고, exhausted 판정은 "호출 성공 + combo 없음" 만 센다.
+                attempts[tag] = {
+                    **attempts.get(tag, {}),
+                    "n": _n(tag),
+                    "last_error": f"{today.isoformat()} {errmsg[:200]}",
+                }
                 log.warning(
                     "chunked_dividends_failed",
                     date=str(d), meet=meet_name, err=errmsg,
