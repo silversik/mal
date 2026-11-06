@@ -35,7 +35,9 @@ def configure_logging() -> None:
     level = getattr(logging, settings.log_level.upper(), logging.INFO)
     handler = logging.StreamHandler()
     handler.setFormatter(_RedactingFormatter("%(message)s"))
-    logging.basicConfig(level=level, handlers=[handler])
+    # force=True — crawler_core 나 import 부수효과로 root 에 핸들러가 먼저 붙어 있으면
+    # basicConfig 는 no-op 이 되어 마스킹 formatter 가 설치되지 않는다. 기존 핸들러를 걷어내고 교체.
+    logging.basicConfig(level=level, handlers=[handler], force=True)
     for name in _NOISY_LOGGERS:
         logging.getLogger(name).setLevel(logging.WARNING)
     structlog.configure(
@@ -43,7 +45,16 @@ def configure_logging() -> None:
             structlog.contextvars.merge_contextvars,
             structlog.processors.add_log_level,
             structlog.processors.TimeStamper(fmt="iso"),
-            _RedactingRenderer(structlog.dev.ConsoleRenderer()),
+            # rich 가 설치돼 있으면 ConsoleRenderer 기본 exception_formatter 는
+            # RichTracebackFormatter(show_locals=True) — 프레임 locals(params dict 등)에 키가 실리고
+            # ANSI 코드·문자열 truncate 로 사후 정규식 마스킹이 빗나간다.
+            # plain traceback(locals 없음) + colors=False 로 평문을 만든 뒤 마스킹.
+            _RedactingRenderer(
+                structlog.dev.ConsoleRenderer(
+                    colors=False,
+                    exception_formatter=structlog.dev.plain_traceback,
+                )
+            ),
         ],
         wrapper_class=structlog.make_filtering_bound_logger(level),
         context_class=dict,

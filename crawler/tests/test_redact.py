@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import io
 import logging
+from collections.abc import Iterator
 
 import httpx
 import pytest
@@ -105,3 +106,73 @@ def test_configure_logging_masks_and_quiets(capsys: pytest.CaptureFixture[str]) 
         lg.removeHandler(h)
     assert "key=***" in buf.getvalue()
     assert "AbC123" not in buf.getvalue()
+
+
+@pytest.fixture
+def restore_root_logging() -> Iterator[logging.Logger]:
+    root = logging.getLogger()
+    saved_handlers, saved_level = root.handlers[:], root.level
+    yield root
+    for h in root.handlers[:]:
+        root.removeHandler(h)
+    for h in saved_handlers:
+        root.addHandler(h)
+    root.setLevel(saved_level)
+
+
+def test_configure_logging_replaces_preattached_root_handler(
+    restore_root_logging: logging.Logger, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # crawler_core / import 부수효과로 root 에 핸들러가 먼저 붙어 있어도 마스킹이 걸려야 한다
+    # (basicConfig 기본 동작은 이 경우 no-op).
+    from src.logging import _RedactingFormatter, configure_logging
+
+    root = restore_root_logging
+    leaky_buf = io.StringIO()
+    leaky = logging.StreamHandler(leaky_buf)
+    leaky.setFormatter(logging.Formatter("%(message)s"))
+    root.addHandler(leaky)
+
+    configure_logging()
+
+    assert leaky not in root.handlers
+    stream_handlers = [h for h in root.handlers if type(h) is logging.StreamHandler]
+    assert stream_handlers
+    assert all(isinstance(h.formatter, _RedactingFormatter) for h in stream_handlers)
+
+    logging.getLogger("t.preattached").warning(
+        "GET https://apis.data.go.kr/B551015/API4?serviceKey=%s&pageNo=1", KEY_ENC
+    )
+    err = capsys.readouterr().err
+    assert "serviceKey=***" in err
+    assert "AbC123" not in err
+    assert leaky_buf.getvalue() == ""
+
+
+def test_structlog_exception_traceback_has_no_locals_or_keys(
+    restore_root_logging: logging.Logger, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # rich 가 설치돼 있으면 ConsoleRenderer 기본값은 show_locals=True rich traceback —
+    # params dict 같은 프레임 locals 와 ANSI 코드가 섞여 사후 마스킹이 빗나간다.
+    from src.logging import configure_logging, get_logger
+
+    configure_logging()
+
+    def fetch() -> None:
+        params = {"serviceKey": KEY_RAW, "pageNo": 1}  # noqa: F841 — locals 노출 검증용
+        secret_local = KEY_RAW  # noqa: F841
+        req = httpx.Request("GET", "https://apis.data.go.kr/x", params={"serviceKey": KEY_RAW})
+        httpx.Response(500, request=req).raise_for_status()
+
+    try:
+        fetch()
+    except httpx.HTTPStatusError:
+        get_logger("t.exc").exception("fetch_failed")
+
+    out = capsys.readouterr().out
+    assert "fetch_failed" in out
+    assert "Traceback" in out
+    assert "\x1b[" not in out  # ANSI 없음
+    assert "AbC123" not in out
+    assert "secret_local" not in out  # locals 미출력
+    assert "serviceKey=***" in out

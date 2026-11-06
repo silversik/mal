@@ -49,3 +49,18 @@ def test_failed_run_error_message_is_redacted(monitoring: tuple[Any, list[dict]]
     assert "key=***" in msg
     assert "SECRET" not in msg
     assert "HTTPStatusError" in msg
+
+
+def test_expected_interval_margin_rule(monitoring: tuple[Any, list[dict]]) -> None:
+    mod, _ = monitoring
+    h, d = 3600, 86400
+    # ≤4h 주기 → +1h, 그 이상 +25%, 상한 +1일
+    assert mod._expected_interval(30 * 60) == 30 * 60 + h
+    assert mod._expected_interval(3 * h) == 4 * h
+    assert mod._expected_interval(d) == 30 * h
+    assert mod._expected_interval(7 * d) == 8 * d
+    # 3h interval job 들이 여유 0 으로 남지 않았는지
+    for key in ("mal.sync_race_entries", "mal.backfill_races_from_entries", "mal.sync_videos"):
+        assert mod.JOB_CATALOG[key]["expected_interval_sec"] == 4 * h
+    for spec in mod.JOB_CATALOG.values():
+        assert isinstance(spec["expected_interval_sec"], int)
