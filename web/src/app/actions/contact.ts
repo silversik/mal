@@ -3,7 +3,7 @@
 import { auth } from "@/auth";
 import { createContactPost } from "@/lib/contact";
 import { TITLE_MAX, CONTENT_MAX, AUTHOR_MAX } from "@/lib/contact-shared";
-import { contactRateLimiter } from "@/lib/rate_limit";
+import { clientIpFromXff, contactRateLimiter } from "@/lib/rate_limit";
 import { escapeHtml, sendTelegram } from "@/lib/telegram";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -18,9 +18,8 @@ export async function createContactPostAction(
 ): Promise<{ error?: string; id?: number }> {
   const session = await auth();
 
-  // TODO: x-forwarded-for 는 클라이언트가 위조 가능 + 프록시 체인이면 "a, b" 형태.
-  //   nginx 가 XFF 를 덮어쓰는지(또는 X-Real-IP) 확인 후 키 결정 — 확인 전엔 변경 금지.
-  const ip = (await headers()).get("x-forwarded-for") ?? "unknown";
+  // XFF 의 맨 오른쪽 = nginx 가 직접 본 주소 (위조 불가) — clientIpFromXff 주석 참고.
+  const ip = clientIpFromXff((await headers()).get("x-forwarded-for"));
   const rateLimitKey = session?.user?.id ? `uid:${session.user.id}` : `ip:${ip}`;
   if (contactRateLimiter.check(rateLimitKey) === "RATE_LIMITED") {
     return { error: "잠시 후 다시 시도해 주세요. (5분에 3건 제한)" };
