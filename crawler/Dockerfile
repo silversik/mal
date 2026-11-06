@@ -37,8 +37,8 @@ USER app
 ENV PATH=/app/.venv/bin:$PATH \
     PYTHONPATH=/app
 
-# src/scheduler_main.py 가 APScheduler(BlockingScheduler) 를 돌린다 — 호스트 systemd
-# timer 의존성 제거. 기존 systemd/*.timer 스펙을 그대로 KST CronTrigger 로 이식함.
+# src/scheduler_main.py 가 APScheduler(BlockingScheduler) 로 모든 잡을 KST 스케줄한다
+# (유일한 스케줄러).
 # @track_job 이 run 을 대시보드에 기록하므로 추가 훅 불필요.
 # 수동/일회성 명령 (backfill-history, sync-horse-no 등) 은 `docker exec mal-crawler
 # python -m src.main <cmd>` 형태로 여전히 호출 가능.

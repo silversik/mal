@@ -15,7 +15,7 @@
 | publicDataPk | endpoint | operation | 용도 | 적재 테이블 | job_key |
 |---|---|---|---|---|---|
 | 15057985 | API42_1 | totalHorseInfo_1 | 마필종합 상세 (혈통·외모·이력) | `horses` | `mal.sync_horses_backfill`, `mal.sync_horses_refresh` |
-| 15150072 | API145 | rchrLoyRcod | 경주마별 1년간 전적 | (직접 적재 없음, UI 차트) | — |
+| 15150072 | API145 | rchrLoyRcod | 경주마별 1년간 전적 | — (client 미구현) | — |
 | 15057323 | API77 | raceHorseRating | 경주마 레이팅 (rating1~4 미공개) | `horse_ratings` 시계열 | `mal.sync_horse_ratings` |
 | 15058076 | raceHorseRatingChangeInfo_2 | (동일) | 마필 등급변동 이력 | `horse_rank_changes` | `mal.sync_horse_rank_changes` |
 | 15086329 | currentjockeyInfo | getcurrentjockeyinfo | 현직 기수 마스터 | `jockeys` | `mal.sync_jockeys` |

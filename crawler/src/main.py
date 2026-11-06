@@ -31,11 +31,11 @@ from .jobs.periodic import (
     run_sync_race_today_meta,
     run_sync_races_live,
     run_sync_races_today,
-    run_sync_yesterday_catchup,
     run_sync_trainers,
     run_sync_videos,
     run_sync_videos_backfill,
     run_sync_videos_bulk,
+    run_sync_yesterday_catchup,
 )
 from .jobs.sync_horses import backfill_missing_raw, sync_by_name, sync_by_no, upsert_horses
 from .jobs.sync_jockeys import sync_all_jockeys
@@ -47,7 +47,7 @@ from .jobs.sync_videos import smoke_videos, sync_videos
 from .jobs.sync_weather import backfill as backfill_weather
 from .jobs.sync_weather import sync_recent as sync_weather_recent
 from .logging import configure_logging, get_logger
-from .monitoring import check_stale, register_all_jobs
+from .monitoring import register_all_jobs
 
 # pretty_exceptions_show_locals=False — 수동 실행 중 예외 시 typer(rich) traceback 이
 # 프레임 locals(params dict 의 serviceKey 등)를 터미널에 그대로 찍지 않도록.
@@ -116,10 +116,7 @@ def cmd_sync_race_date(
         typer.echo("Invalid date format. Use YYYY-MM-DD or YYYYMMDD.")
         raise typer.Exit(code=1)
 
-    if meet is not None:
-        n = sync_date(d, meet=meet)
-    else:
-        n = sync_date_all_meets(d)
+    n = sync_date(d, meet=meet) if meet is not None else sync_date_all_meets(d)
     typer.echo(f"upserted {n} race result rows")
 
 
@@ -201,8 +198,9 @@ def cmd_smoke_videos(
 
 
 # ============================================================================
-# Periodic entry points — systemd timer 가 호출. scraper_runs 에 기록됨.
-# 수동 ad-hoc 실행은 위의 `sync-news` / `sync-today` 등을 그대로 사용.
+# Periodic entry points — scheduler_main 이 호출하는 run_* 를 수동으로 1회 실행.
+# @track_job 으로 crawler-dashboard 에 run 이 기록된다.
+# 대시보드 기록 없이 ad-hoc 실행은 위의 `sync-news` / `sync-today` 등을 사용.
 # ============================================================================
 
 @app.command("periodic-news")
@@ -228,7 +226,7 @@ def cmd_periodic_races_today() -> None:
 
 @app.command("periodic-races-live")
 def cmd_periodic_races_live() -> None:
-    """[scheduled] sync_races_live — 매시 정각 10~21시 KST 실시간 결과·배당."""
+    """[scheduled] sync_races_live — KST 10:00~22:30 매 30분 실시간 결과·배당."""
     n = run_sync_races_live()
     typer.echo(f"live upserted {n} rows")
 
@@ -296,14 +294,6 @@ def cmd_backfill_history(
     typer.echo(f"backfilled {n} race_result rows across {(e_date - s_date).days + 1} days")
 
 
-@app.command("backfill-history-33y")
-def cmd_backfill_history_33y() -> None:
-    """[one-shot, tracked] 최근 33년 전체 부트스트랩 (대시보드에 run 기록됨)."""
-    from .jobs.backfill_history import run_backfill_last_33y
-    n = run_backfill_last_33y()
-    typer.echo(f"backfilled {n} race_result rows (last 33 years)")
-
-
 @app.command("periodic-race-plan")
 def cmd_periodic_race_plan() -> None:
     """[scheduled] sync_race_plan — 대상경주 연간계획 (올해 + 11~12월엔 내년도)."""
@@ -369,7 +359,8 @@ def cmd_sync_dividend_date(
     meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 3곳 모두)"),
 ) -> None:
     """Ad-hoc: 특정 날짜 확정배당율을 fetch & upsert."""
-    from .jobs.sync_race_dividends import sync_date as sync_div, sync_date_all_meets as sync_div_all
+    from .jobs.sync_race_dividends import sync_date as sync_div
+    from .jobs.sync_race_dividends import sync_date_all_meets as sync_div_all
     for fmt in ("%Y-%m-%d", "%Y%m%d"):
         try:
             d = datetime.strptime(rc_date, fmt).date()
@@ -381,21 +372,6 @@ def cmd_sync_dividend_date(
         raise typer.Exit(code=1)
     n = sync_div(d, meet=meet) if meet is not None else sync_div_all(d)
     typer.echo(f"upserted {n} race_dividend rows")
-
-
-@app.command("backfill-dividends")
-def cmd_backfill_dividends(
-    months: int = typer.Option(6, help="과거 몇 개월치 백필 (races 기준)"),
-    sleep: float = typer.Option(0.3, help="(date,meet) 호출 간격 (초)"),
-) -> None:
-    """[one-shot] race_dividends 1차 백필 — 최근 N개월 races 를 역순 순회.
-
-    NOTE: API301 한 (date, meet) = ~30~60 page calls 이라 1회 실행에 일일 쿼터를
-    초과할 수 있다. 정상 운영에선 `chunked-dividends-backfill` (야간 청크 잡) 를 사용.
-    """
-    from .jobs.backfill_dividends import backfill
-    n = backfill(months=months, sleep_sec=sleep)
-    typer.echo(f"backfilled {n} race_dividend rows")
 
 
 @app.command("chunked-dividends-backfill")
@@ -457,7 +433,8 @@ def cmd_sync_race_sales_date(
     meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 3곳 모두)"),
 ) -> None:
     """Ad-hoc: 특정 날짜 풀별 매출액을 fetch & upsert."""
-    from .jobs.sync_race_sales import sync_date as sync_sales, sync_date_all_meets as sync_sales_all
+    from .jobs.sync_race_sales import sync_date as sync_sales
+    from .jobs.sync_race_sales import sync_date_all_meets as sync_sales_all
     for fmt in ("%Y-%m-%d", "%Y%m%d"):
         try:
             d = datetime.strptime(rc_date, fmt).date()
@@ -570,22 +547,6 @@ def cmd_register_dashboard_jobs() -> None:
     """
     register_all_jobs()
     typer.echo("dashboard jobs registered")
-
-
-@app.command("check-stale")
-def cmd_check_stale(
-    multiplier: float = typer.Option(
-        1.5, help="expected_interval_sec * multiplier 초과 시 stale 로 판정",
-    ),
-) -> None:
-    """Stale job 탐지 + Discord 웹훅 전송. hourly 타이머로 호출."""
-    stale = check_stale(multiplier=multiplier)
-    if not stale:
-        typer.echo("all jobs are fresh")
-        return
-    typer.echo(f"found {len(stale)} stale job(s):")
-    for r in stale:
-        typer.echo(f"  · {r['job_key']} (since_sec={int(r['since_sec'] or 0)})")
 
 
 if __name__ == "__main__":

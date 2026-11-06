@@ -1,11 +1,12 @@
 """Periodic entry points wrapped with @track_job.
 
-이 모듈의 함수들은 systemd timer 가 직접 호출하는 "스케줄된" 실행 지점이며,
-각 실행은 `scraper_runs` 에 기록된다. 기존 CLI 명령 (`sync-news`, `sync-today`
-등) 은 ad-hoc 수동 용도로 남겨두고, 자동 실행은 이쪽으로 호출한다.
+이 모듈의 함수들은 `scheduler_main.py` (컨테이너 내장 APScheduler) 가 호출하는
+"스케줄된" 실행 지점이며, 각 실행은 @track_job 이 crawler-dashboard 에 리포트한다.
+기존 CLI 명령 (`sync-news`, `sync-today` 등) 은 ad-hoc 수동 용도로 남겨두고,
+자동 실행은 이쪽으로 호출한다.
 
-job_key 는 `scraper_jobs` seed 와 1:1 대응 — 새 job 을 추가하려면
-migration 에 seed row 를 넣고 여기에 래퍼를 추가.
+새 job 추가 = `monitoring.JOB_CATALOG` 에 스펙 1개 + 여기에 `@track_job("mal.<name>")`
+래퍼 + `scheduler_main.py` 의 `add_job` 과 `TRIGGER_JOBS` 등록 (마이그레이션 불필요).
 """
 from __future__ import annotations
 
@@ -17,25 +18,25 @@ from sqlalchemy import text
 from ..config import settings
 from ..logging import get_logger
 from ..monitoring import track_job
+from .backfill_races_from_entries import backfill_races_metadata_from_entries
+from .chunked_backfill_dividends import run_chunk as run_chunked_dividends_chunk
+from .sync_favorite_notifications import build_favorite_notifications
 from .sync_horse_rank_changes import sync_all as sync_horse_rank_changes_all
 from .sync_horse_ratings import sync_all_meets as sync_horse_ratings_all_meets
 from .sync_horses import backfill_missing_raw, refresh_stale_horses
-from .sync_jockeys import sync_all_jockeys
 from .sync_jockey_changes import sync_recent as sync_jockey_changes_recent
-from .sync_owners import sync_all_owners
-from .sync_trainers import sync_all_trainers
-from .sync_favorite_notifications import build_favorite_notifications
+from .sync_jockeys import sync_all_jockeys
 from .sync_naver_news import sync_naver_news
-from .backfill_races_from_entries import backfill_races_metadata_from_entries
+from .sync_owners import sync_all_owners
+from .sync_race_corners import sync_date_all_meets as sync_race_corners_all_meets
+from .sync_race_dividends import sync_date_all_meets as sync_dividends_all_meets
 from .sync_race_entries import sync_upcoming as sync_upcoming_race_entries
 from .sync_race_info import backfill_races_metadata
-from .sync_race_today_meta import sync_today_meta
 from .sync_race_plan import sync_scheduled_years as sync_race_plan_years
-from .sync_race_dividends import sync_date_all_meets as sync_dividends_all_meets
 from .sync_race_sales import sync_date_all_meets as sync_race_sales_all_meets
-from .sync_race_corners import sync_date_all_meets as sync_race_corners_all_meets
+from .sync_race_today_meta import sync_today_meta
 from .sync_races import sync_date_all_meets
-from .chunked_backfill_dividends import run_chunk as run_chunked_dividends_chunk
+from .sync_trainers import sync_all_trainers
 from .sync_videos import sync_videos
 from .sync_videos_backfill import backfill_missing_race_videos
 from .sync_videos_bulk import bulk_backfill_videos
@@ -58,10 +59,10 @@ def run_sync_news() -> int:
 
 @track_job("mal.sync_videos")
 def run_sync_videos() -> int:
-    # 환경변수 미설정 시 silent skip(return 0) 하면 scraper_runs 가 success 로
+    # 환경변수 미설정 시 silent skip(return 0) 하면 대시보드에 success 로
     # 기록되어 모니터링이 미수집 사고를 캐치하지 못한다 (mal.sync_race_entries
     # 의 KRA_CHULMA_OPERATION 미설정으로 4/25 이후 race_entries 0건 사고 참고).
-    # 명시적 RuntimeError 로 전환하면 scraper_runs 가 failed 로 떨어져 즉시
+    # 명시적 RuntimeError 로 전환하면 run 이 failed 로 떨어져 즉시
     # 대시보드에 빨간 신호로 보인다.
     if not settings.youtube_api_key or not settings.youtube_krbc_channel_id:
         raise RuntimeError(
@@ -72,11 +73,35 @@ def run_sync_videos() -> int:
 
 @track_job("mal.sync_races_today")
 def run_sync_races_today() -> int:
-    return sync_date_all_meets(date.today())
+    """오늘(KST) 경주결과 — 23:05 KST, sync_races_live 의 backstop.
+
+    경기일엔 sync_races_live 가 10:00~22:30 매 30분 같은 `sync_date_all_meets(today)`
+    를 이미 돌렸다 (마지막 tick 22:30). live 게이트(`_race_meets_on`)가 오늘 경마장을
+    찾고 오늘 경주가 전부 결과를 받았으면 live 가 커버한 날이라 중복 KRA 호출을 생략한다.
+    결과 빠진 경주가 남아 있으면 (live 마지막 tick 실패·KRA 지연) 직접 재수집하고,
+    게이트가 비어 live 가 skip 한 날 (races 에 오늘 row 가 없는 날) 에도 직접 수집.
+    잔여 누락은 다음날 07:30 sync_yesterday_catchup / 09~12시 residual 이 보정.
+    """
+    today = datetime.now(KST).date()
+    race_meets = _race_meets_on(today)
+    if race_meets and not _has_unresolved_races_on(today):
+        log.info(
+            "races_today_skip_live_covers", date=str(today), meets=sorted(race_meets)
+        )
+        return 0
+    return sync_date_all_meets(today)
 
 
 # races.meet 는 한글명 저장 — API meet 코드로 역매핑 ("부산경남" 표기도 허용)
 _MEET_CODE = {"서울": 1, "제주": 2, "부경": 3, "부산경남": 3}
+
+
+def _dividend_meet_codes(race_meets: set[str], *, d: date, event: str) -> list[int]:
+    """races 한글 경마장명 → 배당 API meet 코드 (정렬). 모르는 이름은 경고 후 제외."""
+    unknown = sorted(m for m in race_meets if m not in _MEET_CODE)
+    if unknown:
+        log.warning(event, date=str(d), meets=unknown)
+    return sorted({_MEET_CODE[m] for m in race_meets if m in _MEET_CODE})
 
 
 def _race_meets_on(d: date) -> set[str]:
@@ -130,10 +155,9 @@ def run_sync_races_live() -> int:
         log.info("races_live_skip_no_today_races", date=str(today))
         return 0
     races = sync_date_all_meets(today)
-    div_meets = sorted({_MEET_CODE[m] for m in race_meets if m in _MEET_CODE})
-    unknown = sorted(m for m in race_meets if m not in _MEET_CODE)
-    if unknown:
-        log.warning("races_live_unknown_meet", date=str(today), meets=unknown)
+    div_meets = _dividend_meet_codes(
+        race_meets, d=today, event="races_live_unknown_meet"
+    )
     dividends = sync_dividends_all_meets(today, meets=div_meets) if div_meets else 0
     log.info(
         "races_live_done", races=races, dividends=dividends, dividend_meets=div_meets
@@ -163,26 +187,27 @@ def run_sync_yesterday_residual() -> int:
 def run_sync_yesterday_catchup() -> int:
     """전날 경주결과·배당·매출 누락 보정 — 매일 07:30 KST.
 
-    22:00 KST sync 가 실패하거나 KRA API 가 결과 공표를 지연한 경우,
+    당일 sync (live 22:30 / sync_races_today 23:05) 가 실패하거나 KRA API 가 결과
+    공표를 지연한 경우,
     다음날 아침에 전날 데이터를 재수집해 빈 날짜를 채운다.
     upsert 이므로 데이터가 이미 존재해도 안전하게 재실행.
 
     Invariant fail-loud: catchup 후에도 어제 race_entries(출전표)는 있는데
-    race_results 가 0건이면 RuntimeError. 5/8 사고처럼 22:00 sync_races_today
+    race_results 가 0건이면 RuntimeError. 5/8 사고처럼 당일 sync_races_today
     잡 자체가 안 돌거나 sync_races_live 도 등록 안 된 채로 race day 결과가
     통째로 비는 상황을 즉시 감지. KRA 발표 지연(드물게)도 포함되지만, 사람이
     인지하고 sync-race-date 수동 재시도 판단이 필요한 상황이라 알림이 맞다.
     """
-    from datetime import timedelta
-    from sqlalchemy import text
-
     from ..db import session_scope
 
     yesterday = date.today() - timedelta(days=1)
     races = sync_date_all_meets(yesterday)
     dividends = sync_dividends_all_meets(yesterday)
     sales = sync_race_sales_all_meets(yesterday)
-    log.info("yesterday_catchup_done", date=str(yesterday), races=races, dividends=dividends, sales=sales)
+    log.info(
+        "yesterday_catchup_done",
+        date=str(yesterday), races=races, dividends=dividends, sales=sales,
+    )
 
     with session_scope() as s:
         row = s.execute(
@@ -200,7 +225,7 @@ def run_sync_yesterday_catchup() -> int:
     if row.entries > 0 and row.results == 0:
         raise RuntimeError(
             f"yesterday_catchup_incomplete: {yesterday} 출전표 {row.entries}건 "
-            f"있는데 결과 0건. 22:00 KST sync_races_today 미실행 또는 KRA 발표 "
+            f"있는데 결과 0건. 당일 sync_races_live/sync_races_today 미실행 또는 KRA 발표 "
             f"지연 가능성 — `python -m src.main sync-race-date {yesterday}` 또는 "
             f"대시보드에서 sync_yesterday_catchup 재실행 필요."
         )
@@ -236,7 +261,7 @@ def run_sync_race_entries() -> int:
     # success/0 으로 silent skip 되었고, race_entries 가 한 줄도 안 들어와
     # "오늘의 경주"·"다음 진행 예정 경기" 섹션이 빈 채로 노출된 사고가 있었음.
     # success/0 이라 모니터링이 캐치 못함 — 명시적 RuntimeError 로 전환해
-    # scraper_runs 에 failed 로 기록되도록.
+    # 대시보드에 failed 로 기록되도록.
     if not settings.kra_chulma_operation:
         raise RuntimeError(
             "KRA_CHULMA_OPERATION 미설정 — data.go.kr Swagger 의 API26_2 "
@@ -247,15 +272,15 @@ def run_sync_race_entries() -> int:
 
 @track_job("mal.sync_race_info")
 def run_sync_race_info() -> int:
-    """API187 로 races 메타(이름/거리/등급/주로/발주시각) 백필 — 05:30·22:30 KST.
+    """API187 races 메타(이름/거리/등급/주로/발주시각) 백필 — 주 1회 canary (월 05:30 KST).
 
-    아침 실행은 당일 출주 시각·거리를 KRA 가 새벽에 publish 한 직후 가져와
-    홈 카로셀의 출전표에 반영하기 위함. 저녁 실행은 결과 확정(22:00) 직후
-    빈 메타가 있다면 추가 보정.
-
-    ⚠ 2026-05 현재 API187 은 빈 응답(items="")만 반환 — 실질 backfill 은
-    `sync_race_today_meta` (HTML 크롤링) 가 담당한다. KRA 가 API 를 복구하면
-    이 잡이 자동으로 다시 데이터를 받게 된다.
+    ⚠ 2026-05 이후 API187 은 빈 응답(items="")만 반환 (races.track_type/
+    track_condition 이 항상 NULL) — 실질 backfill 은 `sync_race_today_meta`
+    (HTML 크롤링) 와 `backfill_races_from_entries` 가 담당한다. 그래서 하루 2회
+    (05:30·22:30) 호출을 주 1회 canary 로 줄였다: KRA 가 API 를 복구하면 다음
+    월요일 run 의 rows 가 0 → N 으로 바뀌어 대시보드에 보이고, COALESCE 백필이라
+    한 번에 올해 전체 빈 메타를 채운다. 3개 경마장 호출이 전부 예외면 RuntimeError
+    (승인 만료·키 오류를 빈 응답과 구분).
     """
     return backfill_races_metadata()
 
@@ -282,8 +307,24 @@ def run_sync_race_today_meta() -> int:
 
 @track_job("mal.sync_race_dividends")
 def run_sync_race_dividends() -> int:
-    """오늘 경주의 확정배당율 적재 — 결과 sync (22:00) 이후 22:45 KST."""
-    return sync_dividends_all_meets(date.today())
+    """오늘(KST) 경주의 확정배당율 적재 — live 마지막 tick(22:30) 이후 22:45 KST.
+
+    API301 은 (date, meet) 1회에 ~30~65 page 를 쓰므로 sync_races_live 와 같은
+    필터로 오늘 races 에 있는 경마장만 호출. 오늘 경주가 없으면 KRA 호출 없이 0.
+    """
+    today = datetime.now(KST).date()
+    race_meets = _race_meets_on(today)
+    meets = _dividend_meet_codes(
+        race_meets, d=today, event="race_dividends_unknown_meet"
+    )
+    if not meets:
+        log.info(
+            "race_dividends_skip_no_today_meets",
+            date=str(today),
+            race_meets=sorted(race_meets),
+        )
+        return 0
+    return sync_dividends_all_meets(today, meets=meets)
 
 
 @track_job("mal.sync_race_sales")
@@ -294,7 +335,7 @@ def run_sync_race_sales() -> int:
 
 @track_job("mal.sync_race_corners")
 def run_sync_race_corners() -> int:
-    """오늘 경주의 통과순위·구간기록 — race_results (22:00) 직후 22:55 KST.
+    """오늘 경주의 통과순위·구간기록 — 결과(live 22:30) 이후 22:55 KST.
 
     KRA API6_1/raceDetailSectionRecord_1 (publicDataPk=15057847) — 별도 활용신청.
     응답 빈 경우 0 반환 — 활용신청 완료 시점에 자동 적재 시작.
@@ -353,23 +394,26 @@ def run_chunked_dividends_backfill() -> int:
 
 @track_job("mal.sync_videos_backfill")
 def run_sync_videos_backfill() -> int:
-    """누락된 경주 영상을 YouTube search 로 매칭 — 23:00 KST."""
+    """최근 35일 누락 경주 영상을 YouTube search 로 매칭 — 23:00 KST.
+
+    search 는 1회 100 units 라 최근 창만 맡는다 (35일 · 실행당 20건 = ≤2,000 units).
+    그보다 오래된 누락은 월 1회 sync_videos_bulk (업로드 플레이리스트 12개월 walk,
+    ~80 units) 가 cover — 35일 창은 bulk 주기(최대 31일)보다 넓게 잡아 틈이 없다.
+    """
     # run_sync_videos 와 동일 — env 미설정은 silent skip 이 아니라 명시적 실패.
     if not settings.youtube_api_key or not settings.youtube_krbc_channel_id:
         raise RuntimeError(
             "YOUTUBE_API_KEY / YOUTUBE_KRBC_CHANNEL_ID 미설정 — .env 에 추가 필요"
         )
-    # days_back 은 함수 기본값(365)과 맞춘다 — 30일 창은 오래된 누락(영광의월드 1년 공백
-    # 사례)을 영구 방치한다. limit=50 이 실행당 쿼터를 캡하므로 창을 넓혀도 비용 동일.
-    return backfill_missing_race_videos(days_back=365, limit=50)
+    return backfill_missing_race_videos(days_back=35, limit=20)
 
 
 @track_job("mal.sync_videos_bulk")
 def run_sync_videos_bulk() -> int:
     """KRBC 업로드 플레이리스트 1년치 walk → kra_videos 일괄 적재.
 
-    sync_videos_backfill 은 search API 로 race 1건 = 100 units 라 LIMIT 50 매일
-    돌려야 1년치 cover (~30일 소요). 이 잡은 uploads playlist paginate 로 1회
+    sync_videos_backfill 은 search API 로 race 1건 = 100 units 라 최근 35일 창만
+    맡고, 그보다 오래된 누락은 이 잡이 cover 한다. uploads playlist paginate 로 1회
     실행에 ~80 units 만 쓰며 1년치 영상 ID 를 통째로 가져온다. 매칭은
     upsert_videos 가 제목 패턴 ('(meet) YYYY.MM.DD N경주') 으로 race_date/
     meet/race_no 추출해 자동 채움.

@@ -34,11 +34,6 @@ class HorseRatingClient(KraClient):
             params["meet"] = meet
         return self.iter_items(self.operation, page_size=page_size, **params)
 
-    def search_by_horse(self, hr_no: str) -> list[dict[str, Any]]:
-        return self.iter_items(
-            self.operation, page_size=100, max_pages=1, hr_no=hr_no
-        )
-
 
 # --------------------------------------------------------------------- mapping
 
