@@ -90,9 +90,13 @@ def sync_range(start_date: date, end_date: date) -> int:
 
 
 def sync_recent(days: int = 7) -> int:
-    """직전 `days` 일치 시간자료 갱신 — 일일 cron 용. 관측 확정 지연 대비 안전 마진."""
-    today = date.today()
-    return sync_range(today - timedelta(days=days), today)
+    """직전 `days` 일치 시간자료 갱신 — 일일 cron 용. 관측 확정 지연 대비 안전 마진.
+
+    KMA ASOS 시간자료 API 는 전날까지만 제공 — endDt 가 오늘이면 관측소별로 에러가 나
+    0건 성공으로 끝난다. 그래서 KST 기준 어제까지로 끊는다 (프로세스 TZ 무관).
+    """
+    today = datetime.now(KST).date()
+    return sync_range(today - timedelta(days=days), today - timedelta(days=1))
 
 
 def backfill(start: date, end: date, *, chunk_days: int = 30) -> int:

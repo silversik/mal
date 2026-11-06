@@ -51,6 +51,17 @@ export function GateNum({ n, size = 26 }: { n: number | null; size?: number }) {
   );
 }
 
+/**
+ * 1·2·3착 3단 컨벤션 — recent-form-dots.tsx RANK_COLOR / PopChip 과 동일 계열.
+ * 두 테마 모두 fg/bg ≥ 4.5:1 (light 7.39 / 6.59 / 9.68 · dark 6.11 / 5.87 / 5.98).
+ * 이전 리터럴(#c4c8d2 위 흰 글자 1.67:1, 다크에서 gold 위 ink 2.4:1)은 대비 미달이었음.
+ */
+const MEDAL_STYLE: Record<1 | 2 | 3, { bg: string; fg: string }> = {
+  1: { bg: "var(--brown)", fg: "var(--brown-fg)" },
+  2: { bg: "var(--muted-ink)", fg: "var(--surface)" },
+  3: { bg: "var(--brown-pale)", fg: "var(--ink)" },
+};
+
 /** 메달 (1·2·3착) — 게이트와 별개의 색 시스템. */
 export function RankMedal({ rank }: { rank: number | null }) {
   if (rank == null) return <span className="text-muted-foreground">-</span>;
@@ -59,15 +70,11 @@ export function RankMedal({ rank }: { rank: number | null }) {
       <span className="font-mono font-bold tabular-nums text-foreground">{rank}</span>
     );
   }
-  const style = {
-    1: { bg: "var(--color-gold)", color: "var(--color-navy)" },
-    2: { bg: "#c4c8d2", color: "#ffffff" },
-    3: { bg: "#b07a40", color: "#ffffff" },
-  }[rank as 1 | 2 | 3];
+  const style = MEDAL_STYLE[rank as 1 | 2 | 3];
   return (
     <span
       className="inline-flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-bold tabular-nums"
-      style={{ background: style.bg, color: style.color }}
+      style={{ background: style.bg, color: style.fg }}
     >
       {rank}
     </span>
@@ -91,7 +98,7 @@ export function SexBullet({ sex }: { sex: string | null }) {
 }
 
 /**
- * 출전표의 "최근 5전" 미니 도트. 1=gold, 2=silver, 3=copper, 그외=muted.
+ * 출전표의 "최근 5전" 미니 도트. 1·2·3착 = MEDAL_STYLE 3단, 그외=muted.
  * 시각화 가벼움 — 마명 셀 인라인용.
  */
 export function FormDots({ finishes }: { finishes: (number | null)[] }) {
@@ -99,18 +106,13 @@ export function FormDots({ finishes }: { finishes: (number | null)[] }) {
   return (
     <span className="inline-flex items-center gap-[2px] align-middle">
       {finishes.map((r, i) => {
-        const cls =
-          r === 1
-            ? "bg-[var(--color-gold)]"
-            : r === 2
-              ? "bg-[#c4c8d2]"
-              : r === 3
-                ? "bg-[#b07a40]"
-                : "bg-muted";
+        const bg =
+          r === 1 || r === 2 || r === 3 ? MEDAL_STYLE[r].bg : "var(--muted)";
         return (
           <span
             key={i}
-            className={`inline-block h-2 w-2 rounded-full ${cls}`}
+            className="inline-block h-2 w-2 rounded-full"
+            style={{ background: bg }}
             title={r == null ? "미완주" : `${r}착`}
           />
         );
@@ -505,10 +507,20 @@ export type PodiumEntry = {
 };
 
 /**
+ * 시상대 카드 틴트 — 순위 자체는 RankMedal 숫자가 인코딩(색 단독 아님), 틴트는 보조.
+ * 테마 flip 되는 토큰 위에 color-mix 로 얹어 다크에서도 ink/muted-ink 대비 ≥ 4.9:1.
+ */
+const PODIUM_TINT: Record<1 | 2 | 3, string> = {
+  1: "color-mix(in srgb, var(--brown) 12%, var(--card))",
+  2: "var(--muted)",
+  3: "color-mix(in srgb, var(--brown-pale) 22%, var(--card))",
+};
+
+/**
  * 결과(post) 직후 가장 먼저 보고 싶은 정보는 1·2·3착.
  * 헤더 바로 아래에 podium 카드로 노출해 출전표까지 스크롤할 필요를 없앤다.
  *
- * 색상: 1착은 라운드 헤더와 같은 navy + gold 강조, 2·3착은 muted.
+ * 색상: PODIUM_TINT (brown 12% / muted / brown-pale 22%) — 토큰 기반이라 다크에서 flip. 순위는 RankMedal 숫자.
  */
 export function PodiumCard({ podium }: { podium: PodiumEntry[] }) {
   if (podium.length === 0) return null;
@@ -519,14 +531,13 @@ export function PodiumCard({ podium }: { podium: PodiumEntry[] }) {
       <CardContent className="p-0">
         <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           {sorted.map((e) => {
-            const tone =
-              e.rank === 1
-                ? "bg-[#fff8df]"
-                : e.rank === 2
-                  ? "bg-[#f4f5f8]"
-                  : "bg-[#f8efe0]";
+            const tint = PODIUM_TINT[e.rank as 1 | 2 | 3] ?? "var(--card)";
             return (
-              <div key={e.horse_no} className={`flex items-center gap-3 p-3 ${tone}`}>
+              <div
+                key={e.horse_no}
+                className="flex items-center gap-3 p-3"
+                style={{ background: tint }}
+              >
                 <RankMedal rank={e.rank} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">

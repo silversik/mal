@@ -59,13 +59,13 @@ def _upsert(items: list[NaverNewsItem]) -> int:
 
 
 def sync_naver_news(keywords: tuple[str, ...] = DEFAULT_KEYWORDS) -> int:
-    """키워드 셋을 모두 검색해 합집합 UPSERT. 환경변수 미설정 시 0 반환."""
+    """키워드 셋을 모두 검색해 합집합 UPSERT. 환경변수 미설정 시 명시적 실패."""
+    # silent skip(return 0) 하면 대시보드가 success 로 기록해 미수집 사고를 못 잡는다
+    # (run_sync_videos / run_sync_race_entries 와 동일 패턴 — 4/25 race_entries 사고 참고).
     if not (settings.naver_search_client_id and settings.naver_search_client_secret):
-        log.warning(
-            "sync_naver_news_skipped_missing_config",
-            reason="NAVER_SEARCH_CLIENT_ID / NAVER_SEARCH_CLIENT_SECRET 미설정",
+        raise RuntimeError(
+            "NAVER_SEARCH_CLIENT_ID / NAVER_SEARCH_CLIENT_SECRET 미설정 — .env 에 추가 필요"
         )
-        return 0
 
     seen: dict[str, NaverNewsItem] = {}
     with NaverNewsSearchClient(
