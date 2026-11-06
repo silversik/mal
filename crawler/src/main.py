@@ -6,6 +6,7 @@ Usage:
     uv run python -m src.main sync-race-date <YYYY-MM-DD>
     uv run python -m src.main seed-sample
     uv run python -m src.main smoke
+    uv run python -m src.main healthcheck   # 읽기 전용 ops 점검 (exit 0/1/2)
 
 미처리 예외는 `run()` 이 API 키를 마스킹(src/redact.py)해서 stderr 로 출력한다.
 """
@@ -590,6 +591,23 @@ def run() -> None:
     except Exception as exc:  # noqa: BLE001 — 마스킹 출력 후 비정상 종료
         _print_redacted_exception(type(exc), exc, exc.__traceback__)
         raise SystemExit(1) from None
+
+
+@app.command("healthcheck")
+def cmd_healthcheck(
+    json_output: bool = typer.Option(False, "--json", help="표 대신 JSON 으로 출력"),
+    dashboard: bool = typer.Option(
+        True, "--dashboard/--no-dashboard", help="crawler-dashboard GET (3초) 점검 여부",
+    ),
+) -> None:
+    """[ops] 읽기 전용 헬스체크 — env·DB·데이터 신선도. exit 0=OK, 1=FAIL, 2=WARN 만.
+
+    prod: `docker exec mal-crawler python -m src.main healthcheck`.
+    외부 API 호출·DB 쓰기 없음 (모든 쿼리는 READ ONLY 트랜잭션 + rollback).
+    """
+    from .healthcheck import run_healthcheck
+
+    raise typer.Exit(run_healthcheck(json_output=json_output, check_dashboard_url=dashboard))
 
 
 if __name__ == "__main__":
