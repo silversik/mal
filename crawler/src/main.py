@@ -31,11 +31,11 @@ from .jobs.periodic import (
     run_sync_race_today_meta,
     run_sync_races_live,
     run_sync_races_today,
-    run_sync_yesterday_catchup,
     run_sync_trainers,
     run_sync_videos,
     run_sync_videos_backfill,
     run_sync_videos_bulk,
+    run_sync_yesterday_catchup,
 )
 from .jobs.sync_horses import backfill_missing_raw, sync_by_name, sync_by_no, upsert_horses
 from .jobs.sync_jockeys import sync_all_jockeys
@@ -116,10 +116,7 @@ def cmd_sync_race_date(
         typer.echo("Invalid date format. Use YYYY-MM-DD or YYYYMMDD.")
         raise typer.Exit(code=1)
 
-    if meet is not None:
-        n = sync_date(d, meet=meet)
-    else:
-        n = sync_date_all_meets(d)
+    n = sync_date(d, meet=meet) if meet is not None else sync_date_all_meets(d)
     typer.echo(f"upserted {n} race result rows")
 
 
@@ -362,7 +359,8 @@ def cmd_sync_dividend_date(
     meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 3곳 모두)"),
 ) -> None:
     """Ad-hoc: 특정 날짜 확정배당율을 fetch & upsert."""
-    from .jobs.sync_race_dividends import sync_date as sync_div, sync_date_all_meets as sync_div_all
+    from .jobs.sync_race_dividends import sync_date as sync_div
+    from .jobs.sync_race_dividends import sync_date_all_meets as sync_div_all
     for fmt in ("%Y-%m-%d", "%Y%m%d"):
         try:
             d = datetime.strptime(rc_date, fmt).date()
@@ -435,7 +433,8 @@ def cmd_sync_race_sales_date(
     meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 3곳 모두)"),
 ) -> None:
     """Ad-hoc: 특정 날짜 풀별 매출액을 fetch & upsert."""
-    from .jobs.sync_race_sales import sync_date as sync_sales, sync_date_all_meets as sync_sales_all
+    from .jobs.sync_race_sales import sync_date as sync_sales
+    from .jobs.sync_race_sales import sync_date_all_meets as sync_sales_all
     for fmt in ("%Y-%m-%d", "%Y%m%d"):
         try:
             d = datetime.strptime(rc_date, fmt).date()

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -20,8 +21,11 @@ from ..clients.race_info import RaceInfoClient, api_item_to_race_fields
 from ..db import session_scope
 from ..logging import get_logger
 from ..models import Race
+from ._failloud import UnitFailures
 
 log = get_logger(__name__)
+
+KST = ZoneInfo("Asia/Seoul")
 
 
 def backfill_races_from_results() -> int:
@@ -98,18 +102,21 @@ def backfill_races_metadata(year: int | None = None) -> int:
 
     이미 값이 있는 행은 COALESCE 로 보존 — 결과에서 들어온 정확한 entry_count
     같은 값을 API187 근사치가 덮어쓰지 않도록 한다.
+
+    주간 canary 로 돌기 때문에 fail-loud: 3개 경마장 호출이 **전부** 예외면
+    RuntimeError (일부 실패는 경고, 예외 없는 빈 응답·NODATA 는 정상 0건).
     """
-    yr = year or date.today().year
+    yr = year or datetime.now(KST).year
     total = 0
+    fails = UnitFailures("race_info")
     with RaceInfoClient() as client:
         for meet in (1, 2, 3):
             try:
                 items = client.list_by_year(yr, meet=meet)
-            except Exception as exc:
-                log.warning(
-                    "race_info_fetch_failed", year=yr, meet=meet, err=str(exc),
-                )
+            except Exception as exc:  # noqa: BLE001
+                fails.fail(exc, "race_info_fetch_failed", year=yr, meet=meet)
                 continue
+            fails.ok()
 
             rows = []
             seen: set[tuple] = set()
@@ -146,4 +153,8 @@ def backfill_races_metadata(year: int | None = None) -> int:
                 "races_metadata_backfilled", year=yr, meet=meet, count=len(rows),
             )
             total += len(rows)
+    if total == 0 and not fails.failed:
+        # API187 빈 응답 지속 (2026-05~) — canary 가 계속 0 이면 아직 미복구.
+        log.info("race_info_empty_response", year=yr)
+    fails.raise_if_all_failed()
     return total

@@ -1,4 +1,5 @@
-"""sync_races_live 배당 meet 필터 + 경주결과 sync 의 마필 enrich limit."""
+"""sync_races_live 배당 meet 필터 · races_today/dividends/videos_backfill 중복 호출 절감
++ 경주결과 sync 의 마필 enrich limit."""
 from __future__ import annotations
 
 import importlib
@@ -116,6 +117,64 @@ def test_live_unknown_meet_name_skips_dividends(live: dict[str, Any]) -> None:
     live["run"]()
     assert FakeDividendClient.calls == []
     assert live["race_dates"] == [date(2026, 11, 7)]  # 결과 sync 는 그대로
+
+
+# ------------------------------------------------- 22:45 배당 · 23:05 races_today
+
+
+def test_races_today_skips_when_live_covered(live: dict[str, Any], periodic: Any) -> None:
+    live["meets"] = ["서울"]
+    assert periodic.run_sync_races_today.__wrapped__() == 0
+    assert live["race_dates"] == []  # KRA 결과 호출 없음
+    assert live["sql"][0][1] == {"d": date(2026, 11, 7)}  # KST 오늘로 게이트
+
+
+def test_races_today_runs_when_live_gated_out(live: dict[str, Any], periodic: Any) -> None:
+    live["meets"] = []  # races 에 오늘 row 없음 → live 가 skip 한 날
+    periodic.run_sync_races_today.__wrapped__()
+    assert live["race_dates"] == [date(2026, 11, 7)]
+
+
+def test_race_dividends_only_today_meets(live: dict[str, Any], periodic: Any) -> None:
+    live["meets"] = ["제주", "서울"]
+    periodic.run_sync_race_dividends.__wrapped__()
+    assert FakeDividendClient.calls == [(date(2026, 11, 7), 1), (date(2026, 11, 7), 2)]
+
+
+def test_race_dividends_no_today_meets_makes_no_calls(
+    live: dict[str, Any], periodic: Any
+) -> None:
+    live["meets"] = []
+    assert periodic.run_sync_race_dividends.__wrapped__() == 0
+    assert FakeDividendClient.calls == []
+
+
+def test_race_dividends_unknown_meet_only_makes_no_calls(
+    live: dict[str, Any], periodic: Any
+) -> None:
+    live["meets"] = ["알수없음"]
+    assert periodic.run_sync_race_dividends.__wrapped__() == 0
+    assert FakeDividendClient.calls == []
+
+
+def test_videos_backfill_uses_recent_window(
+    periodic: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import dataclasses
+
+    seen: list[dict[str, Any]] = []
+    monkeypatch.setattr(
+        periodic, "settings",
+        dataclasses.replace(
+            periodic.settings, youtube_api_key="k", youtube_krbc_channel_id="c"
+        ),
+    )
+    monkeypatch.setattr(
+        periodic, "backfill_missing_race_videos", lambda **kw: seen.append(kw) or 0
+    )
+    periodic.run_sync_videos_backfill.__wrapped__()
+    # search 100 units/건 — 오래된 누락은 월간 bulk 가 cover
+    assert seen == [{"days_back": 35, "limit": 20}]
 
 
 def test_dividends_all_meets_default_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:

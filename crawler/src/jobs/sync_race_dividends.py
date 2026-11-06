@@ -1,7 +1,7 @@
 """Sync 확정배당율 (API301) → `race_dividends` (단·연) + `race_combo_dividends` (복식).
 
 경주 결과가 확정된 뒤에만 배당이 고정되므로, 보통 경주 당일 저녁~다음 날 새벽에
-호출한다. 스케줄러는 `run_sync_race_results_today` (22:00) 직후에 배치.
+호출한다. 스케줄러는 `run_sync_races_live` 마지막 tick (22:30) 이후 22:45 에 배치.
 
 API 호출 1회 (per date+meet) 의 응답에서:
     WIN/PLC                → race_dividends      (horse-level row)

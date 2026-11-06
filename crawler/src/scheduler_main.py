@@ -13,17 +13,14 @@ Dockerfile CMD 에서 기동.
 """
 from __future__ import annotations
 
-import logging
-
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-
 from crawler_core import client as dash
 
 from .jobs.periodic import (
-    run_build_favorite_notifications,
     run_backfill_races_from_entries,
+    run_build_favorite_notifications,
     run_chunked_dividends_backfill,
     run_sync_horse_rank_changes,
     run_sync_horse_ratings,
@@ -33,22 +30,22 @@ from .jobs.periodic import (
     run_sync_jockeys,
     run_sync_news,
     run_sync_owners,
+    run_sync_race_corners,
     run_sync_race_dividends,
     run_sync_race_entries,
     run_sync_race_info,
     run_sync_race_plan,
-    run_sync_race_corners,
     run_sync_race_sales,
     run_sync_race_today_meta,
     run_sync_races_live,
     run_sync_races_today,
-    run_sync_yesterday_residual,
     run_sync_trainers,
     run_sync_videos,
     run_sync_videos_backfill,
     run_sync_videos_bulk,
     run_sync_weather,
     run_sync_yesterday_catchup,
+    run_sync_yesterday_residual,
 )
 from .logging import configure_logging, get_logger
 from .monitoring import register_all_jobs
@@ -161,23 +158,25 @@ def main() -> None:
         id="mal.sync_horse_ratings",
         **common,
     )
-    # 전날 경주결과·배당·매출 누락 보정 — 22:00 sync 실패/KRA 지연 대비 다음날 07:30 재수집.
+    # 전날 경주결과·배당·매출 누락 보정 — 당일 sync 실패/KRA 지연 대비 다음날 07:30 재수집.
     sched.add_job(
         run_sync_yesterday_catchup,
         CronTrigger(hour=7, minute=30),
         id="mal.sync_yesterday_catchup",
         **common,
     )
+    # 오늘 결과 backstop — live 마지막 tick(22:30) 이후 23:05. live 게이트(_race_meets_on)
+    # 가 오늘 경마장을 찾으면 live 가 이미 커버했으므로 KRA 호출 없이 skip, 게이트가 비어
+    # live 가 skip 한 날(출전표 sync 실패 등)에만 결과를 직접 수집.
     sched.add_job(
         run_sync_races_today,
-        CronTrigger(hour=22, minute=0),
+        CronTrigger(hour=23, minute=5),
         id="mal.sync_races_today",
         **common,
     )
-    # 경기일 실시간 결과·배당 동기화 — KST 10:00~22:30 매 30분.
-    # 단일 22:00 sync_races_today 잡 실패 시 그날 결과가 통째로 비는 사고를
-    # 방지하기 위한 in-day backstop. 비경기일이면 함수 내부에서 _race_meets_on
-    # 게이트로 즉시 skip — KRA 호출도, 실패 알림도 발생하지 않는다.
+    # 경기일 실시간 결과·배당 동기화 — KST 10:00~22:30 매 30분. 당일 결과의 주 수집 경로.
+    # 비경기일이면 함수 내부에서 _race_meets_on 게이트로 즉시 skip — KRA 호출도,
+    # 실패 알림도 발생하지 않는다.
     sched.add_job(
         run_sync_races_live,
         CronTrigger(hour="10-22", minute="0,30"),
@@ -193,13 +192,12 @@ def main() -> None:
         id="mal.sync_yesterday_residual",
         **common,
     )
-    # 결과 수집(22:00) 직후 메타 백필(22:30) — races.race_name/distance/grade/track_type 채움.
-    # 그리고 당일 아침(05:30) 한 번 더 — sync_race_plan(05:00) 다음에 실행해서 KRA 가
-    # 새벽에 갱신한 출주 시각·거리 정보를 출전표 노출 전에 races 테이블에 반영한다.
-    # ⚠ 2026-05 현재 API187 은 빈 응답. 실제 backfill 은 sync_race_today_meta (HTML).
+    # API187 경주 메타 — 주 1회 canary (월 05:30). ⚠ 2026-05~ API187 은 빈 응답이라
+    # 실제 backfill 은 sync_race_today_meta (HTML) + backfill_races_from_entries 가 담당.
+    # KRA 가 복구하면 canary run rows 가 0 → N 으로 바뀌고 COALESCE 로 올해 빈 메타를 채움.
     sched.add_job(
         run_sync_race_info,
-        CronTrigger(hour="5,22", minute=30),
+        CronTrigger(day_of_week="mon", hour=5, minute=30),
         id="mal.sync_race_info",
         **common,
     )
@@ -212,7 +210,7 @@ def main() -> None:
         id="mal.sync_race_today_meta",
         **common,
     )
-    # 메타 백필 직후 확정배당율(22:45) — race_dividends 적재.
+    # 확정배당율(22:45) — 오늘 races 에 있는 경마장만 (live 와 같은 필터), 없으면 0.
     sched.add_job(
         run_sync_race_dividends,
         CronTrigger(hour=22, minute=45),
@@ -234,7 +232,8 @@ def main() -> None:
         id="mal.sync_race_corners",
         **common,
     )
-    # 메타 백필 다음 영상 매칭(23:00) — 누락된 경주에 KRBC YouTube search 로 upsert.
+    # 영상 매칭(23:00) — 최근 35일 누락 경주만 KRBC YouTube search (100 units/건, 20건 캡).
+    # 그보다 오래된 누락은 아래 월간 sync_videos_bulk 가 cover.
     sched.add_job(
         run_sync_videos_backfill,
         CronTrigger(hour=23, minute=0),

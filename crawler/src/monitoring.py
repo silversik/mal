@@ -80,8 +80,8 @@ JOB_CATALOG: dict[str, dict] = {
     },
     "mal.sync_races_today": {
         "category": "kra_openapi",
-        "description": "오늘 경주결과 (API4, 3개 경마장)",
-        # 매일 22:00
+        "description": "오늘 경주결과 backstop (live 가 커버한 경기일은 skip)",
+        # 매일 23:05
         "expected_interval_sec": _expected_interval(_DAY),
     },
     "mal.sync_races_live": {
@@ -137,9 +137,11 @@ JOB_CATALOG: dict[str, dict] = {
     },
     "mal.sync_race_info": {
         "category": "kra_openapi",
-        "description": "경주 메타(이름/거리/등급/주로/발주시각) API187 백필 — 05:30·22:30 KST 2회",
-        # 05:30·22:30 — 최대 공백 05:30→22:30
-        "expected_interval_sec": _expected_interval(17 * _HOUR),
+        "description": (
+            "경주 메타(이름/거리/등급/주로/발주시각) API187 백필 — 주 1회 canary (월 05:30 KST)"
+        ),
+        # 매주 월 05:30
+        "expected_interval_sec": _expected_interval(7 * _DAY),
     },
     "mal.backfill_races_from_entries": {
         "category": "kra_openapi",
@@ -157,7 +159,7 @@ JOB_CATALOG: dict[str, dict] = {
     },
     "mal.sync_race_dividends": {
         "category": "kra_openapi",
-        "description": "확정배당율 (API301/Dividend_rate_total)",
+        "description": "확정배당율 (API301/Dividend_rate_total) — 오늘 경기 경마장만",
         # 매일 22:45
         "expected_interval_sec": _expected_interval(_DAY),
     },
@@ -213,7 +215,7 @@ JOB_CATALOG: dict[str, dict] = {
     },
     "mal.sync_videos_backfill": {
         "category": "youtube",
-        "description": "누락된 경주 영상 YouTube search 로 매칭",
+        "description": "최근 35일 누락 경주 영상 YouTube search 로 매칭 (실행당 20건)",
         # 매일 23:00
         "expected_interval_sec": _expected_interval(_DAY),
     },
