@@ -5,8 +5,10 @@ not-found 원장 (backfill_missing_raw)
 KRA 가 not-found(빈 응답·resultCode 03)를 주는 마필은 raw 가 영원히 NULL 이라 매
 실행마다 재조회돼 쿼터만 태웠다. 그래서 `mal.sync_meta(source='horses_backfill_not_found')
 .raw` 에 `{"attempts": {"<horse_no>": {"n", "last", "reason"}}}` 로 not-found 횟수를
-기록하고 `NOT_FOUND_MAX_ATTEMPTS` (3) 회 이상이면 건너뛴다 (DB 라 재시작에도 영속,
-chunked_backfill_dividends 와 같은 패턴 — 마이그레이션 불필요).
+기록하고 `NOT_FOUND_MAX_ATTEMPTS` (3) 회 이상이면 건너뛴다. 횟수는 KST 하루 1회만 센다
+(live 30분 틱마다 같은 마필을 반복 조회하지 않음 — 신규 마필이 마필정보에 늦게 올라오는
+경우를 며칠 기다림). exhausted 도 `EXHAUSTED_RETRY_DAYS` (30일) 뒤 한 번 더 시도.
+DB 라 재시작에도 영속 (chunked_backfill_dividends 와 같은 패턴 — 마이그레이션 불필요).
 오류(타임아웃·5xx·쿼터)는 장애로 보고 횟수에 넣지 않는다. raw 가 다른 경로로 채워진
 마필은 원장에서 자동 정리. 재시도를 강제하려면 해당 sync_meta row 를 지우면 된다.
 
@@ -16,7 +18,7 @@ chunked_backfill_dividends 와 같은 패턴 — 마이그레이션 불필요).
 from __future__ import annotations
 
 import time
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
@@ -33,8 +35,10 @@ log = get_logger(__name__)
 
 KST = ZoneInfo("Asia/Seoul")
 NOT_FOUND_LEDGER_SOURCE = "horses_backfill_not_found"
-# not-found 가 이 횟수에 닿으면 exhausted — 더 이상 호출하지 않음.
+# not-found 가 이 횟수(서로 다른 KST 날짜)에 닿으면 exhausted.
 NOT_FOUND_MAX_ATTEMPTS = 3
+# exhausted 마필도 마지막 시도 후 이 일수가 지나면 한 번 더 조회 (영구 skip 방지).
+EXHAUSTED_RETRY_DAYS = 30
 # 경주결과 sync 안에서 붙는 enrich 1회 상한 (live 30분 틱마다 돌므로 작게).
 INLINE_BACKFILL_LIMIT = 50
 # data.go.kr resultCode 03 = NODATA_ERROR
@@ -169,6 +173,27 @@ def _attempt_count(entry: dict[str, Any] | None) -> int:
         return 0
 
 
+def _days_since_last(entry: dict[str, Any] | None, today: date) -> int | None:
+    last = (entry or {}).get("last")
+    try:
+        return (today - date.fromisoformat(str(last))).days
+    except (TypeError, ValueError):
+        return None
+
+
+def _is_exhausted(entry: dict[str, Any] | None, today: date, max_not_found: int) -> bool:
+    """한도 도달 + 재시도 유예 전. 유예(`EXHAUSTED_RETRY_DAYS`)가 지나면 한 번 더 시도."""
+    if _attempt_count(entry) < max_not_found:
+        return False
+    days = _days_since_last(entry, today)
+    return days is None or days < EXHAUSTED_RETRY_DAYS
+
+
+def _tried_today(entry: dict[str, Any] | None, today: date) -> bool:
+    """오늘(KST) 이미 not-found 로 시도한 마필 — live 30분 틱마다 같은 호출 반복 방지."""
+    return _attempt_count(entry) > 0 and _days_since_last(entry, today) == 0
+
+
 def backfill_missing_raw(
     limit: int | None = None,
     sleep_sec: float = 0.15,
@@ -188,8 +213,14 @@ def backfill_missing_raw(
     ledger = {k: v for k, v in stored.items() if k in missing_set}
     dirty = len(ledger) != len(stored)
 
-    exhausted = [h for h in all_missing if _attempt_count(ledger.get(h)) >= max_not_found]
-    pending = [h for h in all_missing if _attempt_count(ledger.get(h)) < max_not_found]
+    today_d = datetime.now(KST).date()
+    exhausted = [h for h in all_missing if _is_exhausted(ledger.get(h), today_d, max_not_found)]
+    # 하루 1회만 not-found 로 센다 (신규 마필이 KRA 마필정보에 늦게 올라오는 경우를 며칠 기다림)
+    pending = [
+        h for h in all_missing
+        if not _is_exhausted(ledger.get(h), today_d, max_not_found)
+        and not _tried_today(ledger.get(h), today_d)
+    ]
     if limit:
         pending = pending[:limit]
     if exhausted:
@@ -204,7 +235,7 @@ def backfill_missing_raw(
         log.info("backfill_nothing_to_do", exhausted=len(exhausted))
         return 0
 
-    today = datetime.now(KST).date().isoformat()
+    today = today_d.isoformat()
     log.info("backfill_start", pending=len(pending), exhausted=len(exhausted))
     count = 0
     attempted = 0

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from datetime import date, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -86,24 +87,70 @@ def _ok(no: str) -> dict[str, Any]:
 # ------------------------------------------------------------ not-found 원장
 
 
-def test_not_found_three_strikes_then_skipped(env: dict[str, Any]) -> None:
+def _set_kst_day(monkeypatch: pytest.MonkeyPatch, d: date) -> None:
+    """mod.datetime.now(KST) 를 d 의 KST 정오로 고정."""
+    fixed = datetime(d.year, d.month, d.day, 12, 0, tzinfo=mod.KST)
+
+    class _Fake(datetime):
+        @classmethod
+        def now(cls, tz=None):  # noqa: ANN001, ANN206
+            return fixed.astimezone(tz) if tz else fixed.replace(tzinfo=None)
+
+    monkeypatch.setattr(mod, "datetime", _Fake)
+
+
+def test_not_found_three_strikes_then_skipped(
+    env: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
     env["missing"] = ["H1", "H2"]
     env["behavior"] = {"H1": None, "H2": _ok("H2")}
+    day0 = date(2026, 11, 6)
 
+    _set_kst_day(monkeypatch, day0)
     assert mod.backfill_missing_raw(sleep_sec=0) == 1
     assert env["ledger"]["H1"]["n"] == 1
     assert env["ledger"]["H1"]["reason"] == "empty"
 
     env["missing"] = ["H1"]  # H2 는 raw 채워짐
-    for expected_n in (2, 3):
+    for i, expected_n in ((1, 2), (2, 3)):  # 서로 다른 KST 날짜마다 1회씩만 센다
+        _set_kst_day(monkeypatch, day0 + timedelta(days=i))
         assert mod.backfill_missing_raw(sleep_sec=0) == 0
         assert env["ledger"]["H1"]["n"] == expected_n
 
-    # 4번째: exhausted → KRA 호출 자체 없음, 0건 정상 (raise 없음)
+    # 다음 날: exhausted → KRA 호출 자체 없음, 0건 정상 (raise 없음)
+    _set_kst_day(monkeypatch, day0 + timedelta(days=3))
     n_clients = len(env["clients"])
     assert mod.backfill_missing_raw(sleep_sec=0) == 0
     assert len(env["clients"]) == n_clients  # 클라이언트도 안 열림
     assert env["ledger"]["H1"]["n"] == 3
+
+
+def test_not_found_counted_once_per_kst_day(
+    env: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """live 30분 틱마다 돌아도 같은 날엔 not-found 마필을 다시 조회하지 않는다."""
+    env["missing"] = ["H1"]
+    env["behavior"] = {"H1": None}
+    _set_kst_day(monkeypatch, date(2026, 11, 6))
+    mod.backfill_missing_raw(sleep_sec=0)
+    calls_after_first = sum(len(c.calls) for c in env["clients"])
+    for _ in range(5):
+        assert mod.backfill_missing_raw(sleep_sec=0) == 0
+    assert sum(len(c.calls) for c in env["clients"]) == calls_after_first
+    assert env["ledger"]["H1"]["n"] == 1
+
+
+def test_exhausted_retried_after_grace_days(
+    env: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env["missing"] = ["H1"]
+    env["ledger"] = {"H1": {"n": 3, "last": "2026-10-01", "reason": "empty"}}
+    env["behavior"] = {"H1": _ok("H1")}
+    _set_kst_day(monkeypatch, date(2026, 10, 1) + timedelta(days=mod.EXHAUSTED_RETRY_DAYS - 1))
+    assert mod.backfill_missing_raw(sleep_sec=0) == 0  # 유예 전 → skip
+    _set_kst_day(monkeypatch, date(2026, 10, 1) + timedelta(days=mod.EXHAUSTED_RETRY_DAYS))
+    assert mod.backfill_missing_raw(sleep_sec=0) == 1  # 유예 후 재시도 → 채워짐
+    assert "H1" not in env["ledger"]
 
 
 def test_nodata_code_counts_as_not_found(env: dict[str, Any]) -> None:
