@@ -8,7 +8,7 @@
   D-1 14:00 races_live(비경기일 skip) · 09:00 race_entries · 12:00 backfill_races_from_entries
   D   05:00 race_plan · 07:30 horse_ratings(토) · 09:05 race_today_meta · 13:00 races_live
       21:00 videos · 22:30 races_live(마지막 tick) · 22:45 dividends · 22:50 sales
-      22:55 corners · 23:00 videos_backfill · 23:05 races_today(backstop)
+      23:00 videos_backfill · 23:05 races_today(backstop)
   D1  02:30 chunked_dividends · 03:00 weather · 06:00 jockeys · 06:15 trainers · 06:20 owners
       06:25 jockey_changes · 06:30 horses_backfill · 06:35 rank_changes · 07:00 horses_refresh
       07:30 yesterday_catchup · 09:00/10:00 yesterday_residual · 11:00 videos_bulk
@@ -37,7 +37,7 @@ EXPECTED_SCHEDULED = {
     "mal.sync_horse_ratings", "mal.sync_yesterday_catchup", "mal.sync_races_today",
     "mal.sync_races_live", "mal.sync_yesterday_residual", "mal.sync_race_info",
     "mal.sync_race_today_meta", "mal.sync_race_dividends", "mal.sync_race_sales",
-    "mal.sync_race_corners", "mal.sync_videos_backfill", "mal.sync_videos_bulk",
+    "mal.sync_videos_backfill", "mal.sync_videos_bulk",
     "mal.build_favorite_notifications", "mal.sync_weather",
 }
 
@@ -247,18 +247,6 @@ def test_12_race_sales(e2e):
     assert (row["amount"], row["odds_summary"]) == (7_000_001, "1위 7.5")
 
 
-def test_13_race_corners(e2e):
-    D = _d(e2e)
-    n = e2e.run("mal.sync_race_corners", D, 22, 55)
-    assert n == 3
-    row = e2e.one("SELECT * FROM race_corners WHERE race_date=:d AND meet='부경' AND race_no=1",
-                  d=D)  # 응답 meet '부산경남' → '부경'
-    assert (row["rc_dist"], row["passrank_s1f"], row["passrank_g1f"]) == (1300, "(^1,3),2", "2-1-3")
-    # "-"/"0" 은 미지원 표기 → NULL
-    assert (row["passrank_g8f_1c"], row["passrank_g6f_2c"], row["time_12f"]) == (None, None, None)
-    assert (row["time_3f"], row["dist_2f"], row["passtime_2f"]) == ("36.0", 400, "11.7")
-
-
 def test_14_videos_backfill_search(e2e):
     D = _d(e2e)
     n = e2e.run("mal.sync_videos_backfill", D, 23, 0)
@@ -399,8 +387,8 @@ def test_23_horses_refresh_stale(e2e):
 def test_24_yesterday_catchup(e2e):
     D = _d(e2e)
     n = e2e.run("mal.sync_yesterday_catchup", _d1(e2e), 7, 30)
-    # 결과 + 단·연 배당 + 매출 + 구간기록 (부경 2R 여전히 미공표)
-    assert n == 9 + 9 + 21 + 3
+    # 결과 + 단·연 배당 + 매출 (부경 2R 여전히 미공표)
+    assert n == 9 + 9 + 21
     assert {r.params["rc_date"] for r in e2e.web.kra_calls()} == {D.strftime("%Y%m%d")}
     unresolved = e2e.q("""
         SELECT r.meet, r.race_no FROM races r WHERE r.race_date=:d AND NOT EXISTS (
@@ -412,8 +400,8 @@ def test_24_yesterday_catchup(e2e):
 def test_25_yesterday_residual_fetches_late_race(e2e):
     D = _d(e2e)
     n = e2e.run("mal.sync_yesterday_residual", _d1(e2e), 9, 0)
-    # 결과 12 + 단·연 배당 12 + 매출 4경주×7풀 + 구간기록 4경주 (전 경주 upsert 재수집)
-    assert n == 12 + 12 + 28 + 4
+    # 결과 12 + 단·연 배당 12 + 매출 4경주×7풀 (전 경주 upsert 재수집)
+    assert n == 12 + 12 + 28
     b2 = e2e.q("SELECT horse_no, rank FROM race_results WHERE race_date=:d AND meet='부경' "
                "AND race_no=2 ORDER BY rank", d=D)
     assert [r["horse_no"] for r in b2] == ["0041010", "0041011", "0041012"]
@@ -694,21 +682,6 @@ def test_41_web_race_detail_post_phase(e2e):
     assert [s["pool"] for s in sales] == ["단식", "연식", "쌍식", "복식", "복연", "삼복", "삼쌍"]
     assert sales[0]["amount"] == "1000002"
 
-    # race_corners.ts getRaceCorner
-    corner = e2e.web_query(
-        """SELECT rc_dist,
-            passrank_s1f, passrank_g8f_1c, passrank_g6f_2c, passrank_g4f_3c,
-            passrank_g3f_4c, passrank_g2f, passrank_g1f,
-            time_1f, time_2f, time_3f, time_4f, time_5f, time_6f,
-            time_7f, time_8f, time_9f, time_10f, time_11f, time_12f,
-            passtime_1f, passtime_2f, passtime_3f, passtime_4f, passtime_5f,
-            passtime_6f, passtime_7f, passtime_8f, passtime_9f, passtime_10f
-       FROM race_corners
-      WHERE race_date = $1::date AND meet = $2 AND race_no = $3""",
-        D, "서울", 1,
-    )
-    assert corner and corner[0]["rc_dist"] == 1200 and corner[0]["passrank_g1f"] == "2-1-3"
-
     # videos.ts getRaceVideo
     video = e2e.web_query(
         """SELECT
@@ -933,14 +906,12 @@ def test_45_healthcheck_data_checks(e2e):
 # ============================================== E2E 가 발견해 고친 production 버그 (회귀 방지)
 
 
-def test_late_published_race_gets_sales_and_corners(e2e):
-    """07:30 catchup 이후 공표된 경주(부경 2R)도 residual 이 매출·구간기록까지 받는다."""
+def test_late_published_race_gets_sales(e2e):
+    """07:30 catchup 이후 공표된 경주(부경 2R)도 residual 이 매출까지 받는다."""
     D = e2e.world.D
     sales = e2e.one("SELECT COUNT(*) AS n FROM race_pool_sales WHERE race_date=:d "
                     "AND meet='부경' AND race_no=2", d=D)
-    corners = e2e.one("SELECT COUNT(*) AS n FROM race_corners WHERE race_date=:d "
-                      "AND meet='부경' AND race_no=2", d=D)
-    assert (sales["n"], corners["n"]) == (7, 1)
+    assert sales["n"] == 7
 
 
 def test_cli_sync_horse_name(e2e):

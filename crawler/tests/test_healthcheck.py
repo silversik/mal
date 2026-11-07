@@ -113,8 +113,6 @@ def healthy_data(now: datetime = NOW) -> dict[str, Any]:
         "race_keys:race_dividends": _key_rows(past_keys),
         "race_keys:race_combo_dividends": _key_rows(past_keys),
         "race_keys:race_pool_sales": _key_rows(past_keys),
-        "race_keys:race_corners": _key_rows(past_keys),
-        "race_corners_total": [{"n": len(past_keys)}],
         "horse_ratings": [{"latest": today - timedelta(days=6), "latest_rows": 4800}],
         "horse_rank_changes": [{
             "updated": utc_now - timedelta(hours=4), "latest_event": today - timedelta(days=2),
@@ -178,7 +176,7 @@ def test_healthy_state_is_all_ok_exit_0() -> None:
     # 주요 영역이 모두 출력에 포함
     names = {c.name.split(" (")[0] for c in checks}
     for expected in ("다음 경주일 출전표", "직전 경주일 결과", "단승/연승 배당", "복식 배당",
-                     "풀별 매출", "구간기록", "레이팅", "날씨", "경주 영상",
+                     "풀별 매출", "레이팅", "날씨", "경주 영상",
                      "대상경주 계획", "sync_meta 원장", "마이그레이션", "시간대"):
         assert expected in names, expected
 
@@ -363,8 +361,7 @@ SAT = datetime(2026, 11, 7, 10, 0, tzinfo=KST)  # 토 10:00 — 직전 경주일
 def test_yesterday_results_all_missing_fails() -> None:
     data = healthy_data(SAT)
     fri = date(2026, 11, 6)
-    for t in ("race_results", "race_dividends", "race_combo_dividends", "race_pool_sales",
-              "race_corners"):
+    for t in ("race_results", "race_dividends", "race_combo_dividends", "race_pool_sales"):
         data[f"race_keys:{t}"] = _drop(data[f"race_keys:{t}"], lambda r: r["race_date"] == fri)
     checks = _collect(data, now=SAT)
     c = _by_name(checks, "직전 경주일 결과")
@@ -429,7 +426,6 @@ def test_meet_alias_busan_is_normalized() -> None:
         ("race_dividends", "단승/연승 배당", Status.FAIL),
         ("race_combo_dividends", "복식 배당", Status.FAIL),
         ("race_pool_sales", "풀별 매출", Status.FAIL),
-        ("race_corners", "구간기록", Status.WARN),
     ],
 )
 def test_last_day_coverage(table: str, label: str, zero: Status) -> None:
@@ -443,12 +439,8 @@ def test_last_day_coverage(table: str, label: str, zero: Status) -> None:
     assert "2/5경주" in c.detail.replace(" ", "") or "3/5경주" in c.detail
 
     data[f"race_keys:{table}"] = _drop(data[f"race_keys:{table}"], lambda r: r["race_date"] == last)
-    if table == "race_corners":
-        data["race_corners_total"] = [{"n": 0}]
     c = _by_name(_collect(data), label)
     assert c.status == zero
-    if table == "race_corners":
-        assert "활용신청" in c.detail
 
 
 # ── 그 외 신선도 ────────────────────────────────────────────────────────────────

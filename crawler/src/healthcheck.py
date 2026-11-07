@@ -101,7 +101,7 @@ ENV_GROUPS: tuple[EnvGroup, ...] = (
              "없으면 run 리포트 전멸 (152일 stale 사고)"),
     EnvGroup("대시보드 주소", "@track_job", ("DASHBOARD_URL",), Status.WARN,
              "compose 기본값 http://crawler-dashboard:3100"),
-    # races·dividends·sales·corners·horses·jockeys·trainers·owners·ratings·plan …
+    # races·dividends·sales·horses·jockeys·trainers·owners·ratings·plan …
     EnvGroup("KRA OpenAPI", "KRA 잡 전체", ("KRA_SERVICE_KEY",), Status.FAIL),
     EnvGroup("출전표", "sync_race_entries", ("KRA_CHULMA_OPERATION",), Status.FAIL,
              "없으면 race_entries 0건 (4/25 사고)"),
@@ -164,7 +164,6 @@ RACE_KEY_TABLES: dict[str, str] = {
     "race_dividends": "",
     "race_combo_dividends": "",
     "race_pool_sales": "",
-    "race_corners": "",
 }
 
 _LEDGER_SQL = """
@@ -218,7 +217,6 @@ QUERIES: dict[str, str] = {
         )
         for table, extra in RACE_KEY_TABLES.items()
     },
-    "race_corners_total": "SELECT COUNT(*) AS n FROM race_corners",
     "horse_ratings": """
         SELECT MAX(snapshot_date) AS latest,
                COUNT(*) FILTER (
@@ -528,8 +526,6 @@ COVERAGE_TABLES: tuple[tuple[str, str, Status], ...] = (
     ("race_dividends", "단승/연승 배당", Status.FAIL),
     ("race_combo_dividends", "복식 배당", Status.FAIL),
     ("race_pool_sales", "풀별 매출", Status.FAIL),
-    # 별도 활용신청 API — 승인 전/공개 지연이면 빈 응답이 정상이라 경고까지만.
-    ("race_corners", "구간기록", Status.WARN),
 )
 
 
@@ -549,11 +545,7 @@ def check_last_day_coverage(db: RowProvider, cal: RaceCalendar) -> list[Check]:
         if len(have) == len(base):
             out.append(Check("결과", name, Status.OK, head))
         elif not have:
-            hint = ""
-            if table == "race_corners":
-                total = int(_one(db, "race_corners_total").get("n") or 0)
-                hint = " · 테이블 전체 0건 (활용신청 전?)" if total == 0 else ""
-            out.append(Check("결과", name, zero_status, f"{head} — 0건{hint}"))
+            out.append(Check("결과", name, zero_status, f"{head} — 0건"))
         else:
             out.append(Check(
                 "결과", name, Status.WARN, f"{head} — {len(base) - len(have)}경주 누락",
