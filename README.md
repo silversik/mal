@@ -4,7 +4,7 @@
 
 - **운영**: https://mal.kr
 - **저장소**: `silversik/mal` (private)
-- **데이터 소스**: KRA OpenAPI (data.go.kr) · 기상청 ASOS · 네이버 검색 · YouTube Data v3
+- **데이터 소스**: KRA OpenAPI (data.go.kr) · 기상청 ASOS · YouTube Data v3
 
 ---
 
@@ -43,7 +43,7 @@ npm run dev             # http://localhost:3000
 
 # 3) Crawler (uv 설치 후)
 cd ../crawler
-cp .env.example .env    # KRA_SERVICE_KEY · KMA_SERVICE_KEY · NAVER_* · YOUTUBE_* 등 채움
+cp .env.example .env    # KRA_SERVICE_KEY · KMA_SERVICE_KEY · YOUTUBE_* 등 채움
 uv sync
 uv run python -m src.main smoke
 ```
@@ -54,7 +54,7 @@ uv run python -m src.main smoke
 
 | 카테고리 | 내용 | 진입 |
 |---|---|---|
-| **api** | 외부 OpenAPI (KRA · KMA · 네이버 · YouTube) 별 엔드포인트·인증·구현 위치 | [docs/api/](docs/api/) |
+| **api** | 외부 OpenAPI (KRA · KMA · YouTube) 별 엔드포인트·인증·구현 위치 | [docs/api/](docs/api/) |
 | **spec** | 아키텍처 · 배포 · 운영 (Jenkins, docker-compose) | [docs/spec/](docs/spec/) |
 | **tasks** | 페이즈 단위 작업 히스토리 (0001부터 시간순 누적) | [docs/tasks/](docs/tasks/) |
 | **feature** | 운영 중인 기능별 정의서 (기획 의도 · 데이터 흐름 · 컴포넌트) | [docs/feature/](docs/feature/) |

@@ -1,8 +1,8 @@
 """Scraper run tracking + Telegram failure notifications.
 
 Usage:
-    @track_job("mal.sync_news")
-    def sync_news() -> int:
+    @track_job("mal.sync_videos")
+    def sync_videos() -> int:
         ...
 
 이전 버전은 `scraper_runs` DB 테이블에 직접 row 를 insert/update 했지만,
@@ -14,7 +14,7 @@ Usage:
 모두 예외 삼키도록 설계됨 (dashboard_client 내부 처리).
 
 `@track_job` 는 최초 호출 시 `dashboard_client.register_job(...)` 로 스펙을
-idempotent 하게 upsert 한다. job_key 는 전역 유니크 — 'mal.sync_news' 처럼
+idempotent 하게 upsert 한다. job_key 는 전역 유니크 — 'mal.sync_videos' 처럼
 서비스 prefix 를 붙여서 사용 권장.
 
 Telegram 실패 알림은 `crawler_core.client.safe_finish_run(job_key=...)` 내부에서
@@ -66,12 +66,6 @@ def _expected_interval(max_gap_sec: int) -> int:
 # 새 job = 이 dict 에 스펙 추가 + periodic.py 에 @track_job("mal.<name>") 래퍼
 #        + scheduler_main.py 의 add_job 과 TRIGGER_JOBS 등록.
 JOB_CATALOG: dict[str, dict] = {
-    "mal.sync_news": {
-        "category": "naver_search",
-        "description": "네이버 뉴스 검색 (경마/한국마사회/렛츠런파크)",
-        # IntervalTrigger minutes=30
-        "expected_interval_sec": _expected_interval(30 * _MIN),
-    },
     "mal.sync_videos": {
         "category": "youtube",
         "description": "KRBC YouTube 최신 업로드",

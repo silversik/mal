@@ -4,7 +4,7 @@ seam (모두 module scope 로 설치, 끝나면 원복):
 - DB: `src.db.engine` / `SessionLocal` 을 E2E_DATABASE_URL 엔진으로 교체 (src.config 는
   이미 import 시점에 tests/conftest.py 의 더미 DATABASE_URL 로 엔진을 만들었으므로).
 - HTTP: `httpx.Client` 를 MockTransport 주입 서브클래스로 교체 → 모든 클라이언트
-  (kra_base / kma_asos / naver_news / youtube / race_today_html) 가 FakeWeb 로 간다.
+  (kra_base / kma_asos / youtube / race_today_html) 가 FakeWeb 로 간다.
 - 시계: src.* 모듈의 `date` / `datetime` 이름을 가짜 KST 시계 기반 클래스로 교체
   (프로세스 TZ=Asia/Seoul 인 prod 컨테이너와 같은 의미의 date.today()).
 - 대시보드: `src.monitoring.dash` 를 호출 기록기로 교체 (crawler_core 미설치면 스텁 주입).
@@ -214,7 +214,7 @@ _DATA_TABLES = (
     "race_results", "race_entries", "race_dividends", "race_combo_dividends",
     "race_pool_sales", "race_corners", "races", "horse_ratings", "horse_rank_changes",
     "jockey_changes", "horses", "jockeys", "trainers", "owners", "race_plans",
-    "kra_news", "kra_videos", "weather_observations", "sync_meta",
+    "kra_videos", "weather_observations", "sync_meta",
 )
 
 
@@ -232,8 +232,6 @@ def e2e() -> Any:
         CHULMA_OP,
         KMA_KEY,
         KRA_KEY_ENCODED,
-        NAVER_ID,
-        NAVER_SECRET,
         YT_CHANNEL,
         YT_KEY,
         Clock,
@@ -277,8 +275,7 @@ def e2e() -> Any:
     overrides: dict[str, str] = dict.fromkeys(kra_fields, KRA_KEY_ENCODED)
     overrides.update(
         kma_service_key=KMA_KEY, youtube_api_key=YT_KEY, youtube_krbc_channel_id=YT_CHANNEL,
-        kra_chulma_operation=CHULMA_OP, naver_search_client_id=NAVER_ID,
-        naver_search_client_secret=NAVER_SECRET,
+        kra_chulma_operation=CHULMA_OP,
     )
     saved = {k: getattr(settings, k) for k in overrides}
     for k, v in overrides.items():

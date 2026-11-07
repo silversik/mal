@@ -1,4 +1,4 @@
-"""E2E replay 의 가짜 세계 — 외부 API 4종 + race.kra.co.kr HTML 을 한 seam 에서 흉내낸다.
+"""E2E replay 의 가짜 세계 — 외부 API 3종 + race.kra.co.kr HTML 을 한 seam 에서 흉내낸다.
 
 모든 HTTP 는 `httpx.MockTransport(FakeWeb.handler)` 로 들어온다 (conftest 가 httpx.Client
 생성자를 감싸 transport 를 주입). 응답 모양은 각 클라이언트의 파싱/매핑 함수
@@ -10,8 +10,6 @@
   미공개는 resultCode '03'(NODATA). API308(조교사) 은 XML 로 응답해 xmltodict 폴백 경로를 태운다.
 - KMA ASOS 시간자료 (apis.data.go.kr/1360000/...): 같은 envelope, `tm`="YYYY-MM-DD HH:MM",
   값은 문자열 (무강수 rn=""). "전날까지만 제공" 한도를 흉내내 endDt>=오늘이면 오류 코드.
-- 네이버 뉴스 검색 (openapi.naver.com/v1/search/news.json): items[title/originallink/link/
-  description/pubDate(RFC822)], HTML 태그·엔티티 포함.
 - YouTube Data v3 (www.googleapis.com/youtube/v3/...): channels / playlistItems(pageToken) /
   videos / search.
 - race.kra.co.kr/seoulMain.do: EUC-KR HTML, `a.raceDetail` 앵커 data-* 속성.
@@ -43,8 +41,6 @@ KMA_KEY = "e2e-kma-key"
 YT_KEY = "e2e-yt-key"
 YT_CHANNEL = "UCe2eKRBCchannel000000"
 YT_UPLOADS = "UUe2eKRBCchannel000000"
-NAVER_ID = "e2e-naver-id"
-NAVER_SECRET = "e2e-naver-secret"
 CHULMA_OP = "entrySheet_2"
 
 MEET_NAME = {1: "서울", 2: "제주", 3: "부경"}
@@ -490,23 +486,6 @@ class FakeWorld:
             t += timedelta(hours=1)
         return out
 
-    # ------------------------------------------------------------------- news
-
-    def news_items(self, query: str) -> list[dict[str, Any]]:
-        # 실제 시각 기준 2시간 전 — healthcheck(실시간) 의 뉴스 신선도 판정이 성립하도록
-        pub = (self.real_now - timedelta(hours=2)).strftime("%a, %d %b %Y %H:%M:%S +0900")
-        a = {"title": "<b>경마</b> 가을 &quot;대상경주&quot; 개막",
-             "originallink": "https://www.yna.co.kr/view/AKR20261107000100",
-             "link": "https://n.news.naver.com/mnews/article/001/0000000001",
-             "description": "렛츠런파크 서울에서 <b>경마</b> 축제가 열렸다.",
-             "pubDate": pub}
-        b = {"title": "한국마사회, 렛츠런파크 시민 개방", "originallink": "",
-             "link": "https://n.news.naver.com/mnews/article/003/0000000002",
-             "description": "", "pubDate": pub}
-        broken = {"title": "날짜깨짐", "originallink": "https://x.example/1",
-                  "link": "", "description": "", "pubDate": "not-a-date"}
-        return {"경마": [a, broken], "한국마사회": [a, b], "렛츠런파크": [b]}.get(query, [])
-
     # ---------------------------------------------------------------- youtube
 
     def _video(self, vid: str, title: str, published: datetime) -> dict[str, Any]:
@@ -632,8 +611,6 @@ class FakeWeb:
             return self._kra(request, params)
         if url.host == "apis.data.go.kr" and url.path.startswith("/1360000/"):
             return self._kma(request, params)
-        if url.host == "openapi.naver.com":
-            return self._naver(request, params)
         if url.host == "www.googleapis.com" and url.path.startswith("/youtube/v3/"):
             return self._youtube(request, params)
         if url.host == "race.kra.co.kr" and url.path == "/seoulMain.do":
@@ -749,20 +726,6 @@ class FakeWeb:
             return httpx.Response(200, json=NODATA)  # 미지원 관측소
         items = self.w.weather_items(stn, start, end)
         return httpx.Response(200, json=_kra_body(items, int(p["pageNo"]), int(p["numOfRows"])))
-
-    # ----------------------------------------------------------------- Naver
-
-    def _naver(self, request: httpx.Request, p: dict[str, str]) -> httpx.Response:
-        if request.url.path != "/v1/search/news.json":
-            return self._bad("bad naver path", request)
-        if (request.headers.get("X-Naver-Client-Id") != NAVER_ID
-                or request.headers.get("X-Naver-Client-Secret") != NAVER_SECRET):
-            return httpx.Response(401, json={"errorCode": "024"})
-        items = self.w.news_items(p.get("query", ""))
-        return httpx.Response(200, json={
-            "lastBuildDate": "Sun, 08 Nov 2026 10:00:00 +0900",
-            "total": len(items), "start": 1, "display": len(items), "items": items,
-        })
 
     # --------------------------------------------------------------- YouTube
 

@@ -6,7 +6,7 @@ dev 환경에서는 prod 에 닿을 수 없으므로 운영자가 prod 호스트
     docker exec mal-crawler python -m src.main healthcheck --json   # 기계 판독용
 
 원칙
-- **READ-ONLY** — 외부 API(KRA/KMA/YouTube/Naver) 호출 없음, DB 쓰기 없음. 모든 쿼리는
+- **READ-ONLY** — 외부 API(KRA/KMA/YouTube) 호출 없음, DB 쓰기 없음. 모든 쿼리는
   `SET TRANSACTION READ ONLY` + statement/lock timeout 트랜잭션 안에서 돌고 rollback 된다
   (prod 락을 잡지 않도록 — CLAUDE.md "운영 DB 직접 query" 주의). 유일한 네트워크 호출은
   선택적인 crawler-dashboard GET (3초 timeout) 하나.
@@ -75,8 +75,6 @@ RANK_CHANGES_FAIL_HOURS = 72
 JOCKEY_CHANGES_OK_HOURS = 30  # 매일 06:25, KRA 윈도우가 비면 updated_at 이 안 바뀔 수 있음
 JOCKEY_CHANGES_FAIL_DAYS = 14
 WEATHER_FETCH_DONE = time(3, 30)  # sync_weather 03:00 (어제까지 수집)
-NEWS_OK_DAYS = 1  # sync_news 30분 주기
-NEWS_FAIL_DAYS = 3
 VIDEOS_FAIL_DAYS = 7  # 직전 경주일 대비 매칭 영상이 이만큼 뒤처지면 실패
 HORSES_UNRESOLVED_WARN = 100  # raw NULL 중 not-found 원장에 없는 마필
 
@@ -110,8 +108,6 @@ ENV_GROUPS: tuple[EnvGroup, ...] = (
     EnvGroup("날씨", "sync_weather", ("KMA_SERVICE_KEY",), Status.FAIL),
     # sync_videos · sync_videos_backfill · sync_videos_bulk
     EnvGroup("영상", "sync_videos*", ("YOUTUBE_API_KEY", "YOUTUBE_KRBC_CHANNEL_ID"), Status.FAIL),
-    EnvGroup("뉴스", "sync_news", ("NAVER_SEARCH_CLIENT_ID", "NAVER_SEARCH_CLIENT_SECRET"),
-             Status.FAIL),
     EnvGroup("실패 알림", "Telegram", ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"), Status.WARN,
              "없으면 실패 알림만 조용히 skip"),
 )
@@ -246,11 +242,6 @@ QUERIES: dict[str, str] = {
         SELECT station_id, MAX(obs_time) AS latest
           FROM weather_observations
          GROUP BY station_id
-    """,
-    "news_latest": """
-        SELECT MAX(published_at) AS latest,
-               COUNT(*) FILTER (WHERE published_at >= now() - interval '1 day') AS last_24h
-          FROM kra_news
     """,
     "videos_latest": """
         SELECT MAX(race_date)                                        AS latest_race_date,
@@ -678,21 +669,6 @@ def check_weather(db: RowProvider, now: datetime) -> Check:
     return Check("외부", name, Status.OK, detail)
 
 
-def check_news(db: RowProvider, now: datetime) -> Check:
-    name = "뉴스 (kra_news)"
-    row = _one(db, "news_latest")
-    latest = _kst(row.get("latest"))
-    if latest is None:
-        return Check("외부", name, Status.FAIL, "기사 없음")
-    age = now - latest
-    detail = f"최신 기사 {_dt(latest)} ({_ago(age)}) · 24h {int(row.get('last_24h') or 0)}건"
-    if age > timedelta(days=NEWS_FAIL_DAYS):
-        return Check("외부", name, Status.FAIL, f"{detail} — sync_news(30분) 정지 의심")
-    if age > timedelta(days=NEWS_OK_DAYS):
-        return Check("외부", name, Status.WARN, f"{detail} — 하루 넘게 새 기사 없음")
-    return Check("외부", name, Status.OK, detail)
-
-
 def check_videos(db: RowProvider, now: datetime, last_race_day: date | None) -> Check:
     name = "경주 영상 (kra_videos)"
     row = _one(db, "videos_latest")
@@ -879,7 +855,6 @@ def check_data(db: RowProvider, now: datetime) -> list[Check]:
     out += _guard("마필", "기수변경", lambda: check_jockey_changes(db, now))
     out += _guard("마필", "마필 raw NULL", lambda: check_horses_raw(db, ledgers))
     out += _guard("외부", "날씨", lambda: check_weather(db, now))
-    out += _guard("외부", "뉴스", lambda: check_news(db, now))
     last = cal.last_before if cal else None
     out += _guard("외부", "경주 영상", lambda: check_videos(db, now, last))
     out += _guard("기타", "대상경주 계획", lambda: check_race_plans(db, now))

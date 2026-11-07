@@ -11,7 +11,7 @@
       22:55 corners · 23:00 videos_backfill · 23:05 races_today(backstop)
   D1  02:30 chunked_dividends · 03:00 weather · 06:00 jockeys · 06:15 trainers · 06:20 owners
       06:25 jockey_changes · 06:30 horses_backfill · 06:35 rank_changes · 07:00 horses_refresh
-      07:30 yesterday_catchup · 09:00/10:00 yesterday_residual · 10:30 news · 11:00 videos_bulk
+      07:30 yesterday_catchup · 09:00/10:00 yesterday_residual · 11:00 videos_bulk
   D+2 05:30 race_info (월요일 canary)
   T   12:00 race_entries(U) · 12:10 backfill_races_from_entries · 12:30 favorites ×2
 그 뒤 web/src/lib/*.ts 의 실제 SQL 로 화면 쿼리가 시드된 경주/마필을 돌려주는지 확인.
@@ -30,7 +30,7 @@ KST = ZoneInfo("Asia/Seoul")
 
 # scheduler_main 이 등록하는 잡 (mal.trigger_poll 제외) — 전부 아래에서 실행된다.
 EXPECTED_SCHEDULED = {
-    "mal.sync_news", "mal.sync_videos", "mal.sync_race_entries",
+    "mal.sync_videos", "mal.sync_race_entries",
     "mal.backfill_races_from_entries", "mal.chunked_dividends_backfill", "mal.sync_race_plan",
     "mal.sync_jockeys", "mal.sync_trainers", "mal.sync_owners", "mal.sync_jockey_changes",
     "mal.sync_horse_rank_changes", "mal.sync_horses_backfill", "mal.sync_horses_refresh",
@@ -426,22 +426,6 @@ def test_26_yesterday_residual_skips_when_complete(e2e):
     n = e2e.run("mal.sync_yesterday_residual", _d1(e2e), 10, 0)
     assert n == 0
     assert e2e.web.requests == []
-
-
-def test_27_news(e2e):
-    n = e2e.run("mal.sync_news", _d1(e2e), 10, 30)
-    assert n == 2  # 키워드 3개 합집합, guid 중복·날짜 깨진 item 제외
-    queries = sorted(r.params["query"] for r in e2e.web.requests)
-    assert queries == ["경마", "렛츠런파크", "한국마사회"]
-    rows = {r["guid"]: r for r in e2e.q("SELECT * FROM kra_news")}
-    a = rows["https://www.yna.co.kr/view/AKR20261107000100"]
-    assert (a["title"], a["source"]) == ('경마 가을 "대상경주" 개막', "연합뉴스")
-    assert a["summary"] == "렛츠런파크 서울에서 경마 축제가 열렸다."
-    b = rows["https://n.news.naver.com/mnews/article/003/0000000002"]
-    assert (b["source"], b["summary"]) == ("네이버 뉴스", None)
-    # pubDate(RFC822, +0900) → timestamptz 그대로 (월드는 실제 시각-2h 로 발행)
-    expect_pub = (e2e.world.real_now - timedelta(hours=2)).replace(microsecond=0)
-    assert b["published_at"] == expect_pub
 
 
 def test_28_videos_bulk_walks_playlist_until_cutoff(e2e):
@@ -877,7 +861,7 @@ def test_43_web_horse_detail(e2e):
     assert [(r["before_rank"], r["after_rank"]) for r in ranks] == [("국6", "국5")]
 
 
-def test_44_web_rankings_plans_news_notifications(e2e):
+def test_44_web_rankings_plans_notifications(e2e):
     w = e2e.world
     # rankings.ts getRanking('horse', 'year') — minStarts 만 1 로 (세계가 작음)
     ranking = e2e.web_query(
@@ -914,17 +898,6 @@ def test_44_web_rankings_plans_news_notifications(e2e):
     )
     assert [(s["race_date"], s["race_name"], s["prize_1st"]) for s in stakes] == [
         (w.U.isoformat(), "그랑프리(G1)", 800_000_000)]
-    # news.ts getLatestNews
-    news = e2e.web_query(
-        """SELECT
-  id, guid, title, summary, link, category, image_url, source,
-  to_char(published_at AT TIME ZONE 'Asia/Seoul', 'YYYY-MM-DD"T"HH24:MI:SSOF') AS published_at
-       FROM kra_news
-      ORDER BY published_at DESC, id DESC
-      LIMIT $1 OFFSET $2""",
-        20, 0,
-    )
-    assert {n["source"] for n in news} == {"연합뉴스", "네이버 뉴스"}
     # notifications.ts listNotifications
     notes = e2e.web_query(
         """SELECT id, kind, title, body, href,

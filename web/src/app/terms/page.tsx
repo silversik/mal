@@ -37,7 +37,7 @@ export default function TermsPage() {
           <li>마필·기수·조교사·마주의 경주 성적 및 통계 데이터 조회</li>
           <li>경주 결과, 배당 정보, 혈통 정보 아카이빙</li>
           <li>랭킹, 코스 레코드, 마필 비교 등 분석 도구</li>
-          <li>경마 관련 뉴스·영상 피드</li>
+          <li>경마 관련 영상 피드</li>
         </ul>
       </section>
 

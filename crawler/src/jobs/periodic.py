@@ -2,7 +2,7 @@
 
 이 모듈의 함수들은 `scheduler_main.py` (컨테이너 내장 APScheduler) 가 호출하는
 "스케줄된" 실행 지점이며, 각 실행은 @track_job 이 crawler-dashboard 에 리포트한다.
-기존 CLI 명령 (`sync-news`, `sync-today` 등) 은 ad-hoc 수동 용도로 남겨두고,
+기존 CLI 명령 (`sync-videos`, `sync-today` 등) 은 ad-hoc 수동 용도로 남겨두고,
 자동 실행은 이쪽으로 호출한다.
 
 새 job 추가 = `monitoring.JOB_CATALOG` 에 스펙 1개 + 여기에 `@track_job("mal.<name>")`
@@ -27,7 +27,6 @@ from .sync_horse_ratings import sync_all_meets as sync_horse_ratings_all_meets
 from .sync_horses import backfill_missing_raw, refresh_stale_horses
 from .sync_jockey_changes import sync_recent as sync_jockey_changes_recent
 from .sync_jockeys import sync_all_jockeys
-from .sync_naver_news import sync_naver_news
 from .sync_owners import sync_all_owners
 from .sync_race_corners import sync_date_all_meets as sync_race_corners_all_meets
 from .sync_race_dividends import sync_date_all_meets as sync_dividends_all_meets
@@ -46,16 +45,6 @@ from .sync_weather import sync_recent as sync_weather_recent
 log = get_logger(__name__)
 
 KST = ZoneInfo("Asia/Seoul")
-
-
-@track_job("mal.sync_news")
-def run_sync_news() -> int:
-    """네이버 뉴스 검색 기반 마사회/경마 보도 수집.
-
-    이전엔 KRA 공식 RSS 를 끌어왔으나, 외부 언론 기사 다양성을 위해 네이버 검색
-    API 로 교체. job_key 는 동일 — 대시보드 이력/감시 룰을 그대로 사용한다.
-    """
-    return sync_naver_news()
 
 
 @track_job("mal.sync_videos")

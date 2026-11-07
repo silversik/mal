@@ -17,7 +17,6 @@ mal.kr 의 시스템 구조 · 컨테이너 토폴로지 · 데이터 흐름 · 
 │                              mal-crawler  (Python · APScheduler · httpx)
 │                                  │
 │                                  ├─► data.go.kr (KRA + KMA OpenAPI)
-│                                  ├─► openapi.naver.com (검색)
 │                                  ├─► googleapis.com (YouTube Data v3)
 │                                  └─► crawler-dashboard :3100 (HTTP 리포트)
 │                                                                  │
@@ -40,7 +39,7 @@ mal.kr 의 시스템 구조 · 컨테이너 토폴로지 · 데이터 흐름 · 
 
 | 스키마 | 소유자 | 용도 | 주요 테이블 |
 |---|---|---|---|
-| `mal` | `mal_app` | mal.kr 비즈니스 데이터 | horses · races · race_results · race_entries · race_dividends · race_combo_dividends · race_pool_sales · race_corners · race_plans · jockeys · trainers · owners · jockey_changes · horse_rank_changes · horse_ratings · kra_news · kra_videos · users · user_favorite_horses · notifications · weather_observations |
+| `mal` | `mal_app` | mal.kr 비즈니스 데이터 | horses · races · race_results · race_entries · race_dividends · race_combo_dividends · race_pool_sales · race_corners · race_plans · jockeys · trainers · owners · jockey_changes · horse_rank_changes · horse_ratings · kra_news(2026-11 수집 중단, 이력 잔존) · kra_videos · users · user_favorite_horses · notifications · weather_observations |
 | `crawler` | `crawler_app` | 통합 크롤러 대시보드 모니터링 | scraper_jobs · scraper_runs |
 
 - **`mal_app`** role 은 `crawler` 스키마에 권한 없음. 마이그레이션에 `crawler.scraper_jobs` seed 절대 금지 ([db/migrations/011_move_scraper_to_crawler_schema.sql](../../db/migrations/011_move_scraper_to_crawler_schema.sql) 참조).
@@ -72,7 +71,7 @@ prod `/srv/stack/.env`, dev `crawler/.env`:
 | 인프라 | `MAL_DATABASE_URL`, `MAL_AUTH_SECRET` | 컨테이너 기동 실패 (compose `?:set...` 가드) |
 | KRA | `KRA_SERVICE_KEY`, `KRA_CHULMA_OPERATION` | 빈 응답 / silent fail. CHULMA 미설정은 race_entries 영구 0건 사고 케이스 |
 | KMA | `KMA_SERVICE_KEY` | sync_weather 명시 실패 → 모니터링 빨간 신호 |
-| 외부 | `NAVER_SEARCH_CLIENT_ID/SECRET`, `YOUTUBE_API_KEY`, `YOUTUBE_KRBC_CHANNEL_ID` | 해당 잡 fail-loud (silent skip 금지 — Phase 9 안정성 강화) |
+| 외부 | `YOUTUBE_API_KEY`, `YOUTUBE_KRBC_CHANNEL_ID` | 해당 잡 fail-loud (silent skip 금지 — Phase 9 안정성 강화) |
 | OAuth | `AUTH_KAKAO_ID`, `AUTH_KAKAO_SECRET` | 로그인만 차단, 앱은 기동 |
 | 알림 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | 알림 조용히 skip |
 

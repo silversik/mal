@@ -27,7 +27,6 @@ from .jobs.periodic import (
     run_sync_horses_backfill,
     run_sync_jockey_changes,
     run_sync_jockeys,
-    run_sync_news,
     run_sync_owners,
     run_sync_race_dividends,
     run_sync_race_entries,
@@ -45,7 +44,6 @@ from .jobs.periodic import (
 )
 from .jobs.sync_horses import backfill_missing_raw, sync_by_name, sync_by_no, upsert_horses
 from .jobs.sync_jockeys import sync_all_jockeys
-from .jobs.sync_naver_news import sync_naver_news
 from .jobs.sync_race_info import sync_races_by_year
 from .jobs.sync_race_plan import sync_year as sync_race_plan_year
 from .jobs.sync_races import sync_date, sync_date_all_meets
@@ -171,13 +169,6 @@ def cmd_smoke() -> None:
         )
 
 
-@app.command("sync-news")
-def cmd_sync_news() -> None:
-    """Fetch 네이버 뉴스 검색 (경마/마사회) and upsert into `kra_news`."""
-    n = sync_naver_news()
-    typer.echo(f"upserted {n} news rows")
-
-
 @app.command("sync-videos")
 def cmd_sync_videos(
     n: int = typer.Option(20, help="가져올 최신 영상 수 (max 50)"),
@@ -207,15 +198,8 @@ def cmd_smoke_videos(
 # ============================================================================
 # Periodic entry points — scheduler_main 이 호출하는 run_* 를 수동으로 1회 실행.
 # @track_job 으로 crawler-dashboard 에 run 이 기록된다.
-# 대시보드 기록 없이 ad-hoc 실행은 위의 `sync-news` / `sync-today` 등을 사용.
+# 대시보드 기록 없이 ad-hoc 실행은 위의 `sync-videos` / `sync-today` 등을 사용.
 # ============================================================================
-
-@app.command("periodic-news")
-def cmd_periodic_news() -> None:
-    """[scheduled] sync_news — tracked run."""
-    n = run_sync_news()
-    typer.echo(f"upserted {n} news rows")
-
 
 @app.command("periodic-videos")
 def cmd_periodic_videos() -> None:

@@ -183,29 +183,6 @@ class Race(Base):
     )
 
 
-class KraNews(Base):
-    """공식 공지/뉴스 (한국마사회 RSS)."""
-
-    __tablename__ = "kra_news"
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    guid: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
-    title: Mapped[str] = mapped_column(Text, nullable=False)
-    summary: Mapped[str | None] = mapped_column(Text)
-    link: Mapped[str] = mapped_column(Text, nullable=False)
-    category: Mapped[str | None] = mapped_column(Text)
-    image_url: Mapped[str | None] = mapped_column(Text)
-    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    source: Mapped[str] = mapped_column(Text, nullable=False, default="KRA")
-    raw: Mapped[dict | None] = mapped_column(JSONB)
-    fetched_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-
-
 class KraVideo(Base):
     """KRBC 한국마사회 경마방송 공식 유튜브."""
 

@@ -54,7 +54,7 @@ export default function AboutPage() {
         <h2 className="text-base font-semibold">데이터 출처</h2>
         <p className="text-sm leading-relaxed text-foreground/90">
           경마 데이터는 한국마사회(KRA) OpenAPI 및 공공데이터포털(data.go.kr)에서 제공하는
-          공공데이터를 수집·가공합니다. 기상 데이터는 기상청 ASOS를, 뉴스·영상은 네이버 검색 API 및
+          공공데이터를 수집·가공합니다. 기상 데이터는 기상청 ASOS를, 경주 영상은
           YouTube Data API v3를 활용합니다. 수집된 데이터는 원천 제공기관의 이용조건에 따라
           비영리적 아카이빙·분석 목적으로만 사용됩니다.
         </p>
