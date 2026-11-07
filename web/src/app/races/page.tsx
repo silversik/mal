@@ -331,9 +331,6 @@ export default async function RacesPage({
         ),
       ])
     : [[], {} as Record<string, (number | null)[]>];
-  const chulMap: Record<string, number | null> = Object.fromEntries(
-    entries.map((e) => [e.horse_no, e.chul_no]),
-  );
   // horse_no → 통산·최근 5전 한 묶음. 별도 "출주마 비교" 표 대신
   // 출전표 인라인에 끼워 넣어 한눈 정보 밀도를 올린다.
   const compareMap: Record<string, HorseCompareSummary> = Object.fromEntries(
