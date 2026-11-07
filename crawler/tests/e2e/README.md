@@ -6,7 +6,7 @@
 `mal.trigger_poll` 만 빠진다. 이 잡은 대시보드 폴러라서 dict 수집에만 쓴다.
 
 - 네트워크는 쓰지 않는다. `httpx.Client` 에 `MockTransport` 를 주입해서 KRA OpenAPI,
-  기상청 ASOS, 네이버 검색, YouTube Data v3, race.kra.co.kr HTML 을 모두
+  기상청 ASOS, YouTube Data v3, race.kra.co.kr HTML 을 모두
   [`e2e_world.py`](e2e_world.py) 의 가짜 세계가 응답한다.
 - 시계도 가짜다. `src.*` 모듈의 `date`/`datetime` 을 가짜 KST 시계로 바꾼다.
   경주일 D(토) 전날부터 D+1, 그리고 실제 오늘까지 prod 스케줄 순서대로 잡을 돌린다.

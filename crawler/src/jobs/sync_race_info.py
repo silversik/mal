@@ -55,12 +55,6 @@ def backfill_races_from_results() -> int:
     return count
 
 
-# Keep this alias so the CLI command still works.
-def sync_races_by_year(year: int, meet: int | None = None) -> int:
-    """Backfill races from race_results (year/meet params ignored for now)."""
-    return backfill_races_from_results()
-
-
 # --------------------------------------------------------------------- API187
 
 

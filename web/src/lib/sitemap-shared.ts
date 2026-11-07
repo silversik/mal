@@ -163,7 +163,6 @@ export async function buildStaticAndSmallChunk(): Promise<SitemapUrl[]> {
     { loc: `${SITE}/rankings`,       changefreq: "weekly",  priority: 0.7 },
     { loc: `${SITE}/records`,        changefreq: "weekly",  priority: 0.7 },
     { loc: `${SITE}/compare`,        changefreq: "monthly", priority: 0.5 },
-    { loc: `${SITE}/news`,           changefreq: "daily",   priority: 0.6 },
     { loc: `${SITE}/about`,          changefreq: "yearly",  priority: 0.5 },
     { loc: `${SITE}/privacy`,        changefreq: "yearly",  priority: 0.3 },
     { loc: `${SITE}/terms`,          changefreq: "yearly",  priority: 0.3 },

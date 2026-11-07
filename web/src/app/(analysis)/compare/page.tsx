@@ -19,7 +19,7 @@ import { RecentFormStrip } from "@/components/recent-form-strip";
 
 export const metadata: Metadata = {
   title: "마필 비교",
-  description: "여러 마필을 한 번에 비교 — 통산·최근 폼·mal지수",
+  description: "여러 마필을 한 번에 비교 — 통산·최근 폼",
   alternates: { canonical: "/compare" },
 };
 
@@ -95,8 +95,6 @@ function CompareSummaryTable({
     ["통산 출전", (s) => s.total_race_count],
     ["통산 1-2-3", (s) => `${s.first_place_count}-${s.second_place_count}-${s.third_place_count}`],
     ["최근 5전", (s) => <RecentFormStrip finishes={s.recent_finishes} />],
-    ["평균 mal지수", (s) => (s.avg_msf !== null ? s.avg_msf.toFixed(1) : "-")],
-    ["최고 mal지수", (s) => (s.best_msf !== null ? s.best_msf.toFixed(1) : "-")],
   ];
 
   return (

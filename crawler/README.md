@@ -1,6 +1,6 @@
 # mal-crawler
 
-KRA OpenAPI(data.go.kr) · 기상청 ASOS · 네이버 검색 · YouTube Data v3 → PostgreSQL `mal` schema 수집기.
+KRA OpenAPI(data.go.kr) · 기상청 ASOS · YouTube Data v3 → PostgreSQL `mal` schema 수집기.
 운영은 `mal-crawler` 컨테이너 안의 APScheduler(`src.scheduler_main`, KST)가 돌리고, 수동 실행은 typer CLI(`src.main`)로 한다.
 
 > 코드가 기준이다. 이 문서와 다르면 `src/scheduler_main.py` · `src/main.py` 를 믿을 것.
@@ -15,7 +15,7 @@ uv sync                 # 의존성 + sibling crawler_core(_crawler_core symlink
 
 - **로컬에서 prod KRA 키 금지** — IP 화이트리스트 + 분당 한도라 prod 잡이 fetch 미스. dev 키 또는 fixture/mock.
 - 주요 env: `DATABASE_URL`, `KRA_SERVICE_KEY`(엔드포인트별 `KRA_SERVICE_KEY_<API>` 로 개별 지정 가능), `KRA_CHULMA_OPERATION`,
-  `KMA_SERVICE_KEY`, `YOUTUBE_API_KEY` / `YOUTUBE_KRBC_CHANNEL_ID`, `NAVER_SEARCH_CLIENT_ID` / `_SECRET`, `LOG_LEVEL` — 전체는 `src/config.py`.
+  `KMA_SERVICE_KEY`, `YOUTUBE_API_KEY` / `YOUTUBE_KRBC_CHANNEL_ID`, `LOG_LEVEL` — 전체는 `src/config.py`.
   잡이 읽는 env 를 추가하면 루트 `docker-compose.yml` 의 mal-crawler `environment` 에도 주입할 것 (미설정은 silent 0건이 아니라 명시적 실패).
 
 ## 구조 (모듈 루트 `src`)
@@ -41,7 +41,6 @@ src/
 
 | job key | 스케줄 | 하는 일 | 쓰는 테이블 |
 |---|---|---|---|
-| `mal.sync_news` | 30분마다 | 네이버 뉴스 검색(경마/마사회) | `kra_news` |
 | `mal.sync_videos` | 3시간마다 | KRBC YouTube 최신 업로드 20건 | `kra_videos`, `sync_meta` |
 | `mal.sync_race_entries` | 3시간마다 | 향후 10일 출전표 (API26_2, `KRA_CHULMA_OPERATION` 필수) | `race_entries`, `races` |
 | `mal.backfill_races_from_entries` | 3시간마다 | `race_entries.raw` → races 빈 메타(거리·등급·발주시각) 백필 | `races` |
@@ -76,13 +75,13 @@ src/
 `--help` 로 각 명령 옵션 확인. 미처리 예외는 키를 마스킹(`src/redact.py`)해서 stderr 로 출력하고 exit 1.
 
 - **점검**: `smoke` (API42_1 1건) · `smoke-videos` (DB 쓰기 없음) · `register-dashboard-jobs` (컨테이너 기동 시 호출) · `check-stale` (대시보드 위임, no-op) · 헬스체크는 *healthcheck 명령 참고* (`--help` 에 있으면 그쪽)
-- **마필**: `sync-horse-name <마명>` · `sync-horse-no <hr_no>` · `seed-sample --n` · `backfill-horse-raw --limit --sleep`
-- **경주 결과/메타**: `sync-race-date <YYYY-MM-DD> [--meet]` · `sync-today` · `sync-races <year> [--meet]` · `sync-race-plan <year> [--meet]`
+- **마필**: `sync-horse-name <마명>` · `sync-horse-no <hr_no>` · `backfill-horse-raw --limit --sleep`
+- **경주 결과/메타**: `sync-race-date <YYYY-MM-DD> [--meet]` · `sync-race-plan <year> [--meet]`
 - **배당/매출**: `sync-dividend-date <date> [--meet]` · `sync-race-sales-date <date> [--meet]` · `chunked-dividends-backfill --budget --lookback-days --max-attempts`
 - **마스터/이벤트**: `sync-jockeys` · `sync-trainers` · `sync-owners` · `sync-jockey-changes` · `sync-horse-rank-changes`
-- **뉴스/영상/날씨**: `sync-news` · `sync-videos --n` · `sync-weather --days` · `backfill-weather <start> <end> --chunk-days`
+- **영상/날씨**: `sync-videos --n` · `sync-weather --days` · `backfill-weather <start> <end> --chunk-days`
 - **one-shot 백필** (작은 chunk·sleep 유지 — 분당 한도): `backfill-history <start> <end> --sleep` · `backfill-history-33y` · `backfill-dividends --months` · `backfill-race-sales --days` · `backfill-jockey-changes --days`
-- **`periodic-*`**: 스케줄 잡을 `@track_job` 째로 한 번 실행 (대시보드 run 기록됨). `periodic-news` · `-videos` · `-videos-backfill` · `-videos-bulk` · `-races-today` · `-races-live` · `-races-yesterday`(= sync_yesterday_catchup) · `-jockeys` · `-trainers` · `-owners` · `-jockey-changes` · `-horse-rank-changes` · `-horse-ratings` · `-horses-backfill` · `-horses-refresh` · `-race-plan` · `-race-entries` · `-race-info` · `-race-today-meta` · `-race-dividends` · `-race-sales` · `-chunked-dividends`
+- **`periodic-*`**: 스케줄 잡을 `@track_job` 째로 한 번 실행 (대시보드 run 기록됨). `periodic-videos` · `-videos-backfill` · `-videos-bulk` · `-races-today` · `-races-live` · `-races-yesterday`(= sync_yesterday_catchup) · `-jockeys` · `-trainers` · `-owners` · `-jockey-changes` · `-horse-rank-changes` · `-horse-ratings` · `-horses-backfill` · `-horses-refresh` · `-race-plan` · `-race-entries` · `-race-info` · `-race-today-meta` · `-race-dividends` · `-race-sales` · `-chunked-dividends`
 
 ## 테스트
 
@@ -91,4 +90,4 @@ uv run pytest -q          # tests/ (conftest 가 더미 DATABASE_URL/KRA 키 —
 uvx ruff check src tests
 ```
 
-테스트는 클라이언트·`session_scope`·`crawler_core` 를 mock 한다. 실제 KRA/KMA/YouTube/네이버 호출 금지.
+테스트는 클라이언트·`session_scope`·`crawler_core` 를 mock 한다. 실제 KRA/KMA/YouTube 호출 금지.

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트
 
-`mal.kr` — 한국마사회(KRA) 공공데이터 기반 경마 데이터 아카이빙 + 분석. 데이터 소스: KRA OpenAPI (data.go.kr) · 기상청 ASOS 일자료 · 네이버 검색 · YouTube Data v3.
+`mal.kr` — 한국마사회(KRA) 공공데이터 기반 경마 데이터 아카이빙 + 분석. 데이터 소스: KRA OpenAPI (data.go.kr) · 기상청 ASOS 일자료 · YouTube Data v3. (네이버 뉴스 수집·`/news` 는 2026-11 제거 — `kra_news` 테이블은 이력으로 잔존)
 
 ## 스택 한 줄
 
@@ -45,7 +45,7 @@ uv run python -m src.scheduler_main
 ## 디렉터리 구조
 
 - **`web/`** — Next.js 16, App Router. 인증 NextAuth v5 **Kakao only** (`web/AGENTS.md`: "이건 학습 데이터의 Next.js 와 다름" — App Router 16 breaking changes 주의, `node_modules/next/dist/docs/` 참고).
-  - `src/app/` 라우트 그룹: `(analysis)`(analysis·compare·rankings·records) · `(database)`(database·horses·jockeys·owner·trainer) · 상세(`horse/[horse_no]`·`jockey/[jk_no]`·`parent/[parent_no]`) · `races`·`news`·`contact`·`notifications`·`me`·정책(about·privacy·terms) · `sitemap.xml`(index→chunk).
+  - `src/app/` 라우트 그룹: `(analysis)`(analysis·compare·rankings·records) · `(database)`(database·horses·jockeys·owner·trainer) · 상세(`horse/[horse_no]`·`jockey/[jk_no]`·`parent/[parent_no]`) · `races`·`contact`·`notifications`·`me`·정책(about·privacy·terms) · `sitemap.xml`(index→chunk).
   - `src/lib/*.ts` — **데이터 액세스는 raw SQL** (`db.ts` = lazy `pg` Pool, `query()` 헬퍼). 도메인별 모듈(`races.ts`·`horses.ts`·`jockeys.ts`·`contact.ts`·`notifications.ts`·`favorite_horses.ts`·`telegram.ts` …). ORM 없음.
   - `src/app/actions/` — Server Actions. `components/ui/` shadcn, `components/brand`·`components/seo`.
 - **`crawler/`** — `uv run` 기반 Python. **모듈 루트는 `src`** (`python -m src.main` / `python -m src.scheduler_main`).
@@ -62,7 +62,7 @@ uv run python -m src.scheduler_main
 ## 빅픽처 아키텍처
 
 ```
-KRA OpenAPI / 기상청 ASOS / 네이버 검색 / YouTube
+KRA OpenAPI / 기상청 ASOS / YouTube
    │  (mal-crawler 컨테이너 · src.scheduler_main 내장 APScheduler tick · KST)
    ▼
 잡(run_*, @track_job): sync_races_today / sync_races_live / sync_yesterday_residual
@@ -70,7 +70,7 @@ KRA OpenAPI / 기상청 ASOS / 네이버 검색 / YouTube
    │  start_run/finish_run → crawler-dashboard 리포트 (실패 시 Telegram)
    ▼
 PostgreSQL `mal` schema (races, race_results, horses, jockeys, trainers, owners,
-                         dividends, weather_observations, notifications, contacts …)
+                         dividends, weather_observations, kra_videos, notifications, contacts …)
    │  web/src/lib/*.ts (raw SQL via pg Pool)
    ▼
 Next.js web (mal-web, PORT 4000 → nginx → mal.kr)  ·  로컬 dev :3000
@@ -106,4 +106,4 @@ Next.js web (mal-web, PORT 4000 → nginx → mal.kr)  ·  로컬 dev :3000
 - **[web/README.md](web/README.md)** · **[web/AGENTS.md](web/AGENTS.md)** — Next.js 16 주의사항.
 - **[crawler/README.md](crawler/README.md)** — 잡/구조 (일부 outdated, 코드 기준은 `src/`).
 - **[DESIGN.md](DESIGN.md)** — 디자인 단일 진실원.
-- **[docs/](docs/)** — `api/`(KRA·KMA·네이버·YouTube) · `feature/` · `spec/`(architecture·deployment) · `tasks/`(페이즈 히스토리).
+- **[docs/](docs/)** — `api/`(KRA·KMA·YouTube) · `feature/` · `spec/`(architecture·deployment) · `tasks/`(페이즈 히스토리).

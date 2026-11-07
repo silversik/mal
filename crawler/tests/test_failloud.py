@@ -5,15 +5,13 @@ import dataclasses
 import importlib
 import sys
 import types
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from typing import Any
 
 import pytest
 
 from src.clients.kra_base import KraApiError
-from src.clients.naver_news import NaverNewsItem
 from src.jobs import (
-    sync_naver_news,
     sync_race_corners,
     sync_race_entries,
     sync_race_info,
@@ -230,51 +228,6 @@ def test_weather_all_empty_is_ok(weather):
     assert sync_weather.sync_range(date(2026, 11, 1), date(2026, 11, 2)) == 0
 
 
-# ------------------------------------------------------------ naver news
-
-
-def _news(guid: str) -> NaverNewsItem:
-    return NaverNewsItem(
-        guid=guid, title=guid, summary=None, link=guid, source="s",
-        published_at=datetime(2026, 11, 1, tzinfo=UTC),
-    )
-
-
-@pytest.fixture
-def naver(monkeypatch):
-    monkeypatch.setattr(
-        sync_naver_news, "settings",
-        dataclasses.replace(
-            sync_naver_news.settings,
-            naver_search_client_id="id", naver_search_client_secret="secret",
-        ),
-    )
-    monkeypatch.setattr(sync_naver_news, "_upsert", _count_upsert)
-
-    def install(respond) -> _Fake:
-        fake = _Fake(respond)
-        monkeypatch.setattr(sync_naver_news, "NaverNewsSearchClient", fake)
-        return fake
-
-    return install
-
-
-def test_naver_all_keywords_fail_raises(naver):
-    naver(lambda kw: BOOM)
-    with pytest.raises(RuntimeError, match="naver_news"):
-        sync_naver_news.sync_naver_news()
-
-
-def test_naver_partial_fail_returns_rows(naver):
-    naver(lambda kw: BOOM if kw == "경마" else [_news(f"{kw}-1"), _news("shared")])
-    assert sync_naver_news.sync_naver_news() == 3  # 2 키워드 × 1 + 공통 1
-
-
-def test_naver_all_empty_is_ok(naver):
-    naver(lambda kw: [])
-    assert sync_naver_news.sync_naver_news() == 0
-
-
 # ------------------------------------------------------------ videos backfill
 
 
@@ -383,14 +336,6 @@ def test_periodic_entrypoints_propagate_all_fail(periodic, monkeypatch):
     ))
     monkeypatch.setattr(sync_race_entries, "RaceChulmaClient", _Fake(lambda d, m: BOOM))
     monkeypatch.setattr(
-        sync_naver_news, "settings",
-        dataclasses.replace(
-            sync_naver_news.settings,
-            naver_search_client_id="id", naver_search_client_secret="secret",
-        ),
-    )
-    monkeypatch.setattr(sync_naver_news, "NaverNewsSearchClient", _Fake(lambda kw: BOOM))
-    monkeypatch.setattr(
         sync_videos_backfill, "_find_missing",
         lambda *_: [{"race_date": date(2026, 11, 1), "meet": "서울", "race_no": 1}],
     )
@@ -402,7 +347,6 @@ def test_periodic_entrypoints_propagate_all_fail(periodic, monkeypatch):
         mod.run_sync_race_corners,
         mod.run_sync_weather,
         mod.run_sync_race_entries,
-        mod.run_sync_news,
         mod.run_sync_videos_backfill,
         mod.run_sync_race_info,
     ]

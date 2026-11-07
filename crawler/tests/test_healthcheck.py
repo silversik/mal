@@ -34,8 +34,6 @@ FULL_ENV = {
     "KMA_SERVICE_KEY": "kma-secret-value",
     "YOUTUBE_API_KEY": "yt-secret-value",
     "YOUTUBE_KRBC_CHANNEL_ID": "UCsecretchannel",
-    "NAVER_SEARCH_CLIENT_ID": "naver-id-value",
-    "NAVER_SEARCH_CLIENT_SECRET": "naver-secret-value",
     "TELEGRAM_BOT_TOKEN": "tg-token-value",
     "TELEGRAM_CHAT_ID": "tg-chat-value",
     "TZ": "Asia/Seoul",
@@ -131,7 +129,6 @@ def healthy_data(now: datetime = NOW) -> dict[str, Any]:
             ) + timedelta(hours=23)}
             for s in (119, 184, 159)
         ],
-        "news_latest": [{"latest": utc_now - timedelta(hours=1), "last_24h": 40}],
         "videos_latest": [{
             "latest_race_date": last, "latest_matched_pub": utc_now - timedelta(days=4),
             "latest_pub": utc_now - timedelta(hours=5),
@@ -164,7 +161,7 @@ def _collect(
 
 
 def _by_name(checks: list[Check], prefix: str) -> Check:
-    """데이터/DB 점검 행 하나 (설정 행 '뉴스 (sync_news)' 등과 이름이 겹치지 않게 제외)."""
+    """데이터/DB 점검 행 하나 (설정 행 '날씨 (sync_weather)' 등과 이름이 겹치지 않게 제외)."""
     hits = [c for c in checks if c.name.startswith(prefix) and c.area != "설정"]
     assert len(hits) == 1, f"{prefix!r}: {[c.name for c in checks]}"
     return hits[0]
@@ -181,7 +178,7 @@ def test_healthy_state_is_all_ok_exit_0() -> None:
     # 주요 영역이 모두 출력에 포함
     names = {c.name.split(" (")[0] for c in checks}
     for expected in ("다음 경주일 출전표", "직전 경주일 결과", "단승/연승 배당", "복식 배당",
-                     "풀별 매출", "구간기록", "레이팅", "날씨", "뉴스", "경주 영상",
+                     "풀별 매출", "구간기록", "레이팅", "날씨", "경주 영상",
                      "대상경주 계획", "sync_meta 원장", "마이그레이션", "시간대"):
         assert expected in names, expected
 
@@ -216,7 +213,7 @@ def test_one_failing_query_does_not_block_others() -> None:
     weather = _by_name(checks, "날씨")
     assert weather.status == Status.FAIL
     assert "does not exist" in weather.detail
-    assert _by_name(checks, "뉴스").status == Status.OK
+    assert _by_name(checks, "경주 영상").status == Status.OK
 
 
 def test_missing_migrations_table_is_warn() -> None:
@@ -257,7 +254,7 @@ def test_config_missing_vars_severity() -> None:
     assert "YOUTUBE_API_KEY 없음" in checks["영상"].detail
     assert "YOUTUBE_KRBC_CHANNEL_ID 있음" in checks["영상"].detail
     assert checks["실패 알림"].status == Status.WARN  # Telegram 은 선택
-    assert checks["뉴스"].status == Status.OK
+    assert checks["날씨"].status == Status.OK
 
 
 def test_config_kra_overrides_only_is_warn() -> None:
@@ -527,15 +524,6 @@ def test_weather_missing_station_fails() -> None:
     c = _by_name(_collect(data), "날씨")
     assert c.status == Status.FAIL
     assert "159:없음" in c.detail
-
-
-@pytest.mark.parametrize(
-    ("hours", "expected"), [(3, Status.OK), (30, Status.WARN), (24 * 4, Status.FAIL)],
-)
-def test_news_freshness(hours: int, expected: Status) -> None:
-    data = healthy_data()
-    data["news_latest"] = [{"latest": NOW - timedelta(hours=hours), "last_24h": 0}]
-    assert _by_name(_collect(data), "뉴스").status == expected
 
 
 @pytest.mark.parametrize(

@@ -28,7 +28,6 @@ from .jobs.periodic import (
     run_sync_horses_refresh,
     run_sync_jockey_changes,
     run_sync_jockeys,
-    run_sync_news,
     run_sync_owners,
     run_sync_race_corners,
     run_sync_race_dividends,
@@ -69,10 +68,6 @@ def main() -> None:
     # `max_instances=1` 로 중복 실행 방지 (sleep_sec × 장시간 러닝 job 들).
     common = {"coalesce": True, "max_instances": 1, "misfire_grace_time": 600}
 
-    # 30분 주기
-    sched.add_job(
-        run_sync_news, IntervalTrigger(minutes=30), id="mal.sync_news", **common,
-    )
     # 3시간 주기
     sched.add_job(
         run_sync_videos, IntervalTrigger(hours=3), id="mal.sync_videos", **common,
@@ -267,7 +262,6 @@ def main() -> None:
     # 대시보드 "지금 실행" 트리거 폴링 — 15초마다 pending_trigger 확인해서 즉시 실행.
     # 각 job id 는 위 add_job 의 id 와 동일 key 를 사용 (대시보드 UI 와 1:1).
     TRIGGER_JOBS = {
-        "mal.sync_news": run_sync_news,
         "mal.sync_videos": run_sync_videos,
         "mal.sync_videos_backfill": run_sync_videos_backfill,
         "mal.sync_videos_bulk": run_sync_videos_bulk,

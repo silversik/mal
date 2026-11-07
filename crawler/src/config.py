@@ -30,8 +30,6 @@ class Settings:
     youtube_api_key: str
     youtube_krbc_channel_id: str
     kra_chulma_operation: str
-    naver_search_client_id: str
-    naver_search_client_secret: str
     telegram_bot_token: str
     telegram_chat_id: str
     log_level: str
@@ -81,10 +79,6 @@ class Settings:
             # 출전표 API26_2 의 operation 이름 — Swagger 확인 후 설정. 비어있으면
             # sync_race_entries job 이 명시적으로 실패 (silent skip 금지 — 4/25 사고).
             kra_chulma_operation=os.environ.get("KRA_CHULMA_OPERATION", ""),
-            # 네이버 검색 OpenAPI — https://developers.naver.com/apps. 둘 다 있어야
-            # sync_naver_news 가 동작. 미설정 시 잡이 명시적으로 실패 (silent skip 금지).
-            naver_search_client_id=os.environ.get("NAVER_SEARCH_CLIENT_ID", ""),
-            naver_search_client_secret=os.environ.get("NAVER_SEARCH_CLIENT_SECRET", ""),
             # 실패/stale 알림용 Telegram 봇. 둘 다 채워져야 전송, 아니면 조용히 skip.
             # BotFather 로 봇 생성 → getUpdates 로 chat_id 확인.
             telegram_bot_token=os.environ.get("TELEGRAM_BOT_TOKEN", ""),

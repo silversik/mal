@@ -35,6 +35,10 @@ const nextConfig: NextConfig = {
     // `/:path*` 는 0개 이상 세그먼트 — `/` 포함 전 경로. 파일시스템/렌더 전에 적용되므로 404 에도 붙는다.
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  async redirects() {
+    // 뉴스 기능 제거 (2026-11) — 색인·북마크된 /news 는 홈으로 영구 이동.
+    return [{ source: "/news", destination: "/", permanent: true }];
+  },
 };
 
 export default nextConfig;
