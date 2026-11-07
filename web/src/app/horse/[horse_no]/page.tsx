@@ -16,7 +16,6 @@ import {
 import { HorseTabs } from "@/components/horse-tabs";
 import { HorseFormBreakdown } from "@/components/horse-form-breakdown";
 import { RecentFormStrip } from "@/components/recent-form-strip";
-import { MsfSparkline } from "@/components/msf-sparkline";
 import { PedigreeAptitude } from "@/components/pedigree-aptitude";
 import { InlineRatingChart } from "@/components/inline-rating-chart";
 import {
@@ -41,10 +40,9 @@ import {
   getHorseByNo,
   getHorseFormBreakdown,
   getHorseRankAggregate,
-  getMsfHistory,
   getParentChildAggregate,
   getPedigree,
-  getRaceResultsWithMsf,
+  getRaceResultsForHorse,
   getRecentFinishes,
   getSiblings,
   type Horse,
@@ -190,12 +188,11 @@ export default async function HorseDetailPage({
     favorited,
     formBreakdown,
     recentFinishes,
-    msfHistory,
     sireAgg,
     damAgg,
     rankAgg,
   ] = await Promise.all([
-    getRaceResultsWithMsf(horse_no, 10),
+    getRaceResultsForHorse(horse_no, 10),
     getSiblings(horse.sire_name, horse_no),
     getPedigree(horse_no, 4),
     getLatestRating(horse_no),
@@ -204,7 +201,6 @@ export default async function HorseDetailPage({
     userId ? isHorseFavorited(userId, horse_no) : Promise.resolve(false),
     getHorseFormBreakdown(horse_no),
     getRecentFinishes(horse_no, 5),
-    getMsfHistory(horse_no, 20),
     horse.sire_no ? getParentChildAggregate(horse.sire_no) : Promise.resolve(null),
     horse.dam_no ? getParentChildAggregate(horse.dam_no) : Promise.resolve(null),
     getHorseRankAggregate(horse_no),
@@ -221,11 +217,6 @@ export default async function HorseDetailPage({
   ]);
 
   const trainerNo = trainerName ? trainerNoMap[trainerName] ?? null : null;
-
-  // AI 코멘트에 쓰는 최고 mal지수.
-  const bestMsf = msfHistory.length > 0
-    ? Math.max(...msfHistory.map((p) => p.msf))
-    : null;
 
   return (
     <main className="theme-v2 mx-auto w-full max-w-7xl px-4 py-5 md:px-6 md:py-6">
@@ -265,10 +256,6 @@ export default async function HorseDetailPage({
               total_race_count: horse.total_race_count,
               first_place_count: horse.first_place_count,
               recent_finishes: recentFinishes,
-              avg_msf: msfHistory.length > 0
-                ? msfHistory.reduce((s, p) => s + p.msf, 0) / msfHistory.length
-                : null,
-              best_msf: bestMsf,
               form: formBreakdown,
               sire_aggregate: sireAgg ? {
                 parent_name: sireAgg.parent_name,
@@ -308,16 +295,6 @@ export default async function HorseDetailPage({
                   최근 폼
                 </h3>
                 <RecentFormStrip finishes={recentFinishes} />
-              </CardContent>
-            </Card>
-          )}
-          {msfHistory.length >= 2 && (
-            <Card>
-              <CardContent className="p-3">
-                <h3 className="mb-2 text-caption font-bold uppercase tracking-wider text-muted-foreground">
-                  mal지수 추세
-                </h3>
-                <MsfSparkline points={msfHistory} width={260} height={56} />
               </CardContent>
             </Card>
           )}
