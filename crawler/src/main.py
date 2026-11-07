@@ -4,7 +4,6 @@ Usage:
     uv run python -m src.main sync-horse-name <name>
     uv run python -m src.main sync-horse-no <hr_no>
     uv run python -m src.main sync-race-date <YYYY-MM-DD>
-    uv run python -m src.main seed-sample
     uv run python -m src.main smoke
     uv run python -m src.main healthcheck   # 읽기 전용 ops 점검 (exit 0/1/2)
 
@@ -42,9 +41,8 @@ from .jobs.periodic import (
     run_sync_videos_bulk,
     run_sync_yesterday_catchup,
 )
-from .jobs.sync_horses import backfill_missing_raw, sync_by_name, sync_by_no, upsert_horses
+from .jobs.sync_horses import backfill_missing_raw, sync_by_name, sync_by_no
 from .jobs.sync_jockeys import sync_all_jockeys
-from .jobs.sync_race_info import sync_races_by_year
 from .jobs.sync_race_plan import sync_year as sync_race_plan_year
 from .jobs.sync_races import sync_date, sync_date_all_meets
 from .jobs.sync_videos import smoke_videos, sync_videos
@@ -83,18 +81,6 @@ def cmd_sync_horse_no(
     typer.echo(f"upserted {n} rows")
 
 
-@app.command("seed-sample")
-def cmd_seed_sample(
-    n: int = typer.Option(10, help="가져올 마필 수"),
-) -> None:
-    """Fetch N arbitrary horses (no filter) and upsert. Useful for first-run seeding."""
-    with HorseDetailClient() as client:
-        items = client.sample(n=n)
-    typer.echo(f"fetched {len(items)} items")
-    upserted = upsert_horses(items)
-    typer.echo(f"upserted {upserted} rows")
-
-
 @app.command("backfill-horse-raw")
 def cmd_backfill_horse_raw(
     limit: int | None = typer.Option(None, help="최대 처리 건수 (생략 시 전체)"),
@@ -125,14 +111,6 @@ def cmd_sync_race_date(
     typer.echo(f"upserted {n} race result rows")
 
 
-@app.command("sync-today")
-def cmd_sync_today() -> None:
-    """Fetch today's race results across all meets and backfill `races`."""
-    from datetime import date as _date
-    n = sync_date_all_meets(_date.today())
-    typer.echo(f"upserted {n} race result rows for today")
-
-
 @app.command("sync-jockeys")
 def cmd_sync_jockeys(
     meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 전체)"),
@@ -140,16 +118,6 @@ def cmd_sync_jockeys(
     """Fetch all active jockeys and upsert into `jockeys`."""
     n = sync_all_jockeys(meet=meet)
     typer.echo(f"upserted {n} jockey rows")
-
-
-@app.command("sync-races")
-def cmd_sync_races(
-    year: int = typer.Argument(..., help="시행 연도 (예: 2024)"),
-    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 전체)"),
-) -> None:
-    """Fetch race metadata for a year and upsert into `races`."""
-    n = sync_races_by_year(year, meet=meet)
-    typer.echo(f"upserted {n} race rows")
 
 
 @app.command("smoke")
@@ -198,7 +166,7 @@ def cmd_smoke_videos(
 # ============================================================================
 # Periodic entry points — scheduler_main 이 호출하는 run_* 를 수동으로 1회 실행.
 # @track_job 으로 crawler-dashboard 에 run 이 기록된다.
-# 대시보드 기록 없이 ad-hoc 실행은 위의 `sync-videos` / `sync-today` 등을 사용.
+# 대시보드 기록 없이 ad-hoc 실행은 위의 `sync-videos` / `sync-race-date` 등을 사용.
 # ============================================================================
 
 @app.command("periodic-videos")

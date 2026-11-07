@@ -75,8 +75,8 @@ src/
 `--help` 로 각 명령 옵션 확인. 미처리 예외는 키를 마스킹(`src/redact.py`)해서 stderr 로 출력하고 exit 1.
 
 - **점검**: `smoke` (API42_1 1건) · `smoke-videos` (DB 쓰기 없음) · `register-dashboard-jobs` (컨테이너 기동 시 호출) · `check-stale` (대시보드 위임, no-op) · 헬스체크는 *healthcheck 명령 참고* (`--help` 에 있으면 그쪽)
-- **마필**: `sync-horse-name <마명>` · `sync-horse-no <hr_no>` · `seed-sample --n` · `backfill-horse-raw --limit --sleep`
-- **경주 결과/메타**: `sync-race-date <YYYY-MM-DD> [--meet]` · `sync-today` · `sync-races <year> [--meet]` · `sync-race-plan <year> [--meet]`
+- **마필**: `sync-horse-name <마명>` · `sync-horse-no <hr_no>` · `backfill-horse-raw --limit --sleep`
+- **경주 결과/메타**: `sync-race-date <YYYY-MM-DD> [--meet]` · `sync-race-plan <year> [--meet]`
 - **배당/매출**: `sync-dividend-date <date> [--meet]` · `sync-race-sales-date <date> [--meet]` · `chunked-dividends-backfill --budget --lookback-days --max-attempts`
 - **마스터/이벤트**: `sync-jockeys` · `sync-trainers` · `sync-owners` · `sync-jockey-changes` · `sync-horse-rank-changes`
 - **영상/날씨**: `sync-videos --n` · `sync-weather --days` · `backfill-weather <start> <end> --chunk-days`

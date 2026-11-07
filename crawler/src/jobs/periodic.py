@@ -2,7 +2,7 @@
 
 이 모듈의 함수들은 `scheduler_main.py` (컨테이너 내장 APScheduler) 가 호출하는
 "스케줄된" 실행 지점이며, 각 실행은 @track_job 이 crawler-dashboard 에 리포트한다.
-기존 CLI 명령 (`sync-videos`, `sync-today` 등) 은 ad-hoc 수동 용도로 남겨두고,
+기존 CLI 명령 (`sync-videos`, `sync-race-date` 등) 은 ad-hoc 수동 용도로 남겨두고,
 자동 실행은 이쪽으로 호출한다.
 
 새 job 추가 = `monitoring.JOB_CATALOG` 에 스펙 1개 + 여기에 `@track_job("mal.<name>")`

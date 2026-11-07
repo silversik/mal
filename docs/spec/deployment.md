@@ -133,7 +133,7 @@ open https://49.50.138.31:8444    # htpasswd: ops
 ```bash
 # 즉시 1 회 실행 (스케줄 외)
 ssh ... 'docker exec mal-crawler python -m src.main periodic-videos'
-ssh ... 'docker exec mal-crawler python -m src.main sync-today'
+ssh ... 'docker exec mal-crawler python -m src.main periodic-races-today'
 
 # 마이그레이션 강제 재실행
 ssh ... 'docker exec mal-crawler bash /app/db/run-migrations.sh'
