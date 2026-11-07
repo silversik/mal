@@ -29,7 +29,7 @@
 - **Display/Hero:** Wanted Sans (700–800) — 별도 serif 없이 같은 패밀리 헤비로 통일.
 - **Body:** Wanted Sans (400–500) — 모바일 소형 가독성 우수한 현대 기하 한글.
 - **UI/Labels:** Wanted Sans (500–600).
-- **Data/Numbers/Tables:** **Geist Mono + `font-variant-numeric: tabular-nums`** — 배당·mal지수·기록·순위·퍼센트 전부. 숫자가 제품의 주인공.
+- **Data/Numbers/Tables:** **Geist Mono + `font-variant-numeric: tabular-nums`** — 배당·레이팅·기록·순위·퍼센트 전부. 숫자가 제품의 주인공.
 - **Code:** Geist Mono.
 - **Loading:** Wanted Sans (jsDelivr `wanteddev/wanted-sans` 가변, **Pretendard Variable fallback**) · Geist Mono (Google Fonts). `font-display: swap`, 핵심 폰트 preconnect.
 - **Scale (모듈러 ~1.25, px):** display 34 · h1 21 · h2 17 · body 16 · small 13 · caption 11. 본문 최소 16px(모바일). 제목 `text-wrap: balance`.
@@ -61,7 +61,7 @@
 ## Data Visualization (이 제품의 핵심)
 - 숫자는 항상 tabular-nums + 우측 정렬(자릿수 비교).
 - 비율/승률 = 인라인 가로 막대(track `--hairline` + fill 액센트). 큰 표 대신 stat 행.
-- mal지수 추세 = 인라인 스파크라인.
+- 레이팅 추세 = 인라인 스파크라인.
 - 색은 의미에만(양=accent, 음=negative). 차트 다색 팔레트 금지 — 단색 + 강조.
 
 ## Spacing

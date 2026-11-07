@@ -334,12 +334,11 @@ export default async function RacesPage({
   const chulMap: Record<string, number | null> = Object.fromEntries(
     entries.map((e) => [e.horse_no, e.chul_no]),
   );
-  // horse_no → 통산·평균지수·최근 5전 한 묶음. 별도 "출주마 비교" 표 대신
+  // horse_no → 통산·최근 5전 한 묶음. 별도 "출주마 비교" 표 대신
   // 출전표 인라인에 끼워 넣어 한눈 정보 밀도를 올린다.
   const compareMap: Record<string, HorseCompareSummary> = Object.fromEntries(
     compareSummaries.map((s) => [s.horse_no, s]),
   );
-  const hasMsf = compareSummaries.some((s) => s.avg_msf !== null);
 
   // 경기 있는 날만 순회하도록 raceDates 내에서 탐색. 인접 레이스데이가 없으면 null.
   const prevDate = findNearbyRaceDate(raceDates, currentDate, "prev");
@@ -621,15 +620,6 @@ export default async function RacesPage({
                         <th className="border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 86 }}>
                           마체중
                         </th>
-                        {hasMsf && (
-                          <th
-                            className="hidden border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground md:table-cell"
-                            style={{ width: 78 }}
-                            title="최근 10전 평균 / 최고 mal지수"
-                          >
-                            지수
-                          </th>
-                        )}
                         <th className="border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 110 }}>
                           단승
                         </th>
@@ -777,17 +767,6 @@ export default async function RacesPage({
                               {e.weight ?? "-"}
                               <WeightDelta diff={e.weight_diff} />
                             </td>
-                            {hasMsf && (
-                              <td
-                                className="hidden px-2 py-2.5 text-right align-middle font-mono text-caption tabular-nums leading-tight md:table-cell"
-                                title="최근 10전 평균 / 최고 mal지수"
-                              >
-                                <MsfCell
-                                  avg={compareMap[e.horse_no]?.avg_msf ?? null}
-                                  best={compareMap[e.horse_no]?.best_msf ?? null}
-                                />
-                              </td>
-                            )}
                             <td className="px-2 py-2.5 text-right align-middle">
                               <OddsBar value={e.win_rate} kind="win" />
                             </td>
@@ -918,38 +897,6 @@ export default async function RacesPage({
         </section>
       )}
     </main>
-  );
-}
-
-/**
- * 최근 10전 mal지수 — 평균/최고 stacked.
- * 평균 ≥100 골드 강조, 95+ 에메랄드, 그 이하 muted.
- */
-function MsfCell({
-  avg,
-  best,
-}: {
-  avg: number | null;
-  best: number | null;
-}) {
-  if (avg === null && best === null) {
-    return <span className="text-muted-foreground">-</span>;
-  }
-  const avgCls =
-    avg === null
-      ? "text-muted-foreground"
-      : avg >= 100
-        ? "text-amber-700 font-bold"
-        : avg >= 95
-          ? "text-emerald-700 font-semibold"
-          : "text-foreground";
-  return (
-    <div className="flex flex-col items-end leading-tight">
-      <span className={avgCls}>{avg === null ? "-" : avg.toFixed(1)}</span>
-      <span className="text-caption opacity-60">
-        {best === null ? "-" : best.toFixed(1)}
-      </span>
-    </div>
   );
 }
 

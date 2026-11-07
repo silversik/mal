@@ -14,8 +14,6 @@ export type CommentInput = {
   total_race_count: number;
   first_place_count: number;
   recent_finishes: (number | null)[];
-  avg_msf: number | null;
-  best_msf: number | null;
   form: FormBreakdown;
   /** 부마 자손 통계 (옵셔널, 혈통 적성 카드 데이터) */
   sire_aggregate?: {
@@ -55,23 +53,6 @@ export function generateHorseComment(input: CommentInput): string {
           `최근 ${recentValid.length}전 입상 ${inMoney}회 — 폼 회복 필요.`,
         );
       }
-    }
-  }
-
-  // mal지수
-  if (input.avg_msf !== null && input.best_msf !== null) {
-    if (input.avg_msf >= 98) {
-      lines.push(
-        `mal지수 평균 ${input.avg_msf.toFixed(1)} — 매 경기 1착권 근처.`,
-      );
-    } else if (input.avg_msf >= 95) {
-      lines.push(
-        `mal지수 평균 ${input.avg_msf.toFixed(1)} (최고 ${input.best_msf.toFixed(1)}) — 정상권.`,
-      );
-    } else if (input.avg_msf < 90) {
-      lines.push(
-        `mal지수 평균 ${input.avg_msf.toFixed(1)} — 1착군과 격차 존재.`,
-      );
     }
   }
 
@@ -122,17 +103,10 @@ export function generateCompareComment(
   const aWinRate = a.total_race_count > 0 ? a.first_place_count / a.total_race_count : 0;
   const bWinRate = b.total_race_count > 0 ? b.first_place_count / b.total_race_count : 0;
   const winnerByRate = aWinRate > bWinRate ? a : b;
-  const winnerByMsf =
-    (a.avg_msf ?? 0) > (b.avg_msf ?? 0) ? a : b;
 
   const parts: string[] = [];
   parts.push(
     `${winnerByRate.horse_name} 의 통산 승률이 더 높음 (${(((winnerByRate === a ? aWinRate : bWinRate)) * 100).toFixed(0)}% vs ${(((winnerByRate === a ? bWinRate : aWinRate)) * 100).toFixed(0)}%).`,
   );
-  if (winnerByMsf.avg_msf !== null && winnerByMsf !== winnerByRate) {
-    parts.push(
-      `다만 평균 mal지수는 ${winnerByMsf.horse_name} 가 우위 (${winnerByMsf.avg_msf.toFixed(1)}).`,
-    );
-  }
   return parts.join(" ");
 }
