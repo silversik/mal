@@ -44,6 +44,10 @@ jobs:
           check "https://$HOST/" 200 "<html"
           check "https://$HOST/sitemap.xml" 200 "<sitemapindex"
           check "https://$HOST/races" 200 "<html"
+          echo "--- deploy probe (임시) ---"
+          curl -sS -o /dev/null --max-time 20 -w 'news: %{http_code} -> %{redirect_url}\n' "https://$HOST/news" || true
+          curl -sS --max-time 20 "https://$HOST/sitemap.xml" | head -c 1500; echo
+          curl -sS -o /dev/null -D - --max-time 20 "https://$HOST/" | grep -i -E '^(date|last-modified|x-nextjs|etag|age)' || true
           exit $fail
       - name: TLS certificate expiry
         shell: bash
