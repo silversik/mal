@@ -15,7 +15,7 @@
 - race.kra.co.kr/seoulMain.do: EUC-KR HTML, `a.raceDetail` 앵커 data-* 속성.
 
 세계 (FakeWorld) — 경주일 D(토) 하나에 2 경마장(서울·부경) × 2 경주 × 3 마필 + 다음 주
-예정일 U 의 출전표. 결과·배당·매출·구간기록은 시각(가짜 시계) 기준으로 "공표" 된다:
+예정일 U 의 출전표. 결과·배당·매출은 시각(가짜 시계) 기준으로 "공표" 된다:
   서울1R 11:30 · 부경1R 12:30 · 서울2R 15:00 · 부경2R D+1 08:30 (KRA 공표 지연 → residual 잡)
   부경 복식(combo) 배당은 D+1 00:00 이후 (→ 야간 gap 백필 잡이 메움)
 """
@@ -185,7 +185,7 @@ class FakeWorld:
                     ("0041010", "0041011", "0041012"), (1, 2, 3),
                     ("1:38.0", "1:38.4", "1:39.1")),
         ]
-        # 결과/배당/매출/구간기록 공표 시각
+        # 결과/배당/매출 공표 시각
         self.publish_at: dict[tuple[int, int], datetime] = {
             (1, 1): self._kst(D, 11, 30),
             (3, 1): self._kst(D, 12, 30),
@@ -308,23 +308,6 @@ class FakeWorld:
                     "rcDate": ymd(d), "meet": r.meet, "rcNo": r.no, "pool": pool,
                     "amt": str(1_000_000 * (k + 1) + r.no), "odds": f"1위 {k + 1}.5",
                 })
-        return out
-
-    def corner_items(self, meet: int, d: date, now: datetime) -> list[dict[str, Any]]:
-        out = []
-        for r in self.races_on(meet, d):
-            if not self.published(r.meet, r.no, now):
-                continue
-            out.append({
-                "rcDate": ymd(d),
-                "meet": "서울" if r.meet == 1 else "부산경남",  # 응답 meet 은 한글
-                "rcNo": r.no, "rcDist": r.distance,
-                "passrankS1f": "(^1,3),2", "passrankG8f_1c": "-", "passrankG6f_2c": "0",
-                "passrankG4f_3c": "1,(2,3)", "passrankG3f_4c": "1,2,3",
-                "passrankG2f": "2,1,3", "passrankG1f": "2-1-3",
-                "time_1f": "12.4", "time_2f": "24.1", "time_3f": "36.0", "time_12f": "0",
-                "dist_1f": 200, "dist_2f": 400, "passtime_1f": "12.4", "passtime_2f": "11.7",
-            })
         return out
 
     def entry_items(self, meet: int, d: date, now: datetime) -> list[dict[str, Any]]:
@@ -573,7 +556,6 @@ class FakeWeb:
             ("racedetailresult", "getracedetailresult"): self._results,
             ("API301", "Dividend_rate_total"): self._dividends,
             ("API179_1", "salesAndDividendRate_1"): self._sales,
-            ("API6_1", "raceDetailSectionRecord_1"): self._corners,
             ("API26_2", CHULMA_OP): self._entries,
             ("API187", "HorseRaceInfo"): self._race_info,
             ("API40", "raceAnnualPlan"): self._plan,
@@ -663,10 +645,6 @@ class FakeWeb:
     def _sales(self, p):
         m, d = self._meet_date(p)
         return self.w.sales_items(m, d, self.clock.now)
-
-    def _corners(self, p):
-        m, d = self._meet_date(p)
-        return self.w.corner_items(m, d, self.clock.now)
 
     def _entries(self, p):
         m, d = self._meet_date(p)

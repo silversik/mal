@@ -28,7 +28,7 @@
 | 15089492 | racedetailresult | getracedetailresult | 경주별 상세 성적 (마필 단위 row) | `race_results` | `mal.sync_races_today`, `mal.sync_races_live`, `mal.sync_yesterday_catchup` |
 | 15119558 | API301 | Dividend_rate_total | 확정배당율 (단/연 + 복식 풀 전체) | `race_dividends`, `race_combo_dividends` | `mal.sync_race_dividends`, `mal.chunked_dividends_backfill` |
 | 15119558 | API179_1 | salesAndDividendRate_1 | 경주·풀별 매출액 | `race_pool_sales` | `mal.sync_race_sales` |
-| 15057847 | API6_1 | raceDetailSectionRecord_1 | 펄롱별 구간기록 + 1등마 통과순위 (경주 단위 1 row) | `race_corners` | `mal.sync_race_corners` |
+| 15057847 | API6_1 | raceDetailSectionRecord_1 | 펄롱별 구간기록 + 1등마 통과순위 (경주 단위 1 row) | `race_corners` | (2026-11 수집 중단 — 테이블은 이력 보존) |
 
 > ⚠ **15119558 은 한 활용신청으로 API301 과 API179_1 둘 다 활성화**.
 

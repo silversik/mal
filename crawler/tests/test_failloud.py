@@ -12,7 +12,6 @@ import pytest
 
 from src.clients.kra_base import KraApiError
 from src.jobs import (
-    sync_race_corners,
     sync_race_entries,
     sync_race_info,
     sync_race_sales,
@@ -131,11 +130,10 @@ def test_entries_all_nodata_is_ok(entries):
     assert sync_race_entries.sync_upcoming(days_ahead=10) == 0
 
 
-# ------------------------------------------------------------ race_sales / race_corners
+# ------------------------------------------------------------ race_sales
 
 _MEET_JOBS = [
     (sync_race_sales, "RaceSalesClient", "upsert_race_sales", "race_sales"),
-    (sync_race_corners, "RaceResultCornerClient", "upsert_corners", "race_corners"),
 ]
 
 
@@ -328,7 +326,6 @@ def periodic(monkeypatch):
 def test_periodic_entrypoints_propagate_all_fail(periodic, monkeypatch):
     mod, calls = periodic
     monkeypatch.setattr(sync_race_sales, "RaceSalesClient", _Fake(lambda d, m: BOOM))
-    monkeypatch.setattr(sync_race_corners, "RaceResultCornerClient", _Fake(lambda d, m: BOOM))
     monkeypatch.setattr(sync_weather, "KmaAsosClient", _Fake(lambda stn: BOOM))
     monkeypatch.setattr(mod, "settings", dataclasses.replace(
         mod.settings, kra_chulma_operation="entrySheet_2",
@@ -344,7 +341,6 @@ def test_periodic_entrypoints_propagate_all_fail(periodic, monkeypatch):
 
     runs = [
         mod.run_sync_race_sales,
-        mod.run_sync_race_corners,
         mod.run_sync_weather,
         mod.run_sync_race_entries,
         mod.run_sync_videos_backfill,

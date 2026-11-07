@@ -29,7 +29,7 @@ def periodic(monkeypatch: pytest.MonkeyPatch) -> Any:
 
 @pytest.fixture
 def env(periodic: Any, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
-    """결과·배당·매출·구간기록 sync + invariant SQL(entries/results 카운트) mock."""
+    """결과·배당·매출 sync + invariant SQL(entries/results 카운트) mock."""
     state: dict[str, Any] = {"entries": 0, "results": 0, "sales": 5, "sql": 0}
 
     @contextmanager
@@ -58,7 +58,6 @@ def env(periodic: Any, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         return v
 
     monkeypatch.setattr(periodic, "sync_race_sales_all_meets", sales)
-    monkeypatch.setattr(periodic, "sync_race_corners_all_meets", lambda d: 0)
     state["run"] = periodic.run_sync_yesterday_catchup
     return state
 
@@ -173,7 +172,6 @@ def residual(periodic: Any, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         ("races", "sync_date_all_meets", 2),
         ("dividends", "sync_dividends_all_meets", 3),
         ("sales", "sync_race_sales_all_meets", 7),
-        ("corners", "sync_race_corners_all_meets", 1),
     ):
         def step(d: Any, _name: str = name, _n: int = n) -> int:
             calls.append(_name)
@@ -187,10 +185,10 @@ def residual(periodic: Any, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     return state
 
 
-def test_residual_fetches_sales_and_corners_too(residual: dict[str, Any]) -> None:
-    """07:30 이후 공표된 경주도 매출·구간기록을 받는다 (E2E 가 찾은 누락)."""
-    assert residual["run"]() == 13
-    assert residual["calls"] == ["races", "dividends", "sales", "corners"]
+def test_residual_fetches_sales_too(residual: dict[str, Any]) -> None:
+    """07:30 이후 공표된 경주도 매출을 받는다 (E2E 가 찾은 누락)."""
+    assert residual["run"]() == 12
+    assert residual["calls"] == ["races", "dividends", "sales"]
 
 
 def test_residual_skips_when_resolved(residual: dict[str, Any]) -> None:
@@ -199,21 +197,13 @@ def test_residual_skips_when_resolved(residual: dict[str, Any]) -> None:
     assert residual["calls"] == []
 
 
-def test_residual_corners_failure_is_best_effort(residual: dict[str, Any]) -> None:
-    """구간기록(별도 승인 API) 실패는 경고만 — 22:55 sync_race_corners 가 따로 알린다."""
-    residual["corners_err"] = RuntimeError("race_corners: 시도한 3개 단위 전부 실패")
-    assert residual["run"]() == 12
-    assert residual["calls"] == ["races", "dividends", "sales", "corners"]
-
-
 def test_residual_single_failure_reraised_as_is(residual: dict[str, Any]) -> None:
     boom = RuntimeError("sync_race_sales: 시도한 3개 단위 전부 실패")
     residual["sales_err"] = boom
-    residual["corners_err"] = RuntimeError("corners down")  # best-effort — 합쳐지지 않음
     with pytest.raises(RuntimeError) as ei:
         residual["run"]()
     assert ei.value is boom
-    assert residual["calls"] == ["races", "dividends", "sales", "corners"]
+    assert residual["calls"] == ["races", "dividends", "sales"]
 
 
 def test_residual_multiple_failures_are_combined(residual: dict[str, Any]) -> None:
@@ -221,7 +211,7 @@ def test_residual_multiple_failures_are_combined(residual: dict[str, Any]) -> No
     residual["sales_err"] = RuntimeError("sales down")
     with pytest.raises(RuntimeError, match="races 실패.*추가로 sales 실패"):
         residual["run"]()
-    assert residual["calls"] == ["races", "dividends", "sales", "corners"]
+    assert residual["calls"] == ["races", "dividends", "sales"]
 
 
 def test_residual_uses_kst_yesterday(
@@ -243,13 +233,3 @@ def test_residual_uses_kst_yesterday(
     )
     residual["run"]()
     assert seen == [date(2026, 11, 5)]
-
-
-def test_catchup_corners_failure_is_best_effort(env: dict[str, Any], periodic: Any,
-                                                monkeypatch: pytest.MonkeyPatch) -> None:
-    def boom(d: Any) -> int:
-        raise RuntimeError("race_corners: 시도한 3개 단위 전부 실패")
-
-    monkeypatch.setattr(periodic, "sync_race_corners_all_meets", boom)
-    env["entries"], env["results"] = 12, 12
-    assert env["run"]() == 35

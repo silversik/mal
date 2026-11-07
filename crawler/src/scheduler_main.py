@@ -29,7 +29,6 @@ from .jobs.periodic import (
     run_sync_jockey_changes,
     run_sync_jockeys,
     run_sync_owners,
-    run_sync_race_corners,
     run_sync_race_dividends,
     run_sync_race_entries,
     run_sync_race_info,
@@ -153,7 +152,7 @@ def main() -> None:
         id="mal.sync_horse_ratings",
         **common,
     )
-    # 전날 경주결과·배당·매출·통과순위 누락 보정 — 당일 sync 실패/KRA 지연 대비 다음날 07:30 재수집.
+    # 전날 경주결과·배당·매출 누락 보정 — 당일 sync 실패/KRA 지연 대비 다음날 07:30 재수집.
     sched.add_job(
         run_sync_yesterday_catchup,
         CronTrigger(hour=7, minute=30),
@@ -179,7 +178,7 @@ def main() -> None:
         **common,
     )
     # 다음날 09~12시 잔여 catchup — sync_yesterday_catchup(07:30) 이후에도
-    # KRA publish 지연으로 결과 누락이 남는 케이스 보충 (결과·배당·매출·통과순위).
+    # KRA publish 지연으로 결과 누락이 남는 케이스 보충 (결과·배당·매출).
     # DB 에 미해결 race 가 있을 때만 KRA 호출, 모두 채워지면 즉시 skip.
     sched.add_job(
         run_sync_yesterday_residual,
@@ -217,14 +216,6 @@ def main() -> None:
         run_sync_race_sales,
         CronTrigger(hour=22, minute=50),
         id="mal.sync_race_sales",
-        **common,
-    )
-    # 매출 직후 통과순위·구간기록(22:55) — race_result_corners (KRA API4_2).
-    # 활용신청 전엔 빈 응답이라 0 적재 — 신청 완료 시점에 자동 데이터 시작.
-    sched.add_job(
-        run_sync_race_corners,
-        CronTrigger(hour=22, minute=55),
-        id="mal.sync_race_corners",
         **common,
     )
     # 영상 매칭(23:00) — 최근 35일 누락 경주만 KRBC YouTube search (100 units/건, 20건 캡).
@@ -283,7 +274,6 @@ def main() -> None:
         "mal.sync_race_today_meta": run_sync_race_today_meta,
         "mal.sync_race_dividends": run_sync_race_dividends,
         "mal.sync_race_sales": run_sync_race_sales,
-        "mal.sync_race_corners": run_sync_race_corners,
         "mal.backfill_races_from_entries": run_backfill_races_from_entries,
         "mal.chunked_dividends_backfill": run_chunked_dividends_backfill,
         "mal.build_favorite_notifications": run_build_favorite_notifications,

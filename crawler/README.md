@@ -65,7 +65,6 @@ src/
 | `mal.sync_races_today` | 매일 22:00 | 오늘 경주결과 전 경마장 | `race_results`, `races`, `horses` |
 | `mal.sync_race_dividends` | 매일 22:45 | 오늘 확정배당율 | `race_dividends`, `race_combo_dividends` |
 | `mal.sync_race_sales` | 매일 22:50 | 오늘 풀별 매출 | `race_pool_sales` |
-| `mal.sync_race_corners` | 매일 22:55 | 오늘 통과순위·구간기록 (별도 활용신청 전엔 0건) | `race_corners` |
 | `mal.sync_videos_backfill` | 매일 23:00 | 영상 없는 경주(365일) YouTube search 매칭, 실행당 50건 | `kra_videos` |
 
 `race_results` 는 immutable history — 보정은 위 catchup/residual 잡으로만. run 기록은 DB 가 아니라 crawler-dashboard(HTTP)에 남는다.

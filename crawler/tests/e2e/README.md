@@ -61,8 +61,8 @@ backfill 창, 즐겨찾기 알림, 웹 `KST_TODAY` 다. 그래서 D 는 과거, 
 
 E2E 가 찾아 고친 production 버그는 회귀 테스트로 남아 있다:
 
-- `test_late_published_race_gets_sales_and_corners` — 07:30 이후 공표된 경주가
-  매출·통과순위를 영영 못 받던 것 (residual 이 결과·배당만 재수집).
+- `test_late_published_race_gets_sales` — 07:30 이후 공표된 경주가
+  매출을 영영 못 받던 것 (residual 이 결과·배당만 재수집).
 - `test_cli_sync_horse_name` / `test_cli_sync_horse_no` — CLI 가 클라이언트에 없는
   `meet=` 를 넘겨 항상 TypeError.
 - `test_race_plans_race_date_from_pgdate` — `race_plans.race_date` 가 항상 NULL
