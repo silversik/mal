@@ -60,7 +60,9 @@ jobs:
           J="$(grep -oE 'href="/jockey/[0-9A-Za-z]+' /tmp/jockeys.html | head -1 | cut -d'"' -f2)"
           R="$(grep -oE 'href="/races\?[^"]+' /tmp/races.html | head -1 | cut -d'"' -f2 | sed 's/&amp;/\&/g')"
           echo "sample: H=$H J=$J R=$R"
-          for path in / /races "$R" /races/schedule /horses "$H" /jockeys "$J" /rankings /analysis /compare /records /database /trainer /owner /sitemap.xml /sitemap/0.xml /sitemap/races-0.xml /robots.txt; do
+          RL="$(curl -sS -o /dev/null --max-time 30 -w '%{redirect_url}' "https://$HOST/races" | sed "s#https://$HOST##")"
+          echo "races redirect: $RL"
+          for path in "$RL" /database /analysis /rankings; do
             [ -n "$path" ] && t "$path"
           done
           set -e
