@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { LIST_PAGE_SIZE, ListPager, parseListPage, splitPage } from "@/components/list-pager";
 import {
   getAllTrainers,
   searchTrainersByName,
@@ -16,19 +17,30 @@ export const metadata: Metadata = {
   alternates: { canonical: "/trainer" },
 };
 
-type SearchParams = { q?: string };
+type SearchParams = { q?: string; page?: string };
 
 export default async function TrainersPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const { q = "" } = await searchParams;
+  const { q = "", page: pageRaw } = await searchParams;
   const query = q.trim();
+  const page = parseListPage(pageRaw);
+  const offset = (page - 1) * LIST_PAGE_SIZE;
 
-  const trainers: Trainer[] = query
-    ? await searchTrainersByName(query, 100)
-    : await getAllTrainers(100);
+  const { rows: trainers, hasNext } = splitPage<Trainer>(
+    query
+      ? await searchTrainersByName(query, LIST_PAGE_SIZE + 1, offset)
+      : await getAllTrainers(LIST_PAGE_SIZE + 1, offset),
+  );
+  const pageHref = (p: number) => {
+    const sp = new URLSearchParams();
+    if (query) sp.set("q", query);
+    if (p > 1) sp.set("page", String(p));
+    const qs = sp.toString();
+    return qs ? `/trainer?${qs}` : "/trainer";
+  };
 
   return (
     <div>
@@ -49,7 +61,10 @@ export default async function TrainersPage({
 
       {query && (
         <p className="mb-3 text-sm text-muted-foreground">
-          검색 결과 <Badge variant="secondary">{trainers.length}건</Badge>
+          검색 결과{" "}
+          <Badge variant="secondary">
+            {page > 1 || hasNext ? `${page} 페이지` : `${trainers.length}건`}
+          </Badge>
         </p>
       )}
 
@@ -106,6 +121,7 @@ export default async function TrainersPage({
           ))}
         </div>
       )}
+      <ListPager page={page} hasNext={hasNext} href={pageHref} />
     </div>
   );
 }

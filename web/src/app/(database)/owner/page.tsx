@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { LIST_PAGE_SIZE, ListPager, parseListPage, splitPage } from "@/components/list-pager";
 import {
   getAllOwners,
   searchOwnersByName,
@@ -16,19 +17,30 @@ export const metadata: Metadata = {
   alternates: { canonical: "/owner" },
 };
 
-type SearchParams = { q?: string };
+type SearchParams = { q?: string; page?: string };
 
 export default async function OwnersPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const { q = "" } = await searchParams;
+  const { q = "", page: pageRaw } = await searchParams;
   const query = q.trim();
+  const page = parseListPage(pageRaw);
+  const offset = (page - 1) * LIST_PAGE_SIZE;
 
-  const owners: Owner[] = query
-    ? await searchOwnersByName(query, 100)
-    : await getAllOwners(100);
+  const { rows: owners, hasNext } = splitPage<Owner>(
+    query
+      ? await searchOwnersByName(query, LIST_PAGE_SIZE + 1, offset)
+      : await getAllOwners(LIST_PAGE_SIZE + 1, offset),
+  );
+  const pageHref = (p: number) => {
+    const sp = new URLSearchParams();
+    if (query) sp.set("q", query);
+    if (p > 1) sp.set("page", String(p));
+    const qs = sp.toString();
+    return qs ? `/owner?${qs}` : "/owner";
+  };
 
   return (
     <div>
@@ -49,7 +61,10 @@ export default async function OwnersPage({
 
       {query && (
         <p className="mb-3 text-sm text-muted-foreground">
-          검색 결과 <Badge variant="secondary">{owners.length}건</Badge>
+          검색 결과{" "}
+          <Badge variant="secondary">
+            {page > 1 || hasNext ? `${page} 페이지` : `${owners.length}건`}
+          </Badge>
         </p>
       )}
 
@@ -106,6 +121,7 @@ export default async function OwnersPage({
           ))}
         </div>
       )}
+      <ListPager page={page} hasNext={hasNext} href={pageHref} />
     </div>
   );
 }

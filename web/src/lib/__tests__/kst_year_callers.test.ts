@@ -48,14 +48,14 @@ describe("searchHorses 나이 검색 — KST 연도 기준 출생년도", () => 
     expect(hit.mode).toBe("age");
     expect(hit.birthYear).toBe(2022);
     expect(queryMock).toHaveBeenCalledTimes(1);
-    expect(queryMock.mock.calls[0][1]).toEqual([2022, 60]);
+    expect(queryMock.mock.calls[0][1]).toEqual([2022, 60, 0]);
   });
 
   it("KST 12/31 23:30 에 '5' → 2026-5 = 2021", async () => {
     vi.setSystemTime(KST_OLD_YEAR);
     const hit = await searchHorses("5");
     expect(hit.birthYear).toBe(2021);
-    expect(queryMock.mock.calls[0][1]).toEqual([2021, 60]);
+    expect(queryMock.mock.calls[0][1]).toEqual([2021, 60, 0]);
   });
 
   it("4자리 연도 입력은 시계와 무관", async () => {

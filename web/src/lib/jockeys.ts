@@ -48,25 +48,26 @@ export async function countAllJockeys(): Promise<number> {
 export async function searchJockeysByName(
   name: string,
   limit = 20,
+  offset = 0,
 ): Promise<Jockey[]> {
   if (!name.trim()) return [];
   return query<Jockey>(
     `SELECT ${JOCKEY_COLUMNS}
        FROM jockeys
       WHERE jk_name ILIKE $1
-      ORDER BY total_race_count DESC
-      LIMIT $2`,
-    [`%${name.trim()}%`, limit],
+      ORDER BY total_race_count DESC, jk_no
+      LIMIT $2 OFFSET $3`,
+    [`%${name.trim()}%`, limit, offset],
   );
 }
 
-export async function getAllJockeys(limit = 50): Promise<Jockey[]> {
+export async function getAllJockeys(limit = 50, offset = 0): Promise<Jockey[]> {
   return query<Jockey>(
     `SELECT ${JOCKEY_COLUMNS}
        FROM jockeys
-      ORDER BY total_race_count DESC
-      LIMIT $1`,
-    [limit],
+      ORDER BY total_race_count DESC, jk_no
+      LIMIT $1 OFFSET $2`,
+    [limit, offset],
   );
 }
 

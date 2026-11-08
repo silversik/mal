@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ListPager, parseListPage, splitPage } from "@/components/list-pager";
 import {
   countAllHorses,
   getHorsesSorted,
@@ -26,7 +27,17 @@ export const metadata: Metadata = {
   alternates: { canonical: "/horses" },
 };
 
-type SearchParams = { q?: string; sort?: string; age?: string; sex?: string; origin?: string };
+type SearchParams = {
+  q?: string;
+  sort?: string;
+  age?: string;
+  sex?: string;
+  origin?: string;
+  page?: string;
+};
+
+// 카드에 마필 마크 SVG 가 들어가 다른 목록보다 무겁다 — 24 (xl 4열·lg 3열·sm 2열로 나눠떨어짐).
+const HORSE_PAGE_SIZE = 24;
 
 const SORT_OPTIONS: { value: HorseSort; label: string }[] = [
   { value: "wins",   label: "우승순" },
@@ -63,7 +74,9 @@ export default async function HorsesPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const { q = "", sort, age, sex, origin } = await searchParams;
+  const { q = "", sort, age, sex, origin, page: pageRaw } = await searchParams;
+  const page = parseListPage(pageRaw);
+  const offset = (page - 1) * HORSE_PAGE_SIZE;
   const queryStr = q.trim();
   const activeSort: HorseSort = sort === "latest" ? "latest" : "wins";
   const activeAge: HorseAgeBucket = isAgeBucket(age) ? age : "under5";
@@ -71,13 +84,28 @@ export default async function HorsesPage({
   const activeOrigin: HorseCountryFilter = isCountryFilter(origin) ? origin : "all";
 
   const [searchHit, horses, totalCount] = await Promise.all([
-    queryStr ? searchHorses(queryStr, 60) : Promise.resolve(null),
+    queryStr ? searchHorses(queryStr, HORSE_PAGE_SIZE + 1, offset) : Promise.resolve(null),
     queryStr
       ? Promise.resolve<Horse[]>([])
-      : getHorsesSorted(activeSort, activeAge, activeSex, activeOrigin, 60),
+      : getHorsesSorted(
+          activeSort, activeAge, activeSex, activeOrigin, HORSE_PAGE_SIZE + 1, offset,
+        ),
     countAllHorses(),
   ]);
-  const resultRows: Horse[] = searchHit ? searchHit.rows : horses;
+  const { rows: resultRows, hasNext } = splitPage<Horse>(
+    searchHit ? searchHit.rows : horses,
+    HORSE_PAGE_SIZE,
+  );
+  const pageHref = (p: number) => {
+    if (queryStr) {
+      const sp = new URLSearchParams({ q: queryStr });
+      if (p > 1) sp.set("page", String(p));
+      return `/horses?${sp.toString()}`;
+    }
+    return buildHorsesHref({
+      sort: activeSort, age: activeAge, sex: activeSex, origin: activeOrigin, page: p,
+    });
+  };
 
   return (
     <div>
@@ -153,7 +181,10 @@ export default async function HorsesPage({
               </Badge>
             </>
           )}
-          검색 결과 <Badge variant="secondary">{resultRows.length}건</Badge>
+          검색 결과{" "}
+          <Badge variant="secondary">
+            {page > 1 || hasNext ? `${page} 페이지` : `${resultRows.length}건`}
+          </Badge>
         </p>
       )}
 
@@ -168,6 +199,7 @@ export default async function HorsesPage({
           ))}
         </div>
       )}
+      <ListPager page={page} hasNext={hasNext} href={pageHref} />
     </div>
   );
 }
@@ -177,12 +209,14 @@ function buildHorsesHref(params: {
   age: HorseAgeBucket;
   sex: HorseSexFilter;
   origin: HorseCountryFilter;
+  page?: number;
 }) {
   const sp = new URLSearchParams();
   sp.set("sort", params.sort);
   sp.set("age", params.age);
   if (params.sex !== "all") sp.set("sex", params.sex);
   if (params.origin !== "all") sp.set("origin", params.origin);
+  if (params.page && params.page > 1) sp.set("page", String(params.page));
   return `/horses?${sp.toString()}`;
 }
 

@@ -65,7 +65,11 @@ export type HorseSearchHit = {
  *  - "5", "5세", "5살" 등 1~2자리   → 통상 나이 (당해년도 - 출생년도)
  *  - 그 외                          → 마명 부분일치 (ILIKE)
  */
-export async function searchHorses(q: string, limit = 60): Promise<HorseSearchHit> {
+export async function searchHorses(
+  q: string,
+  limit = 60,
+  offset = 0,
+): Promise<HorseSearchHit> {
   const trimmed = q.trim();
   if (!trimmed) return { mode: "name", rows: [] };
 
@@ -76,9 +80,9 @@ export async function searchHorses(q: string, limit = 60): Promise<HorseSearchHi
       `SELECT ${HORSE_COLUMNS}
          FROM ${HORSE_FROM}
         WHERE EXTRACT(YEAR FROM h.birth_date) = $1
-        ORDER BY h.horse_name
-        LIMIT $2`,
-      [year, limit],
+        ORDER BY h.horse_name, h.horse_no
+        LIMIT $2 OFFSET $3`,
+      [year, limit, offset],
     );
     return { mode: "year", birthYear: year, rows };
   }
@@ -93,9 +97,9 @@ export async function searchHorses(q: string, limit = 60): Promise<HorseSearchHi
         `SELECT ${HORSE_COLUMNS}
            FROM ${HORSE_FROM}
           WHERE EXTRACT(YEAR FROM h.birth_date) = $1
-          ORDER BY h.horse_name
-          LIMIT $2`,
-        [birthYear, limit],
+          ORDER BY h.horse_name, h.horse_no
+          LIMIT $2 OFFSET $3`,
+        [birthYear, limit, offset],
       );
       return { mode: "age", birthYear, rows };
     }
@@ -105,9 +109,9 @@ export async function searchHorses(q: string, limit = 60): Promise<HorseSearchHi
     `SELECT ${HORSE_COLUMNS}
        FROM ${HORSE_FROM}
       WHERE h.horse_name ILIKE $1
-      ORDER BY h.horse_name
-      LIMIT $2`,
-    [`%${trimmed}%`, limit],
+      ORDER BY h.horse_name, h.horse_no
+      LIMIT $2 OFFSET $3`,
+    [`%${trimmed}%`, limit, offset],
   );
   return { mode: "name", rows };
 }
@@ -237,14 +241,16 @@ export async function getHorsesSorted(
   sexFilter: HorseSexFilter = "all",
   countryFilter: HorseCountryFilter = "all",
   limit = 60,
+  offset = 0,
 ): Promise<Horse[]> {
+  // horse_no 를 마지막 정렬키로 — 페이지 경계에서 동점 행이 겹치거나 빠지지 않게.
   const order =
     sort === "wins"
-      ? "h.first_place_count DESC, h.total_race_count DESC, h.created_at DESC"
-      : "h.created_at DESC";
+      ? "h.first_place_count DESC, h.total_race_count DESC, h.created_at DESC, h.horse_no"
+      : "h.created_at DESC, h.horse_no";
 
   const where: string[] = [ageWhereClause(ageBucket)];
-  const params: unknown[] = [limit];
+  const params: unknown[] = [limit, offset];
 
   if (sexFilter !== "all") {
     params.push(`${sexFilter}%`);
@@ -261,7 +267,7 @@ export async function getHorsesSorted(
        FROM ${HORSE_FROM}
        WHERE ${where.join(" AND ")}
       ORDER BY ${order}
-      LIMIT $1`,
+      LIMIT $1 OFFSET $2`,
     params,
   );
 }
