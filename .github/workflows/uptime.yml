@@ -62,7 +62,9 @@ jobs:
           echo "sample: H=$H J=$J R=$R"
           RL="$(curl -sS -o /dev/null --max-time 30 -w '%{redirect_url}' "https://$HOST/races" | sed "s#https://$HOST##")"
           echo "races redirect: $RL"
-          for path in "$RL" /database /analysis /rankings; do
+          asset="$(curl -sS --max-time 20 "https://$HOST/" | grep -oE '/_next/static/[^"]+\.js' | head -1)"
+          curl -sS -o /dev/null -D - --max-time 20 "https://$HOST$asset" | grep -iE '^last-modified'
+          for path in /database /analysis /rankings /; do
             [ -n "$path" ] && t "$path"
           done
           set -e
