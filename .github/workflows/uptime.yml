@@ -45,9 +45,15 @@ jobs:
           check "https://$HOST/sitemap.xml" 200 "<sitemapindex"
           check "https://$HOST/races" 200 "<html"
           echo "--- deploy probe (임시) ---"
-          curl -sS -o /dev/null --max-time 20 -w 'news: %{http_code} -> %{redirect_url}\n' "https://$HOST/news" || true
-          curl -sS --max-time 20 "https://$HOST/sitemap.xml" | head -c 1500; echo
-          curl -sS -o /dev/null -D - --max-time 20 "https://$HOST/" | grep -i -E '^(date|last-modified|x-nextjs|etag|age)' || true
+          home="$(curl -sS --max-time 20 "https://$HOST/")"
+          bid="$(printf '%s' "$home" | grep -oE '/_next/static/[A-Za-z0-9_-]+/_(buildManifest|ssgManifest)\.js' | head -1 | cut -d/ -f4)"
+          echo "buildId: ${bid:-?}"
+          printf '%s' "$home" | grep -oE '"buildId":"[^"]+"' | head -1 || true
+          asset="$(printf '%s' "$home" | grep -oE '/_next/static/chunks/[A-Za-z0-9_./-]+\.js' | head -1)"
+          echo "asset: $asset"
+          [ -n "$asset" ] && curl -sS -o /dev/null -D - --max-time 20 "https://$HOST$asset" | grep -iE '^(last-modified|date|etag)' || true
+          [ -n "${bid:-}" ] && curl -sS -o /dev/null -D - --max-time 20 "https://$HOST/_next/static/$bid/_buildManifest.js" | grep -iE '^(last-modified|date|etag)' || true
+          curl -sS -o /dev/null --max-time 20 -w 'news: %{http_code}\n' "https://$HOST/news" || true
           exit $fail
       - name: TLS certificate expiry
         shell: bash
