@@ -64,7 +64,12 @@ jobs:
           echo "races redirect: $RL"
           asset="$(curl -sS --max-time 20 "https://$HOST/" | grep -oE '/_next/static/[^"]+\.js' | head -1)"
           curl -sS -o /dev/null -D - --max-time 20 "https://$HOST$asset" | grep -iE '^last-modified'
-          for path in /database /analysis /rankings /; do
+          idx="$(curl -sS --max-time 30 "https://$HOST/sitemap.xml")"
+          echo "index entries: $(printf '%s' "$idx" | grep -c '<loc>')"
+          for u in $(printf '%s' "$idx" | grep -oE 'https://[^<]+' | awk 'NR<=3 || /races-0|races-1\./'; printf '%s' "$idx" | grep -oE 'https://[^<]+' | tail -2); do
+            echo "SIZE $u :: $(curl -sS -o /dev/null --max-time 30 -w '%{http_code} %{size_download}B ttfb=%{time_starttransfer} total=%{time_total}' "$u") urls=$(curl -sS --max-time 30 "$u" | grep -c '<loc>')"
+          done
+          for path in /sitemap.xml; do
             [ -n "$path" ] && t "$path"
           done
           set -e
