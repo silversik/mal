@@ -339,19 +339,6 @@ class FakeWorld:
                 out.append(item)
         return out
 
-    def race_info_items(self, meet: int, year: int) -> list[dict[str, Any]] | None:
-        """API187 — 서울만 데이터, 제주 빈 응답, 부경은 500 (None)."""
-        if meet == 3:
-            return None
-        if meet == 2 or year != self.D.year:
-            return []
-        return [
-            {"rcDate": ymd(self.D), "meet": "1", "rcNo": str(r.no), "rcName": r.rc_name,
-             "rcDist": str(r.distance), "rank": r.grade, "track": "모래", "trackCond": "건조",
-             "chulCnt": "3"}
-            for r in self.races if r.meet == 1
-        ]
-
     def _build_plans(self) -> list[dict[str, Any]]:
         D, U = self.D, self.U
         return [
@@ -557,7 +544,6 @@ class FakeWeb:
             ("API301", "Dividend_rate_total"): self._dividends,
             ("API179_1", "salesAndDividendRate_1"): self._sales,
             ("API26_2", CHULMA_OP): self._entries,
-            ("API187", "HorseRaceInfo"): self._race_info,
             ("API40", "raceAnnualPlan"): self._plan,
             ("API42_1", "totalHorseInfo_1"): self._horse,
             ("currentjockeyInfo", "getcurrentjockeyinfo"): lambda p: self.w.jockey_items(),
@@ -652,13 +638,6 @@ class FakeWeb:
         if p["rc_month"] != p["rc_date"][:6]:
             raise _BadParams("rc_month != rc_date[:6]")
         return self.w.entry_items(m, d, self.clock.now)
-
-    def _race_info(self, p):
-        self._need(p, "ym_fr", "ym_to", "meet")
-        items = self.w.race_info_items(int(p["meet"]), int(p["ym_fr"]))
-        if items is None:
-            return httpx.Response(500, text="Internal Server Error")
-        return items
 
     def _plan(self, p):
         self._need(p, "rc_year", "meet")

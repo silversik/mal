@@ -2,7 +2,7 @@
 
 KRA OpenAPI API187 (HorseRaceInfo) 가 현재 빈 응답을 반환하는 상황의 fallback.
 race.kra.co.kr/seoulMain.do 를 파싱해 races 테이블의 distance/start_time 컬럼을
-채운다. 기존 값 보존(COALESCE) — race_results / sync_race_info 가 이미 채운
+채운다. 기존 값 보존(COALESCE) — race_results / 출전표 백필이 이미 채운
 값을 덮어쓰지 않도록.
 
 주의: 이 페이지는 "오늘" 의 경주만 보여주므로, 어제·내일 데이터까진 다루지 않는다.

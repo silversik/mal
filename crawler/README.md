@@ -49,7 +49,6 @@ src/
 | `mal.sync_weather` | 매일 03:00 | 기상청 ASOS 직전 7일(KST 어제까지) 재수집 | `weather_observations` |
 | `mal.sync_videos_bulk` | 매월 1일 04:00 | KRBC 업로드 플레이리스트 12개월 walk | `kra_videos` |
 | `mal.sync_race_plan` | 매일 05:00 | 대상경주 연간계획 — 올해 (+11~12월엔 내년도) | `race_plans` |
-| `mal.sync_race_info` | 매일 05:30, 22:30 | API187 races 메타 백필 (현재 빈 응답 — 실질은 today_meta) | `races` |
 | `mal.sync_jockeys` | 매일 06:00 | 기수 마스터 | `jockeys` |
 | `mal.sync_race_today_meta` | 06~21시 매시 05분 | race.kra.co.kr HTML 파싱 — 당일 발주시각·거리 | `races` |
 | `mal.sync_trainers` | 매일 06:15 | 조교사 마스터 | `trainers` |
@@ -60,10 +59,9 @@ src/
 | `mal.sync_horses_refresh` | 매일 07:00 | `updated_at` 30일 초과 마필 300건 재조회 | `horses` |
 | `mal.sync_horse_ratings` | 토 07:30 | KRA 주간 레이팅 공시 | `horse_ratings` |
 | `mal.sync_yesterday_catchup` | 매일 07:30 | 전날 결과·배당·매출 재수집 + "출전표 있는데 결과 0건" invariant 실패 알림 | `race_results`, `races`, `horses`, `race_dividends`, `race_combo_dividends`, `race_pool_sales` |
-| `mal.sync_yesterday_residual` | 09~12시 정각 | 전날 미해결 race 가 있을 때만 결과·배당 재시도 | `race_results`, `races`, `horses`, `race_dividends`, `race_combo_dividends` |
-| `mal.sync_races_live` | 10:00~22:30 매 30분 | 경기일 실시간 결과·배당 (오늘 races 없으면 skip, 배당은 해당 경마장만) | `race_results`, `races`, `horses`, `race_dividends`, `race_combo_dividends` |
+| `mal.sync_yesterday_residual` | 09~12시 정각 | 전날 미해결 race 가 있을 때만 결과·배당·매출 재시도 | `race_results`, `races`, `horses`, `race_dividends`, `race_combo_dividends` |
+| `mal.sync_races_live` | 10:00~22:30 매 30분 | 경기일 실시간 결과·배당 (오늘 races 없으면 skip, 배당은 결과 있는데 배당 빈 경마장만) | `race_results`, `races`, `horses`, `race_dividends`, `race_combo_dividends` |
 | `mal.sync_races_today` | 매일 22:00 | 오늘 경주결과 전 경마장 | `race_results`, `races`, `horses` |
-| `mal.sync_race_dividends` | 매일 22:45 | 오늘 확정배당율 | `race_dividends`, `race_combo_dividends` |
 | `mal.sync_race_sales` | 매일 22:50 | 오늘 풀별 매출 | `race_pool_sales` |
 | `mal.sync_videos_backfill` | 매일 23:00 | 영상 없는 경주(365일) YouTube search 매칭, 실행당 50건 | `kra_videos` |
 
@@ -79,7 +77,7 @@ src/
 - **배당/매출**: `sync-dividend-date <date> [--meet]` · `sync-race-sales-date <date> [--meet]` · `chunked-dividends-backfill --budget --lookback-days --max-attempts`
 - **마스터/이벤트**: `sync-jockeys` · `sync-trainers` · `sync-owners` · `sync-jockey-changes` · `sync-horse-rank-changes`
 - **영상/날씨**: `sync-videos --n` · `sync-weather --days` · `backfill-weather <start> <end> --chunk-days`
-- **one-shot 백필** (작은 chunk·sleep 유지 — 분당 한도): `backfill-history <start> <end> --sleep` · `backfill-history-33y` · `backfill-dividends --months` · `backfill-race-sales --days` · `backfill-jockey-changes --days`
+- **one-shot 백필** (작은 chunk·sleep 유지 — 분당 한도): `backfill-race-sales --days` · `backfill-jockey-changes --days`
 - **`periodic-*`**: 스케줄 잡을 `@track_job` 째로 한 번 실행 (대시보드 run 기록됨). `periodic-videos` · `-videos-backfill` · `-videos-bulk` · `-races-today` · `-races-live` · `-races-yesterday`(= sync_yesterday_catchup) · `-jockeys` · `-trainers` · `-owners` · `-jockey-changes` · `-horse-rank-changes` · `-horse-ratings` · `-horses-backfill` · `-horses-refresh` · `-race-plan` · `-race-entries` · `-race-info` · `-race-today-meta` · `-race-dividends` · `-race-sales` · `-chunked-dividends`
 
 ## 테스트

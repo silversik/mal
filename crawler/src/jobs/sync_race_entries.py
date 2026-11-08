@@ -63,7 +63,7 @@ def upsert_race_entries(items: list[dict[str, Any]]) -> int:
 def upsert_races_skeleton(items: list[dict[str, Any]]) -> int:
     """출전표 items 로부터 (race_date, meet, race_no) 고유 키를 뽑아 `races` 에
     선(先) 행을 만든다. entry_count 만 채우고 나머지 메타(race_name/distance/
-    grade/track_*)는 sync_race_info 의 API187 백필이 담당한다.
+    grade)는 backfill_races_from_entries·sync_race_today_meta 가 채운다.
 
     기존 races 행이 이미 있으면 entry_count 만 COALESCE 로 채운다 — 결과가
     이미 들어온 레이스의 정확한 entry_count 를 덮어쓰지 않도록.

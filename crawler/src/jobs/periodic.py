@@ -30,7 +30,6 @@ from .sync_jockeys import sync_all_jockeys
 from .sync_owners import sync_all_owners
 from .sync_race_dividends import sync_date_all_meets as sync_dividends_all_meets
 from .sync_race_entries import sync_upcoming as sync_upcoming_race_entries
-from .sync_race_info import backfill_races_metadata
 from .sync_race_plan import sync_scheduled_years as sync_race_plan_years
 from .sync_race_sales import sync_date_all_meets as sync_race_sales_all_meets
 from .sync_race_today_meta import sync_today_meta
@@ -105,6 +104,36 @@ def _race_meets_on(d: date) -> set[str]:
         return {str(m) for m in rows if m}
 
 
+def _meets_missing_dividends_on(d: date) -> set[str]:
+    """d 일자에 순위 확정 결과는 있는데 단승/연승 배당이 아직 없는 경주의 경마장 집합.
+
+    live 가 배당 API(API301, (date, meet) 1회 ~30~65 page)를 매 tick 다시 받지 않도록,
+    새로 결과가 들어와 배당이 비어 있는 경마장만 고른다. 배당이 이미 다 있으면 빈 집합.
+    복식 배당이 늦게 공표되는 경우는 07:30 catchup · 02:30 gap 백필이 채운다.
+    """
+    from ..db import session_scope
+
+    with session_scope() as s:
+        rows = s.execute(
+            text(
+                """
+                SELECT DISTINCT rr.meet
+                  FROM race_results rr
+                 WHERE rr.race_date = :d
+                   AND rr.rank IS NOT NULL
+                   AND NOT EXISTS (
+                     SELECT 1 FROM race_dividends rd
+                      WHERE rd.race_date = rr.race_date
+                        AND rd.meet      = rr.meet
+                        AND rd.race_no   = rr.race_no
+                   )
+                """
+            ),
+            {"d": d},
+        ).scalars()
+        return {str(m) for m in rows if m}
+
+
 def _has_unresolved_races_on(d: date) -> bool:
     """d 일자 races 중 race_results 가 비어있는 race 가 하나라도 있는지.
     어제 catchup 잡이 모두 채웠는지 판단하기 위함."""
@@ -136,7 +165,8 @@ def run_sync_races_live() -> int:
 
     DB races 테이블에 오늘 일자 row 가 있을 때만 KRA OpenAPI 호출. 비경기일이면
     즉시 skip — KRA 호출도, 실패 알림도 발생하지 않는다.
-    배당(API301, 1회 ~30~65 page)은 오늘 경주가 있는 경마장만 호출 — 쿼터 절약.
+    배당(API301, 1회 ~30~65 page)은 결과 sync 뒤 **결과는 있는데 배당이 빈 경주가 있는
+    경마장만** 호출 — 이미 받은 배당을 매 tick 다시 받지 않는다 (쿼터 절약).
     """
     today = datetime.now(KST).date()
     race_meets = _race_meets_on(today)
@@ -144,8 +174,9 @@ def run_sync_races_live() -> int:
         log.info("races_live_skip_no_today_races", date=str(today))
         return 0
     races = sync_date_all_meets(today)
+    pending = _meets_missing_dividends_on(today)
     div_meets = _dividend_meet_codes(
-        race_meets, d=today, event="races_live_unknown_meet"
+        pending, d=today, event="races_live_unknown_meet"
     )
     dividends = sync_dividends_all_meets(today, meets=div_meets) if div_meets else 0
     log.info(
@@ -312,21 +343,6 @@ def run_sync_race_entries() -> int:
     return sync_upcoming_race_entries(days_ahead=10)
 
 
-@track_job("mal.sync_race_info")
-def run_sync_race_info() -> int:
-    """API187 races 메타(이름/거리/등급/주로/발주시각) 백필 — 주 1회 canary (월 05:30 KST).
-
-    ⚠ 2026-05 이후 API187 은 빈 응답(items="")만 반환 (races.track_type/
-    track_condition 이 항상 NULL) — 실질 backfill 은 `sync_race_today_meta`
-    (HTML 크롤링) 와 `backfill_races_from_entries` 가 담당한다. 그래서 하루 2회
-    (05:30·22:30) 호출을 주 1회 canary 로 줄였다: KRA 가 API 를 복구하면 다음
-    월요일 run 의 rows 가 0 → N 으로 바뀌어 대시보드에 보이고, COALESCE 백필이라
-    한 번에 올해 전체 빈 메타를 채운다. 3개 경마장 호출이 전부 예외면 RuntimeError
-    (승인 만료·키 오류를 빈 응답과 구분).
-    """
-    return backfill_races_metadata()
-
-
 @track_job("mal.backfill_races_from_entries")
 def run_backfill_races_from_entries() -> int:
     """race_entries.raw → races 메타 백필 — API187 미응답 영구 fallback.
@@ -347,31 +363,9 @@ def run_sync_race_today_meta() -> int:
     return sync_today_meta()
 
 
-@track_job("mal.sync_race_dividends")
-def run_sync_race_dividends() -> int:
-    """오늘(KST) 경주의 확정배당율 적재 — live 마지막 tick(22:30) 이후 22:45 KST.
-
-    API301 은 (date, meet) 1회에 ~30~65 page 를 쓰므로 sync_races_live 와 같은
-    필터로 오늘 races 에 있는 경마장만 호출. 오늘 경주가 없으면 KRA 호출 없이 0.
-    """
-    today = datetime.now(KST).date()
-    race_meets = _race_meets_on(today)
-    meets = _dividend_meet_codes(
-        race_meets, d=today, event="race_dividends_unknown_meet"
-    )
-    if not meets:
-        log.info(
-            "race_dividends_skip_no_today_meets",
-            date=str(today),
-            race_meets=sorted(race_meets),
-        )
-        return 0
-    return sync_dividends_all_meets(today, meets=meets)
-
-
 @track_job("mal.sync_race_sales")
 def run_sync_race_sales() -> int:
-    """오늘 경주의 풀별 매출 적재 — race_dividends (22:45) 직후 22:50 KST."""
+    """오늘 경주의 풀별 매출 적재 — live 마지막 tick(22:30) 이후 22:50 KST."""
     return sync_race_sales_all_meets(datetime.now(KST).date())
 
 

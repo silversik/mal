@@ -7,12 +7,11 @@
 타임라인 (D = 경주일 토요일, D1 = D+1, T = 실제 오늘, U = 다음 예정 경주일):
   D-1 14:00 races_live(비경기일 skip) · 09:00 race_entries · 12:00 backfill_races_from_entries
   D   05:00 race_plan · 07:30 horse_ratings(토) · 09:05 race_today_meta · 13:00 races_live
-      21:00 videos · 22:30 races_live(마지막 tick) · 22:45 dividends · 22:50 sales
+      21:00 videos · 22:30 races_live(마지막 tick) · 22:50 sales
       23:00 videos_backfill · 23:05 races_today(backstop)
   D1  02:30 chunked_dividends · 03:00 weather · 06:00 jockeys · 06:15 trainers · 06:20 owners
       06:25 jockey_changes · 06:30 horses_backfill · 06:35 rank_changes · 07:00 horses_refresh
       07:30 yesterday_catchup · 09:00/10:00 yesterday_residual · 11:00 videos_bulk
-  D+2 05:30 race_info (월요일 canary)
   T   12:00 race_entries(U) · 12:10 backfill_races_from_entries · 12:30 favorites ×2
 그 뒤 web/src/lib/*.ts 의 실제 SQL 로 화면 쿼리가 시드된 경주/마필을 돌려주는지 확인.
 """
@@ -35,8 +34,8 @@ EXPECTED_SCHEDULED = {
     "mal.sync_jockeys", "mal.sync_trainers", "mal.sync_owners", "mal.sync_jockey_changes",
     "mal.sync_horse_rank_changes", "mal.sync_horses_backfill", "mal.sync_horses_refresh",
     "mal.sync_horse_ratings", "mal.sync_yesterday_catchup", "mal.sync_races_today",
-    "mal.sync_races_live", "mal.sync_yesterday_residual", "mal.sync_race_info",
-    "mal.sync_race_today_meta", "mal.sync_race_dividends", "mal.sync_race_sales",
+    "mal.sync_races_live", "mal.sync_yesterday_residual",
+    "mal.sync_race_today_meta", "mal.sync_race_sales",
     "mal.sync_videos_backfill", "mal.sync_videos_bulk",
     "mal.build_favorite_notifications", "mal.sync_weather",
 }
@@ -165,7 +164,7 @@ def test_08_races_live_race_day(e2e):
     n = e2e.run("mal.sync_races_live", D, 13, 0)
     assert n == 6 + 6  # 결과 (서울1R+부경1R) + 단·연 배당 row
     assert _params(e2e.web.kra_calls("racedetailresult"), "meet") == ["1", "2", "3"]
-    # 배당(API301)은 오늘 races 에 있는 경마장만 — 제주 호출 없음 (쿼터 절약)
+    # 배당(API301)은 결과는 있는데 배당이 빈 경마장만 — 제주 호출 없음 (쿼터 절약)
     assert _params(e2e.web.kra_calls("API301"), "meet") == ["1", "3"]
     rr = {r["horse_no"]: r for r in e2e.q("SELECT * FROM race_results WHERE race_date=:d", d=D)}
     assert set(rr) == {"0041001", "0041002", "0041003", "0041007", "0041008", "0041009"}
@@ -221,21 +220,26 @@ def test_09_sync_videos_uploads_head(e2e):
 def test_10_races_live_last_tick(e2e):
     D = _d(e2e)
     n = e2e.run("mal.sync_races_live", D, 22, 30)
-    assert n == 9 + 9  # 서울 1·2R + 부경 1R 결과·단연 배당 (부경 2R 은 KRA 공표 지연)
+    # 결과 9 (서울 1·2R + 부경 1R, 부경 2R 은 KRA 공표 지연) + 서울 단·연 배당 6.
+    # 부경 1R 배당은 13:00 tick 에 이미 받았으므로 API301 은 서울(1)만 다시 부른다.
+    assert n == 9 + 6
+    assert _params(e2e.web.kra_calls("API301"), "meet") == ["1"]
     # 인라인 enrich: 새 stub(서울 2R)만 조회. 0041009 는 오늘 이미 not-found → 재조회 안 함
     assert _params(e2e.web.kra_calls("API42_1"), "hr_no") == ["0041004", "0041005", "0041006"]
     cnt = e2e.one("SELECT COUNT(*) AS n FROM race_results WHERE race_date=:d", d=D)
     assert cnt["n"] == 9
-
-
-def test_11_race_dividends(e2e):
-    D = _d(e2e)
-    n = e2e.run("mal.sync_race_dividends", D, 22, 45)
-    assert n == 9
-    assert _params(e2e.web.kra_calls("API301"), "meet") == ["1", "3"]  # 오늘 경마장만
+    div = e2e.one("SELECT COUNT(*) AS n FROM race_dividends WHERE race_date=:d", d=D)
+    assert div["n"] == 9
     combos = e2e.q("SELECT meet, race_no, COUNT(*) AS n FROM race_combo_dividends "
                    "GROUP BY meet, race_no ORDER BY meet, race_no")
     assert [(c["meet"], c["race_no"], c["n"]) for c in combos] == [("서울", 1, 4), ("서울", 2, 4)]
+
+
+def test_10b_races_live_skips_dividends_when_complete(e2e):
+    """새로 결과가 들어온 경주가 없으면 배당 API 를 다시 부르지 않는다."""
+    D = _d(e2e)
+    e2e.run("mal.sync_races_live", D, 22, 30)
+    assert e2e.web.kra_calls("API301") == []
 
 
 def test_12_race_sales(e2e):
@@ -428,25 +432,6 @@ def test_28_videos_bulk_walks_playlist_until_cutoff(e2e):
     assert old == {"race_date": D - timedelta(days=28), "meet": "서울", "race_no": 1}
     total = e2e.one("SELECT COUNT(*) AS n FROM kra_videos")
     assert total["n"] == 6
-
-
-def test_28b_race_info_monday_canary(e2e):
-    D = _d(e2e)
-    monday = D + timedelta(days=2)
-    assert monday.weekday() == 0
-    n = e2e.run("mal.sync_race_info", monday, 5, 30)
-    assert n == 2  # 서울만 데이터 (제주 빈 응답, 부경 HTTP 500 → 경고 후 계속)
-    assert _params(e2e.web.kra_calls("API187"), "meet") == ["1", "2", "3"]
-    assert _params(e2e.web.kra_calls("API187"), "ym_fr") == [str(monday.year)]
-    rows = {(r["meet"], r["race_no"]): r for r in e2e.q(
-        "SELECT * FROM races WHERE race_date=:d", d=D)}
-    assert (rows[("서울", 1)]["track_type"], rows[("서울", 1)]["track_condition"]) == (
-        "모래", "건조")
-    assert rows[("서울", 2)]["race_name"] == "가을특별"  # COALESCE — 기존 값 보존
-    assert rows[("부경", 1)]["track_type"] is None
-
-
-# ================================================================== T (today)
 
 
 def test_29_race_entries_upcoming_week(e2e):

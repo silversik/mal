@@ -24,9 +24,9 @@
 | 15130589 | API309 | horseOwnerInfo | 마주정보(영문 포함) | `owners` | `mal.sync_owners` |
 | 15059482 | API40 | raceAnnualPlan | 연간 대상경주 계획 | `race_plans` | `mal.sync_race_plan` |
 | 15058677 | API26_2 | (env: `KRA_CHULMA_OPERATION`, 예: `entrySheet_2`) | 출전표 상세 | `race_entries` | `mal.sync_race_entries` |
-| 15063951 | API187 | HorseRaceInfo | 경주 메타 (rcName·distance·grade·trkType·stTime) | `races` | `mal.sync_race_info` |
+| 15063951 | API187 | HorseRaceInfo | 경주 메타 (rcName·distance·grade·trkType·stTime) | `races` | (2026-05~ 빈 응답 → 2026-11 수집 중단) |
 | 15089492 | racedetailresult | getracedetailresult | 경주별 상세 성적 (마필 단위 row) | `race_results` | `mal.sync_races_today`, `mal.sync_races_live`, `mal.sync_yesterday_catchup` |
-| 15119558 | API301 | Dividend_rate_total | 확정배당율 (단/연 + 복식 풀 전체) | `race_dividends`, `race_combo_dividends` | `mal.sync_race_dividends`, `mal.chunked_dividends_backfill` |
+| 15119558 | API301 | Dividend_rate_total | 확정배당율 (단/연 + 복식 풀 전체) | `race_dividends`, `race_combo_dividends` | `mal.sync_races_live`, `mal.sync_yesterday_catchup`, `mal.chunked_dividends_backfill` |
 | 15119558 | API179_1 | salesAndDividendRate_1 | 경주·풀별 매출액 | `race_pool_sales` | `mal.sync_race_sales` |
 | 15057847 | API6_1 | raceDetailSectionRecord_1 | 펄롱별 구간기록 + 1등마 통과순위 (경주 단위 1 row) | `race_corners` | (2026-11 수집 중단 — 테이블은 이력 보존) |
 

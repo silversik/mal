@@ -29,9 +29,7 @@ from .jobs.periodic import (
     run_sync_jockey_changes,
     run_sync_jockeys,
     run_sync_owners,
-    run_sync_race_dividends,
     run_sync_race_entries,
-    run_sync_race_info,
     run_sync_race_plan,
     run_sync_race_sales,
     run_sync_race_today_meta,
@@ -186,15 +184,6 @@ def main() -> None:
         id="mal.sync_yesterday_residual",
         **common,
     )
-    # API187 경주 메타 — 주 1회 canary (월 05:30). ⚠ 2026-05~ API187 은 빈 응답이라
-    # 실제 backfill 은 sync_race_today_meta (HTML) + backfill_races_from_entries 가 담당.
-    # KRA 가 복구하면 canary run rows 가 0 → N 으로 바뀌고 COALESCE 로 올해 빈 메타를 채움.
-    sched.add_job(
-        run_sync_race_info,
-        CronTrigger(day_of_week="mon", hour=5, minute=30),
-        id="mal.sync_race_info",
-        **common,
-    )
     # 당일 발주시각·거리 HTML 크롤링 — race.kra.co.kr/seoulMain.do 파싱. KRA OpenAPI
     # API187 의 빈 응답을 보완하는 fallback. 06~21 매시 정각 5분.
     # 새벽엔 KRA 페이지가 어제 데이터를 보여주는 시간대도 있어 06시 이후로 시작.
@@ -202,13 +191,6 @@ def main() -> None:
         run_sync_race_today_meta,
         CronTrigger(hour="6-21", minute=5),
         id="mal.sync_race_today_meta",
-        **common,
-    )
-    # 확정배당율(22:45) — 오늘 races 에 있는 경마장만 (live 와 같은 필터), 없으면 0.
-    sched.add_job(
-        run_sync_race_dividends,
-        CronTrigger(hour=22, minute=45),
-        id="mal.sync_race_dividends",
         **common,
     )
     # 배당 직후 풀별 매출(22:50) — race_pool_sales 적재.
@@ -270,9 +252,7 @@ def main() -> None:
         "mal.sync_races_live": run_sync_races_live,
         "mal.sync_yesterday_catchup": run_sync_yesterday_catchup,
         "mal.sync_yesterday_residual": run_sync_yesterday_residual,
-        "mal.sync_race_info": run_sync_race_info,
         "mal.sync_race_today_meta": run_sync_race_today_meta,
-        "mal.sync_race_dividends": run_sync_race_dividends,
         "mal.sync_race_sales": run_sync_race_sales,
         "mal.backfill_races_from_entries": run_backfill_races_from_entries,
         "mal.chunked_dividends_backfill": run_chunked_dividends_backfill,
