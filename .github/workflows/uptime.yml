@@ -44,14 +44,25 @@ jobs:
           check "https://$HOST/" 200 "<html"
           check "https://$HOST/sitemap.xml" 200 "<sitemapindex"
           check "https://$HOST/races" 200 "<html"
-          echo "--- deploy probe (임시) ---"
+          echo "--- speed probe (임시) ---"
           set +e +o pipefail
-          curl -sS --max-time 20 -o /tmp/home.html "https://$HOST/"
-          echo "static refs:"; grep -oE '/_next/static/[^"]+' /tmp/home.html | sort -u | head -8
-          asset="$(grep -oE '/_next/static/[^"]+\.js' /tmp/home.html | head -1)"
-          echo "asset: $asset"
-          curl -sS -o /dev/null -D - --max-time 20 "https://$HOST$asset" | grep -iE '^(last-modified|date|etag)'
-          curl -sS -o /dev/null --max-time 20 -w 'news: %{http_code}\n' "https://$HOST/news"
+          t() {  # 3회 측정: code ttfb total size
+            local u="https://$HOST$1" out=""
+            for n in 1 2 3; do
+              out="$out $(curl -sS -o /dev/null --max-time 30 -w '%{http_code}/%{time_starttransfer}/%{time_total}/%{size_download}' "$u")"
+            done
+            echo "PERF $1 ::$out"
+          }
+          curl -sS --max-time 30 -o /tmp/horses.html "https://$HOST/horses"
+          curl -sS --max-time 30 -o /tmp/jockeys.html "https://$HOST/jockeys"
+          curl -sS --max-time 30 -o /tmp/races.html "https://$HOST/races"
+          H="$(grep -oE 'href="/horse/[0-9A-Za-z]+' /tmp/horses.html | head -1 | cut -d'"' -f2)"
+          J="$(grep -oE 'href="/jockey/[0-9A-Za-z]+' /tmp/jockeys.html | head -1 | cut -d'"' -f2)"
+          R="$(grep -oE 'href="/races\?[^"]+' /tmp/races.html | head -1 | cut -d'"' -f2 | sed 's/&amp;/\&/g')"
+          echo "sample: H=$H J=$J R=$R"
+          for path in / /races "$R" /races/schedule /horses "$H" /jockeys "$J" /rankings /analysis /compare /records /database /trainer /owner /sitemap.xml /sitemap/0.xml /sitemap/races-0.xml /robots.txt; do
+            [ -n "$path" ] && t "$path"
+          done
           set -e
           exit $fail
       - name: TLS certificate expiry
