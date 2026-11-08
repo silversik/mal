@@ -95,3 +95,31 @@ describe("renderUrlSet", () => {
     );
   });
 });
+
+describe("chunk 파일 크기 — Search Console fetch 타임아웃 방지", () => {
+  // 800KB+ 단일 파일에서 타임아웃이 났었다. 한 chunk 가 가득 차도 300KB 아래여야 한다.
+  const LIMIT = 300 * 1024;
+
+  it("경주 chunk (가장 긴 venue · 두 자리 경주번호)", async () => {
+    const { RACE_CHUNK_SIZE, SITE } = await import("../sitemap-shared");
+    const { raceDetailPath } = await import("../race-seo");
+    const urls = Array.from({ length: RACE_CHUNK_SIZE }, () => ({
+      loc: `${SITE}${raceDetailPath("2026-11-08", "부산경남", 12)}`,
+      lastmod: "2026-11-08",
+      changefreq: "monthly" as const,
+      priority: 0.6,
+    }));
+    expect(Buffer.byteLength(renderUrlSet(urls))).toBeLessThan(LIMIT);
+  });
+
+  it("마필 chunk", async () => {
+    const { HORSE_CHUNK_SIZE, SITE } = await import("../sitemap-shared");
+    const urls = Array.from({ length: HORSE_CHUNK_SIZE }, () => ({
+      loc: `${SITE}/horse/0041001`,
+      lastmod: "2026-11-08T12:34:56Z",
+      changefreq: "weekly" as const,
+      priority: 0.7,
+    }));
+    expect(Buffer.byteLength(renderUrlSet(urls))).toBeLessThan(LIMIT);
+  });
+});
