@@ -21,11 +21,12 @@ import { raceDetailPath } from "@/lib/race-seo";
 
 export const SITE = "https://mal.kr";
 
-// Google 단일 sitemap 한도: 50,000 URL · 50MB. 크롤러 fetch 타임아웃 여유를 두고
-// 15k 단위 chunk 로 분할.
-export const HORSE_CHUNK_SIZE = 15000;
-// 경주 URL 은 쿼리스트링(인코딩된 venue)이 길어 더 작게 자른다.
-export const RACE_CHUNK_SIZE = 5000;
+// Google 단일 sitemap 한도는 50,000 URL · 50MB 지만, 큰 파일은 Search Console fetch 가
+// 타임아웃난 적이 있다 (800KB+). 파일당 ~200KB 가 되게 자른다.
+//   마필 URL ~150B × 1,500 ≈ 220KB · 경주 URL ~190B(인코딩된 venue 쿼리) × 1,000 ≈ 190KB
+// (2026-11 이전엔 15,000 / 5,000 → 경주 chunk 가 ~950KB 였음)
+export const HORSE_CHUNK_SIZE = 1500;
+export const RACE_CHUNK_SIZE = 1000;
 
 // 모든 race_date 비교는 KST 기준 (races.ts 와 동일).
 const KST_TODAY = `(NOW() AT TIME ZONE 'Asia/Seoul')::date`;
