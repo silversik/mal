@@ -1,5 +1,5 @@
-"""sync_races_live 배당 meet 필터 · races_today/dividends/videos_backfill 중복 호출 절감
-+ 경주결과 sync 의 마필 enrich limit."""
+"""sync_races_live 배당 meet 필터(결과는 있는데 배당 빈 경마장만) · races_today/
+videos_backfill 중복 호출 절감 + 경주결과 sync 의 마필 enrich limit."""
 from __future__ import annotations
 
 import importlib
@@ -32,15 +32,24 @@ def periodic(monkeypatch: pytest.MonkeyPatch) -> Any:
 
 
 @contextmanager
-def _fake_session(meets: list[str], seen: list[Any]):
+def _fake_session(state: dict[str, Any]):
+    """races meet 조회는 state["meets"], 배당 빈 경마장 조회는 state["pending"]."""
+
     class _Result:
+        def __init__(self, rows: list[str]) -> None:
+            self.rows = rows
+
         def scalars(self) -> list[str]:
-            return list(meets)
+            return list(self.rows)
 
     class _Session:
         def execute(self, stmt: Any, params: dict[str, Any] | None = None) -> _Result:
-            seen.append((str(stmt), params))
-            return _Result()
+            sql = str(stmt)
+            state["sql"].append((sql, params))
+            if "race_dividends" in sql:
+                pending = state.get("pending")
+                return _Result(state["meets"] if pending is None else pending)
+            return _Result(state["meets"])
 
     yield _Session()
 
@@ -71,12 +80,12 @@ def _fake_datetime(utc_now: datetime) -> type[datetime]:
 @pytest.fixture
 def live(periodic: Any, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     """DB(races meet 조회) · 결과 sync · 배당 클라이언트 mock."""
-    state: dict[str, Any] = {"meets": [], "sql": [], "race_dates": []}
+    state: dict[str, Any] = {"meets": [], "sql": [], "race_dates": [], "pending": None}
     FakeDividendClient.calls = []
     import src.db
 
     monkeypatch.setattr(
-        src.db, "session_scope", lambda: _fake_session(state["meets"], state["sql"])
+        src.db, "session_scope", lambda: _fake_session(state)
     )
     monkeypatch.setattr(
         periodic, "sync_date_all_meets", lambda d: state["race_dates"].append(d) or 0
@@ -112,6 +121,24 @@ def test_live_seoul_and_busan(live: dict[str, Any]) -> None:
     assert [m for _, m in FakeDividendClient.calls] == [1, 3]
 
 
+def test_live_skips_dividends_when_all_present(live: dict[str, Any]) -> None:
+    """결과가 들어온 경주의 배당이 이미 다 있으면 API301 을 다시 부르지 않는다."""
+    live["meets"] = ["서울", "부경"]
+    live["pending"] = []
+    live["run"]()
+    assert FakeDividendClient.calls == []
+    assert live["race_dates"] == [date(2026, 11, 7)]  # 결과 sync 는 매 tick
+
+
+def test_live_fetches_only_meets_missing_dividends(live: dict[str, Any]) -> None:
+    live["meets"] = ["서울", "부경"]
+    live["pending"] = ["부경"]
+    live["run"]()
+    assert FakeDividendClient.calls == [(date(2026, 11, 7), 3)]
+    # 배당 빈 경마장 조회도 KST 오늘로
+    assert [p for sql, p in live["sql"] if "race_dividends" in sql] == [{"d": date(2026, 11, 7)}]
+
+
 def test_live_unknown_meet_name_skips_dividends(live: dict[str, Any]) -> None:
     live["meets"] = ["알수없음"]
     live["run"]()
@@ -119,7 +146,7 @@ def test_live_unknown_meet_name_skips_dividends(live: dict[str, Any]) -> None:
     assert live["race_dates"] == [date(2026, 11, 7)]  # 결과 sync 는 그대로
 
 
-# ------------------------------------------------- 22:45 배당 · 23:05 races_today
+# ------------------------------------------------- 23:05 races_today
 
 
 def test_races_today_skips_when_live_covered(
@@ -146,28 +173,6 @@ def test_races_today_runs_when_live_gated_out(live: dict[str, Any], periodic: An
     live["meets"] = []  # races 에 오늘 row 없음 → live 가 skip 한 날
     periodic.run_sync_races_today.__wrapped__()
     assert live["race_dates"] == [date(2026, 11, 7)]
-
-
-def test_race_dividends_only_today_meets(live: dict[str, Any], periodic: Any) -> None:
-    live["meets"] = ["제주", "서울"]
-    periodic.run_sync_race_dividends.__wrapped__()
-    assert FakeDividendClient.calls == [(date(2026, 11, 7), 1), (date(2026, 11, 7), 2)]
-
-
-def test_race_dividends_no_today_meets_makes_no_calls(
-    live: dict[str, Any], periodic: Any
-) -> None:
-    live["meets"] = []
-    assert periodic.run_sync_race_dividends.__wrapped__() == 0
-    assert FakeDividendClient.calls == []
-
-
-def test_race_dividends_unknown_meet_only_makes_no_calls(
-    live: dict[str, Any], periodic: Any
-) -> None:
-    live["meets"] = ["알수없음"]
-    assert periodic.run_sync_race_dividends.__wrapped__() == 0
-    assert FakeDividendClient.calls == []
 
 
 def test_videos_backfill_uses_recent_window(

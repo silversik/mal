@@ -27,9 +27,7 @@ from .jobs.periodic import (
     run_sync_jockey_changes,
     run_sync_jockeys,
     run_sync_owners,
-    run_sync_race_dividends,
     run_sync_race_entries,
-    run_sync_race_info,
     run_sync_race_plan,
     run_sync_race_sales,
     run_sync_race_today_meta,
@@ -219,40 +217,6 @@ def cmd_periodic_horses_refresh() -> None:
     typer.echo(f"refreshed {n} horse rows")
 
 
-@app.command("backfill-history")
-def cmd_backfill_history(
-    start: str = typer.Argument(..., help="시작 날짜 YYYY-MM-DD (inclusive)"),
-    end: str = typer.Argument(..., help="종료 날짜 YYYY-MM-DD (inclusive)"),
-    sleep: float = typer.Option(0.3, help="날짜간 대기 (초) — KRA rate-limit 보호"),
-) -> None:
-    """[one-shot] 과거 날짜 범위 전체 경주결과 + horses enrichment. 콜드스타트용.
-
-    예: 최근 33년 일괄 부트스트랩 —
-        python -m src.main backfill-history 1993-04-21 2026-04-20
-    """
-    from datetime import datetime as _dt
-
-    from .jobs.backfill_history import backfill_history
-
-    for fmt in ("%Y-%m-%d", "%Y%m%d"):
-        try:
-            s_date = _dt.strptime(start, fmt).date()
-            e_date = _dt.strptime(end, fmt).date()
-            break
-        except ValueError:
-            continue
-    else:
-        typer.echo("Invalid date format. Use YYYY-MM-DD or YYYYMMDD.")
-        raise typer.Exit(code=1)
-
-    if s_date > e_date:
-        typer.echo("start must be <= end")
-        raise typer.Exit(code=1)
-
-    n = backfill_history(s_date, e_date, sleep_sec=sleep)
-    typer.echo(f"backfilled {n} race_result rows across {(e_date - s_date).days + 1} days")
-
-
 @app.command("periodic-race-plan")
 def cmd_periodic_race_plan() -> None:
     """[scheduled] sync_race_plan — 대상경주 연간계획 (올해 + 11~12월엔 내년도)."""
@@ -277,13 +241,6 @@ def cmd_periodic_race_entries() -> None:
     typer.echo(f"upserted {n} race entry rows")
 
 
-@app.command("periodic-race-info")
-def cmd_periodic_race_info() -> None:
-    """[scheduled] sync_race_info — API187 메타 백필."""
-    n = run_sync_race_info()
-    typer.echo(f"backfilled {n} race metadata rows")
-
-
 @app.command("periodic-race-today-meta")
 def cmd_periodic_race_today_meta() -> None:
     """[scheduled] sync_race_today_meta — seoulMain.do HTML 크롤링."""
@@ -303,13 +260,6 @@ def cmd_periodic_videos_bulk() -> None:
     """[scheduled] sync_videos_bulk — KRBC 업로드 1년 walk 일괄 적재."""
     n = run_sync_videos_bulk()
     typer.echo(f"bulk-upserted {n} video rows")
-
-
-@app.command("periodic-race-dividends")
-def cmd_periodic_race_dividends() -> None:
-    """[scheduled] sync_race_dividends — 오늘 확정배당율."""
-    n = run_sync_race_dividends()
-    typer.echo(f"upserted {n} race_dividend rows")
 
 
 @app.command("sync-dividend-date")

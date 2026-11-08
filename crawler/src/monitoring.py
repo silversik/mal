@@ -132,14 +132,6 @@ JOB_CATALOG: dict[str, dict] = {
         # IntervalTrigger hours=3
         "expected_interval_sec": _expected_interval(3 * _HOUR),
     },
-    "mal.sync_race_info": {
-        "category": "kra_openapi",
-        "description": (
-            "경주 메타(이름/거리/등급/주로/발주시각) API187 백필 — 주 1회 canary (월 05:30 KST)"
-        ),
-        # 매주 월 05:30
-        "expected_interval_sec": _expected_interval(7 * _DAY),
-    },
     "mal.backfill_races_from_entries": {
         "category": "kra_openapi",
         "description": "races 메타 백필 — race_entries.raw 의 rcDist/rank/rcName/stTime 추출",
@@ -153,12 +145,6 @@ JOB_CATALOG: dict[str, dict] = {
         ),
         # 06~21시 매시 5분 — 최대 공백 21:05→익일 06:05
         "expected_interval_sec": _expected_interval(9 * _HOUR),
-    },
-    "mal.sync_race_dividends": {
-        "category": "kra_openapi",
-        "description": "확정배당율 (API301/Dividend_rate_total) — 오늘 경기 경마장만",
-        # 매일 22:45
-        "expected_interval_sec": _expected_interval(_DAY),
     },
     "mal.sync_race_sales": {
         "category": "kra_openapi",
