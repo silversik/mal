@@ -175,33 +175,38 @@ export type RecentWinner = Horse & {
   win_count: number;
 };
 
-/** 가장 최근 1착 기록 기준으로 마필을 내림차순 반환. win_count는 race_results 집계값. */
+/**
+ * 가장 최근 1착 기록 기준으로 마필을 내림차순 반환. win_count는 race_results 집계값.
+ *
+ * 1993년 이후 1착 전체를 DISTINCT ON + 정렬하면 /database·홈이 매번 ~1.5초 걸려서,
+ * 날짜 인덱스(idx_race_results_date)로 최근 1착 일부만 읽고 그 마필들만 통산 1착을 센다.
+ * 같은 마필이 연달아 이겨도 limit 마리를 채우도록 limit × 20 행(최소 200)을 본다.
+ */
 export async function getRecentWinners(limit = 6): Promise<RecentWinner[]> {
   return query<RecentWinner>(
-    `SELECT ${HORSE_COLUMNS},
-            lw.last_win_date,
-            lw.last_win_meet,
-            lw.win_count
-       FROM (
-         SELECT DISTINCT ON (rr.horse_no)
-                rr.horse_no,
-                to_char(rr.race_date, 'YYYY-MM-DD') AS last_win_date,
-                rr.meet                              AS last_win_meet,
-                cnt.win_count
-           FROM race_results rr
-           JOIN (
-                 SELECT horse_no, COUNT(*) AS win_count
-                   FROM race_results
-                  WHERE rank = 1
-                  GROUP BY horse_no
-                ) cnt ON cnt.horse_no = rr.horse_no
-          WHERE rr.rank = 1
-          ORDER BY rr.horse_no, rr.race_date DESC
-       ) lw
-       JOIN horses h ON h.horse_no = lw.horse_no
+    `WITH recent AS (
+       SELECT rr.horse_no, rr.race_date, rr.meet
+         FROM race_results rr
+        WHERE rr.rank = 1
+        ORDER BY rr.race_date DESC
+        LIMIT GREATEST($1::int * 20, 200)
+     ), lw AS (
+       SELECT DISTINCT ON (r.horse_no) r.horse_no, r.race_date, r.meet
+         FROM recent r
+         JOIN horses hh ON hh.horse_no = r.horse_no
+        ORDER BY r.horse_no, r.race_date DESC
+     ), top AS (
+       SELECT * FROM lw ORDER BY race_date DESC LIMIT $1
+     )
+     SELECT ${HORSE_COLUMNS},
+            to_char(top.race_date, 'YYYY-MM-DD') AS last_win_date,
+            top.meet                              AS last_win_meet,
+            (SELECT COUNT(*) FROM race_results c
+              WHERE c.horse_no = top.horse_no AND c.rank = 1) AS win_count
+       FROM top
+       JOIN horses h ON h.horse_no = top.horse_no
        LEFT JOIN owners o ON o.ow_no = COALESCE(h.ow_no, h.raw->>'owNo')
-      ORDER BY lw.last_win_date DESC
-      LIMIT $1`,
+      ORDER BY top.race_date DESC`,
     [limit],
   );
 }

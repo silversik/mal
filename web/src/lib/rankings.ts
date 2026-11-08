@@ -35,7 +35,10 @@ export async function getRanking(
   limit = 50,
 ): Promise<RankingRow[]> {
   const yearFilter =
-    scope === "all" ? "" : "AND EXTRACT(YEAR FROM rr.race_date) = $1";
+    // EXTRACT(YEAR ...) = $1 은 날짜 인덱스를 못 타 33년치 전체를 스캔한다 → 범위 비교.
+    scope === "all"
+      ? ""
+      : "AND rr.race_date >= make_date($1::int, 1, 1) AND rr.race_date < make_date($1::int + 1, 1, 1)";
   const params: unknown[] = scope === "all" ? [] : [year];
 
   if (entity === "horse") {
