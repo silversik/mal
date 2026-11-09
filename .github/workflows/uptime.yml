@@ -64,10 +64,9 @@ jobs:
           echo "races redirect: $RL"
           asset="$(curl -sS --max-time 20 "https://$HOST/" | grep -oE '/_next/static/[^"]+\.js' | head -1)"
           curl -sS -o /dev/null -D - --max-time 20 "https://$HOST$asset" | grep -iE '^last-modified'
-          for path in /horses "/horses?sort=wins&age=under5&page=2" /jockeys "/jockeys?page=2" /trainer /owner "/owner?page=3" "/horses?q=2016&page=2"; do
-            echo "CARDS $path :: horse=$(curl -sS --max-time 30 "https://$HOST$path" | grep -oE 'href="/(horse|jockey|trainer|owner)/[^"]+' | sort -u | wc -l) pager=$(curl -sS --max-time 30 "https://$HOST$path" | grep -c 'aria-label="페이지"')"
-          done
-          for path in /horses /jockeys /trainer /owner "/jockeys?page=2"; do
+          asset="$(curl -sS --max-time 20 "https://$HOST/" | grep -oE '/_next/static/[^"]+\.js' | head -1)"
+          curl -sS -o /dev/null -D - --max-time 20 "https://$HOST$asset" | grep -iE '^last-modified'
+          for path in / "$RL" /races/schedule /horses "/horses?page=2" "$H" /jockeys "$J" /trainer /owner /rankings /analysis /compare /records /database /sitemap.xml /sitemap/1.xml /sitemap/races-0.xml /robots.txt; do
             [ -n "$path" ] && t "$path"
           done
           set -e
