@@ -70,7 +70,7 @@
   --color-card: var(--card);
 
   /* DESIGN.md 타입 스케일 중 Tailwind 기본에 없는 2단(px 기준 caption 11 · small 13).
-     rem 이라 [data-scale] 축(14/16/20px 루트)을 따른다. line-height 키는 일부러 두지 않아
+     rem 이라 [data-scale] 축(16/20px 루트)을 따른다. line-height 키는 일부러 두지 않아
      예전 `text-[11px]` 처럼 font-size 만 바꾼다. 9·10px 리터럴도 caption 으로 올림(최소값). */
   --text-caption: 0.6875rem;
   --text-small: 0.8125rem;
@@ -82,22 +82,24 @@
   --shadow-subtle: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
 }
 
-/* ── Light (default). leather/coffee brown.
-   Contrast verified (sRGB): ink/paper 14.68:1 (AAA) · brown/paper 6.58:1 (AA)
-   · muted/paper 5.86:1 · positive/paper 5.23:1 · negative/paper 4.85:1. */
+/* ── Light (default). leather/coffee brown. 2026-11 대비 개편 (DESIGN.md Decisions Log).
+   면 구분: surface/paper 1.12 → 1.22, hairline/surface 1.64 → 2.04 (카드가 배경에 묻히던 문제).
+   Contrast verified (sRGB, 실제 얹히는 surface 기준):
+   ink/paper 13.55 · ink/surface 16.49 (AAA) · muted-ink/surface 8.21 · muted-ink/paper 6.75
+   · brown/surface 7.39 · positive/surface 6.16 · negative/surface 6.17 · 최저 positive/accent 4.88 (AA). */
 :root {
   /* raw brown scale */
-  --paper:       #f6f1ea;
+  --paper:       #efe8dd;
   --surface:     #ffffff;
-  --hairline:    #d6c8b5;
+  --hairline:    #c4b39c;
   --ink:         #2a1c12;
-  --muted-ink:   #6b5a4a;
+  --muted-ink:   #5c4c3e;
   --brown:       #7a4a2b;
   --brown-deep:  #5f3a22;
   --brown-pale:  #d8c3ad;
   --brown-fg:    #ffffff;
-  --positive:    #5a6b2b;
-  --negative:    #b4453a;
+  --positive:    #56682a;
+  --negative:    #a83e34;
   --ad-surface:  #eae3d8;
 
   /* shadcn semantic → brown */
@@ -111,11 +113,11 @@
   --primary-foreground: var(--surface);
   --secondary: var(--brown);
   --secondary-foreground: var(--brown-fg);
-  --muted: #f1ece3;
+  --muted: #f3eee6;
   --muted-foreground: var(--muted-ink);
   /* accent = subtle hover/highlight tint (NOT brand brown — keeps hover:bg-accent
      readable against dark text). */
-  --accent: #efe7da;
+  --accent: #ece4d6;
   --accent-foreground: var(--ink);
   --destructive: var(--negative);
   --destructive-foreground: #ffffff;
@@ -129,38 +131,39 @@
   color-scheme: light;
 }
 
-html { font-size: calc(16px * var(--scale)); }
+/* 100% = 브라우저/OS 기본 글꼴 크기(보통 16px). 예전 16px 고정은 노안 사용자가 브라우저에서
+   키워 둔 글꼴 설정을 이 사이트에서만 무시했다. --scale 은 그 위에 곱해지는 사이트 내 확대. */
+html { font-size: calc(100% * var(--scale)); }
 
 /* Explicit light choice — light tokens are the :root default; this block
    positively asserts color-scheme so an explicit "밝게" pick wins over the
    prefers-color-scheme media fallback even when the OS is dark. */
 [data-theme="light"] { color-scheme: light; }
 
-[data-scale="sm"] { --scale: 0.875; } /* 14px */
-[data-scale="md"] { --scale: 1; }     /* 16px */
+[data-scale="md"] { --scale: 1; }     /* 16px (브라우저 기본 기준) */
 [data-scale="lg"] { --scale: 1.25; }  /* 20px */
 
 /* ── Dark. Applied when the script resolves dark (.dark) or user picks dark
-   ([data-theme="dark"]). Contrast verified: ink/paper 14.88:1 (AAA) · brown
-   #c08a5e on card #241c17 ≥4.5:1 (AA). */
+   ([data-theme="dark"]). Contrast verified: ink/surface 13.53 (AAA) · muted-ink/surface 7.03
+   · brown/surface 6.24 · negative/accent 5.04 (AA). hairline/surface 1.27 → 1.62. */
 .dark,
 [data-theme="dark"] {
-  --paper:       #1a1411;
-  --surface:     #241c17;
-  --hairline:    #3a2e25;
+  --paper:       #14100d;
+  --surface:     #251d18;
+  --hairline:    #4d3e33;
   --ink:         #efe7dd;
-  --muted-ink:   #a89684;
-  --brown:       #c08a5e;
+  --muted-ink:   #b8a693;
+  --brown:       #c99467;
   --brown-deep:  #a8703f;
   --brown-pale:  #6b513c;
-  --brown-fg:    #1a1411;
-  --positive:    #9db05a;
-  --negative:    #d2756b;
+  --brown-fg:    #14100d;
+  --positive:    #a3b663;
+  --negative:    #dc8178;
   --ad-surface:  #eae3d8;
 
-  --muted: #2a211b;
-  --accent: #2f2620;
-  --destructive-foreground: #1a1411;
+  --muted: #2e251f;
+  --accent: #33291f;
+  --destructive-foreground: #14100d;
   color-scheme: dark;
 }
 
@@ -169,21 +172,21 @@ html { font-size: calc(16px * var(--scale)); }
    light choice or the script-applied .dark. */
 @media (prefers-color-scheme: dark) {
   :root:not(.dark):not([data-theme="light"]):not([data-theme="dark"]) {
-    --paper:       #1a1411;
-    --surface:     #241c17;
-    --hairline:    #3a2e25;
+    --paper:       #14100d;
+    --surface:     #251d18;
+    --hairline:    #4d3e33;
     --ink:         #efe7dd;
-    --muted-ink:   #a89684;
-    --brown:       #c08a5e;
+    --muted-ink:   #b8a693;
+    --brown:       #c99467;
     --brown-deep:  #a8703f;
     --brown-pale:  #6b513c;
-    --brown-fg:    #1a1411;
-    --positive:    #9db05a;
-    --negative:    #d2756b;
+    --brown-fg:    #14100d;
+    --positive:    #a3b663;
+    --negative:    #dc8178;
     --ad-surface:  #eae3d8;
-    --muted: #2a211b;
-    --accent: #2f2620;
-    --destructive-foreground: #1a1411;
+    --muted: #2e251f;
+    --accent: #33291f;
+    --destructive-foreground: #14100d;
     color-scheme: dark;
   }
 }
@@ -236,6 +239,12 @@ html { font-size: calc(16px * var(--scale)); }
   min-width: 10rem;
 }
 
+/* AdSense Auto Ads 가 채우지 못한 슬롯은 빈 박스로 자리만 차지한다("진입 시 빈 영역") — 숨김.
+   광고 자체에는 손대지 않음(필터 금지 정책). */
+ins.adsbygoogle[data-ad-status="unfilled"] {
+  display: none !important;
+}
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -255,8 +264,9 @@ html { font-size: calc(16px * var(--scale)); }
 }
 
 @layer components {
+  /* 프로필 카드 — 장식 상단 ink 보더·그림자 제거(DESIGN: 컬러 보더 카드 금지). 경계는 Card ring(hairline). */
   .royal-card {
-    @apply bg-card rounded-[8px] shadow-subtle border-t-2 border-t-primary overflow-hidden transition-all duration-300;
+    @apply bg-card rounded-[8px] overflow-hidden;
   }
   .btn-cta {
     @apply bg-secondary text-secondary-foreground font-bold px-6 py-2 rounded-[4px] transition-colors;

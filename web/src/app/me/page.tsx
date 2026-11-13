@@ -56,30 +56,30 @@ export default async function MePage({
   }
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-10">
+    <main className="mx-auto w-full max-w-2xl px-4 py-10 md:px-6">
       <h1 className="mb-2 font-serif text-3xl font-bold tracking-tight text-primary">
         마이페이지
       </h1>
-      <p className="mb-8 text-sm text-slate-grey">
+      <p className="mb-8 text-sm text-muted-foreground">
         계정 정보와 닉네임을 관리할 수 있어요.
       </p>
 
       {ok === "1" && (
-        <div className="mb-4 rounded-md border border-green-500/30 bg-green-500/5 px-4 py-3 text-sm text-green-700">
+        <div className="mb-4 rounded-md border border-positive/40 bg-card px-4 py-3 text-base text-positive">
           변경 사항이 저장되었습니다.
         </div>
       )}
       {isKnownError(error) && (
-        <div className="mb-4 rounded-md border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-600">
+        <div className="mb-4 rounded-md border border-negative/40 bg-card px-4 py-3 text-base text-negative">
           {ERROR_MESSAGES[error]}
         </div>
       )}
 
       {/* 계정 개요 */}
-      <Card className="mb-6">
+      <Card className="py-0 mb-6">
         <CardContent className="space-y-3 p-6">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-grey">
+            <div className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
               이메일
             </div>
             <div className="mt-1 text-sm">
@@ -91,7 +91,7 @@ export default async function MePage({
             </div>
           </div>
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-grey">
+            <div className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
               연결된 이름
             </div>
             <div className="mt-1 text-sm">
@@ -104,12 +104,12 @@ export default async function MePage({
       </Card>
 
       {/* 닉네임 수정 */}
-      <Card className="mb-6">
+      <Card className="py-0 mb-6">
         <CardContent className="p-6">
           <h2 className="mb-1 font-serif text-lg font-bold text-primary">
             닉네임
           </h2>
-          <p className="mb-4 text-xs text-slate-grey">
+          <p className="mb-4 text-sm text-muted-foreground">
             커뮤니티에 표시되는 이름입니다. {NICKNAME_MIN}~{NICKNAME_MAX}자,
             한글·영문·숫자·_ · - · . 사용 가능.
           </p>
@@ -122,9 +122,9 @@ export default async function MePage({
               maxLength={NICKNAME_MAX}
               placeholder="닉네임"
               required
-              className="min-w-0 flex-1 rounded-md border border-foreground/15 bg-card px-3 py-2 text-[0.9375rem] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              className="min-w-0 flex-1 rounded-md border border-border bg-card px-3 py-2 text-[0.9375rem] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
-            <button type="submit" className="btn-cta text-xs py-2 px-5 shadow-sm">
+            <button type="submit" className="btn-cta text-sm py-2 px-4 shadow-sm">
               저장
             </button>
           </form>
@@ -132,31 +132,31 @@ export default async function MePage({
       </Card>
 
       {/* 세션 / 탈퇴 */}
-      <Card>
+      <Card className="py-0">
         <CardContent className="space-y-4 p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h2 className="font-serif text-lg font-bold text-primary">
                 로그아웃
               </h2>
-              <p className="text-xs text-slate-grey">
+              <p className="text-sm text-muted-foreground">
                 현재 기기에서 로그아웃합니다.
               </p>
             </div>
             <form action={logoutAction}>
-              <button type="submit" className="btn-outline text-xs py-2 px-5">
+              <button type="submit" className="btn-outline text-sm py-2 px-4">
                 로그아웃
               </button>
             </form>
           </div>
 
-          <div className="border-t border-foreground/10 pt-4">
+          <div className="border-t border-border pt-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="font-serif text-lg font-bold text-red-600">
+                <h2 className="font-serif text-lg font-bold text-negative">
                   회원 탈퇴
                 </h2>
-                <p className="text-xs text-slate-grey">
+                <p className="text-sm text-muted-foreground">
                   계정과 작성한 글이 모두 즉시 삭제되며 복구할 수 없어요.
                 </p>
               </div>

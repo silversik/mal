@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { RankBadge } from "@/components/rank-badge";
+
+import { Card } from "@/components/ui/card";
 import {
   SectionHead,
-  IconBars,
-  IconTarget,
-  IconTrend,
   IconActivity,
 } from "@/components/profile-ui";
 import { kstYear } from "@/lib/kst";
@@ -34,14 +33,15 @@ export default async function AnalysisPage() {
   ]);
 
   return (
-    <div className="space-y-5">
-      <section className="grid gap-3 md:grid-cols-3">
-        <ToolTile href="/rankings" title="랭킹" desc="기수·마필·조교사 통산 성적 랭킹표" Icon={IconBars} />
-        <ToolTile href="/records" title="코스 레코드" desc="경마장·거리별 역대 최고 기록" Icon={IconTrend} />
-        <ToolTile href="/compare" title="마필 비교" desc="두 마필 성적을 나란히 비교" Icon={IconTarget} />
-      </section>
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">분석 대시보드</h1>
+        <p className="mt-1 text-base text-muted-foreground">
+          올해 성적 상위 기수 · 마필 · 조교사. 전체 순위는 랭킹에서 볼 수 있습니다.
+        </p>
+      </header>
 
-      <section className="grid gap-3 md:grid-cols-3">
+      <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <TopList
           title={`TOP 기수 · ${topJockeys.year}`}
           ranking={topJockeys}
@@ -88,47 +88,7 @@ function rankingsHref(entity: RankingEntity, r: YearFallbackResult<unknown>): st
   return buildRankingsHref({ entity, scope: r.fellBack ? "year" : "ytd", year: r.year });
 }
 
-function ToolTile({
-  href,
-  title,
-  desc,
-  Icon,
-}: {
-  href: string;
-  title: string;
-  desc: string;
-  Icon: (p: { size?: number }) => React.JSX.Element;
-}) {
-  return (
-    <Link
-      href={href}
-      className="group flex flex-col rounded-[10px] border border-border bg-card p-4 transition hover:border-primary/40 hover:shadow-subtle"
-    >
-      <div className="flex items-start gap-2">
-        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <Icon size={18} />
-        </span>
-        <div className="min-w-0">
-          <h3 className="truncate text-sm font-bold tracking-tight group-hover:text-primary">{title}</h3>
-          <p className="mt-0.5 text-caption leading-snug text-muted-foreground">{desc}</p>
-        </div>
-      </div>
-      <span className="mt-2 inline-flex items-center gap-1 text-caption font-semibold text-primary opacity-0 transition group-hover:opacity-100">
-        열기
-        <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden="true">
-          <path d="M3 2 L7 6 L3 10" stroke="currentColor" strokeWidth="1.6" fill="none" />
-        </svg>
-      </span>
-    </Link>
-  );
-}
 
-// 1·2·3 위만 메달 배지 — 홈 "TOP 기수 랭킹" 카드와 톤 통일.
-const RANK_MEDAL_STYLE: Record<number, string> = {
-  1: "bg-champagne-gold text-secondary-foreground",
-  2: "bg-slate-400 text-white",
-  3: "bg-amber-700 text-white",
-};
 
 type TopListRow = {
   no: string;
@@ -151,61 +111,56 @@ function TopList({
   rows: TopListRow[];
 }) {
   return (
-    <Card>
-      <CardContent className="p-4">
+    <Card className="gap-0 py-0">
+      <div className="p-4">
         <SectionHead
-          icon={<IconActivity size={13} />}
+          icon={<IconActivity size={14} />}
           label={title}
           right={
-            <Link href={moreHref} className="text-caption font-semibold text-muted-foreground hover:text-primary">
+            <Link
+              href={moreHref}
+              className="inline-flex min-h-11 items-center text-small font-semibold text-muted-foreground hover:text-foreground"
+            >
               전체 →
             </Link>
           }
         />
         {ranking.fellBack && (
-          // 좁은 3열 카드에서 제목이 줄바꿈되지 않게 제목과 분리한 보조 줄 (DESIGN small 13).
-          <p className="-mt-1.5 mb-2 text-small text-muted-foreground">
+          <p className="-mt-1 mb-2 text-small text-muted-foreground">
             <span className="font-mono tabular-nums">{ranking.requestedYear}</span> 집계 전 ·{" "}
             <span className="font-mono tabular-nums">{ranking.year}</span> 기준
           </p>
         )}
         {rows.length === 0 ? (
-          <p className="py-2 text-center text-xs text-muted-foreground">데이터 없음</p>
+          <p className="py-4 text-center text-base text-muted-foreground">아직 집계된 데이터가 없습니다.</p>
         ) : (
           <ul className="divide-y divide-border">
-            {rows.map((r, i) => {
-              const rank = i + 1;
-              return (
-                <li key={r.no}>
-                  <Link
-                    href={r.href}
-                    className="group flex items-center gap-2 py-2 text-sm transition hover:bg-muted/40 -mx-2 px-2 rounded"
-                  >
-                    <span
-                      className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-caption font-bold tabular-nums ${
-                        RANK_MEDAL_STYLE[rank] ?? "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {rank}
-                    </span>
-                    <span className="flex-1 truncate font-semibold group-hover:text-primary">
+            {rows.map((r, i) => (
+              <li key={r.no}>
+                <Link
+                  href={r.href}
+                  className="group -mx-2 flex min-h-12 items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted"
+                >
+                  <RankBadge size="sm" rest="chip" rank={i + 1} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-base font-semibold text-foreground">
                       {r.name}
                     </span>
                     {r.sub && (
-                      <span className="font-mono text-caption tabular-nums text-muted-foreground">
+                      <span className="block truncate font-mono text-small tabular-nums text-muted-foreground">
                         {r.sub}
                       </span>
                     )}
-                    <span className="font-mono text-xs font-bold tabular-nums text-primary">
-                      {r.value}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
+                  </span>
+                  <span className="shrink-0 font-mono text-base font-bold tabular-nums text-foreground">
+                    {r.value}
+                  </span>
+                </Link>
+              </li>
+            ))}
           </ul>
         )}
-      </CardContent>
+      </div>
     </Card>
   );
 }

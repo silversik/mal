@@ -296,11 +296,12 @@ export function PedigreeTree({
                 key={`link-${i}`}
                 d={linkPath(l)}
                 stroke={
+                  // 토큰 기반(다크 자동 전환). 父계=muted-ink · 母계=brown — sky/pink 하드코딩 제거.
                   l.target.data.gender === "Male"
-                    ? "#93c5fd" /* sky-300 */
+                    ? "var(--muted-ink)"
                     : l.target.data.gender === "Female"
-                      ? "#fbcfe8" /* pink-200 */
-                      : "#d4d4d8"
+                      ? "var(--brown)"
+                      : "var(--hairline)"
                 }
               />
             ))}
@@ -314,14 +315,14 @@ export function PedigreeTree({
               const cx = d.y;
               const cy = d.x;
               const isMale = d.data.gender === "Male";
-              const fill = isMale ? "#eff6ff" : d.data.gender === "Female" ? "#fdf2f8" : "#fafafa";
+              const fill = d.data.gender === "Female" ? "var(--muted)" : "var(--surface)";
               const stroke = d.data.gradeWinner
-                ? "#eab308" /* gold */
+                ? "var(--brown)"
                 : isMale
-                  ? "#60a5fa"
+                  ? "var(--muted-ink)"
                   : d.data.gender === "Female"
-                    ? "#f472b6"
-                    : "#a1a1aa";
+                    ? "var(--brown-pale)"
+                    : "var(--hairline)";
 
               const hasAnyChildren =
                 (d.data.children && d.data.children.length > 0) ||
@@ -370,7 +371,7 @@ export function PedigreeTree({
                       y={10}
                       fontSize={11}
                       textAnchor="end"
-                      fill="#eab308"
+                      fill="var(--brown)"
                     >
                       ★
                     </text>
@@ -379,9 +380,9 @@ export function PedigreeTree({
                     x={8}
                     y={h / 2}
                     dy="-0.1em"
-                    fontSize={Math.max(10, 13 - d.data.generation)}
+                    fontSize={Math.max(12, 14 - d.data.generation)}
                     fontWeight={600}
-                    fill="#111827"
+                    fill="var(--ink)"
                   >
                     {truncate(d.data.name, Math.floor(w / 8))}
                   </text>
@@ -389,8 +390,8 @@ export function PedigreeTree({
                     x={8}
                     y={h / 2}
                     dy="1.05em"
-                    fontSize={Math.max(9, 11 - d.data.generation)}
-                    fill="#6b7280"
+                    fontSize={Math.max(11, 12 - d.data.generation)}
+                    fill="var(--muted-ink)"
                   >
                     {[d.data.country, d.data.birthYear].filter(Boolean).join(" · ")}
                   </text>
@@ -407,8 +408,8 @@ export function PedigreeTree({
                         cx={w}
                         cy={h / 2}
                         r={6}
-                        fill={d.data._collapsed ? "#6b7280" : "#ffffff"}
-                        stroke="#6b7280"
+                        fill={d.data._collapsed ? "var(--muted-ink)" : "var(--surface)"}
+                        stroke="var(--muted-ink)"
                         strokeWidth={1}
                       />
                       <text
@@ -417,7 +418,7 @@ export function PedigreeTree({
                         textAnchor="middle"
                         dominantBaseline="central"
                         fontSize={9}
-                        fill={d.data._collapsed ? "#ffffff" : "#6b7280"}
+                        fill={d.data._collapsed ? "var(--surface)" : "var(--muted-ink)"}
                         style={{ pointerEvents: "none", userSelect: "none" }}
                       >
                         {d.data._collapsed ? "+" : "−"}
@@ -439,18 +440,18 @@ export function PedigreeTree({
             left: hover.x + 12,
             top: hover.y + 12,
             pointerEvents: "none",
-            background: "rgba(17,24,39,0.95)",
-            color: "white",
+            background: "var(--ink)",
+            color: "var(--paper)",
             padding: "8px 10px",
             borderRadius: 6,
-            fontSize: "0.75rem",
+            fontSize: "0.875rem",
             maxWidth: 260,
             zIndex: 10,
             boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
           }}
         >
           <div style={{ fontWeight: 600, marginBottom: 4 }}>{hover.node.name}</div>
-          <div style={{ opacity: 0.75, fontSize: "0.6875rem" }}>
+          <div style={{ fontSize: "0.8125rem" }}>
             {hover.node.gender === "Male" ? "父계" : hover.node.gender === "Female" ? "母계" : ""}
             {hover.node.country ? ` · ${hover.node.country}` : ""}
             {hover.node.birthYear ? ` · ${hover.node.birthYear}` : ""}
@@ -459,7 +460,7 @@ export function PedigreeTree({
             <dl style={{ marginTop: 6, display: "grid", gridTemplateColumns: "auto 1fr", columnGap: 8, rowGap: 2 }}>
               {Object.entries(hover.node.stats).map(([k, v]) => (
                 <div key={k} style={{ display: "contents" }}>
-                  <dt style={{ opacity: 0.6 }}>{k}</dt>
+                  <dt style={{ opacity: 0.8 }}>{k}</dt>
                   <dd style={{ margin: 0, textAlign: "right", fontFamily: "ui-monospace, monospace" }}>{v}</dd>
                 </div>
               ))}

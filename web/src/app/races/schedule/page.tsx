@@ -47,9 +47,9 @@ function tierBadge(tier: Tier | null) {
     tier === "G1"
       ? "bg-primary text-primary-foreground"
       : tier === "G2"
-        ? "bg-champagne-gold/80 text-secondary-foreground"
+        ? "bg-brown/80 text-secondary-foreground"
         : tier === "G3"
-          ? "bg-champagne-gold/30 text-foreground"
+          ? "bg-brown/30 text-foreground"
           : "bg-muted text-muted-foreground";
   return (
     <Badge className={`${color} font-mono`} variant="default">
@@ -98,7 +98,7 @@ export default async function RaceSchedulePage({
   };
 
   return (
-    <main className="theme-v2 mx-auto w-full max-w-5xl px-4 py-8">
+    <main className="theme-v2 mx-auto w-full max-w-[1080px] px-4 md:px-6 py-6 md:py-8">
       <Link
         href="/races"
         className="group mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"
@@ -117,7 +117,7 @@ export default async function RaceSchedulePage({
         {/* 연도 */}
         {years.length > 0 && (
           <div className="flex items-center gap-1.5">
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">
+            <span className="text-sm uppercase tracking-wider text-muted-foreground">
               연도
             </span>
             {years.map((y) => (
@@ -126,8 +126,8 @@ export default async function RaceSchedulePage({
                 href={`/races/schedule${qs({ year: String(y) })}`}
                 className={
                   y === currentYear
-                    ? "rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground"
-                    : "rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+                    ? "rounded-md bg-primary px-2 py-1 text-sm font-semibold text-primary-foreground"
+                    : "rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
                 }
               >
                 {y}
@@ -138,15 +138,15 @@ export default async function RaceSchedulePage({
 
         {/* 경마장 */}
         <div className="flex items-center gap-1.5">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground">
+          <span className="text-sm uppercase tracking-wider text-muted-foreground">
             경마장
           </span>
           <Link
             href={`/races/schedule${qs({ meet: "" })}`}
             className={
               !selectedMeet
-                ? "rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground"
-                : "rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+                ? "rounded-md bg-primary px-2 py-1 text-sm font-semibold text-primary-foreground"
+                : "rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
             }
           >
             전체
@@ -157,8 +157,8 @@ export default async function RaceSchedulePage({
               href={`/races/schedule${qs({ meet: m })}`}
               className={
                 selectedMeet === m
-                  ? "rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground"
-                  : "rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+                  ? "rounded-md bg-primary px-2 py-1 text-sm font-semibold text-primary-foreground"
+                  : "rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
               }
             >
               {MEET_DISPLAY[m] ?? m}
@@ -168,15 +168,15 @@ export default async function RaceSchedulePage({
 
         {/* 등급 */}
         <div className="flex items-center gap-1.5">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground">
+          <span className="text-sm uppercase tracking-wider text-muted-foreground">
             등급
           </span>
           <Link
             href={`/races/schedule${qs({ tier: "" })}`}
             className={
               !selectedTier
-                ? "rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground"
-                : "rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+                ? "rounded-md bg-primary px-2 py-1 text-sm font-semibold text-primary-foreground"
+                : "rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
             }
           >
             전체
@@ -187,8 +187,8 @@ export default async function RaceSchedulePage({
               href={`/races/schedule${qs({ tier: t })}`}
               className={
                 selectedTier === t
-                  ? "rounded-md bg-primary px-2 py-1 text-xs font-mono font-semibold text-primary-foreground"
-                  : "rounded-md px-2 py-1 text-xs font-mono text-muted-foreground hover:bg-muted"
+                  ? "rounded-md bg-primary px-2 py-1 text-sm font-mono font-semibold text-primary-foreground"
+                  : "rounded-md px-2 py-1 text-sm font-mono text-muted-foreground hover:bg-muted"
               }
             >
               {t}
@@ -241,7 +241,7 @@ export default async function RaceSchedulePage({
                       <TableCell className="text-muted-foreground">
                         {p.age_cond ?? "-"}
                       </TableCell>
-                      <TableCell className="font-mono text-xs">
+                      <TableCell className="font-mono text-sm">
                         {p.race_date ?? <span className="text-muted-foreground">미정</span>}
                       </TableCell>
                     </TableRow>

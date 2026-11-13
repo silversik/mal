@@ -27,12 +27,12 @@ export default async function NotificationsPage() {
   const unread = items.filter((n) => !n.read_at).length;
 
   return (
-    <main className="theme-v2 mx-auto w-full max-w-3xl px-6 py-12">
+    <main className="theme-v2 mx-auto w-full max-w-3xl px-4 py-10 md:px-6">
       <div className="mb-6 flex items-end justify-between gap-4">
         <h1 className="text-2xl font-bold tracking-tight">
           알림
           {unread > 0 && (
-            <span className="ml-2 text-sm font-medium text-red-500">
+            <span className="ml-2 text-sm font-semibold text-negative">
               {unread}건 읽지 않음
             </span>
           )}
@@ -41,7 +41,7 @@ export default async function NotificationsPage() {
           <form action={markAllReadAction}>
             <button
               type="submit"
-              className="rounded-md border px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-primary"
+              className="rounded-md border px-3 py-1.5 text-sm font-medium text-muted-foreground transition hover:border-primary/40 hover:text-primary"
             >
               모두 읽음으로 표시
             </button>
@@ -50,7 +50,7 @@ export default async function NotificationsPage() {
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-lg border border-dashed bg-muted/20 px-6 py-16 text-center text-sm text-muted-foreground">
+        <div className="rounded-lg border border-dashed bg-muted px-6 py-16 text-center text-sm text-muted-foreground">
           아직 받은 알림이 없습니다.
           <br />
           마필 상세 페이지의 ★ 버튼으로 즐겨찾기하면 다음 경기 출주 시 여기로 알려드립니다.
@@ -65,7 +65,7 @@ export default async function NotificationsPage() {
                   {unreadRow && (
                     <span
                       aria-hidden="true"
-                      className="mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full bg-red-500"
+                      className="mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full bg-brown"
                     />
                   )}
                   <div className="min-w-0 flex-1">
@@ -78,12 +78,12 @@ export default async function NotificationsPage() {
                       {n.title}
                     </p>
                     {n.body && (
-                      <p className="mt-0.5 text-xs text-muted-foreground">
+                      <p className="mt-0.5 text-sm text-muted-foreground">
                         {n.body}
                       </p>
                     )}
                   </div>
-                  <span className="shrink-0 text-caption tabular-nums text-muted-foreground">
+                  <span className="shrink-0 text-small tabular-nums text-muted-foreground">
                     {n.created_at}
                   </span>
                 </div>
@@ -92,12 +92,12 @@ export default async function NotificationsPage() {
             return (
               <li
                 key={n.id}
-                className={unreadRow ? "bg-yellow-50/40" : undefined}
+                className={unreadRow ? "bg-accent" : undefined}
               >
                 {n.href ? (
                   <Link
                     href={n.href}
-                    className="block px-4 py-3 transition hover:bg-accent/50"
+                    className="block px-4 py-3 transition hover:bg-accent"
                   >
                     {inner}
                   </Link>

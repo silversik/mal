@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { RankBadge, medalClass } from "@/components/rank-badge";
 
 /**
  * KRA 게이트 컬러 — 8가지 표준 (출전번호 9 이상은 mod 로 wrap).
@@ -26,8 +27,8 @@ export function GateNum({ n, size = 26 }: { n: number | null; size?: number }) {
   if (n == null) {
     return (
       <span
-        className="inline-flex items-center justify-center rounded-md border border-border bg-muted font-mono text-xs font-bold tabular-nums text-muted-foreground"
-        style={{ width: size, height: size }}
+        className="inline-flex items-center justify-center rounded-md border border-border bg-muted font-mono text-sm font-bold tabular-nums text-muted-foreground"
+        style={{ width: `${size / 16}rem`, height: `${size / 16}rem` }}
       >
         -
       </span>
@@ -38,12 +39,13 @@ export function GateNum({ n, size = 26 }: { n: number | null; size?: number }) {
     <span
       className="inline-flex items-center justify-center rounded-md font-mono font-bold tabular-nums"
       style={{
-        width: size,
-        height: size,
+        // rem — 큰글씨 모드에서 칩과 숫자가 함께 커진다. 숫자 최소 13px.
+        width: `${size / 16}rem`,
+        height: `${size / 16}rem`,
         background: p.bg,
         color: p.color,
         border: `1px solid ${p.border}`,
-        fontSize: size <= 22 ? 11 : 12,
+        fontSize: size <= 22 ? "0.8125rem" : "0.875rem",
       }}
     >
       {n}
@@ -51,34 +53,10 @@ export function GateNum({ n, size = 26 }: { n: number | null; size?: number }) {
   );
 }
 
-/**
- * 1·2·3착 3단 컨벤션 — recent-form-dots.tsx RANK_COLOR / PopChip 과 동일 계열.
- * 두 테마 모두 fg/bg ≥ 4.5:1 (light 7.39 / 6.59 / 9.68 · dark 6.11 / 5.87 / 5.98).
- * 이전 리터럴(#c4c8d2 위 흰 글자 1.67:1, 다크에서 gold 위 ink 2.4:1)은 대비 미달이었음.
- */
-const MEDAL_STYLE: Record<1 | 2 | 3, { bg: string; fg: string }> = {
-  1: { bg: "var(--brown)", fg: "var(--brown-fg)" },
-  2: { bg: "var(--muted-ink)", fg: "var(--surface)" },
-  3: { bg: "var(--brown-pale)", fg: "var(--ink)" },
-};
 
 /** 메달 (1·2·3착) — 게이트와 별개의 색 시스템. */
 export function RankMedal({ rank }: { rank: number | null }) {
-  if (rank == null) return <span className="text-muted-foreground">-</span>;
-  if (rank > 3) {
-    return (
-      <span className="font-mono font-bold tabular-nums text-foreground">{rank}</span>
-    );
-  }
-  const style = MEDAL_STYLE[rank as 1 | 2 | 3];
-  return (
-    <span
-      className="inline-flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-bold tabular-nums"
-      style={{ background: style.bg, color: style.fg }}
-    >
-      {rank}
-    </span>
-  );
+  return <RankBadge rank={rank} />;
 }
 
 /**
@@ -89,34 +67,29 @@ export function SexBullet({ sex }: { sex: string | null }) {
   if (!sex) return null;
   const s = sex.trim();
   if (s.startsWith("암"))
-    return <span className="font-bold text-[#c2417a]">암</span>;
+    return <span className="font-bold text-foreground">암</span>;
   if (s.startsWith("거"))
     return <span className="font-bold text-muted-foreground">거</span>;
   if (s.startsWith("수"))
-    return <span className="font-bold text-[#2867d8]">수</span>;
+    return <span className="font-bold text-foreground">수</span>;
   return <span className="text-muted-foreground">{s}</span>;
 }
 
 /**
- * 출전표의 "최근 5전" 미니 도트. 1·2·3착 = MEDAL_STYLE 3단, 그외=muted.
+ * 출전표의 "최근 5전" 미니 도트. 1·2·3착 = 공용 메달(medalClass), 그외=muted.
  * 시각화 가벼움 — 마명 셀 인라인용.
  */
 export function FormDots({ finishes }: { finishes: (number | null)[] }) {
   if (finishes.length === 0) return null;
   return (
     <span className="inline-flex items-center gap-[2px] align-middle">
-      {finishes.map((r, i) => {
-        const bg =
-          r === 1 || r === 2 || r === 3 ? MEDAL_STYLE[r].bg : "var(--muted)";
-        return (
-          <span
-            key={i}
-            className="inline-block h-2 w-2 rounded-full"
-            style={{ background: bg }}
-            title={r == null ? "미완주" : `${r}착`}
-          />
-        );
-      })}
+      {finishes.map((r, i) => (
+        <span
+          key={i}
+          className={`inline-block h-2.5 w-2.5 rounded-full ${medalClass(r)}`}
+          title={r == null ? "미완주" : `${r}착`}
+        />
+      ))}
     </span>
   );
 }
@@ -126,7 +99,7 @@ export function WeightDelta({ diff }: { diff: number | null }) {
   if (diff === null) return null;
   if (diff === 0) {
     return (
-      <span className="ml-1 inline-block rounded bg-muted px-1 py-px font-mono text-caption tabular-nums text-muted-foreground">
+      <span className="ml-1 inline-block rounded bg-muted px-1 py-px font-mono text-small tabular-nums text-muted-foreground">
         ±0
       </span>
     );
@@ -134,8 +107,8 @@ export function WeightDelta({ diff }: { diff: number | null }) {
   const positive = diff > 0;
   return (
     <span
-      className={`ml-1 inline-block rounded px-1 py-px font-mono text-caption tabular-nums ${
-        positive ? "bg-destructive/10 text-destructive" : "bg-emerald-50 text-emerald-700"
+      className={`ml-1 inline-block rounded px-1 py-px font-mono text-small tabular-nums ${
+        positive ? "bg-destructive/10 text-destructive" : "bg-positive/10 text-positive"
       }`}
     >
       {positive ? `+${diff}` : diff}
@@ -155,12 +128,12 @@ export function OddsBar({
   kind?: "win" | "plc";
 }) {
   if (value == null) {
-    return <span className="text-xs text-muted-foreground">-</span>;
+    return <span className="text-sm text-muted-foreground">-</span>;
   }
   const v = parseFloat(value);
   if (!Number.isFinite(v) || v <= 0) {
     return (
-      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+      <span className="font-mono text-sm tabular-nums text-muted-foreground">
         {value}
       </span>
     );
@@ -169,16 +142,14 @@ export function OddsBar({
   const pct = Math.max(6, Math.min(100, 100 - (Math.log(v) / Math.log(MAX)) * 100));
   const fav = v < 4;
   return (
-    <span className="inline-flex items-center justify-end gap-1.5 font-mono text-xs tabular-nums">
-      <span className="relative h-1.5 w-12 max-w-[48px] flex-1 overflow-hidden rounded-full bg-muted">
+    <span className="inline-flex items-center justify-end gap-1.5 font-mono text-sm tabular-nums">
+      <span className="relative h-2 w-12 max-w-[48px] flex-1 overflow-hidden rounded-full bg-muted">
         <span
           className="absolute inset-y-0 left-0 rounded-full"
           style={{
             width: `${pct}%`,
-            background:
-              kind === "plc"
-                ? "linear-gradient(90deg, #b8c3cf, #d6dde4)"
-                : "linear-gradient(90deg, var(--color-gold-deep), var(--color-gold))",
+            // 단색(그라디언트·slate 리터럴 제거): 단승=brown, 연승=muted-ink.
+            background: kind === "plc" ? "var(--muted-ink)" : "var(--brown)",
           }}
         />
       </span>
@@ -226,7 +197,7 @@ export function RaceChip({
         : "border-transparent bg-muted text-foreground";
   return (
     <span
-      className={`inline-flex h-6 items-center gap-1 rounded-md border px-2 text-xs font-semibold ${cls}`}
+      className={`inline-flex h-6 items-center gap-1 rounded-md border px-2 text-sm font-semibold ${cls}`}
     >
       {label && <span className="font-medium text-muted-foreground">{label}</span>}
       <span className="font-semibold">{value}</span>
@@ -283,13 +254,13 @@ export function PoolSalesTiles({
               return (
                 <li key={r.pool} className="px-1.5 py-1.5">
                   <div className="flex items-center gap-2">
-                    <span className="w-12 shrink-0 text-caption font-semibold text-muted-foreground">
+                    <span className="w-12 shrink-0 text-small font-semibold text-muted-foreground">
                       {display.name}
                     </span>
-                    <span className="flex-1 font-mono text-xs font-bold tabular-nums">
+                    <span className="flex-1 font-mono text-sm font-bold tabular-nums">
                       {formatAmount(r.amount)}
                     </span>
-                    <span className="w-10 shrink-0 text-right font-mono text-caption tabular-nums text-muted-foreground">
+                    <span className="w-10 shrink-0 text-right font-mono text-small tabular-nums text-muted-foreground">
                       {pct.toFixed(1)}%
                     </span>
                   </div>
@@ -316,7 +287,7 @@ export function PoolSalesTiles({
   }
 
   return (
-    <Card>
+    <Card className="py-0">
       <CardContent className="p-3">
         <div
           className="grid gap-px overflow-hidden rounded-lg bg-border"
@@ -329,10 +300,10 @@ export function PoolSalesTiles({
             const popular = parsePopularChips(r.odds_summary);
             return (
               <div key={r.pool} className="flex flex-col gap-1 bg-card p-3">
-                <span className="text-caption font-semibold text-muted-foreground">
+                <span className="text-small font-semibold text-muted-foreground">
                   {display.name}
                   {display.code && (
-                    <span className="ml-1 font-mono text-caption opacity-60">
+                    <span className="ml-1 font-mono text-small">
                       {display.code}
                     </span>
                   )}
@@ -340,7 +311,7 @@ export function PoolSalesTiles({
                 <span className="font-mono text-[0.9375rem] font-bold tabular-nums">
                   {formatAmount(r.amount)}
                 </span>
-                <span className="font-mono text-caption tabular-nums text-muted-foreground">
+                <span className="font-mono text-small tabular-nums text-muted-foreground">
                   {pct.toFixed(1)}%
                 </span>
                 <span className="block h-1 rounded-sm bg-muted">
@@ -373,9 +344,9 @@ function PopChip({ rank, num, odd }: { rank: number; num: string; odd: string })
         ? { bg: "var(--muted)", color: "var(--muted-foreground)", border: "var(--hairline)" }
         : { bg: "var(--brown-pale)", color: "var(--ink)", border: "var(--brown-deep)" };
   return (
-    <span className="inline-flex items-center gap-1 text-caption">
+    <span className="inline-flex items-center gap-1 text-small">
       <span
-        className="inline-flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full px-1 font-mono text-caption font-bold tabular-nums"
+        className="inline-flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full px-1 font-mono text-small font-bold tabular-nums"
         style={{ background: style.bg, color: style.color, border: `1px solid ${style.border}` }}
       >
         {num}
@@ -407,10 +378,8 @@ function parsePopularChips(summary: string | null): { num: string; odd: string }
 
 export function PopularityChart({
   entries,
-  compact = false,
 }: {
   entries: { chul_no: number | null; horse_no: string; horse_name: string; win_rate: string | null }[];
-  compact?: boolean;
 }) {
   const rows = entries
     .map((e) => {
@@ -424,66 +393,46 @@ export function PopularityChart({
 
   if (rows.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-6 text-center text-xs text-muted-foreground">
+      <Card className="py-0">
+        <CardContent className="py-6 text-center text-base text-muted-foreground">
           단승 배당 정보가 없습니다.
         </CardContent>
       </Card>
     );
   }
 
-  const totalImplied = rows.reduce((s, r) => s + 1 / r.win, 0);
   const minOdds = rows[0].win;
 
+  // 막대 안에 숫자를 넣으면 짧은 막대(인기 하위)에서 숫자가 트랙 위로 넘쳐 안 보였다 —
+  // 숫자는 막대 오른쪽 고정 열로 분리. 색은 단색 + 1번 인기만 강조.
   return (
-    <Card>
-      <CardContent className={compact ? "p-2.5" : "p-4"}>
-        <div className={`flex flex-col ${compact ? "gap-1" : "gap-2"}`}>
+    <Card className="py-0">
+      <CardContent className="p-4">
+        <div className="flex flex-col gap-2">
           {rows.map((r, i) => {
-            const widthPct = Math.max(8, Math.min(100, (minOdds / r.win) * 100));
-            const impliedPct = ((1 / r.win) / totalImplied) * 100;
+            const widthPct = Math.max(4, Math.min(100, (minOdds / r.win) * 100));
             const isFav = i === 0;
             return (
-              <div
-                key={r.horse_no}
-                className={`flex items-center ${compact ? "gap-1.5" : "gap-2.5"}`}
-              >
-                <div
-                  className={`flex flex-none items-center ${compact ? "w-[5.5rem] gap-1" : "w-[7.5rem] gap-2"}`}
-                >
-                  <GateNum n={r.chul_no} size={compact ? 18 : 22} />
-                  <span
-                    className={`truncate font-semibold ${compact ? "text-caption" : "text-xs"}`}
-                  >
-                    {r.horse_name}
-                  </span>
+              <div key={r.horse_no} className="flex items-center gap-2">
+                <div className="flex w-[7.5rem] flex-none items-center gap-2">
+                  <GateNum n={r.chul_no} size={22} />
+                  <span className="truncate text-sm font-semibold">{r.horse_name}</span>
                 </div>
-                <div
-                  className={`relative flex-1 overflow-hidden rounded bg-muted ${compact ? "h-[0.875rem]" : "h-[1.125rem]"}`}
-                >
+                <div className="relative h-3 min-w-0 flex-1 overflow-hidden rounded-sm bg-muted">
                   <div
-                    className={`absolute inset-y-0 left-0 flex items-center justify-start rounded font-mono font-bold tabular-nums ${compact ? "px-1.5 text-caption" : "px-2 text-caption"}`}
+                    className="absolute inset-y-0 left-0 rounded-sm"
                     style={{
                       width: `${widthPct}%`,
-                      background: isFav
-                        ? "linear-gradient(90deg, var(--brown-deep), var(--brown))"
-                        : "var(--muted-ink)",
-                      color: isFav ? "var(--brown-fg)" : "var(--paper)",
+                      background: isFav ? "var(--brown)" : "var(--brown-pale)",
                     }}
-                  >
-                    {r.win.toFixed(1)}
-                  </div>
+                  />
                 </div>
-                {compact ? (
-                  <div className="w-9 flex-none text-right font-mono text-caption tabular-nums text-muted-foreground">
-                    <strong className="text-foreground">{i + 1}</strong>위
-                  </div>
-                ) : (
-                  <div className="w-[5.5rem] flex-none text-right font-mono text-caption tabular-nums text-muted-foreground">
-                    인기 <strong className="text-foreground">{i + 1}</strong> ·{" "}
-                    {impliedPct.toFixed(1)}%
-                  </div>
-                )}
+                <span className="w-12 flex-none text-right font-mono text-sm font-semibold tabular-nums">
+                  {r.win.toFixed(1)}
+                </span>
+                <span className="w-9 flex-none text-right font-mono text-small tabular-nums text-muted-foreground">
+                  <strong className="text-foreground">{i + 1}</strong>위
+                </span>
               </div>
             );
           })}
@@ -549,7 +498,7 @@ export function PodiumCard({ podium }: { podium: PodiumEntry[] }) {
                       {e.horse_name}
                     </Link>
                   </div>
-                  <div className="mt-0.5 flex items-center gap-1.5 text-caption text-muted-foreground">
+                  <div className="mt-0.5 flex items-center gap-1.5 text-small text-muted-foreground">
                     {e.jockey_name &&
                       (e.jockey_no ? (
                         <Link
@@ -571,7 +520,7 @@ export function PodiumCard({ podium }: { podium: PodiumEntry[] }) {
                 </div>
                 {e.win_rate && (
                   <div className="text-right">
-                    <div className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+                    <div className="text-small font-semibold uppercase tracking-wider text-muted-foreground">
                       단승
                     </div>
                     <div className="font-mono text-sm font-bold tabular-nums">

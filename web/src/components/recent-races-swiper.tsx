@@ -86,7 +86,7 @@ export function RecentRacesSwiper({ races, finishers, videos }: Props) {
     <div>
       {/* ── 경마장 탭바 (한 줄) — 이전 디자인은 meet 별 row 가 3개 세로로 쌓여
             페이지를 길게 잡아먹었다. 한 줄 탭으로 압축하고 swiper 1개만 노출. */}
-      <div className="mb-4 flex items-center gap-1 border-b border-primary/10">
+      <div className="mb-4 flex items-center gap-1 border-b border-border">
         {MEETS.map((m) => {
           const count = byMeet[m].length;
           const active = m === activeMeet;
@@ -103,7 +103,7 @@ export function RecentRacesSwiper({ races, finishers, videos }: Props) {
                 active
                   ? "border-primary text-primary"
                   : disabled
-                    ? "border-transparent text-muted-foreground/40"
+                    ? "cursor-not-allowed border-transparent text-muted-foreground"
                     : "border-transparent text-muted-foreground hover:text-primary"
               }`}
             >
@@ -113,7 +113,7 @@ export function RecentRacesSwiper({ races, finishers, videos }: Props) {
                 className={active ? "" : "opacity-70"}
               />
               <span>{m}</span>
-              <span className="font-mono text-xs tabular-nums opacity-60">
+              <span className="font-mono text-sm tabular-nums">
                 {count}
               </span>
             </button>
@@ -205,7 +205,7 @@ function MeetSwiper({
   return (
     <div>
       {races.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-primary/10 py-6 text-center text-xs text-slate-grey">
+        <div className="rounded-lg border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
           최근 경기가 없습니다.
         </div>
       ) : (
@@ -285,7 +285,7 @@ function SwiperOverlayArrow({
       aria-label={direction === "prev" ? "이전" : "다음"}
       tabIndex={visible ? 0 : -1}
       aria-hidden={!visible}
-      className={`absolute top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-primary/15 bg-card/90 text-primary shadow-md backdrop-blur-sm transition-all hover:bg-primary hover:text-white ${
+      className={`absolute top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card/90 text-primary shadow-md backdrop-blur-sm transition-all hover:bg-primary hover:text-white ${
         direction === "prev" ? "left-1" : "right-1"
       } ${visible ? "opacity-100" : "pointer-events-none opacity-0"}`}
     >
@@ -321,7 +321,7 @@ function RecentRaceCard({
   return (
     <Link
       href={href}
-      className="group block overflow-hidden rounded-xl border border-primary/8 bg-card transition-all hover:border-primary/20 hover:shadow-md"
+      className="group block overflow-hidden rounded-xl border border-primary/8 bg-card transition-all hover:border-border hover:shadow-md"
     >
       <div className="relative aspect-video overflow-hidden bg-muted">
         {video ? (
@@ -338,13 +338,13 @@ function RecentRaceCard({
           </div>
         )}
         <div className="absolute bottom-1.5 left-1.5">
-          <span className="rounded bg-black/70 px-1.5 py-0.5 font-mono text-caption font-bold text-white tabular-nums">
+          <span className="rounded bg-black/70 px-1.5 py-0.5 font-mono text-small font-bold text-white tabular-nums">
             {r.race_no}R
           </span>
         </div>
         {video && (
           <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600 text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FF0000] text-white">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M8 5v14l11-7z" />
               </svg>
@@ -355,10 +355,10 @@ function RecentRaceCard({
 
       <div className="space-y-1 p-3">
         {finishers.length === 0 ? (
-          <div className="py-2 text-center text-caption text-slate-grey/70">결과 수집 대기</div>
+          <div className="py-2 text-center text-small text-muted-foreground">결과 수집 대기</div>
         ) : (
           finishers.slice(0, 3).map((f) => (
-            <div key={f.horse_no} className="flex items-center gap-2 text-xs">
+            <div key={f.horse_no} className="flex items-center gap-2 text-sm">
               <span
                 className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-sm leading-none"
                 aria-label={`${f.rank}위`}
@@ -369,7 +369,7 @@ function RecentRaceCard({
                 {f.horse_name}
               </span>
               {f.jockey_name && (
-                <span className="shrink-0 truncate text-caption text-slate-grey">{f.jockey_name}</span>
+                <span className="shrink-0 truncate text-small text-muted-foreground">{f.jockey_name}</span>
               )}
             </div>
           ))

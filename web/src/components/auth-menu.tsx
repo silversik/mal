@@ -20,7 +20,7 @@ export async function AuthMenu() {
         <NotificationsBell />
         <Link
           href="/me"
-          className="hidden text-xs font-semibold text-slate-grey transition hover:text-primary md:inline"
+          className="hidden text-sm font-semibold text-muted-foreground transition hover:text-primary md:inline"
           title="마이페이지"
         >
           {displayName}
@@ -31,7 +31,7 @@ export async function AuthMenu() {
             await signOut({ redirectTo: "/" });
           }}
         >
-          <button type="submit" className="btn-outline text-xs py-1.5 px-4">
+          <button type="submit" className="btn-outline text-sm py-1.5 px-4">
             LOGOUT
           </button>
         </form>
@@ -41,7 +41,7 @@ export async function AuthMenu() {
 
   return (
     <div className="flex items-center gap-4">
-      <Link href="/login" className="btn-cta text-xs py-1.5 px-4 shadow-sm">
+      <Link href="/login" className="btn-cta text-sm py-1.5 px-4 shadow-sm">
         LOGIN
       </Link>
     </div>

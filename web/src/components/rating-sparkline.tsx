@@ -73,18 +73,17 @@ export function RatingSparkline({ points, width = 240, height = 56 }: Props) {
   const currentPoint = series[current];
 
   return (
-    <div className="inline-flex flex-col items-start gap-1">
-      <div className="text-caption text-muted-foreground tabular-nums">
+    <div className="flex w-full flex-col items-start gap-1">
+      <div className="text-small text-muted-foreground tabular-nums">
         {currentPoint.label} · <strong className="text-foreground">{currentPoint.value}</strong>
-        {hover === null && (
-          <span className="ml-1 opacity-60">(최근 · {latest.snapshot_date})</span>
-        )}
+        {hover === null && <span className="ml-1">(최근 · {latest.snapshot_date})</span>}
       </div>
+      {/* viewBox 좌표는 width×height 고정, 실제 크기는 부모 폭에 맞춰 비율 유지 축소 —
+          예전엔 px 고정이라 좁은 카드·큰글씨 모드에서 부모 밖으로 삐져나왔다. */}
       <svg
-        width={width}
-        height={height}
         viewBox={`0 0 ${width} ${height}`}
-        className="overflow-visible"
+        style={{ maxWidth: width }}
+        className="block h-auto w-full overflow-visible"
         onMouseLeave={() => setHover(null)}
       >
         <path d={area} fill="var(--brown)" fillOpacity={0.25} />
@@ -117,7 +116,7 @@ export function RatingSparkline({ points, width = 240, height = 56 }: Props) {
                 cx={x}
                 cy={y}
                 r={isActive ? 3 : isLast ? 2.6 : 1.4}
-                className={isActive || isLast ? "fill-primary" : "fill-primary/60"}
+                className="fill-primary"
               />
             </g>
           );

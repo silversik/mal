@@ -51,8 +51,8 @@ import {
   WeightDelta,
 } from "@/components/race-detail-ui";
 import { PreRaceBanner } from "@/components/pre-race-banner";
-import { PopularityVsResult } from "@/components/popularity-vs-result";
-import { PaceMap } from "@/components/pace-map";
+import { PopularityVsResult, hasPopularityVsResultData } from "@/components/popularity-vs-result";
+import { PaceMap, hasPaceMapData } from "@/components/pace-map";
 import { RecentFormStrip } from "@/components/recent-form-strip";
 import { ComboDividendsSection } from "@/components/combo-dividends-section";
 import {
@@ -342,19 +342,19 @@ export default async function RacesPage({
   const nextDate = findNearbyRaceDate(raceDates, currentDate, "next");
 
   return (
-    <main className="theme-v2 mx-auto w-full max-w-7xl px-4 py-8">
-      <div className="mb-5 flex items-baseline justify-between gap-3">
+    <main className="theme-v2 mx-auto w-full max-w-[1080px] px-4 md:px-6 py-6 md:py-8">
+      <div className="mb-4 flex items-baseline justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight">경기 일람</h1>
         <Link
           href="/races/schedule"
-          className="text-sm text-muted-foreground transition hover:text-primary"
+          className="inline-flex min-h-11 items-center text-base text-muted-foreground transition hover:text-foreground"
         >
           대상경주 일정 →
         </Link>
       </div>
 
       {/* ── 날짜 네비게이션: 이전/다음(경기 있는 날로 점프) + 데이트피커 + 오늘 ── */}
-      <div className="mb-6 flex items-center gap-2">
+      <div className="mb-6 flex flex-wrap items-center gap-2">
         <NavArrow target={prevDate} direction="prev" />
 
         <RaceDatePicker currentDate={currentDate} raceDates={raceDates} />
@@ -364,7 +364,7 @@ export default async function RacesPage({
         {!isToday && (
           <Link
             href="/races"
-            className="shrink-0 rounded-lg border border-champagne-gold/60 bg-champagne-gold/10 px-3 py-1.5 text-sm font-medium text-gold-ink transition hover:bg-champagne-gold/20 whitespace-nowrap"
+            className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border border-border bg-card px-4 text-base font-semibold text-foreground transition hover:bg-muted"
           >
             오늘
           </Link>
@@ -399,7 +399,7 @@ export default async function RacesPage({
 
             return (
               <div key={meet} className="flex items-center gap-2">
-                <div className="flex w-16 shrink-0 items-center gap-1 text-xs font-semibold text-foreground">
+                <div className="flex w-16 shrink-0 items-center gap-1 text-sm font-semibold text-foreground">
                   <VenueIcon meet={meet} size={13} />
                   <span>{meet}</span>
                 </div>
@@ -416,11 +416,11 @@ export default async function RacesPage({
                       <Link key={r.id} href={href} className="shrink-0">
                         <div
                           className={[
-                            "inline-flex h-8 min-w-9 items-center justify-center rounded-md border px-2 text-xs font-bold tabular-nums transition",
+                            "inline-flex h-8 min-w-9 items-center justify-center rounded-md border px-2 text-sm font-bold tabular-nums transition",
                             isSelected
                               ? "border-primary bg-primary text-primary-foreground shadow-sm"
                               : stakes
-                                ? "border-champagne-gold/60 bg-champagne-gold/10 text-gold-ink hover:bg-champagne-gold/20"
+                                ? "border-brown/60 bg-brown/10 text-brown hover:bg-brown/20"
                                 : status === "종료"
                                   ? "border-border bg-background text-muted-foreground hover:bg-muted"
                                   : "border-border bg-background text-foreground hover:bg-muted",
@@ -505,7 +505,7 @@ export default async function RacesPage({
                   )}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[rgba(255,0,0,0.3)] bg-transparent px-3 text-xs font-semibold text-[#FF0000] transition hover:bg-[rgba(255,0,0,0.06)]"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[rgba(255,0,0,0.3)] bg-transparent px-3 text-sm font-semibold text-[#FF0000] transition hover:bg-[rgba(255,0,0,0.06)]"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.5 15.6V8.4L15.8 12l-6.3 3.6z" />
@@ -515,7 +515,7 @@ export default async function RacesPage({
               )}
               {syncedAt && (
                 <span
-                  className="text-caption text-muted-foreground/70 tabular-nums"
+                  className="text-small text-muted-foreground tabular-nums"
                   title={`데이터 수집 시각: ${syncedAt}`}
                 >
                   데이터 업데이트{" "}
@@ -546,34 +546,17 @@ export default async function RacesPage({
                   record_time: e.record_time,
                 }));
               return podium.length > 0 ? (
-                <div className="mb-5">
+                <div className="mb-4">
                   <PodiumCard podium={podium} />
                 </div>
               ) : null;
             })()}
 
-          {/* 2-열 그리드 — lg+ 에선 우측 사이드바(영상·풀별매출·인기분포),
-              그 아래선 단일 컬럼. 사이드바는 데스크탑에서 sticky 로 따라온다. */}
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[auto_1fr] lg:gap-x-6 lg:gap-y-4">
-            {/* 영상은 그리드 직속 단일 노드 — 모바일은 1열 최상단, lg 는 우측 상단(사이드바 위).
-                예전엔 lg:hidden / hidden lg:block 두 벌이라 iframe 이 2번 마운트됐음(단일 반응형 트리).
-                lg 행이 [auto 1fr] 인 이유: 전부 auto 면 row-span-2 메인 높이가 두 행에 균등 분배돼
-                영상↔사이드바 사이가 벌어진다. */}
-            {raceVideo && (
-              <div className="overflow-hidden rounded-xl border bg-card shadow-sm lg:col-start-2 lg:row-start-1">
-                <div className="aspect-video w-full bg-black">
-                  <iframe
-                    src={youtubeEmbedUrl(raceVideo.video_id)}
-                    title={raceVideo.title}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="h-full w-full"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="min-w-0 space-y-5 lg:col-start-1 lg:row-start-1 lg:row-span-2">
+          {/* 단일 컬럼: 출전표(가장 중요한 정보)가 전체 폭을 쓰고, 보조 차트는 그 아래 2열 그리드.
+              예전엔 우측 320px 사이드바라 ① 12열 출전표가 좁아져 헤더가 세로로 꺾이고 ② 경주 전엔
+              사이드바 내용이 전부 조건부라 우측 컬럼이 통째로 비었다. 데이터 없는 차트는 카드째 생략. */}
+          <div className="space-y-6">
+            <div className="min-w-0 space-y-4">
               {entries.length > 0 ? (
                 <>
                   {entriesPhase === "pre" && (
@@ -584,80 +567,73 @@ export default async function RacesPage({
                   )}
                   <Card className="overflow-hidden py-0">
                 <div className="relative overflow-x-auto rounded-[inherit]">
-                  <table data-table="race-entries" className="w-full border-collapse text-small">
+                  <table data-table="race-entries" className="w-full border-collapse text-sm">
                     <thead>
                       <tr className="bg-muted">
-                        <th className="border-b border-border px-2 py-2.5 text-center text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 52 }}>
+                        <th className="border-b border-border px-2 py-2 text-center text-small font-semibold text-muted-foreground" style={{ width: 52 }}>
                           {entriesPhase === "pre" ? "출전" : "착순"}
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-center text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 44 }}>
+                        <th className="border-b border-border px-2 py-2 text-center text-small font-semibold text-muted-foreground" style={{ width: 44 }}>
                           번호
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-left text-caption font-bold uppercase tracking-wider text-muted-foreground">
+                        <th className="border-b border-border px-2 py-2 text-left text-small font-semibold text-muted-foreground">
                           마명
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-left text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 160 }}>
+                        <th className="border-b border-border px-2 py-2 text-left text-small font-semibold text-muted-foreground" style={{ width: 160 }}>
                           기수 / 조교사
                         </th>
-                        <th className="hidden border-b border-border px-2 py-2.5 text-center text-caption font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 50 }}>
+                        <th className="hidden border-b border-border px-2 py-2 text-center text-small font-semibold text-muted-foreground sm:table-cell" style={{ width: 50 }}>
                           연령
                         </th>
-                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 64 }}>
+                        <th className="hidden border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground sm:table-cell" style={{ width: 64 }}>
                           레이팅
                         </th>
-                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground sm:table-cell" style={{ width: 56 }}>
+                        <th className="hidden border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground sm:table-cell" style={{ width: 56 }}>
                           부담
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 88 }}>
+                        <th className="border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground" style={{ width: 88 }}>
                           기록
                         </th>
-                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground md:table-cell" style={{ width: 60 }}>
+                        <th className="hidden border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground md:table-cell" style={{ width: 60 }}>
                           착차
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 86 }}>
+                        <th className="border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground" style={{ width: 86 }}>
                           마체중
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 110 }}>
+                        <th className="border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground" style={{ width: 110 }}>
                           단승
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-right text-caption font-bold uppercase tracking-wider text-muted-foreground" style={{ width: 110 }}>
+                        <th className="border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground" style={{ width: 110 }}>
                           연승
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       {entries.map((e, i) => {
-                        const rowBg =
-                          entriesPhase === "post" && e.rank === 1
-                            ? "bg-secondary/10"
-                            : entriesPhase === "post" && e.rank === 2
-                              ? "bg-muted"
-                              : entriesPhase === "post" && e.rank === 3
-                                ? "bg-secondary/5"
-                                : "";
+                        // 1·2·3착은 착순 메달(형태+색)로 충분 — 행 배경 틴트(card 위 4톤 중첩)는 제거.
                         return (
                           <tr
                             key={i}
-                            className={`${rowBg} border-b border-border/60 last:border-b-0 hover:bg-champagne-gold/[0.06]`}
+                            className="border-b border-border last:border-b-0 hover:bg-muted"
                           >
-                            <td className="px-2 py-2.5 text-center font-bold align-middle">
+                            <td className="px-2 py-2 text-center font-bold align-middle">
                               {entriesPhase === "pre" ? (
                                 <GateNum n={e.chul_no} size={24} />
                               ) : (
                                 <RankMedal rank={e.rank} />
                               )}
                             </td>
-                            <td className="px-2 py-2.5 text-center align-middle">
+                            <td className="px-2 py-2 text-center align-middle">
                               <GateNum n={e.chul_no} />
                             </td>
-                            <td className="px-2 py-2.5 align-middle">
+                            <td className="px-2 py-2 text-left align-middle">
                               <Link
                                 href={`/horse/${e.horse_no}`}
-                                className="text-sm font-bold text-primary hover:underline"
+                                className="text-base font-bold text-foreground underline-offset-4 hover:underline"
                               >
                                 {e.horse_name}
                               </Link>
-                              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-caption text-muted-foreground">
+                              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-muted-foreground">
                                 <span className="inline-flex items-center gap-1">
                                   <SexBullet sex={e.sex} />
                                   {e.age && (
@@ -679,7 +655,7 @@ export default async function RacesPage({
                                       -
                                       {compareMap[e.horse_no].third_place_count}
                                     </strong>
-                                    <span className="opacity-70">
+                                    <span>
                                       {" "}
                                       / {compareMap[e.horse_no].total_race_count}
                                     </span>
@@ -698,8 +674,8 @@ export default async function RacesPage({
                                 })()}
                               </div>
                             </td>
-                            <td className="px-2 py-2.5 align-middle leading-tight">
-                              <div className="flex items-center gap-1.5 text-small">
+                            <td className="px-2 py-2 text-left align-middle leading-tight">
+                              <div className="flex items-center gap-1.5 text-sm">
                                 {e.jockey_name ? (
                                   e.jockey_no ? (
                                     <Link
@@ -724,7 +700,7 @@ export default async function RacesPage({
                                   />
                                 )}
                               </div>
-                              <div className="mt-0.5 text-caption text-muted-foreground">
+                              <div className="mt-0.5 text-small text-muted-foreground">
                                 {e.trainer_name ? (
                                   e.trainer_no ? (
                                     <Link
@@ -741,33 +717,33 @@ export default async function RacesPage({
                                 )}
                               </div>
                             </td>
-                            <td className="hidden px-2 py-2.5 text-center align-middle font-mono text-xs tabular-nums text-muted-foreground sm:table-cell">
+                            <td className="hidden px-2 py-2 text-center align-middle font-mono text-sm tabular-nums text-muted-foreground sm:table-cell">
                               {e.age ?? "-"}
                             </td>
-                            <td className="hidden px-2 py-2.5 text-right align-middle font-mono text-xs tabular-nums sm:table-cell">
+                            <td className="hidden px-2 py-2 text-right align-middle font-mono text-sm tabular-nums sm:table-cell">
                               {e.hr_rating ?? "-"}
                             </td>
-                            <td className="hidden px-2 py-2.5 text-right align-middle font-mono text-xs tabular-nums text-muted-foreground sm:table-cell">
+                            <td className="hidden px-2 py-2 text-right align-middle font-mono text-sm tabular-nums text-muted-foreground sm:table-cell">
                               {e.budam_weight ?? "-"}
                             </td>
                             <td
-                              className={`px-2 py-2.5 text-right align-middle font-mono text-xs tabular-nums font-semibold ${
+                              className={`px-2 py-2 text-right align-middle font-mono text-sm tabular-nums font-semibold ${
                                 e.rank === 1 && entriesPhase === "post" ? "text-primary" : ""
                               } ${entriesPhase === "pre" ? "text-muted-foreground" : ""}`}
                             >
                               {e.record_time ?? "-"}
                             </td>
-                            <td className="hidden px-2 py-2.5 text-right align-middle font-mono text-xs tabular-nums text-muted-foreground md:table-cell">
+                            <td className="hidden px-2 py-2 text-right align-middle font-mono text-sm tabular-nums text-muted-foreground md:table-cell">
                               {e.differ ?? "-"}
                             </td>
-                            <td className="px-2 py-2.5 text-right align-middle font-mono text-xs tabular-nums">
+                            <td className="px-2 py-2 text-right align-middle font-mono text-sm tabular-nums">
                               {e.weight ?? "-"}
                               <WeightDelta diff={e.weight_diff} />
                             </td>
-                            <td className="px-2 py-2.5 text-right align-middle">
+                            <td className="px-2 py-2 text-right align-middle">
                               <OddsBar value={e.win_rate} kind="win" />
                             </td>
-                            <td className="px-2 py-2.5 text-right align-middle">
+                            <td className="px-2 py-2 text-right align-middle">
                               <OddsBar value={e.plc_rate} kind="plc" />
                             </td>
                           </tr>
@@ -779,49 +755,65 @@ export default async function RacesPage({
               </Card>
             </>
           ) : (
-            <Card className="border-dashed">
-              <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                출전 정보가 없습니다.
+            <Card className="border-dashed py-0">
+              <CardContent className="py-8 text-center text-base text-muted-foreground">
+                출전 정보가 아직 발표되지 않았습니다.
               </CardContent>
             </Card>
           )}
-
-              {raceCorner && (
-                <div>
-                  <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
-                    페이스 맵
-                  </h3>
-                  <Card>
-                    <CardContent className="p-4">
-                      <PaceMap
-                        corner={raceCorner}
-                        meet={selectedRace.meet}
-                        winnerChulNo={
-                          entries.find((e) => e.rank === 1)?.chul_no ?? null
-                        }
-                      />
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-
             </div>
 
-            {/* ── 사이드바 (lg+) / 메인 컬럼 아래(mobile) ──
-                풀별매출·인기분포처럼 "한눈 정보" 는 우측으로 빠져 메인 컬럼 상단을 출전표가 차지.
-                (영상은 그리드 직속 — 위 참고.) 영상이 없으면 1행부터 span 해 row-gap 공백을 흡수. */}
-            <aside
-              className={`space-y-4 lg:col-start-2 lg:sticky lg:top-4 lg:self-start ${
-                raceVideo ? "lg:row-start-2" : "lg:row-start-1 lg:row-span-2"
-              }`}
-            >
-              {poolSales.length > 0 && (
-                <div>
+            {(() => {
+              const showPop = entries.some((e) => e.win_rate);
+              const showPvr = entriesPhase === "post" && hasPopularityVsResultData(entries);
+              const showPace = raceCorner != null && hasPaceMapData(raceCorner);
+              const showPool = poolSales.length > 0;
+              if (!raceVideo && !showPop && !showPvr && !showPace && !showPool) return null;
+              return (
+            <div className="grid gap-6 md:grid-cols-2 [&>*]:min-w-0">
+              {raceVideo && (
+                <section>
+                  <h3 className="mb-2 text-base font-bold">경주 영상</h3>
+                  <div className="overflow-hidden rounded-xl border border-border bg-card">
+                    <div className="aspect-video w-full bg-black">
+                      <iframe
+                        src={youtubeEmbedUrl(raceVideo.video_id)}
+                        title={raceVideo.title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="h-full w-full"
+                      />
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {showPop && (
+                <section>
                   <div className="mb-2 flex items-baseline justify-between">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      풀별 매출
-                    </h3>
-                    <span className="text-xs text-muted-foreground tabular-nums">
+                    <h3 className="text-base font-bold">인기 분포</h3>
+                    <span className="text-small text-muted-foreground">단승 기준</span>
+                  </div>
+                  <PopularityChart entries={entries} />
+                </section>
+              )}
+
+              {showPvr && (
+                <section>
+                  <h3 className="mb-2 text-base font-bold">인기 vs 결과</h3>
+                  <Card className="py-0">
+                    <CardContent className="p-4">
+                      <PopularityVsResult entries={entries} />
+                    </CardContent>
+                  </Card>
+                </section>
+              )}
+
+              {showPool && (
+                <section>
+                  <div className="mb-2 flex items-baseline justify-between">
+                    <h3 className="text-base font-bold">풀별 매출</h3>
+                    <span className="font-mono text-small text-muted-foreground tabular-nums">
                       {(() => {
                         const t = poolSales.reduce((s, r) => s + Number(r.amount), 0);
                         if (t >= 100_000_000) return `${(t / 100_000_000).toFixed(2)}억`;
@@ -843,41 +835,27 @@ export default async function RacesPage({
                     )}
                     totalAmount={poolSales.reduce((s, r) => s + Number(r.amount), 0)}
                   />
-                </div>
+                </section>
               )}
 
-              {entries.length > 0 && entries.some((e) => e.win_rate) && (
-                <div>
-                  <div className="mb-2 flex items-baseline justify-between">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      인기 분포
-                    </h3>
-                    <span className="text-caption text-muted-foreground">
-                      단승 기준
-                    </span>
-                  </div>
-                  <PopularityChart entries={entries} compact />
-                </div>
-              )}
 
-              {entriesPhase === "post" && (
-                <div>
-                  <div className="mb-2 flex items-baseline justify-between">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      인기 vs 결과
-                    </h3>
-                  </div>
-                  <Card>
-                    <CardContent className="p-3">
-                      {/* 사이드바(좁은 폭) 에선 SVG 위 / 텍스트 아래의 세로 스택. */}
-                      <div className="[&>div]:!flex-col [&>div]:!items-stretch">
-                        <PopularityVsResult entries={entries} />
-                      </div>
+              {showPace && raceCorner && (
+                <section className="md:col-span-2">
+                  <h3 className="mb-2 text-base font-bold">페이스 맵</h3>
+                  <Card className="py-0">
+                    <CardContent className="p-4">
+                      <PaceMap
+                        corner={raceCorner}
+                        meet={selectedRace.meet}
+                        winnerChulNo={entries.find((e) => e.rank === 1)?.chul_no ?? null}
+                      />
                     </CardContent>
                   </Card>
-                </div>
+                </section>
               )}
-            </aside>
+            </div>
+              );
+            })()}
           </div>
 
           {comboDividends.length > 0 && (
@@ -928,12 +906,12 @@ function JockeyChangeBadge({
     .join(" ");
   return (
     <span
-      className="inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/10 px-1 text-caption font-semibold text-amber-700 dark:text-amber-400"
+      className="inline-flex items-center gap-1 rounded border border-brown/50 bg-card px-1.5 text-small font-semibold text-brown"
       title={title}
     >
       교체
       {hasWeightDelta && (
-        <span className="font-mono tabular-nums opacity-80">
+        <span className="font-mono tabular-nums">
           {wb}→{wa}
         </span>
       )}
@@ -961,17 +939,17 @@ function UpcomingStakesPanel({
       <CardContent className="py-8">
         <div className="mb-4 flex items-baseline justify-between gap-3">
           <div>
-            <Badge className="mb-1 bg-champagne-gold text-secondary-foreground">예정</Badge>
+            <Badge className="mb-1 bg-brown text-secondary-foreground">예정</Badge>
             <h2 className="text-base font-bold">
               {formatDateLabel(date)} 예정 대상경주
             </h2>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-sm text-muted-foreground">
               주간 카드가 아직 등록되지 않아 출전표·결과는 일정 공개 후 표시됩니다.
             </p>
           </div>
           <Link
             href="/races/schedule"
-            className="text-xs text-muted-foreground transition hover:text-primary whitespace-nowrap"
+            className="text-sm text-muted-foreground transition hover:text-primary whitespace-nowrap"
           >
             전체 일정 →
           </Link>
@@ -989,13 +967,13 @@ function UpcomingStakesPanel({
                   return (
                     <li key={s.id} className="flex items-center gap-2 px-3 py-2 text-sm">
                       {s.tier && (
-                        <span className="shrink-0 rounded bg-champagne-gold/20 px-1.5 py-0.5 text-caption font-bold text-gold-ink">
+                        <span className="shrink-0 rounded bg-brown/20 px-1.5 py-0.5 text-small font-bold text-brown">
                           {s.tier}
                         </span>
                       )}
                       <span className="min-w-0 flex-1 truncate font-medium">{display}</span>
                       {s.distance && (
-                        <span className="shrink-0 font-mono text-caption tabular-nums text-muted-foreground">
+                        <span className="shrink-0 font-mono text-small tabular-nums text-muted-foreground">
                           {s.distance}m
                         </span>
                       )}
@@ -1046,24 +1024,5 @@ function NavArrow({
   );
 }
 
-// 1·2·3위는 홈의 "TOP 기수 랭킹" 메달과 동일한 금/은/동 배지로 통일.
-const RANK_MEDAL_STYLE: Record<number, string> = {
-  1: "bg-champagne-gold text-secondary-foreground",
-  2: "bg-slate-400 text-white",
-  3: "bg-amber-700 text-white",
-};
 
-function RankBadge({ rank }: { rank: number | null }) {
-  if (rank === null) return <span className="text-muted-foreground">-</span>;
-  if (rank <= 3) {
-    return (
-      <span
-        className={`inline-flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-bold tabular-nums ${RANK_MEDAL_STYLE[rank]}`}
-      >
-        {rank}
-      </span>
-    );
-  }
-  return <span>{rank}</span>;
-}
 

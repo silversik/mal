@@ -19,11 +19,11 @@ export default async function LoginPage() {
       <h1 className="font-serif text-3xl font-bold tracking-tight text-primary">
         mal.kr 시작하기
       </h1>
-      <p className="mt-3 text-sm text-slate-grey">
+      <p className="mt-3 text-sm text-muted-foreground">
         소셜 계정 한 번이면 로그인과 회원가입이 모두 끝나요.
       </p>
 
-      <Card className="mt-10 w-full">
+      <Card className="py-0 mt-10 w-full">
         <CardContent className="flex flex-col gap-3 p-6">
           <form
             action={async () => {
@@ -42,7 +42,7 @@ export default async function LoginPage() {
         </CardContent>
       </Card>
 
-      <p className="mt-6 text-xs text-slate-grey">
+      <p className="mt-6 text-sm text-muted-foreground">
         계속 진행하면 mal.kr 의 서비스 이용 약관과 개인정보 처리방침에
         동의하는 것으로 간주됩니다.
       </p>

@@ -22,7 +22,7 @@ export default function GlobalError({
             잠시 후 다시 시도해 주세요. 계속되면 운영자에게 알림이 전달됩니다.
           </p>
           {error.digest && (
-            <p className="text-xs text-muted-foreground font-mono">
+            <p className="text-sm text-muted-foreground font-mono">
               digest: {error.digest}
             </p>
           )}

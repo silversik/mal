@@ -44,7 +44,7 @@ export default async function OwnersPage({
 
   return (
     <div>
-      <h1 className="mb-5 text-2xl font-extrabold tracking-tight sm:text-3xl">
+      <h1 className="mb-4 text-2xl font-extrabold tracking-tight sm:text-3xl">
         마주
       </h1>
 
@@ -78,7 +78,7 @@ export default async function OwnersPage({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {owners.map((o) => (
             <Link key={o.ow_no} href={`/owner/${o.ow_no}`}>
-              <Card className="transition hover:border-primary/40 hover:shadow-md hover:shadow-primary/5">
+              <Card className="py-0 transition-colors hover:bg-muted">
                 <CardContent className="p-4">
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="truncate text-lg font-semibold">
@@ -111,7 +111,7 @@ export default async function OwnersPage({
                     )}
                   </div>
                   {o.reg_date && (
-                    <div className="mt-1 text-xs text-muted-foreground">
+                    <div className="mt-1 text-sm text-muted-foreground">
                       등록 {o.reg_date}
                     </div>
                   )}

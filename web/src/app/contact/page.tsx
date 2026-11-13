@@ -13,8 +13,8 @@ export const dynamic = "force-dynamic";
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   pending:     { label: "접수됨",  cls: "bg-muted text-muted-foreground" },
-  in_progress: { label: "처리중",  cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
-  resolved:    { label: "완료",    cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
+  in_progress: { label: "처리중",  cls: "border border-brown/40 bg-card text-brown" },
+  resolved:    { label: "완료",    cls: "border border-positive/40 bg-card text-positive" },
 };
 
 export default async function ContactPage({
@@ -52,7 +52,7 @@ export default async function ContactPage({
       ) : (
         <div className="rounded-[10px] border border-border bg-card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-border bg-muted/40">
+            <thead className="border-b border-border bg-muted">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground w-14 font-mono tabular-nums">번호</th>
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground">제목</th>
@@ -66,7 +66,7 @@ export default async function ContactPage({
                 const s = STATUS_LABEL[post.status] ?? STATUS_LABEL.pending;
                 const date = post.created_at.slice(0, 10);
                 return (
-                  <tr key={post.id} className="hover:bg-muted/30 transition-colors">
+                  <tr key={post.id} className="hover:bg-muted transition-colors">
                     <td className="px-4 py-3 font-mono tabular-nums text-muted-foreground">
                       {post.id}
                     </td>
@@ -81,11 +81,11 @@ export default async function ContactPage({
                     <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell truncate max-w-[6rem]">
                       {post.author_name}
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs tabular-nums text-muted-foreground hidden md:table-cell">
+                    <td className="px-4 py-3 font-mono text-sm tabular-nums text-muted-foreground hidden md:table-cell">
                       {date}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-caption font-semibold ${s.cls}`}>
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-small font-semibold ${s.cls}`}>
                         {s.label}
                       </span>
                     </td>

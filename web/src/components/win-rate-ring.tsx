@@ -1,6 +1,6 @@
 /**
  * 디자인 시안의 WinRateRing — 기수 승률을 둥근 게이지로 표현.
- * 외곽: 옅은 navy 트랙 / 채워지는 호: gold-deep / 중앙: 값(%) + 라벨.
+ * 외곽: hairline 트랙 / 채워지는 호: brown / 중앙: 값(%) + 라벨.
  */
 export function WinRateRing({
   value,
@@ -17,8 +17,16 @@ export function WinRateRing({
   const c = 2 * Math.PI * r;
   const off = c * (1 - v / 100);
   return (
-    <div className="relative inline-block" style={{ width: size, height: size }}>
-      <svg width={size} height={size} aria-label={`${label} ${v.toFixed(1)}%`}>
+    // rem 크기 — 큰글씨 모드에서 링과 안쪽 숫자가 함께 커져 겹치지 않게. 내부 좌표는 viewBox.
+    <div
+      className="relative inline-block shrink-0"
+      style={{ width: `${size / 16}rem`, height: `${size / 16}rem` }}
+    >
+      <svg
+        viewBox={`0 0 ${size} ${size}`}
+        className="h-full w-full"
+        aria-label={`${label} ${v.toFixed(1)}%`}
+      >
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -31,7 +39,7 @@ export function WinRateRing({
           cx={size / 2}
           cy={size / 2}
           r={r}
-          stroke="var(--color-gold)"
+          stroke="var(--brown)"
           strokeWidth={8}
           fill="none"
           strokeLinecap="round"
@@ -43,16 +51,16 @@ export function WinRateRing({
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-primary">
         <div
           className="font-mono font-bold leading-none tabular-nums"
-          style={{ fontSize: size * 0.22 }}
+          style={{ fontSize: `${(size * 0.22) / 16}rem` }}
         >
           {v.toFixed(1)}
-          <span className="opacity-60" style={{ fontSize: size * 0.13 }}>
+          <span className="text-muted-foreground" style={{ fontSize: "0.8125rem" }}>
             %
           </span>
         </div>
         <div
-          className="mt-1 font-semibold uppercase tracking-wider text-muted-foreground"
-          style={{ fontSize: "0.6875rem" }}
+          className="mt-1 font-semibold text-muted-foreground"
+          style={{ fontSize: "0.8125rem" }}
         >
           {label}
         </div>

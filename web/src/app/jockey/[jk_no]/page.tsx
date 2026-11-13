@@ -43,6 +43,7 @@ import {
   IconUserPlus,
 } from "@/components/profile-ui";
 import { StatsBar } from "@/components/stats-bar";
+import { RankBadge } from "@/components/rank-badge";
 
 const fetchJockey = cache(getJockeyByNo);
 
@@ -102,7 +103,7 @@ export default async function JockeyDetailPage({
   const recentRanks = recentRaces.map((r) => r.rank);
 
   return (
-    <main className="theme-v2 mx-auto w-full max-w-7xl px-4 py-5 md:px-6 md:py-6">
+    <main className="theme-v2 mx-auto w-full max-w-[1080px] px-4 md:px-6 py-6">
       <BreadcrumbJsonLd
         items={[
           { name: "홈", url: "/" },
@@ -121,7 +122,7 @@ export default async function JockeyDetailPage({
 
       <JockeyProfileCard jockey={jockey} recentRanks={recentRanks} winRate={winRate} />
 
-      <div className="mt-5 grid gap-5 md:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_320px]">
         {/* 좌측: 최근 기승 기록 */}
         <div className="min-w-0">
           <SectionHead icon={<IconActivity size={13} />} label="최근 기승 기록" />
@@ -158,9 +159,9 @@ export default async function JockeyDetailPage({
                     return (
                       <TableRow key={r.id}>
                         <TableCell className="text-center font-semibold">
-                          <RankBadge rank={r.rank} />
+                          <RankBadge rest="chip" rank={r.rank} />
                         </TableCell>
-                        <TableCell className="text-center font-mono text-xs text-muted-foreground">
+                        <TableCell className="text-center font-mono text-sm text-muted-foreground">
                           {r.race_date}
                         </TableCell>
                         <TableCell className="text-center">{r.meet ?? "-"}</TableCell>
@@ -213,7 +214,7 @@ export default async function JockeyDetailPage({
                 icon={<IconUserPlus size={13} />}
                 label="조교사별 동승"
                 right={
-                  <span className="text-caption text-muted-foreground">
+                  <span className="text-small text-muted-foreground">
                     5회 이상
                   </span>
                 }
@@ -226,7 +227,7 @@ export default async function JockeyDetailPage({
         {/* 우측 사이드바: 승률 카드 + 월별 카드 */}
         <aside className="flex flex-col gap-4">
           {(winRate != null || plcRate != null || showRate != null) && (
-            <Card>
+            <Card className="py-0">
               <CardContent className="p-4">
                 <SectionHead
                   icon={<IconTarget size={13} />}
@@ -242,7 +243,7 @@ export default async function JockeyDetailPage({
           )}
 
           {monthlyHasData && (
-            <Card>
+            <Card className="py-0">
               <CardContent className="p-4">
                 <SectionHead icon={<IconBars size={13} />} label="월별 1착" />
                 <JockeyMonthlyChart data={monthly} width={272} height={110} />
@@ -270,7 +271,7 @@ function JockeyProfileCard({
   const initial = jockey.jk_name?.[0] ?? "?";
 
   return (
-    <Card className="royal-card">
+    <Card className="py-0 royal-card">
       <CardContent className="p-4">
         {/* 헤더 */}
         <div className="flex items-start gap-3">
@@ -290,13 +291,13 @@ function JockeyProfileCard({
                 </ProfileTag>
               )}
             </div>
-            <h1 className="mt-0.5 whitespace-nowrap text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
+            <h1 className="mt-0.5 break-keep text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
               {jockey.jk_name}
               <span className="ml-2 align-middle text-sm font-medium text-muted-foreground">
                 기수
               </span>
             </h1>
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
               {jockey.debut_date && (
                 <span className="inline-flex items-center gap-1">
                   <IconCalendar size={12} />
@@ -337,7 +338,7 @@ function JockeyProfileCard({
 
         {recentRanks.length > 0 && (
           <div className="mt-3 rounded-[10px] border border-border bg-card px-3 py-2">
-            <div className="mb-1 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="mb-1 text-small font-semibold uppercase tracking-wider text-muted-foreground">
               최근 폼 ({Math.min(recentRanks.length, 15)}경기)
             </div>
             <RecentFormDots ranks={recentRanks} count={15} />
@@ -352,30 +353,7 @@ function Sep() {
   return <span className="h-2.5 w-px bg-border" aria-hidden />;
 }
 
-// 1·2·3위 메달 톤.
-const RANK_MEDAL_STYLE: Record<number, string> = {
-  1: "bg-secondary text-secondary-foreground",
-  2: "bg-slate-300 text-slate-900",
-  3: "bg-amber-700 text-white",
-};
 
-function RankBadge({ rank }: { rank: number | null }) {
-  if (rank === null) return <span className="text-muted-foreground">-</span>;
-  if (rank <= 3) {
-    return (
-      <span
-        className={`inline-flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-bold tabular-nums ${RANK_MEDAL_STYLE[rank]}`}
-      >
-        {rank}
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-muted font-mono text-xs font-bold tabular-nums text-muted-foreground">
-      {rank}
-    </span>
-  );
-}
 
 function YoutubeIcon() {
   return (

@@ -21,13 +21,13 @@ export default function NotFound() {
       <div className="flex flex-wrap gap-3">
         <Link
           href="/races"
-          className="inline-flex min-h-[max(44px,2.75rem)] items-center justify-center rounded-[6px] bg-secondary px-5 text-base font-semibold text-secondary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="inline-flex min-h-[max(44px,2.75rem)] items-center justify-center rounded-[6px] bg-secondary px-4 text-base font-semibold text-secondary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           경주 결과 보기
         </Link>
         <Link
           href="/"
-          className="inline-flex min-h-[max(44px,2.75rem)] items-center justify-center rounded-[6px] border border-border bg-card px-5 text-base font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="inline-flex min-h-[max(44px,2.75rem)] items-center justify-center rounded-[6px] border border-border bg-card px-4 text-base font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           홈으로
         </Link>

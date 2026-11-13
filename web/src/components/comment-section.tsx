@@ -29,7 +29,7 @@ export async function CommentSection({ entityType, entityId, entityName }: Props
   const userId = session?.user?.id ?? null;
 
   return (
-    <section className="mt-10 border-t border-primary/10 pt-6">
+    <section className="mt-10 border-t border-border pt-6">
       <h2 className="mb-4 font-serif text-xl font-bold text-primary">
         댓글 <span className="text-sm font-mono font-normal text-muted-foreground">{comments.length}</span>
       </h2>
@@ -39,7 +39,7 @@ export async function CommentSection({ entityType, entityId, entityName }: Props
           <CommentForm entityType={entityType} entityId={entityId} entityName={entityName} />
         </div>
       ) : (
-        <p className="mb-6 rounded-lg border border-primary/10 bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+        <p className="mb-6 rounded-lg border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
           댓글을 남기려면{" "}
           <a href="/login" className="font-semibold text-primary underline underline-offset-2">
             로그인
@@ -55,11 +55,11 @@ export async function CommentSection({ entityType, entityId, entityName }: Props
           {comments.map((c) => (
             <li key={c.id} className="rounded-lg border border-primary/8 bg-card p-4">
               <div className="mb-1.5 flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-foreground">
+                <span className="text-sm font-semibold text-foreground">
                   {c.author_name ?? "알 수 없음"}
                 </span>
                 <div className="flex items-center gap-2">
-                  <time className="text-caption text-muted-foreground" dateTime={c.created_at}>
+                  <time className="text-small text-muted-foreground" dateTime={c.created_at}>
                     {timeAgo(c.created_at)}
                   </time>
                   {userId === c.user_id && (
@@ -71,7 +71,7 @@ export async function CommentSection({ entityType, entityId, entityName }: Props
                     >
                       <button
                         type="submit"
-                        className="text-caption text-muted-foreground hover:text-destructive transition"
+                        className="text-small text-muted-foreground hover:text-destructive transition"
                       >
                         삭제
                       </button>
@@ -79,7 +79,7 @@ export async function CommentSection({ entityType, entityId, entityName }: Props
                   )}
                 </div>
               </div>
-              <p className="text-sm whitespace-pre-wrap break-words text-foreground/80">{c.content}</p>
+              <p className="text-sm whitespace-pre-wrap break-words text-foreground">{c.content}</p>
             </li>
           ))}
         </ul>

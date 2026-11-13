@@ -41,13 +41,13 @@ export default function RootError({
         <button
           type="button"
           onClick={() => retry()}
-          className="inline-flex min-h-[max(44px,2.75rem)] items-center justify-center rounded-[6px] bg-secondary px-5 text-base font-semibold text-secondary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="inline-flex min-h-[max(44px,2.75rem)] items-center justify-center rounded-[6px] bg-secondary px-4 text-base font-semibold text-secondary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           다시 시도
         </button>
         <Link
           href="/"
-          className="inline-flex min-h-[max(44px,2.75rem)] items-center justify-center rounded-[6px] border border-border bg-card px-5 text-base font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="inline-flex min-h-[max(44px,2.75rem)] items-center justify-center rounded-[6px] border border-border bg-card px-4 text-base font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           홈으로
         </Link>

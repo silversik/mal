@@ -36,16 +36,14 @@ export function PreRaceBanner({
   }, [raceDate, startTime]);
 
   return (
-    <div className="mb-3 flex items-center gap-2 rounded-md border border-champagne-gold/50 bg-gradient-to-r from-champagne-gold/16 to-champagne-gold/6 px-3.5 py-2.5 text-small text-gold-ink">
-      <span className="relative flex h-2 w-2">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-champagne-gold opacity-60" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-champagne-gold" />
-      </span>
+    // 그라디언트·깜빡이는 ping 점 제거(DESIGN: 장식 그라디언트·장식 모션 금지) — 단색 카드 + 상태 점.
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border bg-card px-4 py-3 text-base text-foreground">
+      <span aria-hidden="true" className="inline-flex h-2.5 w-2.5 rounded-full bg-brown" />
       <span>
         <strong>출전표</strong> · 경주 시작 전, 결과는 발주 직후 갱신됩니다.
       </span>
       {remaining !== null && (
-        <span className="ml-auto font-mono font-bold tabular-nums">
+        <span className="ml-auto font-mono font-bold tabular-nums text-brown">
           {formatCountdown(remaining)}
         </span>
       )}

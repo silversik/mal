@@ -1,27 +1,10 @@
 import { AnalysisSidebar } from "@/components/analysis-sidebar";
+import { SectionLayout } from "@/components/section-layout";
 
 export default function AnalysisLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div className="theme-v2 mx-auto w-full max-w-7xl px-4 py-6 md:px-6 md:py-8">
-      <header className="mb-5">
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-          분석 대시보드
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          축적된 경주 데이터를 활용한 분석 도구.
-        </p>
-      </header>
-
-      {/* 모바일에선 사이드바가 본문 위 가로 탭바로 떨어지고, md+ 부터 좌측 컬럼.
-          AnalysisSidebar 내부에서 자체 분기. */}
-      <div className="flex flex-col gap-5 md:grid md:grid-cols-[200px_minmax(0,1fr)]">
-        <AnalysisSidebar />
-        <div className="min-w-0">{children}</div>
-      </div>
-    </div>
-  );
+  return <SectionLayout nav={<AnalysisSidebar />}>{children}</SectionLayout>;
 }

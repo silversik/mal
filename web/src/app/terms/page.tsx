@@ -15,7 +15,7 @@ export default function TermsPage() {
     <div className="max-w-2xl mx-auto px-4 py-10 space-y-8">
       <header>
         <h1 className="text-xl font-bold tracking-tight">이용약관</h1>
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-2 text-sm text-muted-foreground">
           최초 시행: {EFFECTIVE_DATE} · 최종 수정: {UPDATED_DATE}
         </p>
       </header>

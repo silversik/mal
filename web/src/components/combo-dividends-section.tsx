@@ -164,14 +164,14 @@ export function ComboDividendsSection({
                 onClick={() => toggleBucket(b)}
                 aria-pressed={isActive}
                 title={`${BUCKET_LABEL[b]} 배당 (${BUCKET_RANGE[b]})`}
-                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-caption font-medium transition ${
+                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-small font-medium transition ${
                   isActive
                     ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
-                    : "border-border bg-transparent text-muted-foreground opacity-50 hover:opacity-80"
+                    : "border-border bg-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <span>{BUCKET_LABEL[b]}</span>
-                <span className="font-mono tabular-nums opacity-70">
+                <span className="font-mono tabular-nums">
                   {count}
                 </span>
               </button>
@@ -188,7 +188,7 @@ export function ComboDividendsSection({
               <PoolCard key={pool} pool={pool} items={byPool.get(pool) ?? []} />
             ))
           ) : (
-            <div className="w-full rounded-lg border border-dashed py-6 text-center text-xs text-muted-foreground">
+            <div className="w-full rounded-lg border border-dashed py-6 text-center text-sm text-muted-foreground">
               선택한 배당 구간에 해당하는 조합이 없습니다.
             </div>
           )}
@@ -210,12 +210,12 @@ function PoolCard({
 
   return (
     <Card className="w-[70%] shrink-0 snap-start py-0 sm:w-[40%] lg:w-[23%]">
-      <div className="flex items-baseline justify-between border-b bg-muted/40 px-3 py-2 text-xs font-semibold tracking-wide text-muted-foreground">
+      <div className="flex items-baseline justify-between border-b bg-muted px-3 py-2 text-sm font-semibold tracking-wide text-muted-foreground">
         <span>
           {POOL_LABEL[pool]}{" "}
-          <span className="ml-1 font-mono opacity-70">{pool}</span>
+          <span className="ml-1 font-mono">{pool}</span>
         </span>
-        <span className="font-mono text-caption opacity-60">
+        <span className="font-mono text-small">
           {items.length}건
         </span>
       </div>
@@ -225,7 +225,7 @@ function PoolCard({
         ))}
       </div>
       {hidden > 0 && (
-        <div className="border-t bg-muted/20 px-3 py-2">
+        <div className="border-t bg-muted px-3 py-2">
           <ComboMoreDialog pool={pool} items={items} hidden={hidden} />
         </div>
       )}
@@ -235,7 +235,7 @@ function PoolCard({
 
 function ComboRow({ d }: { d: RaceComboDividend }) {
   return (
-    <div className="flex items-center justify-between px-3 py-1.5 text-xs">
+    <div className="flex items-center justify-between px-3 py-1.5 text-sm">
       <span className="truncate">{formatCombo(d)}</span>
       <span className="ml-2 shrink-0 font-mono tabular-nums font-semibold">
         {formatOdds(d.odds)}
@@ -260,7 +260,7 @@ function ComboMoreDialog({
       <Dialog.Trigger asChild>
         <button
           type="button"
-          className="w-full rounded-md border border-dashed border-border bg-card px-2 py-1 text-caption font-semibold text-muted-foreground transition hover:border-primary/40 hover:bg-muted hover:text-primary"
+          className="w-full rounded-md border border-dashed border-border bg-card px-2 py-1 text-small font-semibold text-muted-foreground transition hover:border-primary/40 hover:bg-muted hover:text-primary"
         >
           +{hidden}건 더보기 →
         </button>
@@ -272,9 +272,9 @@ function ComboMoreDialog({
             <div>
               <Dialog.Title className="text-base font-semibold">
                 {POOL_LABEL[pool]}{" "}
-                <span className="ml-1 font-mono text-xs opacity-70">{pool}</span>
+                <span className="ml-1 font-mono text-sm text-muted-foreground">{pool}</span>
               </Dialog.Title>
-              <Dialog.Description className="mt-0.5 text-xs text-muted-foreground">
+              <Dialog.Description className="mt-0.5 text-sm text-muted-foreground">
                 총 {items.length}건 · 배당 오름차순
               </Dialog.Description>
             </div>

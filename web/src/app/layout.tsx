@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Playfair_Display, Noto_Serif_KR } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Toaster } from "sonner";
@@ -15,16 +15,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const playfair = Playfair_Display({
-  variable: "--font-serif",
-  subsets: ["latin"],
-});
-
-const notoSerif = Noto_Serif_KR({
-  variable: "--font-serif-kr",
-  subsets: ["latin"],
-  weight: ["400", "700"],
-});
+// Playfair Display · Noto Serif KR 은 다운로드만 되고 어디서도 쓰이지 않아 제거(2026-11) —
+// 디스플레이·본문 모두 Wanted Sans(globals.css @theme --font-sans/--font-serif).
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://mal.kr"),
@@ -84,7 +76,7 @@ export default function RootLayout({
     <html
       lang="ko"
       suppressHydrationWarning
-      className={`${geistMono.variable} ${playfair.variable} ${notoSerif.variable} h-full antialiased`}
+      className={`${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {/* Synchronous inline script (NOT next/script) so it runs before first
@@ -92,16 +84,19 @@ export default function RootLayout({
             only guarantees pre-hydration, not pre-paint. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var c=document.cookie;function g(k){var m=c.match(new RegExp('(?:^|; )'+k+'=([^;]*)'));return m?decodeURIComponent(m[1]):null;}var t=g('mal-theme')||'auto';var s=g('mal-scale')||'md';if(['auto','light','dark'].indexOf(t)<0)t='auto';if(['sm','md','lg'].indexOf(s)<0)s='md';var d=document.documentElement;d.setAttribute('data-theme',t);d.setAttribute('data-scale',s);var mq=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)');function res(){var ct=d.getAttribute('data-theme');return ct==='dark'||(ct==='auto'&&mq&&mq.matches);}function ap(){d.classList.toggle('dark',res());}ap();if(mq){(mq.addEventListener?mq.addEventListener('change',ap):mq.addListener(ap));}}catch(e){}})();`,
+            __html: `(function(){try{var c=document.cookie;function g(k){var m=c.match(new RegExp('(?:^|; )'+k+'=([^;]*)'));return m?decodeURIComponent(m[1]):null;}var t=g('mal-theme')||'auto';var s=g('mal-scale')||'md';if(['auto','light','dark'].indexOf(t)<0)t='auto';if(['md','lg'].indexOf(s)<0)s='md';var d=document.documentElement;d.setAttribute('data-theme',t);d.setAttribute('data-scale',s);var mq=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)');function res(){var ct=d.getAttribute('data-theme');return ct==='dark'||(ct==='auto'&&mq&&mq.matches);}function ap(){d.classList.toggle('dark',res());}ap();if(mq){(mq.addEventListener?mq.addEventListener('change',ap):mq.addListener(ap));}}catch(e){}})();`,
           }}
         />
         <SiteJsonLd />
         <HorseMarkSymbolDefs />
         <Navbar />
-        <main className="flex-1 pb-16 md:pb-0">
+        <main className="flex-1">
           {children}
         </main>
         <SiteFooter />
+        {/* 모바일 하단 고정 네비(h-16) 높이만큼 문서 끝에 여백 — main 이 아니라 footer 뒤에 둬야
+            footer(저작권·출처)가 네비에 가리지 않는다. 홈 인디케이터 safe-area 포함. */}
+        <div aria-hidden="true" className="h-[calc(4rem+env(safe-area-inset-bottom))] md:hidden" />
         <MobileBottomNav />
         <Toaster position="top-center" richColors />
       </body>

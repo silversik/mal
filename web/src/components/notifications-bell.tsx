@@ -14,7 +14,7 @@ export async function NotificationsBell() {
     <Link
       href="/notifications"
       aria-label={unread > 0 ? `읽지 않은 알림 ${unread}개` : "알림"}
-      className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-grey transition hover:bg-accent hover:text-primary"
+      className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-primary"
       title="알림"
     >
       <svg
@@ -33,7 +33,7 @@ export async function NotificationsBell() {
       </svg>
       {unread > 0 && (
         <span
-          className="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-caption font-semibold leading-[1.125rem] text-white"
+          className="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-negative px-1 text-small font-semibold leading-[1.125rem] text-card"
           aria-hidden="true"
         >
           {unread > 99 ? "99+" : unread}

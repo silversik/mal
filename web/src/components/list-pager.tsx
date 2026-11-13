@@ -33,7 +33,7 @@ export function ListPager({
   const base =
     "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border px-4 text-sm font-semibold transition-colors";
   const active = `${base} border-border bg-card text-foreground hover:border-primary/40 hover:text-primary`;
-  const disabled = `${base} border-border/60 text-muted-foreground/50`;
+  const disabled = `${base} border-border/60 text-muted-foreground`;
 
   return (
     <nav aria-label="페이지" className="mt-6 flex items-center justify-center gap-3">

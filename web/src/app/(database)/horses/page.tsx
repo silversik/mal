@@ -111,7 +111,7 @@ export default async function HorsesPage({
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div className="flex items-baseline gap-3">
-          <h1 className="font-serif text-3xl font-bold tracking-tight text-primary">마필</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">마필</h1>
           <span className="text-sm text-muted-foreground tabular-nums">
             등록 {totalCount.toLocaleString()}마리
           </span>
@@ -120,15 +120,15 @@ export default async function HorsesPage({
         {/* Sort toggle + filters — only when not searching */}
         {!queryStr && (
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 rounded-lg border border-primary/10 bg-card p-1">
+            <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1">
               {SORT_OPTIONS.map(({ value, label }) => (
                 <Link
                   key={value}
                   href={buildHorsesHref({ sort: value, age: activeAge, sex: activeSex, origin: activeOrigin })}
                   className={`rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
                     activeSort === value
-                      ? "bg-primary text-sand-ivory shadow-sm"
-                      : "text-slate-grey hover:text-primary"
+                      ? "bg-primary text-muted-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-primary"
                   }`}
                 >
                   {label}
@@ -193,7 +193,7 @@ export default async function HorsesPage({
           title={queryStr ? "검색 결과가 없습니다." : "적재된 마필이 없습니다."}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {resultRows.map((h) => (
             <HorseCard key={h.horse_no} horse={h} showWins={!queryStr && activeSort === "wins"} />
           ))}
@@ -232,7 +232,7 @@ function FilterPills<T extends string>({
   build: (v: T) => string;
 }) {
   return (
-    <div className="flex items-center gap-1 rounded-lg border border-primary/10 bg-card p-1 text-xs">
+    <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1 text-sm">
       <span className="px-1 font-bold uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
@@ -242,8 +242,8 @@ function FilterPills<T extends string>({
           href={build(o.value)}
           className={`rounded-md px-2 py-0.5 font-semibold transition-colors ${
             active === o.value
-              ? "bg-primary text-sand-ivory shadow-sm"
-              : "text-slate-grey hover:text-primary"
+              ? "bg-primary text-muted-foreground shadow-sm"
+              : "text-muted-foreground hover:text-primary"
           }`}
         >
           {o.label}
@@ -261,7 +261,7 @@ function HorseCard({ horse, showWins }: { horse: Horse; showWins: boolean }) {
 
   return (
     <Link href={`/horse/${horse.horse_no}`}>
-      <Card className="h-full py-0 transition hover:border-primary/40 hover:shadow-md hover:shadow-primary/5">
+      <Card className="h-full py-0 transition-colors hover:bg-muted">
         <CardContent className="p-3">
           <div className="flex items-start gap-3">
             <HorseMark
@@ -277,12 +277,12 @@ function HorseCard({ horse, showWins }: { horse: Horse; showWins: boolean }) {
                   {horse.horse_name}
                 </span>
                 {showWins && horse.first_place_count > 0 && (
-                  <span className="shrink-0 text-xs font-bold text-gold-ink">
+                  <span className="shrink-0 text-sm font-bold text-brown">
                     {horse.first_place_count}승
                   </span>
                 )}
               </div>
-              <div className="mt-0.5 text-xs text-muted-foreground">
+              <div className="mt-0.5 text-sm text-muted-foreground">
                 {[horse.sex, horse.birth_date, horse.country].filter(Boolean).join(" · ")}
               </div>
 
@@ -291,11 +291,11 @@ function HorseCard({ horse, showWins }: { horse: Horse; showWins: boolean }) {
                   {/* Win rate bar */}
                   <div className="h-1 flex-1 overflow-hidden rounded-full bg-primary/10">
                     <div
-                      className="h-full rounded-full bg-champagne-gold"
+                      className="h-full rounded-full bg-brown"
                       style={{ width: `${Math.min(100, Number(winRate))}%` }}
                     />
                   </div>
-                  <span className="font-mono text-caption tabular-nums text-muted-foreground">
+                  <span className="font-mono text-small tabular-nums text-muted-foreground">
                     {horse.total_race_count}전 {horse.first_place_count}승
                     {winRate ? ` (${winRate}%)` : ""}
                   </span>
@@ -305,12 +305,12 @@ function HorseCard({ horse, showWins }: { horse: Horse; showWins: boolean }) {
               {(horse.sire_name || horse.dam_name) && (
                 <div className="mt-2 flex flex-wrap items-center gap-1">
                   {horse.sire_name && (
-                    <Badge variant="outline" className="text-caption font-normal">
+                    <Badge variant="outline" className="text-small font-normal">
                       父 {horse.sire_name}
                     </Badge>
                   )}
                   {horse.dam_name && (
-                    <Badge variant="outline" className="text-caption font-normal">
+                    <Badge variant="outline" className="text-small font-normal">
                       母 {horse.dam_name}
                     </Badge>
                   )}

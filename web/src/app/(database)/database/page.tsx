@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import {
   SectionHead,
   IconHorseshoe,
@@ -33,137 +33,99 @@ export default async function DatabasePage() {
   ]);
 
   return (
-    <div className="space-y-5">
-      <section>
-        <SectionHead icon={<IconHorseshoe size={13} />} label="엔티티 통계" />
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <CountTile href="/horses" label="마필" value={horseCount} Icon={IconHorseshoe} />
-          <CountTile href="/jockeys" label="기수" value={jockeyCount} Icon={IconUser} />
-          <CountTile href="/trainer" label="조교사" value={trainerCount} Icon={IconUserPlus} />
-          <CountTile href="/owner" label="마주" value={ownerCount} Icon={IconCrown} />
-        </div>
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">데이터베이스</h1>
+        <p className="mt-1 text-base text-muted-foreground">
+          한국마사회 공공데이터 기반 마필 · 기수 · 조교사 · 마주 정보.
+        </p>
+      </header>
+
+      <section aria-label="등록 건수" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <CountTile href="/horses" label="마필" value={horseCount} Icon={IconHorseshoe} />
+        <CountTile href="/jockeys" label="기수" value={jockeyCount} Icon={IconUser} />
+        <CountTile href="/trainer" label="조교사" value={trainerCount} Icon={IconUserPlus} />
+        <CountTile href="/owner" label="마주" value={ownerCount} Icon={IconCrown} />
       </section>
 
-      <section className="grid gap-3 md:grid-cols-2">
-        <Card>
-          <CardContent className="p-4">
-            <SectionHead
-              icon={<IconHorseshoe size={13} />}
-              label="최근 1착 마필"
-              right={
-                <Link href="/horses" className="text-caption font-semibold text-muted-foreground hover:text-primary">
-                  전체 →
-                </Link>
-              }
-            />
-            <ul className="divide-y divide-border">
-              {recentWinners.map((h, i) => (
-                <li key={h.horse_no} className="flex items-center gap-2 py-2 text-sm">
-                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-caption font-bold tabular-nums text-muted-foreground">
-                    {i + 1}
-                  </span>
-                  <Link href={`/horse/${h.horse_no}`} className="flex-1 truncate font-semibold hover:text-primary">
-                    {h.horse_name}
-                  </Link>
-                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                    {h.win_count}승
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <SectionHead
-              icon={<IconUser size={13} />}
-              label="TOP 기수"
-              right={
-                <Link href="/jockeys" className="text-caption font-semibold text-muted-foreground hover:text-primary">
-                  전체 →
-                </Link>
-              }
-            />
-            <ul className="divide-y divide-border">
-              {topJockeys.map((j, i) => (
-                <li key={j.jk_no} className="flex items-center gap-2 py-2 text-sm">
-                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-caption font-bold tabular-nums text-muted-foreground">
-                    {i + 1}
-                  </span>
-                  <Link href={`/jockey/${j.jk_no}`} className="flex-1 truncate font-semibold hover:text-primary">
-                    {j.jk_name}
-                  </Link>
-                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                    {j.first_place_count}승
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="grid gap-3 md:grid-cols-2">
-        <Card>
-          <CardContent className="p-4">
-            <SectionHead
-              icon={<IconUserPlus size={13} />}
-              label="TOP 조교사"
-              right={
-                <Link href="/trainer" className="text-caption font-semibold text-muted-foreground hover:text-primary">
-                  전체 →
-                </Link>
-              }
-            />
-            <ul className="divide-y divide-border">
-              {topTrainers.map((t, i) => (
-                <li key={t.tr_no} className="flex items-center gap-2 py-2 text-sm">
-                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-caption font-bold tabular-nums text-muted-foreground">
-                    {i + 1}
-                  </span>
-                  <Link href={`/trainer/${t.tr_no}`} className="flex-1 truncate font-semibold hover:text-primary">
-                    {t.tr_name}
-                  </Link>
-                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                    {t.first_place_count}승
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <SectionHead
-              icon={<IconCrown size={13} />}
-              label="TOP 마주"
-              right={
-                <Link href="/owner" className="text-caption font-semibold text-muted-foreground hover:text-primary">
-                  전체 →
-                </Link>
-              }
-            />
-            <ul className="divide-y divide-border">
-              {topOwners.map((o, i) => (
-                <li key={o.ow_no} className="flex items-center gap-2 py-2 text-sm">
-                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-caption font-bold tabular-nums text-muted-foreground">
-                    {i + 1}
-                  </span>
-                  <Link href={`/owner/${o.ow_no}`} className="flex-1 truncate font-semibold hover:text-primary">
-                    {o.ow_name}
-                  </Link>
-                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                    {o.first_place_count}승
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+      <section className="grid gap-4 lg:grid-cols-2">
+        <TopCard
+          Icon={IconHorseshoe}
+          title="최근 1착 마필"
+          moreHref="/horses"
+          rows={recentWinners.map((h) => ({ key: h.horse_no, href: `/horse/${h.horse_no}`, name: h.horse_name, value: `${h.win_count}승` }))}
+        />
+        <TopCard
+          Icon={IconUser}
+          title="TOP 기수"
+          moreHref="/jockeys"
+          rows={topJockeys.map((j) => ({ key: j.jk_no, href: `/jockey/${j.jk_no}`, name: j.jk_name, value: `${j.first_place_count}승` }))}
+        />
+        <TopCard
+          Icon={IconUserPlus}
+          title="TOP 조교사"
+          moreHref="/trainer"
+          rows={topTrainers.map((t) => ({ key: t.tr_no, href: `/trainer/${t.tr_no}`, name: t.tr_name, value: `${t.first_place_count}승` }))}
+        />
+        <TopCard
+          Icon={IconCrown}
+          title="TOP 마주"
+          moreHref="/owner"
+          rows={topOwners.map((o) => ({ key: o.ow_no, href: `/owner/${o.ow_no}`, name: o.ow_name, value: `${o.first_place_count}승` }))}
+        />
       </section>
     </div>
+  );
+}
+
+function TopCard({
+  Icon,
+  title,
+  moreHref,
+  rows,
+}: {
+  Icon: (p: { size?: number }) => React.JSX.Element;
+  title: string;
+  moreHref: string;
+  rows: { key: string; href: string; name: string; value: string }[];
+}) {
+  return (
+    <Card className="gap-0 py-0">
+      <div className="p-4">
+        <SectionHead
+          icon={<Icon size={14} />}
+          label={title}
+          right={
+            <Link
+              href={moreHref}
+              className="inline-flex min-h-11 items-center text-small font-semibold text-muted-foreground hover:text-foreground"
+            >
+              전체 →
+            </Link>
+          }
+        />
+        {rows.length === 0 ? (
+          <p className="py-4 text-center text-base text-muted-foreground">아직 데이터가 없습니다.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {rows.map((r, i) => (
+              <li key={r.key}>
+                <Link
+                  href={r.href}
+                  className="-mx-2 flex min-h-12 items-center gap-3 rounded-md px-2 transition-colors hover:bg-muted"
+                >
+                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted font-mono text-small font-bold tabular-nums text-foreground">
+                    {i + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-base font-semibold">{r.name}</span>
+                  <span className="shrink-0 font-mono text-base font-bold tabular-nums">{r.value}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -181,19 +143,17 @@ function CountTile({
   return (
     <Link
       href={href}
-      className="group block rounded-[10px] border border-border bg-card px-4 py-3 transition hover:border-primary/40"
+      className="group block rounded-[10px] border border-border bg-card px-4 py-3 transition-colors hover:border-foreground"
     >
       <div className="flex items-center justify-between">
-        <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
-          {label}
-        </span>
-        <span className="text-muted-foreground opacity-40 group-hover:opacity-100 group-hover:text-primary">
-          <Icon size={14} />
+        <span className="text-small font-semibold text-muted-foreground">{label}</span>
+        <span className="text-muted-foreground group-hover:text-foreground">
+          <Icon size={16} />
         </span>
       </div>
       <div className="mt-1 font-mono text-xl font-bold leading-tight tabular-nums text-foreground">
         {value.toLocaleString()}
-        <span className="ml-1 text-caption font-medium text-muted-foreground">건</span>
+        <span className="ml-1 text-small font-medium text-muted-foreground">건</span>
       </div>
     </Link>
   );
