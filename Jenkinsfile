@@ -105,56 +105,41 @@ pipeline {
                 }
 
                 stage('Build & restart') {
+                    // 이미지는 prod 가 아니라 Jenkins 가 도는 Mac 에서 linux/amd64 로 빌드하고
+                    // `docker save | ssh docker load` 로 올린다 (ops HANDOVER §0h). prod HDD 에서의
+                    // npm/pip 빌드 I/O·빌드 캐시가 사라진다. 공용 스크립트:
+                    // ops 레포 jenkins/scripts/ship-images.sh → /var/jenkins_home/ops-scripts/.
                     steps {
                         sshagent(credentials: ['service-ssh']) {
                             sh '''
                                 set -e
-                                # 수동 정지 컨테이너 보존 + 명시적 stop+rm 후 up. heredoc 으로 prod 측에
-                                # 스크립트 그대로 전달 — quoting 단순화.
-                                #
-                                # 수동 정지(exit 0 또는 143=SIGTERM) 상태의 컨테이너는 deploy 대상에서 제외.
-                                # 운영자가 `docker stop X` 로 멈춰둔 서비스를 Jenkins 자동 배포가 강제로
-                                # 부활시키는 사고 방지. 다시 띄울 땐 `docker start X`.
-                                # 크래시/OOM(exit code ≠ 0 && ≠ 143)은 일반 redeploy.
-                                ssh $DEPLOY_HOST 'bash -s' <<'REMOTE'
-set -e
-cd /srv/stack
-
-SERVICES="mal-web mal-crawler"
-
-DEPLOY=""
-for svc in $SERVICES; do
+                                # 수동 정지(exit 0 또는 143=SIGTERM) 컨테이너는 deploy 대상에서 제외 —
+                                # 운영자가 `docker stop X` 로 멈춰둔 서비스를 자동 배포가 부활시키지 않게.
+                                # 크래시/OOM(exit ≠ 0 && ≠ 143)은 일반 redeploy.
+                                DEPLOY=$(ssh $DEPLOY_HOST 'bash -s' <<'REMOTE'
+for svc in mal-web mal-crawler; do
     s=$(docker inspect -f "{{.State.Status}}:{{.State.ExitCode}}" "$svc" 2>/dev/null || echo missing:)
     case "$s" in
-        exited:0|exited:143)
-            echo "[deploy] skip $svc — manually stopped ($s). Use 'docker start $svc' to bring back."
-            ;;
-        *)
-            DEPLOY="$DEPLOY $svc"
-            ;;
+        exited:0|exited:143) echo "[deploy] skip $svc — manually stopped ($s). Use 'docker start $svc' to bring back." >&2 ;;
+        *) printf '%s ' "$svc" ;;
     esac
 done
-DEPLOY=$(echo "$DEPLOY" | xargs)
-
-if [ -z "$DEPLOY" ]; then
-    echo "[deploy] all listed services were manually stopped — nothing to do"
-    exit 0
-fi
-echo "[deploy] target: $DEPLOY"
-
-# 서비스당 1개씩 직렬 빌드 — `docker compose build $DEPLOY` 의 BuildKit 병렬 빌드가
-# 8GB prod 호스트를 OOM 으로 몬 전례 (betlive 2026-09-12). mal-web(Next.js) 는 특히 무겁다.
-for svc in $DEPLOY; do
-    echo "[build] $svc"
-    docker compose build "$svc"
-done
-# 명시적 stop+rm 후 up — `up -d --no-deps` 가 기존 컨테이너를 stop 안 하고 새 컨테이너를
-# create 하려다 이름 충돌로 실패하는 케이스 회피. --remove-orphans 는 compose 에 없는
-# 좀비만 정리하므로 정의된 서비스는 건드리지 않는다.
-docker stop $DEPLOY 2>/dev/null || true
-docker rm -f $DEPLOY 2>/dev/null || true
-docker compose up -d --no-deps --remove-orphans $DEPLOY
 REMOTE
+)
+                                DEPLOY=$(echo $DEPLOY | xargs)
+                                if [ -z "$DEPLOY" ]; then
+                                    echo "[deploy] all listed services were manually stopped — nothing to do"
+                                    exit 0
+                                fi
+                                echo "[deploy] target: $DEPLOY"
+
+                                # 서비스당 1개씩 직렬 빌드+업로드 (Mac). 실패 시 prod 는 무변경.
+                                /var/jenkins_home/ops-scripts/ship-images.sh mal $DEPLOY
+
+                                # 명시적 stop+rm 후 up — `up -d --no-deps` 가 기존 컨테이너를 stop 안 하고
+                                # 새 컨테이너를 create 하려다 이름 충돌로 실패하는 케이스 회피.
+                                # --no-build: 이미지는 방금 load 한 것을 그대로 쓴다.
+                                ssh $DEPLOY_HOST "cd /srv/stack && { docker stop $DEPLOY 2>/dev/null || true; docker rm -f $DEPLOY 2>/dev/null || true; docker compose up -d --no-deps --no-build --remove-orphans $DEPLOY; }"
                             '''
                         }
                     }
