@@ -215,6 +215,8 @@ _DATA_TABLES = (
     "race_pool_sales", "race_corners", "races", "horse_ratings", "horse_rank_changes",
     "jockey_changes", "horses", "jockeys", "trainers", "owners", "race_plans",
     "kra_videos", "weather_observations", "sync_meta",
+    "racing_form_rule_sets", "racing_form_editions", "racing_form_picks",
+    "racing_form_race_outcomes", "racing_form_backtests", "racing_form_notices",
 )
 
 
@@ -296,6 +298,8 @@ def e2e() -> Any:
                 "(mal 스키마 + search_path=mal,public) DB 를 만들 것",
                 returncode=2,
             )
+        # 036 경마지 테이블은 TRUNCATE 거부 트리거가 있다 — 이 트랜잭션에서만 허용 (SET LOCAL)
+        c.execute(text("SET LOCAL mal.racing_form_allow_truncate = 'on'"))
         c.execute(text(f"TRUNCATE {', '.join(_DATA_TABLES)} RESTART IDENTITY CASCADE"))
 
     # ---- HTTP seam — 모든 httpx.Client 에 MockTransport 주입
