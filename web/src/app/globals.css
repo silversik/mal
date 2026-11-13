@@ -234,7 +234,8 @@ html { font-size: calc(100% * var(--scale)); }
   min-width: max-content;
   white-space: nowrap;
 }
-[data-scale="lg"] [data-table="race-entries"] :is(th, td):nth-child(3) {
+/* 마명 칸 — 경주 전엔 착순 칸이 빠져 열 순서가 바뀌므로 nth-child 대신 data-col 로 지정. */
+[data-scale="lg"] [data-table="race-entries"] [data-col="name"] {
   white-space: normal;
   min-width: 10rem;
 }
