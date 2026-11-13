@@ -29,19 +29,11 @@ const STAGES: Stage[] = [
   { key: "passrank_g1f",    seoul: "G1F" },
 ];
 
-// 마필 라인 색상 팔레트 (1등=금, 그 외는 채도 약한 색)
-const LINE_COLORS = [
-  "rgba(30,58,138,0.65)",   // navy
-  "rgba(190,18,60,0.6)",     // rose
-  "rgba(13,148,136,0.6)",    // teal
-  "rgba(146,64,14,0.6)",     // amber
-  "rgba(99,102,241,0.6)",    // indigo
-  "rgba(220,38,38,0.6)",     // red
-  "rgba(22,163,74,0.6)",     // green
-  "rgba(124,58,237,0.6)",    // violet
-  "rgba(234,88,12,0.55)",    // orange
-  "rgba(8,145,178,0.6)",     // sky
-];
+// 단색 + 강조(DESIGN Data Viz "차트 다색 팔레트 금지"): 1착만 brown 굵게, 나머지는
+// muted-ink 얇은 선 + 끝 출전번호 라벨로 식별. 예전 10색 팔레트는 다크 배경에서 navy 등이
+// 사라지고 화면을 산만하게 만들었다.
+const LINE_OTHER = "var(--muted-ink)";
+const LINE_WINNER = "var(--brown)";
 
 export function PaceMap({
   corner,
@@ -68,10 +60,10 @@ export function PaceMap({
     horses.length,
   );
 
-  const width = 680;
-  const height = 280;
-  const padX = 50;
-  const padY = 28;
+  const width = 560;
+  const height = 300;
+  const padX = 40;
+  const padY = 24;
   const innerW = width - padX * 2;
   const innerH = height - padY * 2;
   const stepX = innerW / (STAGES.length - 1);
@@ -80,14 +72,15 @@ export function PaceMap({
   const xOf = (idx: number) => padX + stepX * idx;
 
   return (
-    <div className="overflow-x-auto">
-      <div className="mb-2 text-xs text-muted-foreground">
+    <div>
+      <p className="mb-2 text-small text-muted-foreground">
         마필별 통과순위 변화. 위쪽일수록 선행, 우상향이면 추입형.
-      </div>
+      </p>
+      {/* viewBox 로 부모 폭에 맞춰 축소. 너무 좁으면(라벨 판독 불가) min-w 에서 멈추고 가로 스크롤. */}
+      <div className="overflow-x-auto">
       <svg
-        width={width}
-        height={height}
         viewBox={`0 0 ${width} ${height}`}
+        className="block h-auto w-full min-w-[420px] text-foreground"
         role="img"
         aria-label="페이스 맵"
       >
@@ -100,15 +93,14 @@ export function PaceMap({
               y1={yScale(r)}
               y2={yScale(r)}
               stroke="currentColor"
-              strokeOpacity="0.08"
+              strokeOpacity="0.15"
             />
             <text
               x={padX - 8}
               y={yScale(r) + 3}
               textAnchor="end"
-              fontSize="9"
-              fill="currentColor"
-              fillOpacity="0.6"
+              fontSize="12"
+              fill="var(--muted-ink)"
             >
               {r}
             </text>
@@ -124,19 +116,21 @@ export function PaceMap({
               x={xOf(i)}
               y={height - 8}
               textAnchor="middle"
-              fontSize="10"
-              fill="currentColor"
-              fillOpacity="0.7"
+              fontSize="12"
+              fill="var(--muted-ink)"
             >
               {label}
             </text>
           );
         })}
 
-        {horses.map(([chul, series], i) => {
+        {/* 1착 라인을 마지막에 그려 다른 선 위로. */}
+        {[...horses]
+          .sort(([a], [b]) => Number(a === winnerChulNo) - Number(b === winnerChulNo))
+          .map(([chul, series]) => {
           const isWinner = chul === winnerChulNo;
-          const stroke = isWinner ? "var(--color-champagne-gold)" : LINE_COLORS[i % LINE_COLORS.length];
-          const strokeWidth = isWinner ? 2.4 : 1.4;
+          const stroke = isWinner ? LINE_WINNER : LINE_OTHER;
+          const strokeWidth = isWinner ? 3 : 1.2;
 
           const path = series
             .map((r, idx) => (r === null ? null : `${xOf(idx).toFixed(1)} ${yScale(r).toFixed(1)}`))
@@ -147,7 +141,7 @@ export function PaceMap({
           const lastDefined = [...series.entries()].reverse().find(([, v]) => v !== null);
           return (
             <g key={chul}>
-              <path d={d} stroke={stroke} strokeWidth={strokeWidth} fill="none" opacity={isWinner ? 1 : 0.85} />
+              <path d={d} stroke={stroke} strokeWidth={strokeWidth} fill="none" opacity={isWinner ? 1 : 0.55} />
               {series.map((r, idx) =>
                 r === null ? null : (
                   <circle
@@ -163,9 +157,9 @@ export function PaceMap({
                 <text
                   x={xOf(lastDefined[0]) + 7}
                   y={yScale(lastDefined[1]!) + 3}
-                  fontSize="10"
+                  fontSize="12"
                   fontWeight={isWinner ? 700 : 500}
-                  fill={stroke}
+                  fill={isWinner ? LINE_WINNER : "var(--muted-ink)"}
                 >
                   {chul}
                 </text>
@@ -174,13 +168,14 @@ export function PaceMap({
           );
         })}
       </svg>
+      </div>
 
       {corner.rc_dist && (
-        <div className="mt-2 text-xs text-muted-foreground">
+        <div className="mt-2 text-small text-muted-foreground">
           경주 거리 <span className="font-mono">{corner.rc_dist}m</span>
           {winnerChulNo && (
             <span className="ml-3">
-              1착 출전번호 <span className="font-mono font-bold text-champagne-gold">{winnerChulNo}</span>
+              1착 출전번호 <span className="font-mono font-bold text-brown">{winnerChulNo}</span>
             </span>
           )}
         </div>

@@ -41,7 +41,7 @@ export default async function JockeysPage({
 
   return (
     <div>
-      <h1 className="mb-5 text-2xl font-extrabold tracking-tight sm:text-3xl">기수</h1>
+      <h1 className="mb-4 text-2xl font-extrabold tracking-tight sm:text-3xl">기수</h1>
 
       {/* Search */}
       <form action="/jockeys" className="mb-8">

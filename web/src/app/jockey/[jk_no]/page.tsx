@@ -43,6 +43,7 @@ import {
   IconUserPlus,
 } from "@/components/profile-ui";
 import { StatsBar } from "@/components/stats-bar";
+import { RankBadge } from "@/components/rank-badge";
 
 const fetchJockey = cache(getJockeyByNo);
 
@@ -158,7 +159,7 @@ export default async function JockeyDetailPage({
                     return (
                       <TableRow key={r.id}>
                         <TableCell className="text-center font-semibold">
-                          <RankBadge rank={r.rank} />
+                          <RankBadge rest="chip" rank={r.rank} />
                         </TableCell>
                         <TableCell className="text-center font-mono text-xs text-muted-foreground">
                           {r.race_date}
@@ -352,30 +353,7 @@ function Sep() {
   return <span className="h-2.5 w-px bg-border" aria-hidden />;
 }
 
-// 1·2·3위 메달 톤.
-const RANK_MEDAL_STYLE: Record<number, string> = {
-  1: "bg-secondary text-secondary-foreground",
-  2: "bg-slate-300 text-slate-900",
-  3: "bg-amber-700 text-white",
-};
 
-function RankBadge({ rank }: { rank: number | null }) {
-  if (rank === null) return <span className="text-muted-foreground">-</span>;
-  if (rank <= 3) {
-    return (
-      <span
-        className={`inline-flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-bold tabular-nums ${RANK_MEDAL_STYLE[rank]}`}
-      >
-        {rank}
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-muted font-mono text-xs font-bold tabular-nums text-muted-foreground">
-      {rank}
-    </span>
-  );
-}
 
 function YoutubeIcon() {
   return (

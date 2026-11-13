@@ -811,7 +811,7 @@ export default async function RacesPage({
                 풀별매출·인기분포처럼 "한눈 정보" 는 우측으로 빠져 메인 컬럼 상단을 출전표가 차지.
                 (영상은 그리드 직속 — 위 참고.) 영상이 없으면 1행부터 span 해 row-gap 공백을 흡수. */}
             <aside
-              className={`space-y-4 lg:col-start-2 lg:sticky lg:top-4 lg:self-start ${
+              className={`space-y-4 lg:col-start-2 lg:sticky lg:top-20 lg:self-start ${
                 raceVideo ? "lg:row-start-2" : "lg:row-start-1 lg:row-span-2"
               }`}
             >
@@ -1046,24 +1046,5 @@ function NavArrow({
   );
 }
 
-// 1·2·3위는 홈의 "TOP 기수 랭킹" 메달과 동일한 금/은/동 배지로 통일.
-const RANK_MEDAL_STYLE: Record<number, string> = {
-  1: "bg-champagne-gold text-secondary-foreground",
-  2: "bg-slate-400 text-white",
-  3: "bg-amber-700 text-white",
-};
 
-function RankBadge({ rank }: { rank: number | null }) {
-  if (rank === null) return <span className="text-muted-foreground">-</span>;
-  if (rank <= 3) {
-    return (
-      <span
-        className={`inline-flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-bold tabular-nums ${RANK_MEDAL_STYLE[rank]}`}
-      >
-        {rank}
-      </span>
-    );
-  }
-  return <span>{rank}</span>;
-}
 

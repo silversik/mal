@@ -2,14 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { query } from "@/lib/db";
 
 export const metadata: Metadata = {
@@ -112,64 +104,69 @@ export default async function RecordsPage() {
   return (
     <div>
       <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">코스 레코드</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        경마장 × 거리별 1착 최단 기록 (race_results.rank=1 기준).
-        races.distance 적재가 부분적이라 거리 매칭 가능한 경기만 노출.
+      <p className="mt-1 text-base text-muted-foreground">
+        경마장 · 거리별 역대 1착 최단 기록. 거리 정보가 있는 경주만 집계합니다.
       </p>
 
       {records.length === 0 ? (
-        <Card className="mt-8 border-dashed">
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            거리 매칭이 가능한 결과가 아직 적재되지 않았습니다.
+        <Card className="mt-4 border-dashed py-0">
+          <CardContent className="py-8 text-center text-base text-muted-foreground">
+            거리 정보가 확인된 경주 결과가 아직 없습니다.
           </CardContent>
         </Card>
       ) : (
-        <div className="mt-8 space-y-6">
+        <div className="mt-4 space-y-6">
           {[...byMeet.entries()].map(([meet, rows]) => (
-            <Card key={meet} className="py-0">
-              <CardContent className="p-3">
-                <h2 className="mb-3 text-base font-semibold text-primary">
-                  {meet}
-                </h2>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-center">거리</TableHead>
-                      <TableHead className="text-center">기록</TableHead>
-                      <TableHead>마필</TableHead>
-                      <TableHead className="text-center">기수</TableHead>
-                      <TableHead className="text-center">일자</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((r) => (
-                      <TableRow key={`${meet}-${r.distance}`}>
-                        <TableCell className="text-center font-mono tabular-nums">
-                          {r.distance}m
-                        </TableCell>
-                        <TableCell className="text-center font-mono font-semibold tabular-nums text-primary">
-                          {formatSeconds(r.record_time)}
-                        </TableCell>
-                        <TableCell>
-                          <Link
-                            href={`/horse/${r.horse_no}`}
-                            className="text-primary hover:underline"
-                          >
-                            {r.horse_name}
-                          </Link>
-                        </TableCell>
-                        <TableCell className="text-center text-xs text-muted-foreground">
+            <section key={meet} aria-labelledby={`meet-${meet}`}>
+              <h2 id={`meet-${meet}`} className="mb-2 text-lg font-bold">
+                {meet}
+              </h2>
+              {/* 모바일 375px 에서 5열 표는 가로 스크롤 → stat-row 로 reflow (DESIGN 원칙 4).
+                  md+ 는 같은 행이 5칸 그리드로 펼쳐진다 — 단일 트리. */}
+              <Card className="gap-0 py-0">
+                <div
+                  aria-hidden="true"
+                  className="hidden border-b border-border bg-muted px-4 py-2 text-small font-semibold text-muted-foreground md:grid md:grid-cols-[5rem_minmax(0,1fr)_7rem_7rem_6.5rem] md:gap-4"
+                >
+                  <span>거리</span>
+                  <span>마필</span>
+                  <span>기수</span>
+                  <span>일자</span>
+                  <span className="text-right">기록</span>
+                </div>
+                <ul className="divide-y divide-border">
+                  {rows.map((r) => (
+                    <li
+                      key={`${meet}-${r.distance}`}
+                      className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-3 md:grid-cols-[5rem_minmax(0,1fr)_7rem_7rem_6.5rem] md:gap-x-4"
+                    >
+                      <span className="font-mono text-base font-semibold tabular-nums">
+                        {r.distance}m
+                      </span>
+                      <span className="min-w-0 md:contents">
+                        <Link
+                          href={`/horse/${r.horse_no}`}
+                          className="block truncate text-base font-semibold text-foreground underline-offset-4 hover:underline"
+                        >
+                          {r.horse_name}
+                        </Link>
+                        <span className="block truncate text-small text-muted-foreground md:text-base md:text-foreground">
                           {r.jockey_name ?? "-"}
-                        </TableCell>
-                        <TableCell className="text-center font-mono text-xs">
+                          <span className="md:hidden"> · </span>
+                          <span className="font-mono tabular-nums md:hidden">{r.race_date}</span>
+                        </span>
+                        <span className="hidden font-mono text-base tabular-nums md:block">
                           {r.race_date}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                        </span>
+                      </span>
+                      <span className="text-right font-mono text-lg font-bold tabular-nums text-foreground md:col-start-5 md:row-start-1">
+                        {formatSeconds(r.record_time)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            </section>
           ))}
         </div>
       )}

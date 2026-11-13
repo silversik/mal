@@ -15,12 +15,12 @@ export function SectionHead({
   return (
     <div className="mb-3 flex items-center gap-2">
       {icon && (
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
+        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
           {icon}
         </span>
       )}
-      <h3 className="text-sm font-bold tracking-tight">{label}</h3>
-      <span className="h-px flex-1 bg-border" />
+      <h3 className="min-w-0 truncate text-base font-bold tracking-tight">{label}</h3>
+      <span className="h-px min-w-4 flex-1 bg-border" />
       {right}
     </div>
   );

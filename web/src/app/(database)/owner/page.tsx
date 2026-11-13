@@ -44,7 +44,7 @@ export default async function OwnersPage({
 
   return (
     <div>
-      <h1 className="mb-5 text-2xl font-extrabold tracking-tight sm:text-3xl">
+      <h1 className="mb-4 text-2xl font-extrabold tracking-tight sm:text-3xl">
         마주
       </h1>
 

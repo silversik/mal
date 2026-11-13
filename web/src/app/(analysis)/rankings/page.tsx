@@ -17,6 +17,7 @@ import {
   type RankingScope,
 } from "@/lib/rankings";
 import { buildRankingsHref } from "@/lib/rankings-shared";
+import { RankBadge } from "@/components/rank-badge";
 
 export const metadata: Metadata = {
   title: "랭킹",
@@ -83,11 +84,11 @@ export default async function RankingsPage({
   return (
     <div>
       <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">랭킹</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        race_results 1착 횟수 기준 — 동률은 출전 수로 차순.
+      <p className="mt-1 text-base text-muted-foreground">
+        1착 횟수 기준 · 동률은 출전 수 순.
       </p>
 
-      <div className="mt-6 flex flex-wrap items-center gap-2">
+      <div className="mt-4 flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:gap-x-6">
         <TabGroup label="대상">
           {ENTITIES.map((e) => (
             <TabLink
@@ -130,7 +131,7 @@ export default async function RankingsPage({
       {ranking.fellBack && (
         <p
           role="status"
-          className="mt-4 rounded-md border bg-card px-3 py-2 text-base text-muted-foreground"
+          className="mt-4 rounded-md border bg-card px-4 py-2 text-base text-muted-foreground"
         >
           <span className="font-mono tabular-nums">{ranking.requestedYear}</span>년 집계 전이라{" "}
           <span className="font-mono font-semibold tabular-nums text-foreground">{year}</span>년
@@ -138,10 +139,10 @@ export default async function RankingsPage({
         </p>
       )}
 
-      <div className="mt-6">
+      <div className="mt-4">
         {rows.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+          <Card className="border-dashed py-0">
+            <CardContent className="py-8 text-center text-base text-muted-foreground">
               조건에 해당하는 랭킹이 없습니다.
             </CardContent>
           </Card>
@@ -170,13 +171,13 @@ export default async function RankingsPage({
                   return (
                     <TableRow key={`${r.no}-${r.name}`}>
                       <TableCell className="text-center">
-                        <RankBadge rank={i + 1} />
+                        <RankBadge size="sm" rest="plain" rank={i + 1} />
                       </TableCell>
                       <TableCell className="font-semibold">
                         {detailHref ? (
                           <Link
                             href={detailHref}
-                            className="text-primary hover:underline"
+                            className="text-foreground underline-offset-4 hover:underline"
                           >
                             {r.name}
                           </Link>
@@ -188,7 +189,7 @@ export default async function RankingsPage({
                         {r.starts}
                       </TableCell>
                       <TableCell className="text-center font-mono tabular-nums">
-                        <span className="font-semibold text-primary">{r.win}</span>
+                        <span className="font-bold text-foreground">{r.win}</span>
                         -{r.place}-{r.show}
                       </TableCell>
                       <TableCell className="text-right font-mono tabular-nums">
@@ -206,6 +207,8 @@ export default async function RankingsPage({
   );
 }
 
+// 필터 그룹: 라벨 + 칩 한 줄. 칩이 많으면(연도 7개) 그룹 안에서 가로 스크롤 — 페이지 전체가
+// 375px 밖으로 밀리지 않게. 칩은 터치타깃 44px(min-h-11).
 function TabGroup({
   label,
   children,
@@ -214,11 +217,9 @@ function TabGroup({
   children: React.ReactNode;
 }) {
   return (
-    <div className="inline-flex items-center gap-1.5 rounded-md border bg-card px-2 py-1">
-      <span className="text-caption font-bold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
-      {children}
+    <div className="flex min-w-0 items-center gap-3">
+      <span className="w-9 shrink-0 text-small font-semibold text-muted-foreground">{label}</span>
+      <div className="flex min-w-0 gap-1 overflow-x-auto scrollbar-hide">{children}</div>
     </div>
   );
 }
@@ -235,32 +236,14 @@ function TabLink({
   return (
     <Link
       href={href}
-      className={`rounded px-2 py-0.5 text-xs font-semibold transition ${
+      aria-current={active ? "page" : undefined}
+      className={`inline-flex min-h-11 shrink-0 items-center rounded-md border px-3 text-base font-semibold tabular-nums transition-colors ${
         active
-          ? "bg-primary text-primary-foreground"
-          : "text-muted-foreground hover:text-foreground"
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card text-foreground hover:bg-muted"
       }`}
     >
       {children}
     </Link>
   );
-}
-
-const RANK_MEDAL_STYLE: Record<number, string> = {
-  1: "bg-champagne-gold text-secondary-foreground",
-  2: "bg-slate-400 text-white",
-  3: "bg-amber-700 text-white",
-};
-
-function RankBadge({ rank }: { rank: number }) {
-  if (rank <= 3) {
-    return (
-      <span
-        className={`inline-flex h-6 w-6 items-center justify-center rounded-full font-mono text-xs font-bold tabular-nums ${RANK_MEDAL_STYLE[rank]}`}
-      >
-        {rank}
-      </span>
-    );
-  }
-  return <span className="font-mono tabular-nums text-sm text-muted-foreground">{rank}</span>;
 }

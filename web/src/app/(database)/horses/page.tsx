@@ -111,7 +111,7 @@ export default async function HorsesPage({
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div className="flex items-baseline gap-3">
-          <h1 className="font-serif text-3xl font-bold tracking-tight text-primary">마필</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">마필</h1>
           <span className="text-sm text-muted-foreground tabular-nums">
             등록 {totalCount.toLocaleString()}마리
           </span>

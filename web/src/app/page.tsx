@@ -22,6 +22,7 @@ import {
   cachedUpcomingStakes,
   cachedVideosForRaces,
 } from "@/lib/home_data";
+import { RankBadge } from "@/components/rank-badge";
 
 function todayKST(): string {
   // KST(UTC+9) 기준 오늘 날짜 — toISOString()은 UTC 반환이라 자정~9시 사이 날짜가 틀림.
@@ -478,12 +479,6 @@ function Section({
 
 /* ── Cards ────────────────────────────────────────────── */
 
-const RANK_BADGE_STYLE: Record<number, string> = {
-  1: "bg-champagne-gold text-secondary-foreground",
-  2: "bg-slate-400 text-white",
-  3: "bg-amber-700 text-white",
-};
-
 function HorseRow({ horse }: { horse: RecentWinner }) {
   return (
     <Link href={`/horse/${horse.horse_no}`}>
@@ -515,13 +510,7 @@ function JockeyRow({ jockey, rank }: { jockey: Jockey; rank: number }) {
   return (
     <Link href={`/jockey/${jockey.jk_no}`}>
       <div className="flex items-center gap-3 p-3 bg-card border border-primary/5 rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
-        <span
-          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-mono text-xs font-bold tabular-nums ${
-            RANK_BADGE_STYLE[rank] ?? "bg-muted text-foreground"
-          }`}
-        >
-          {rank}
-        </span>
+        <RankBadge rest="chip" rank={rank} />
         <div className="w-10 h-10 shrink-0 bg-primary rounded flex items-center justify-center font-bold text-primary-foreground shadow-inner border border-white/10 uppercase">
           {jockey.jk_name.slice(0, 1)}
         </div>

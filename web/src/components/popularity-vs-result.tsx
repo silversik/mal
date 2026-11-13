@@ -13,6 +13,10 @@ type Pt = {
   rank: number;     // 실제 착순
 };
 
+const WINNER = "var(--brown)";
+const UPSET = "var(--negative)";
+const NORMAL = "var(--muted-ink)";
+
 export function PopularityVsResult({ entries }: { entries: { horse_no: string; horse_name: string; win_rate: string | null; rank: number | null; }[] }) {
   const pts: Pt[] = entries
     .filter((e): e is { horse_no: string; horse_name: string; win_rate: string; rank: number } =>
@@ -45,9 +49,8 @@ export function PopularityVsResult({ entries }: { entries: { horse_no: string; h
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <svg
-        width={size}
-        height={size}
         viewBox={`0 0 ${size} ${size}`}
+        className="block h-auto w-full max-w-[260px] shrink-0 text-foreground"
         role="img"
         aria-label="인기 vs 결과 산점도"
       >
@@ -59,7 +62,7 @@ export function PopularityVsResult({ entries }: { entries: { horse_no: string; h
           height={inner}
           fill="none"
           stroke="currentColor"
-          strokeOpacity="0.15"
+          strokeOpacity="0.3"
         />
 
         {/* 대각선 (popularity = rank) */}
@@ -69,30 +72,29 @@ export function PopularityVsResult({ entries }: { entries: { horse_no: string; h
           x2={size - pad}
           y2={size - pad}
           stroke="currentColor"
-          strokeOpacity="0.18"
+          strokeOpacity="0.35"
           strokeDasharray="3 3"
         />
 
         {/* 축 라벨 */}
-        <text x={pad} y={pad - 8} fontSize="9" fill="currentColor" fillOpacity="0.6">
+        <text x={pad} y={pad - 8} fontSize="11" fill="var(--muted-ink)">
           1
         </text>
-        <text x={size - pad - 8} y={pad - 8} fontSize="9" fill="currentColor" fillOpacity="0.6">
+        <text x={size - pad - 8} y={pad - 8} fontSize="11" fill="var(--muted-ink)">
           {max}
         </text>
-        <text x={4} y={pad + 4} fontSize="9" fill="currentColor" fillOpacity="0.6">
+        <text x={4} y={pad + 4} fontSize="11" fill="var(--muted-ink)">
           1
         </text>
-        <text x={4} y={size - pad + 4} fontSize="9" fill="currentColor" fillOpacity="0.6">
+        <text x={4} y={size - pad + 4} fontSize="11" fill="var(--muted-ink)">
           {max}
         </text>
         <text
           x={size / 2}
           y={size - 6}
           textAnchor="middle"
-          fontSize="10"
-          fill="currentColor"
-          fillOpacity="0.6"
+          fontSize="11"
+          fill="var(--muted-ink)"
         >
           ← 인기 순위 →
         </text>
@@ -100,9 +102,8 @@ export function PopularityVsResult({ entries }: { entries: { horse_no: string; h
           x={10}
           y={size / 2}
           textAnchor="middle"
-          fontSize="10"
-          fill="currentColor"
-          fillOpacity="0.6"
+          fontSize="11"
+          fill="var(--muted-ink)"
           transform={`rotate(-90 10 ${size / 2})`}
         >
           ← 착순 →
@@ -114,11 +115,10 @@ export function PopularityVsResult({ entries }: { entries: { horse_no: string; h
           const cy = xy(p.rank);
           const isWinner = p.rank === 1;
           const isUpset = Math.abs(pop - p.rank) >= 3;
-          const fill = isWinner
-            ? "var(--color-champagne-gold)"
-            : isUpset
-              ? "rgb(220 38 38 / 0.7)"
-              : "rgba(30,58,138,0.55)";
+          // 단색 + 강조(DESIGN Data Viz): 1착=brown, 의외성=negative, 나머지=muted-ink.
+          const fill = isWinner ? WINNER : isUpset ? UPSET : NORMAL;
+          // 오른쪽 끝(인기 하위 = 이변 우승마) 라벨은 점 왼쪽으로 — SVG 밖으로 잘리지 않게.
+          const labelLeft = cx > size * 0.6;
           return (
             <g key={p.horse_no}>
               <circle cx={cx} cy={cy} r={5} fill={fill}>
@@ -128,11 +128,12 @@ export function PopularityVsResult({ entries }: { entries: { horse_no: string; h
               </circle>
               {(isWinner || isUpset) && (
                 <text
-                  x={cx + 7}
-                  y={cy + 3}
-                  fontSize="9"
+                  x={labelLeft ? cx - 8 : cx + 8}
+                  y={cy + 4}
+                  textAnchor={labelLeft ? "end" : "start"}
+                  fontSize="11"
+                  fontWeight={600}
                   fill="currentColor"
-                  fillOpacity="0.85"
                 >
                   {p.horse_name.slice(0, 5)}
                 </text>
@@ -142,11 +143,11 @@ export function PopularityVsResult({ entries }: { entries: { horse_no: string; h
         })}
       </svg>
 
-      <div className="text-xs">
+      <div className="text-small">
         <div className="mb-1.5 flex flex-wrap gap-3">
-          <Legend color="var(--color-champagne-gold)" label="1착" />
-          <Legend color="rgba(30,58,138,0.55)" label="정상권" />
-          <Legend color="rgb(220 38 38 / 0.7)" label="의외성" />
+          <Legend color={WINNER} label="1착" />
+          <Legend color={NORMAL} label="정상권" />
+          <Legend color={UPSET} label="의외성" />
         </div>
         {upset.length > 0 ? (
           <p className="text-muted-foreground">
@@ -165,7 +166,7 @@ function Legend({ color, label }: { color: string; label: string }) {
     <span className="inline-flex items-center gap-1.5 text-muted-foreground">
       <span
         aria-hidden="true"
-        className="inline-block h-2.5 w-2.5 rounded-full"
+        className="inline-block h-3 w-3 rounded-full"
         style={{ background: color }}
       />
       {label}

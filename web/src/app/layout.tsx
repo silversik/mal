@@ -98,10 +98,13 @@ export default function RootLayout({
         <SiteJsonLd />
         <HorseMarkSymbolDefs />
         <Navbar />
-        <main className="flex-1 pb-16 md:pb-0">
+        <main className="flex-1">
           {children}
         </main>
         <SiteFooter />
+        {/* 모바일 하단 고정 네비(h-16) 높이만큼 문서 끝에 여백 — main 이 아니라 footer 뒤에 둬야
+            footer(저작권·출처)가 네비에 가리지 않는다. 홈 인디케이터 safe-area 포함. */}
+        <div aria-hidden="true" className="h-[calc(4rem+env(safe-area-inset-bottom))] md:hidden" />
         <MobileBottomNav />
         <Toaster position="top-center" richColors />
       </body>

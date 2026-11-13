@@ -4,6 +4,10 @@
  *
  * 사용: 마필/기수 ProfileCard 의 KPI 5개 row 를 대체.
  */
+// 1착 brown → 2착 brown 55% → 3착 brown-pale 의 단색 순차 램프. 예전 2착 muted-ink 는
+// 1착 brown 과 휘도가 같아(1.12:1) 막대에서 1·2착이 한 덩어리로 보였다.
+const SECOND = "color-mix(in srgb, var(--brown) 55%, var(--surface))";
+
 export function StatsBar({
   total,
   win,
@@ -73,21 +77,21 @@ export function StatsBar({
       >
         {win > 0 && (
           <div
-            className="h-full"
+            className="h-full border-r border-card"
             style={{ width: widthFor(win), background: "var(--color-gold)" }}
             title={`1착 ${win}회 (${winRate.toFixed(1)}%)`}
           />
         )}
         {place > 0 && (
           <div
-            className="h-full"
-            style={{ width: widthFor(place), background: "var(--muted-ink)" }}
+            className="h-full border-r border-card"
+            style={{ width: widthFor(place), background: SECOND }}
             title={`2착 ${place}회 (${placeRate.toFixed(1)}%)`}
           />
         )}
         {show > 0 && (
           <div
-            className="h-full"
+            className="h-full border-r border-card"
             style={{ width: widthFor(show), background: "var(--brown-pale)" }}
             title={`3착 ${show}회 (${showRate.toFixed(1)}%)`}
           />
@@ -95,14 +99,14 @@ export function StatsBar({
       </div>
 
       {/* 범례 + 카운트 */}
-      <div className="mt-2 grid grid-cols-4 gap-2 text-caption">
+      <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-small sm:grid-cols-4">
         <LegendItem
           color="var(--color-gold)"
           label="1착"
           count={win}
           rate={winRate}
         />
-        <LegendItem color="var(--muted-ink)" label="2착" count={place} rate={placeRate} />
+        <LegendItem color={SECOND} label="2착" count={place} rate={placeRate} />
         <LegendItem color="var(--brown-pale)" label="3착" count={show} rate={showRate} />
         <LegendItem
           color="var(--muted)"
@@ -130,19 +134,19 @@ function LegendItem({
   neutral?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex min-w-0 items-center gap-1.5">
       <span
         aria-hidden
-        className={`inline-block h-2.5 w-2.5 shrink-0 rounded-sm ${
+        className={`inline-block h-3 w-3 shrink-0 rounded-sm ${
           neutral ? "border border-border" : ""
         }`}
         style={{ background: color }}
       />
-      <span className="font-semibold text-muted-foreground">{label}</span>
+      <span className="shrink-0 font-semibold text-muted-foreground">{label}</span>
       <span className="ml-auto font-mono tabular-nums text-foreground">
         {count.toLocaleString()}
       </span>
-      <span className="font-mono text-muted-foreground tabular-nums">
+      <span className="shrink-0 font-mono text-muted-foreground tabular-nums">
         {rate.toFixed(0)}%
       </span>
     </div>

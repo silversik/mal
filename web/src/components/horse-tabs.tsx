@@ -16,6 +16,7 @@ import { FamilyTreeDiagram, type FamNode } from "@/components/family-tree-diagra
 import type { PedigreeNode, RaceResult } from "@/lib/horses";
 import type { Horse } from "@/lib/horses";
 import type { HorseRankChange } from "@/lib/horse_rank_changes";
+import { RankBadge } from "@/components/rank-badge";
 
 type JockeyMap = Record<string, string>;
 type RaceKey = string;
@@ -417,24 +418,5 @@ function RankChangesSection({ changes }: { changes: HorseRankChange[] }) {
 
 /* ── Helpers ─────────────────────────────────────────────── */
 
-// 1·2·3위는 홈의 "TOP 기수 랭킹" 메달과 동일한 금/은/동 원형 배지로 통일.
-const RANK_MEDAL_STYLE: Record<number, string> = {
-  1: "bg-champagne-gold text-secondary-foreground",
-  2: "bg-slate-400 text-white",
-  3: "bg-amber-700 text-white",
-};
 
-function RankBadge({ rank }: { rank: number | null }) {
-  if (rank === null) return <span className="text-muted-foreground">-</span>;
-  if (rank <= 3) {
-    return (
-      <span
-        className={`inline-flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-bold tabular-nums ${RANK_MEDAL_STYLE[rank]}`}
-      >
-        {rank}
-      </span>
-    );
-  }
-  return <span>{rank}</span>;
-}
 
