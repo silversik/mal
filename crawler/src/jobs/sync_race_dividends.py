@@ -32,6 +32,17 @@ log = get_logger(__name__)
 _UPDATE_COLS = ("win_rate", "plc_rate", "raw_win", "raw_plc")
 _COMBO_UPDATE_COLS = ("horse_no_1", "horse_no_2", "horse_no_3", "odds", "raw")
 
+# PostgreSQL 바인드 파라미터 한도는 65535. combo row 는 ~10 컬럼이라 단일 INSERT 로는
+# ~6,500 row 가 상한인데, 하루치(서울 다경주) 응답이 이를 넘으면
+# "number of parameters must be between 0 and 65535" 로 실패한다 (2025-11-30 서울).
+# 같은 트랜잭션 안에서 청크로 나눠 upsert.
+_UPSERT_CHUNK = 2000
+
+
+def _chunks(rows: list[dict[str, Any]], size: int = _UPSERT_CHUNK) -> Iterable[list[dict[str, Any]]]:
+    for i in range(0, len(rows), size):
+        yield rows[i : i + size]
+
 
 def upsert_race_dividends(items: list[dict[str, Any]]) -> int:
     """단·연 (WIN/PLC) + 복식 (QNL/QPL/EXA/TRI/TLA) 모두 upsert. 반환=horse-level row 수."""
@@ -39,8 +50,8 @@ def upsert_race_dividends(items: list[dict[str, Any]]) -> int:
     combo_rows = items_to_combo_dividend_rows(items)
 
     with session_scope() as s:
-        if horse_rows:
-            stmt = pg_insert(RaceDividend).values(horse_rows)
+        for chunk in _chunks(horse_rows):
+            stmt = pg_insert(RaceDividend).values(chunk)
             set_ = {c: getattr(stmt.excluded, c) for c in _UPDATE_COLS}
             set_["fetched_at"] = func.now()
             set_["updated_at"] = func.now()
@@ -48,8 +59,8 @@ def upsert_race_dividends(items: list[dict[str, Any]]) -> int:
                 constraint="uq_race_dividends", set_=set_,
             )
             s.execute(stmt)
-        if combo_rows:
-            cstmt = pg_insert(RaceComboDividend).values(combo_rows)
+        for chunk in _chunks(combo_rows):
+            cstmt = pg_insert(RaceComboDividend).values(chunk)
             cset = {c: getattr(cstmt.excluded, c) for c in _COMBO_UPDATE_COLS}
             cset["fetched_at"] = func.now()
             cset["updated_at"] = func.now()
