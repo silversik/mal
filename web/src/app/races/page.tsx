@@ -337,6 +337,11 @@ export default async function RacesPage({
     compareSummaries.map((s) => [s.horse_no, s]),
   );
 
+  // 출전표 칸 노출: 착순·기록·착차는 결과 후에만, 마체중·배당은 값이 하나라도 있을 때만.
+  const isPost = entriesPhase === "post";
+  const showWeight = entries.some((e) => e.weight != null && e.weight !== "");
+  const showOdds = entries.some((e) => e.win_rate != null || e.plc_rate != null);
+
   // 경기 있는 날만 순회하도록 raceDates 내에서 탐색. 인접 레이스데이가 없으면 null.
   const prevDate = findNearbyRaceDate(raceDates, currentDate, "prev");
   const nextDate = findNearbyRaceDate(raceDates, currentDate, "next");
@@ -570,13 +575,16 @@ export default async function RacesPage({
                   <table data-table="race-entries" className="w-full border-collapse text-sm">
                     <thead>
                       <tr className="bg-muted">
-                        <th className="border-b border-border px-2 py-2 text-center text-small font-semibold text-muted-foreground" style={{ width: 52 }}>
-                          {entriesPhase === "pre" ? "출전" : "착순"}
-                        </th>
+                        {/* 경주 전엔 착순이 없고 "출전" 칸이 번호 칸과 같은 출전번호를 중복 표시했다 → 결과 후에만. */}
+                        {isPost && (
+                          <th className="border-b border-border px-2 py-2 text-center text-small font-semibold text-muted-foreground" style={{ width: 52 }}>
+                            착순
+                          </th>
+                        )}
                         <th className="border-b border-border px-2 py-2 text-center text-small font-semibold text-muted-foreground" style={{ width: 44 }}>
                           번호
                         </th>
-                        <th className="border-b border-border px-2 py-2 text-left text-small font-semibold text-muted-foreground">
+                        <th data-col="name" className="border-b border-border px-2 py-2 text-left text-small font-semibold text-muted-foreground">
                           마명
                         </th>
                         <th className="border-b border-border px-2 py-2 text-left text-small font-semibold text-muted-foreground" style={{ width: 160 }}>
@@ -591,21 +599,33 @@ export default async function RacesPage({
                         <th className="hidden border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground sm:table-cell" style={{ width: 56 }}>
                           부담
                         </th>
-                        <th className="border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground" style={{ width: 88 }}>
-                          기록
-                        </th>
-                        <th className="hidden border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground md:table-cell" style={{ width: 60 }}>
-                          착차
-                        </th>
-                        <th className="border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground" style={{ width: 86 }}>
-                          마체중
-                        </th>
-                        <th className="border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground" style={{ width: 110 }}>
-                          단승
-                        </th>
-                        <th className="border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground" style={{ width: 110 }}>
-                          연승
-                        </th>
+                        {/* 결과 전용 칸(기록·착차)과 값이 아직 없는 칸(마체중·배당)은 통째로 숨긴다 —
+                            경주 전엔 다섯 칸이 전부 "-" 인 채 폭만 차지했다. */}
+                        {isPost && (
+                          <th className="border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground" style={{ width: 88 }}>
+                            기록
+                          </th>
+                        )}
+                        {isPost && (
+                          <th className="hidden border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground md:table-cell" style={{ width: 60 }}>
+                            착차
+                          </th>
+                        )}
+                        {showWeight && (
+                          <th className="border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground" style={{ width: 86 }}>
+                            마체중
+                          </th>
+                        )}
+                        {showOdds && (
+                          <th className="border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground" style={{ width: 110 }}>
+                            단승
+                          </th>
+                        )}
+                        {showOdds && (
+                          <th className="border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground" style={{ width: 110 }}>
+                            연승
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -616,17 +636,15 @@ export default async function RacesPage({
                             key={i}
                             className="border-b border-border last:border-b-0 hover:bg-muted"
                           >
-                            <td className="px-2 py-2 text-center font-bold align-middle">
-                              {entriesPhase === "pre" ? (
-                                <GateNum n={e.chul_no} size={24} />
-                              ) : (
+                            {isPost && (
+                              <td className="px-2 py-2 text-center font-bold align-middle">
                                 <RankMedal rank={e.rank} />
-                              )}
-                            </td>
+                              </td>
+                            )}
                             <td className="px-2 py-2 text-center align-middle">
                               <GateNum n={e.chul_no} />
                             </td>
-                            <td className="px-2 py-2 text-left align-middle">
+                            <td data-col="name" className="px-2 py-2 text-left align-middle">
                               <Link
                                 href={`/horse/${e.horse_no}`}
                                 className="text-base font-bold text-foreground underline-offset-4 hover:underline"
@@ -721,31 +739,42 @@ export default async function RacesPage({
                               {e.age ?? "-"}
                             </td>
                             <td className="hidden px-2 py-2 text-right align-middle font-mono text-sm tabular-nums sm:table-cell">
-                              {e.hr_rating ?? "-"}
+                              {/* 레이팅 0 = 미부여(신마) — 값처럼 보이지 않게 "-". */}
+                              {e.hr_rating ? e.hr_rating : "-"}
                             </td>
                             <td className="hidden px-2 py-2 text-right align-middle font-mono text-sm tabular-nums text-muted-foreground sm:table-cell">
                               {e.budam_weight ?? "-"}
                             </td>
-                            <td
-                              className={`px-2 py-2 text-right align-middle font-mono text-sm tabular-nums font-semibold ${
-                                e.rank === 1 && entriesPhase === "post" ? "text-primary" : ""
-                              } ${entriesPhase === "pre" ? "text-muted-foreground" : ""}`}
-                            >
-                              {e.record_time ?? "-"}
-                            </td>
-                            <td className="hidden px-2 py-2 text-right align-middle font-mono text-sm tabular-nums text-muted-foreground md:table-cell">
-                              {e.differ ?? "-"}
-                            </td>
-                            <td className="px-2 py-2 text-right align-middle font-mono text-sm tabular-nums">
-                              {e.weight ?? "-"}
-                              <WeightDelta diff={e.weight_diff} />
-                            </td>
-                            <td className="px-2 py-2 text-right align-middle">
-                              <OddsBar value={e.win_rate} kind="win" />
-                            </td>
-                            <td className="px-2 py-2 text-right align-middle">
-                              <OddsBar value={e.plc_rate} kind="plc" />
-                            </td>
+                            {isPost && (
+                              <td
+                                className={`px-2 py-2 text-right align-middle font-mono text-sm tabular-nums font-semibold ${
+                                  e.rank === 1 ? "text-primary" : ""
+                                }`}
+                              >
+                                {e.record_time ?? "-"}
+                              </td>
+                            )}
+                            {isPost && (
+                              <td className="hidden px-2 py-2 text-right align-middle font-mono text-sm tabular-nums text-muted-foreground md:table-cell">
+                                {e.differ ?? "-"}
+                              </td>
+                            )}
+                            {showWeight && (
+                              <td className="px-2 py-2 text-right align-middle font-mono text-sm tabular-nums">
+                                {e.weight ?? "-"}
+                                <WeightDelta diff={e.weight_diff} />
+                              </td>
+                            )}
+                            {showOdds && (
+                              <td className="px-2 py-2 text-right align-middle">
+                                <OddsBar value={e.win_rate} kind="win" />
+                              </td>
+                            )}
+                            {showOdds && (
+                              <td className="px-2 py-2 text-right align-middle">
+                                <OddsBar value={e.plc_rate} kind="plc" />
+                              </td>
+                            )}
                           </tr>
                         );
                       })}

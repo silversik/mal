@@ -99,7 +99,7 @@ Next.js web (mal-web, PORT 4000 → nginx → mal.kr)  ·  로컬 dev :3000
 
 시각/UI 작업 전 **[DESIGN.md](DESIGN.md)** 를 반드시 먼저 읽는다 (단일 진실원: 폰트·색·간격·레이아웃·모션·데이터 시각화). 승인 없이 이탈 금지. QA/리뷰 시 DESIGN.md 와 어긋나는 코드는 지적한다.
 
-핵심: **타깃 코호트 50대+ 고령 팬 → 가독성이 wedge**. 중요정보 상단 · 적은 컬러(중립 5단 + **가죽/커피 brown 액센트 1** `#7A4A2B`, semantic positive 올리브/negative clay + ▲▼ 부호 병기) · 중복 DOM 금지(단일 반응형 트리) · 숫자는 Wanted Sans 본문 + **Geist Mono tabular-nums** · 모바일 우선(터치타깃 ≥44px). 두 독립 축: **테마**(라이트/다크 auto·manual) + **글씨 크기**(`[data-scale]` 보통×1/크게×1.25, 브라우저 기본 글꼴 기준, 노안용) — 헤더 "가+ 글씨 크게" 토글 + "화면 설정", 비로그인·cookie 영속. 글씨 하한 13px·원색/흐린 텍스트 금지는 eslint 가드.
+핵심: **타깃 코호트 50대+ 고령 팬 → 가독성이 wedge**. 중요정보 상단 · 적은 컬러(중립 5단 + **가죽/커피 brown 액센트 1** `#7A4A2B`, semantic positive 올리브/negative clay + ▲▼ 부호 병기) · 중복 DOM 금지(단일 반응형 트리) · 숫자는 Wanted Sans 본문 + **Geist Mono tabular-nums** · 모바일 우선(터치타깃 ≥44px). 두 독립 축: **테마**(라이트/다크 auto·manual) + **글씨 크기**(`[data-scale]` 보통×1/크게×1.25, 브라우저 기본 글꼴 기준, 노안용) — "화면 설정" 단일 컨트롤(데스크톱 헤더·모바일 더보기), 비로그인·cookie 영속. 글씨 하한 13px·원색/흐린 텍스트 금지는 eslint 가드.
 
 ## 문서 맵
 
