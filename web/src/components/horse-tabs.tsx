@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,9 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { FamilyTreeDiagram, type FamNode } from "@/components/family-tree-diagram";
-import type { PedigreeNode, RaceResult } from "@/lib/horses";
-import type { Horse } from "@/lib/horses";
+import type { Horse, PedigreeNode, RaceResult } from "@/lib/horses";
 import type { HorseRankChange } from "@/lib/horse_rank_changes";
 import { RankBadge } from "@/components/rank-badge";
 
@@ -32,30 +29,14 @@ interface HorseTabsProps {
 }
 
 export function HorseTabs({
-  horse,
   results,
   jockeyMap,
   videoEntries,
   rankChanges,
-  pedigree,
-  siblings,
 }: HorseTabsProps) {
   const videoMap = new Map<RaceKey, { video_id: string }>(videoEntries);
-
-  const treeProps = {
-    current: horseToFamNode(horse, true),
-    sire: pedigree?.sire ? pedToFamNode(pedigree.sire) : null,
-    dam: pedigree?.dam ? pedToFamNode(pedigree.dam) : null,
-    sire_sire: pedigree?.sire?.sire ? pedToFamNode(pedigree.sire.sire) : null,
-    sire_dam: pedigree?.sire?.dam ? pedToFamNode(pedigree.sire.dam) : null,
-    dam_sire: pedigree?.dam?.sire ? pedToFamNode(pedigree.dam.sire) : null,
-    dam_dam: pedigree?.dam?.dam ? pedToFamNode(pedigree.dam.dam) : null,
-    siblings: siblings.map(sibToFamNode),
-  } as const;
-
-  // 족보(PedigreeSection)는 ProfileCard 의 "부/모" MetaTile 옆 PedigreeDialog 로 이동.
-  // siblings/pedigree 는 다이얼로그 데이터로만 사용되므로 여기 본문에는 노출하지 않음.
-  void treeProps;
+  // 족보는 ProfileCard 의 "부/모" MetaTile 옆 PedigreeDialog(pedigree-tree.tsx)가 담당.
+  // horse/pedigree/siblings prop 은 호출부 호환을 위해 타입에만 남김(본문 미사용).
 
   return (
     <div className="space-y-10">
@@ -67,154 +48,6 @@ export function HorseTabs({
       {rankChanges.length > 0 && <RankChangesSection changes={rankChanges} />}
     </div>
   );
-}
-
-/* ── 족보 ──────────────────────────────────────────────── */
-
-function PedigreeSection({
-  treeProps,
-}: {
-  treeProps: React.ComponentProps<typeof FamilyTreeDiagram>;
-}) {
-  const [expanded, setExpanded] = useState(false);
-
-  // Esc 로 모달 닫기 + 모달 열려 있는 동안 body 스크롤 차단.
-  useEffect(() => {
-    if (!expanded) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setExpanded(false);
-    };
-    document.addEventListener("keydown", onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [expanded]);
-
-  return (
-    <section>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          족보
-        </h2>
-        <button
-          type="button"
-          onClick={() => setExpanded(true)}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground transition hover:border-primary/40 hover:bg-accent"
-        >
-          <ExpandIcon />
-          크게 보기
-        </button>
-      </div>
-      <FamilyTreeDiagram {...treeProps} />
-
-      {expanded && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 sm:p-8"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setExpanded(false);
-          }}
-        >
-          <div className="relative max-h-[92vh] w-full max-w-6xl overflow-auto rounded-xl bg-card shadow-2xl">
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-card px-4 py-3">
-              <h3 className="text-sm font-semibold">족보 (크게 보기)</h3>
-              <button
-                type="button"
-                onClick={() => setExpanded(false)}
-                aria-label="닫기"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
-              >
-                <CloseIcon />
-              </button>
-            </div>
-            <div className="p-4">
-              <FamilyTreeDiagram {...treeProps} responsive />
-            </div>
-          </div>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function ExpandIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <polyline points="15 3 21 3 21 9" />
-      <polyline points="9 21 3 21 3 15" />
-      <line x1="21" y1="3" x2="14" y2="10" />
-      <line x1="3" y1="21" x2="10" y2="14" />
-    </svg>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
-  );
-}
-
-/* ── Data converters ─────────────────────────────────────── */
-
-function pedToFamNode(n: PedigreeNode): FamNode {
-  return {
-    id: n.horse_no ?? n.id,
-    horse_no: n.horse_no,
-    name: n.name,
-    gender: n.gender,
-    birthYear: n.birthYear,
-    country: n.country,
-  };
-}
-
-function horseToFamNode(h: Horse, isCurrent = false): FamNode {
-  return {
-    id: h.horse_no,
-    horse_no: h.horse_no,
-    name: h.horse_name,
-    gender: sexToGender(h.sex),
-    sex: h.sex,
-    birthYear: h.birth_date?.slice(0, 4) ?? null,
-    country: h.country,
-    dam_name: h.dam_name,
-    isCurrent,
-  };
-}
-
-function sibToFamNode(h: Horse): FamNode {
-  return horseToFamNode(h, false);
-}
-
-function sexToGender(sex: string | null): FamNode["gender"] {
-  if (!sex) return "Unknown";
-  if (sex.startsWith("수") || sex.startsWith("거")) return "Male";
-  if (sex.startsWith("암")) return "Female";
-  return "Unknown";
 }
 
 /* ── 경주 기록 ──────────────────────────────────────────── */
