@@ -35,6 +35,12 @@ const STAGES: Stage[] = [
 const LINE_OTHER = "var(--muted-ink)";
 const LINE_WINNER = "var(--brown)";
 
+/** 통과순위가 파싱되는 구간이 있는지 — 부모가 헤딩·카드째 생략할 때 사용. */
+export function hasPaceMapData(corner: RaceCorner): boolean {
+  const stageData = STAGES.map((s) => ({ key: s.key, text: corner[s.key] }));
+  return passrankSeriesByHorse(stageData).rankByHorse.size > 0;
+}
+
 export function PaceMap({
   corner,
   meet,

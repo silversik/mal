@@ -10,8 +10,8 @@ const LINKS = [
 export function SiteFooter() {
   const year = new Date().getFullYear();
   return (
-    <footer className="border-t border-border bg-background py-6 px-4 text-xs text-muted-foreground">
-      <div className="mx-auto max-w-[1080px] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <footer className="border-t border-border bg-background py-6 text-small text-muted-foreground">
+      <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between md:px-6">
         <nav className="flex flex-wrap gap-x-4 gap-y-1" aria-label="푸터 내비게이션">
           {LINKS.map((l) => (
             <Link

@@ -86,7 +86,7 @@ export function RecentRacesSwiper({ races, finishers, videos }: Props) {
     <div>
       {/* ── 경마장 탭바 (한 줄) — 이전 디자인은 meet 별 row 가 3개 세로로 쌓여
             페이지를 길게 잡아먹었다. 한 줄 탭으로 압축하고 swiper 1개만 노출. */}
-      <div className="mb-4 flex items-center gap-1 border-b border-primary/10">
+      <div className="mb-4 flex items-center gap-1 border-b border-border">
         {MEETS.map((m) => {
           const count = byMeet[m].length;
           const active = m === activeMeet;
@@ -205,7 +205,7 @@ function MeetSwiper({
   return (
     <div>
       {races.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-primary/10 py-6 text-center text-xs text-slate-grey">
+        <div className="rounded-lg border border-dashed border-border py-6 text-center text-xs text-slate-grey">
           최근 경기가 없습니다.
         </div>
       ) : (
@@ -285,7 +285,7 @@ function SwiperOverlayArrow({
       aria-label={direction === "prev" ? "이전" : "다음"}
       tabIndex={visible ? 0 : -1}
       aria-hidden={!visible}
-      className={`absolute top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-primary/15 bg-card/90 text-primary shadow-md backdrop-blur-sm transition-all hover:bg-primary hover:text-white ${
+      className={`absolute top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card/90 text-primary shadow-md backdrop-blur-sm transition-all hover:bg-primary hover:text-white ${
         direction === "prev" ? "left-1" : "right-1"
       } ${visible ? "opacity-100" : "pointer-events-none opacity-0"}`}
     >
@@ -321,7 +321,7 @@ function RecentRaceCard({
   return (
     <Link
       href={href}
-      className="group block overflow-hidden rounded-xl border border-primary/8 bg-card transition-all hover:border-primary/20 hover:shadow-md"
+      className="group block overflow-hidden rounded-xl border border-primary/8 bg-card transition-all hover:border-border hover:shadow-md"
     >
       <div className="relative aspect-video overflow-hidden bg-muted">
         {video ? (

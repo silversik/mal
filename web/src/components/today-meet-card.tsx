@@ -57,7 +57,7 @@ export function TodayMeetCard({ meet, date, races, byRace, phase }: TodayMeetCar
   return (
     <div className="royal-card overflow-hidden">
       {/* Card header */}
-      <div className="flex items-center justify-between border-b border-primary/10 bg-primary/5 px-5 py-3">
+      <div className="flex items-center justify-between border-b border-border bg-primary/5 px-5 py-3">
         <div className="flex items-center gap-2">
           <VenueIcon meet={meet} size={16} />
           <span className="text-sm font-semibold">{meet}</span>
@@ -67,7 +67,7 @@ export function TodayMeetCard({ meet, date, races, byRace, phase }: TodayMeetCar
           variant="outline"
           className={`border text-caption ${
             phase === "post"
-              ? "border-primary/20 bg-muted text-slate-grey"
+              ? "border-border bg-muted text-slate-grey"
               : "border-champagne-gold/40 bg-champagne-gold/10 text-gold-ink"
           }`}
         >
@@ -112,7 +112,7 @@ export function TodayMeetCard({ meet, date, races, byRace, phase }: TodayMeetCar
       {/* Pagination dots */}
       {races.length > 1 && (
         <div
-          className="flex justify-center gap-1.5 border-t border-primary/5 py-2.5"
+          className="flex justify-center gap-1.5 border-t border-border py-2.5"
           role="tablist"
           aria-label={`${meet} 라운드 선택`}
         >
@@ -154,7 +154,7 @@ function RaceTile({
   return (
     <div className="flex w-full shrink-0 snap-start flex-col">
       {/* Race header */}
-      <div className="flex items-center gap-2 border-b border-primary/5 bg-muted/20 px-4 py-2.5">
+      <div className="flex items-center gap-2 border-b border-border bg-muted/20 px-4 py-2.5">
         <Link
           href={href}
           className="flex h-7 w-11 shrink-0 items-center justify-center rounded bg-primary/10 text-xs font-bold text-primary tabular-nums hover:bg-primary/20"
@@ -182,7 +182,7 @@ function RaceTile({
       ) : (
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-primary/5 text-caption font-semibold uppercase tracking-wider text-muted-foreground/70">
+            <tr className="border-b border-border text-caption font-semibold uppercase tracking-wider text-muted-foreground/70">
               <th className="w-14 px-3 py-2.5 text-center">{phase === "post" ? "착순" : "#"}</th>
               <th className="px-3 py-2.5 text-center">마명</th>
               <th className="px-3 py-2.5 text-center">기수</th>

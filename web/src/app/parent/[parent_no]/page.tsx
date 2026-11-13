@@ -46,7 +46,7 @@ export default async function ParentPage({
   const displayName = parent?.horse_name ?? children[0]?.sire_name ?? children[0]?.dam_name ?? parent_no;
 
   return (
-    <main className="theme-v2 mx-auto w-full max-w-4xl px-6 py-10">
+    <main className="theme-v2 mx-auto w-full max-w-[1080px] px-4 md:px-6 py-6 md:py-8">
       <BreadcrumbJsonLd
         items={[
           { name: "홈", url: "/" },

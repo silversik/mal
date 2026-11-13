@@ -126,7 +126,7 @@ export default async function HorseDetailPage({
     // 자식 목록을 보여주면 stub 부모 노드 클릭 흐름이 의미를 가진다.
     const children = await getChildrenByParentNo(horse_no, 30);
     return (
-      <main className="mx-auto w-full max-w-4xl px-6 py-12">
+      <main className="mx-auto w-full max-w-[1080px] px-4 md:px-6 py-12">
         <div className="mt-12 text-center">
           <p className="text-2xl font-bold">{horse_no}</p>
           <p className="mt-2 text-muted-foreground">
@@ -219,7 +219,7 @@ export default async function HorseDetailPage({
   const trainerNo = trainerName ? trainerNoMap[trainerName] ?? null : null;
 
   return (
-    <main className="theme-v2 mx-auto w-full max-w-7xl px-4 py-5 md:px-6 md:py-6">
+    <main className="theme-v2 mx-auto w-full max-w-[1080px] px-4 md:px-6 py-6">
       <BreadcrumbJsonLd
         items={[
           { name: "홈", url: "/" },
@@ -311,7 +311,7 @@ export default async function HorseDetailPage({
 
 function AutoCommentBlock({ comment }: { comment: string }) {
   return (
-    <div className="mt-4 rounded-md border border-primary/10 bg-primary/[0.02] px-4 py-3">
+    <div className="mt-4 rounded-md border border-border bg-primary/[0.02] px-4 py-3">
       <div className="flex items-start gap-2">
         <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-caption font-bold text-primary">
           ai

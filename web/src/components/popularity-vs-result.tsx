@@ -17,8 +17,16 @@ const WINNER = "var(--brown)";
 const UPSET = "var(--negative)";
 const NORMAL = "var(--muted-ink)";
 
-export function PopularityVsResult({ entries }: { entries: { horse_no: string; horse_name: string; win_rate: string | null; rank: number | null; }[] }) {
-  const pts: Pt[] = entries
+type Entry = { horse_no: string; horse_name: string; win_rate: string | null; rank: number | null };
+
+/** 차트를 그릴 수 있는지(배당·착순 둘 다 있는 마필 ≥3). 부모가 헤딩·카드째 생략할 때 사용 —
+ *  예전엔 헤딩+빈 카드만 남는 "빈 껍데기"가 생겼다. */
+export function hasPopularityVsResultData(entries: Entry[]): boolean {
+  return toPoints(entries).length >= 3;
+}
+
+function toPoints(entries: Entry[]): Pt[] {
+  return entries
     .filter((e): e is { horse_no: string; horse_name: string; win_rate: string; rank: number } =>
       e.win_rate !== null && e.rank !== null && Number(e.win_rate) > 0,
     )
@@ -28,7 +36,10 @@ export function PopularityVsResult({ entries }: { entries: { horse_no: string; h
       win_rate: Number(e.win_rate),
       rank: e.rank,
     }));
+}
 
+export function PopularityVsResult({ entries }: { entries: Entry[] }) {
+  const pts = toPoints(entries);
   if (pts.length < 3) return null;
 
   // 인기순위: win_rate 오름차순 1, 2, 3 ... (동률은 같은 등수 — stable sort)

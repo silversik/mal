@@ -120,7 +120,7 @@ export default async function HorsesPage({
         {/* Sort toggle + filters — only when not searching */}
         {!queryStr && (
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 rounded-lg border border-primary/10 bg-card p-1">
+            <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1">
               {SORT_OPTIONS.map(({ value, label }) => (
                 <Link
                   key={value}
@@ -232,7 +232,7 @@ function FilterPills<T extends string>({
   build: (v: T) => string;
 }) {
   return (
-    <div className="flex items-center gap-1 rounded-lg border border-primary/10 bg-card p-1 text-xs">
+    <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1 text-xs">
       <span className="px-1 font-bold uppercase tracking-wider text-muted-foreground">
         {label}
       </span>

@@ -29,7 +29,7 @@ export async function CommentSection({ entityType, entityId, entityName }: Props
   const userId = session?.user?.id ?? null;
 
   return (
-    <section className="mt-10 border-t border-primary/10 pt-6">
+    <section className="mt-10 border-t border-border pt-6">
       <h2 className="mb-4 font-serif text-xl font-bold text-primary">
         댓글 <span className="text-sm font-mono font-normal text-muted-foreground">{comments.length}</span>
       </h2>
@@ -39,7 +39,7 @@ export async function CommentSection({ entityType, entityId, entityName }: Props
           <CommentForm entityType={entityType} entityId={entityId} entityName={entityName} />
         </div>
       ) : (
-        <p className="mb-6 rounded-lg border border-primary/10 bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+        <p className="mb-6 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
           댓글을 남기려면{" "}
           <a href="/login" className="font-semibold text-primary underline underline-offset-2">
             로그인

@@ -103,7 +103,7 @@ export default async function JockeyDetailPage({
   const recentRanks = recentRaces.map((r) => r.rank);
 
   return (
-    <main className="theme-v2 mx-auto w-full max-w-7xl px-4 py-5 md:px-6 md:py-6">
+    <main className="theme-v2 mx-auto w-full max-w-[1080px] px-4 md:px-6 py-6">
       <BreadcrumbJsonLd
         items={[
           { name: "홈", url: "/" },

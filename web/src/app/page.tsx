@@ -60,7 +60,7 @@ export default function Home() {
         <HeroSection todayDate={todayDate} />
       </Suspense>
 
-      <main className="mx-auto w-full max-w-6xl px-6 py-12">
+      <main className="mx-auto w-full max-w-[1080px] px-4 md:px-6 py-12">
         <Suspense fallback={<SwiperSkeleton />}>
           <RecentRacesSection />
         </Suspense>
@@ -118,28 +118,35 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
     : [];
   const heroDate = nextRaceDate ?? fallbackDate ?? todayDate;
 
+  // 영문 대문자 캡션(LIVE/NEXT/UPCOMING) → 한글 — 고령 코호트 가독성.
   const label = isRaceToday
     ? nextDayAllFinished
       ? "오늘 · 종료"
-      : "LIVE · 오늘"
+      : "오늘 · 진행 중"
     : useStakesFallback
-      ? "UPCOMING"
-      : "NEXT";
+      ? "대상경주 예정"
+      : "다음 경주일";
   const title = isRaceToday
     ? "오늘의 핵심"
     : useStakesFallback
       ? "다가오는 대상경주"
       : "다음 진행 예정 경기";
-  const moreHref = useStakesFallback ? "/races/schedule" : `/races?date=${heroDate}`;
+  // 경주일이 없는데 오늘 날짜로 보내면 빈 경주 페이지에 떨어진다 — 날짜 없이 보내 자동 점프를 살린다.
+  const moreHref = useStakesFallback
+    ? "/races/schedule"
+    : nextRaceDate
+      ? `/races?date=${nextRaceDate}`
+      : "/races";
   const empty = featureRaces.length === 0 && !useStakesFallback;
+  const heroCardCount = useStakesFallback ? fallbackStakes.length : featureRaces.length;
 
   return (
-    <section className="border-b border-border px-5 py-8 md:py-12">
-      <div className="mx-auto max-w-6xl">
+    <section className="border-b border-border py-8 md:py-10">
+      <div className="mx-auto max-w-[1080px] px-4 md:px-6">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <div className="text-caption font-bold uppercase tracking-[0.12em] text-secondary">
-              {label} · {heroDate}
+            <div className="text-small font-semibold text-brown">
+              {label} · <span className="font-mono tabular-nums">{heroDate}</span>
             </div>
             <h1 className="mt-1.5 text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
               {title}
@@ -147,7 +154,7 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
           </div>
           <Link
             href={moreHref}
-            className="shrink-0 text-sm font-semibold text-secondary transition hover:underline"
+            className="inline-flex min-h-11 shrink-0 items-center text-base font-semibold text-foreground underline-offset-4 hover:underline"
           >
             더보기 &rarr;
           </Link>
@@ -159,8 +166,16 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
             description="경기 일정을 확인해 보세요."
           />
         ) : (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          // 댓글이 없으면 우측 1/3 열을 만들지 않는다(예전엔 빈 열). 카드 수가 홀수면 마지막 카드가
+          // 2열을 채워 그리드 빈 칸이 생기지 않게.
+          <div
+            className={`grid grid-cols-1 gap-4 ${heroComments.length > 0 ? "lg:grid-cols-[2fr_1fr]" : ""}`}
+          >
+            <div
+              className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${
+                heroCardCount % 2 === 1 ? "sm:[&>*:last-child]:col-span-2" : ""
+              }`}
+            >
               {useStakesFallback
                 ? fallbackStakes.map((s) => <HeroStakeCard key={s.id} stake={s} />)
                 : featureRaces.map((r) => <HeroFeatureCard key={r.id} race={r} />)}
@@ -318,11 +333,15 @@ async function RecentWinnersSection() {
   const horses = await cachedRecentWinners(8);
   return (
     <Section title="최근 승리 마필" href="/horses?sort=wins" tier="l1">
-      <div className="space-y-2">
-        {horses.map((h) => (
-          <HorseRow key={h.horse_no} horse={h} />
-        ))}
-      </div>
+      {horses.length === 0 ? (
+        <EmptyState title="아직 집계된 우승 마필이 없습니다." />
+      ) : (
+        <div className="space-y-2">
+          {horses.map((h) => (
+            <HorseRow key={h.horse_no} horse={h} />
+          ))}
+        </div>
+      )}
     </Section>
   );
 }
@@ -367,11 +386,15 @@ async function TopJockeysSection() {
   const jockeys = await cachedAllJockeys(8);
   return (
     <Section title="TOP 기수 랭킹" href="/jockeys" tier="l1">
-      <div className="space-y-2">
-        {jockeys.map((j, i) => (
-          <JockeyRow key={j.jk_no} jockey={j} rank={i + 1} />
-        ))}
-      </div>
+      {jockeys.length === 0 ? (
+        <EmptyState title="아직 집계된 기수 성적이 없습니다." />
+      ) : (
+        <div className="space-y-2">
+          {jockeys.map((j, i) => (
+            <JockeyRow key={j.jk_no} jockey={j} rank={i + 1} />
+          ))}
+        </div>
+      )}
     </Section>
   );
 }
@@ -380,14 +403,14 @@ async function TopJockeysSection() {
 
 function HeroSkeleton() {
   return (
-    <section className="border-b border-border px-5 py-8 md:py-12">
-      <div className="mx-auto max-w-6xl">
+    <section className="border-b border-border py-8 md:py-10">
+      <div className="mx-auto max-w-[1080px] px-4 md:px-6">
         <div className="mb-6">
           <div className="h-3 w-40 animate-pulse rounded bg-border" />
           <div className="mt-2 h-8 w-56 animate-pulse rounded bg-border" />
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[0, 1, 2].map((i) => (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {[0, 1].map((i) => (
             <div key={i} className="h-32 animate-pulse rounded-xl border border-border bg-card" />
           ))}
         </div>
@@ -399,7 +422,7 @@ function HeroSkeleton() {
 function SwiperSkeleton() {
   return (
     <section className="mb-12">
-      <div className="mb-5 flex items-end justify-between border-b-2 border-primary/15 pb-2">
+      <div className="mb-5 flex items-end justify-between border-b-2 border-border pb-2">
         <h2 className="font-serif text-3xl font-bold text-primary">최근 경기</h2>
       </div>
       <div className="flex gap-3 overflow-hidden sm:gap-4">
@@ -416,7 +439,7 @@ function RowsSkeleton({ title, href }: { title: string; href: string }) {
     <Section title={title} href={href} tier="l1">
       <div className="space-y-2">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-3 rounded-lg border border-primary/5 bg-card p-3">
+          <div key={i} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
             <div className="h-10 w-10 shrink-0 animate-pulse rounded bg-muted" />
             <div className="flex-1 space-y-1.5">
               <div className="h-4 w-32 animate-pulse rounded bg-muted" />
@@ -434,12 +457,12 @@ function RowsSkeleton({ title, href }: { title: string; href: string }) {
 const SECTION_TIER = {
   l1: {
     section: "mb-12",
-    header: "mb-5 border-b-2 border-primary/15 pb-2",
+    header: "mb-5 border-b-2 border-border pb-2",
     h2: "font-serif text-3xl font-bold text-primary",
   },
   l2: {
     section: "mb-10",
-    header: "mb-5 border-b border-primary/10 pb-2",
+    header: "mb-5 border-b border-border pb-2",
     h2: "font-serif text-xl font-semibold text-primary",
   },
   l3: {
@@ -482,7 +505,7 @@ function Section({
 function HorseRow({ horse }: { horse: RecentWinner }) {
   return (
     <Link href={`/horse/${horse.horse_no}`}>
-      <div className="flex items-center gap-3 p-3 bg-card border border-primary/5 rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
+      <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
         <HorseMark
           size={40}
           radius={8}
@@ -509,7 +532,7 @@ function HorseRow({ horse }: { horse: RecentWinner }) {
 function JockeyRow({ jockey, rank }: { jockey: Jockey; rank: number }) {
   return (
     <Link href={`/jockey/${jockey.jk_no}`}>
-      <div className="flex items-center gap-3 p-3 bg-card border border-primary/5 rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
+      <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
         <RankBadge rest="chip" rank={rank} />
         <div className="w-10 h-10 shrink-0 bg-primary rounded flex items-center justify-center font-bold text-primary-foreground shadow-inner border border-white/10 uppercase">
           {jockey.jk_name.slice(0, 1)}

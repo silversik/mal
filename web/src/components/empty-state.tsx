@@ -5,34 +5,19 @@ interface EmptyStateProps {
   title: string;
   description?: string;
   action?: ReactNode;
-  /** Use "dark" inside hero sections with dark backgrounds */
-  variant?: "default" | "dark";
 }
 
-export function EmptyState({ icon, title, description, action, variant = "default" }: EmptyStateProps) {
-  const isDark = variant === "dark";
+/**
+ * 빈 상태 — 본문 크기 그대로(16px), 흐림 처리 없이 muted 1단만. 예전엔 serif italic 14px +
+ * slate-grey + py-16 이라 작고 흐린 문구가 큰 빈 상자 한가운데 떠 있었다.
+ */
+export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-8 py-16 text-center ${
-      isDark ? "border-white/10 bg-white/5" : "border-primary/10"
-    }`}>
-      {icon && (
-        <div className={`mb-4 ${isDark ? "text-white/30" : "text-primary/25"}`}>
-          {icon}
-        </div>
-      )}
-      <p className={`font-serif text-sm font-medium italic ${isDark ? "text-white/60" : "text-slate-grey"}`}>
-        {title}
-      </p>
-      {description && (
-        <p className={`mt-1 text-xs ${isDark ? "text-white/40" : "text-muted-foreground"}`}>
-          {description}
-        </p>
-      )}
-      {action && (
-        <div className="mt-4">
-          {action}
-        </div>
-      )}
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border px-6 py-8 text-center">
+      {icon && <div className="mb-3 text-muted-foreground">{icon}</div>}
+      <p className="text-base font-semibold text-foreground">{title}</p>
+      {description && <p className="mt-1 text-base text-muted-foreground">{description}</p>}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }

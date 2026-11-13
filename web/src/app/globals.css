@@ -82,22 +82,24 @@
   --shadow-subtle: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
 }
 
-/* ── Light (default). leather/coffee brown.
-   Contrast verified (sRGB): ink/paper 14.68:1 (AAA) · brown/paper 6.58:1 (AA)
-   · muted/paper 5.86:1 · positive/paper 5.23:1 · negative/paper 4.85:1. */
+/* ── Light (default). leather/coffee brown. 2026-11 대비 개편 (DESIGN.md Decisions Log).
+   면 구분: surface/paper 1.12 → 1.22, hairline/surface 1.64 → 2.04 (카드가 배경에 묻히던 문제).
+   Contrast verified (sRGB, 실제 얹히는 surface 기준):
+   ink/paper 13.55 · ink/surface 16.49 (AAA) · muted-ink/surface 8.21 · muted-ink/paper 6.75
+   · brown/surface 7.39 · positive/surface 6.16 · negative/surface 6.17 · 최저 positive/accent 4.88 (AA). */
 :root {
   /* raw brown scale */
-  --paper:       #f6f1ea;
+  --paper:       #efe8dd;
   --surface:     #ffffff;
-  --hairline:    #d6c8b5;
+  --hairline:    #c4b39c;
   --ink:         #2a1c12;
-  --muted-ink:   #6b5a4a;
+  --muted-ink:   #5c4c3e;
   --brown:       #7a4a2b;
   --brown-deep:  #5f3a22;
   --brown-pale:  #d8c3ad;
   --brown-fg:    #ffffff;
-  --positive:    #5a6b2b;
-  --negative:    #b4453a;
+  --positive:    #56682a;
+  --negative:    #a83e34;
   --ad-surface:  #eae3d8;
 
   /* shadcn semantic → brown */
@@ -111,11 +113,11 @@
   --primary-foreground: var(--surface);
   --secondary: var(--brown);
   --secondary-foreground: var(--brown-fg);
-  --muted: #f1ece3;
+  --muted: #f3eee6;
   --muted-foreground: var(--muted-ink);
   /* accent = subtle hover/highlight tint (NOT brand brown — keeps hover:bg-accent
      readable against dark text). */
-  --accent: #efe7da;
+  --accent: #ece4d6;
   --accent-foreground: var(--ink);
   --destructive: var(--negative);
   --destructive-foreground: #ffffff;
@@ -141,26 +143,26 @@ html { font-size: calc(16px * var(--scale)); }
 [data-scale="lg"] { --scale: 1.25; }  /* 20px */
 
 /* ── Dark. Applied when the script resolves dark (.dark) or user picks dark
-   ([data-theme="dark"]). Contrast verified: ink/paper 14.88:1 (AAA) · brown
-   #c08a5e on card #241c17 ≥4.5:1 (AA). */
+   ([data-theme="dark"]). Contrast verified: ink/surface 13.53 (AAA) · muted-ink/surface 7.03
+   · brown/surface 6.24 · negative/accent 5.04 (AA). hairline/surface 1.27 → 1.62. */
 .dark,
 [data-theme="dark"] {
-  --paper:       #1a1411;
-  --surface:     #241c17;
-  --hairline:    #3a2e25;
+  --paper:       #14100d;
+  --surface:     #251d18;
+  --hairline:    #4d3e33;
   --ink:         #efe7dd;
-  --muted-ink:   #a89684;
-  --brown:       #c08a5e;
+  --muted-ink:   #b8a693;
+  --brown:       #c99467;
   --brown-deep:  #a8703f;
   --brown-pale:  #6b513c;
-  --brown-fg:    #1a1411;
-  --positive:    #9db05a;
-  --negative:    #d2756b;
+  --brown-fg:    #14100d;
+  --positive:    #a3b663;
+  --negative:    #dc8178;
   --ad-surface:  #eae3d8;
 
-  --muted: #2a211b;
-  --accent: #2f2620;
-  --destructive-foreground: #1a1411;
+  --muted: #2e251f;
+  --accent: #33291f;
+  --destructive-foreground: #14100d;
   color-scheme: dark;
 }
 
@@ -169,21 +171,21 @@ html { font-size: calc(16px * var(--scale)); }
    light choice or the script-applied .dark. */
 @media (prefers-color-scheme: dark) {
   :root:not(.dark):not([data-theme="light"]):not([data-theme="dark"]) {
-    --paper:       #1a1411;
-    --surface:     #241c17;
-    --hairline:    #3a2e25;
+    --paper:       #14100d;
+    --surface:     #251d18;
+    --hairline:    #4d3e33;
     --ink:         #efe7dd;
-    --muted-ink:   #a89684;
-    --brown:       #c08a5e;
+    --muted-ink:   #b8a693;
+    --brown:       #c99467;
     --brown-deep:  #a8703f;
     --brown-pale:  #6b513c;
-    --brown-fg:    #1a1411;
-    --positive:    #9db05a;
-    --negative:    #d2756b;
+    --brown-fg:    #14100d;
+    --positive:    #a3b663;
+    --negative:    #dc8178;
     --ad-surface:  #eae3d8;
-    --muted: #2a211b;
-    --accent: #2f2620;
-    --destructive-foreground: #1a1411;
+    --muted: #2e251f;
+    --accent: #33291f;
+    --destructive-foreground: #14100d;
     color-scheme: dark;
   }
 }
