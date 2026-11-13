@@ -74,7 +74,7 @@ export default async function JockeysPage({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {jockeys.map((j) => (
             <Link key={j.jk_no} href={`/jockey/${j.jk_no}`}>
-              <Card className="transition hover:border-primary/40 hover:shadow-md hover:shadow-primary/5">
+              <Card className="py-0 transition-colors hover:bg-muted">
                 <CardContent className="p-4">
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="truncate text-lg font-semibold">

@@ -48,7 +48,7 @@ export default async function ContactPostPage({
         >
           ← 목록으로
         </Link>
-        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-sm font-semibold ${s.cls}`}>
+        <span className={`inline-flex items-center rounded-full px-2 py-1 text-sm font-semibold ${s.cls}`}>
           {s.label}
         </span>
       </div>
@@ -73,7 +73,7 @@ export default async function ContactPostPage({
       </div>
 
       {post.status === "resolved" && (
-        <div className="rounded-[10px] border border-positive/40 bg-card px-5 py-4">
+        <div className="rounded-[10px] border border-positive/40 bg-card px-4 py-4">
           <p className="text-base font-semibold text-positive">처리 완료</p>
           <p className="mt-1 text-base text-foreground">
             해당 문의가 처리되었습니다. 추가 문의가 있으시면 새 글을 작성해 주세요.

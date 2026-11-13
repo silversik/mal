@@ -20,8 +20,8 @@ export function SectionHead({
         </span>
       )}
       <h3 className="min-w-0 truncate text-base font-bold tracking-tight">{label}</h3>
-      <span className="h-px min-w-4 flex-1 bg-border" />
-      {right}
+      <span className="h-px min-w-2 flex-1 bg-border" />
+      {right && <span className="shrink-0 whitespace-nowrap">{right}</span>}
     </div>
   );
 }
@@ -88,7 +88,7 @@ export function MetaTile({
   sub?: ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-[10px] border border-border bg-muted px-2.5 py-2">
+    <div className="flex items-center gap-2 rounded-[10px] border border-border bg-muted px-2 py-2">
       {icon && (
         <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-border bg-card text-primary">
           {icon}

@@ -287,7 +287,7 @@ export function PoolSalesTiles({
   }
 
   return (
-    <Card>
+    <Card className="py-0">
       <CardContent className="p-3">
         <div
           className="grid gap-px overflow-hidden rounded-lg bg-border"

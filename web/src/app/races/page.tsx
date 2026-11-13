@@ -343,7 +343,7 @@ export default async function RacesPage({
 
   return (
     <main className="theme-v2 mx-auto w-full max-w-[1080px] px-4 md:px-6 py-6 md:py-8">
-      <div className="mb-5 flex items-baseline justify-between gap-3">
+      <div className="mb-4 flex items-baseline justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight">경기 일람</h1>
         <Link
           href="/races/schedule"
@@ -546,7 +546,7 @@ export default async function RacesPage({
                   record_time: e.record_time,
                 }));
               return podium.length > 0 ? (
-                <div className="mb-5">
+                <div className="mb-4">
                   <PodiumCard podium={podium} />
                 </div>
               ) : null;
@@ -570,40 +570,40 @@ export default async function RacesPage({
                   <table data-table="race-entries" className="w-full border-collapse text-sm">
                     <thead>
                       <tr className="bg-muted">
-                        <th className="border-b border-border px-2 py-2.5 text-center text-small font-semibold text-muted-foreground" style={{ width: 52 }}>
+                        <th className="border-b border-border px-2 py-2 text-center text-small font-semibold text-muted-foreground" style={{ width: 52 }}>
                           {entriesPhase === "pre" ? "출전" : "착순"}
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-center text-small font-semibold text-muted-foreground" style={{ width: 44 }}>
+                        <th className="border-b border-border px-2 py-2 text-center text-small font-semibold text-muted-foreground" style={{ width: 44 }}>
                           번호
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-left text-small font-semibold text-muted-foreground">
+                        <th className="border-b border-border px-2 py-2 text-left text-small font-semibold text-muted-foreground">
                           마명
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-left text-small font-semibold text-muted-foreground" style={{ width: 160 }}>
+                        <th className="border-b border-border px-2 py-2 text-left text-small font-semibold text-muted-foreground" style={{ width: 160 }}>
                           기수 / 조교사
                         </th>
-                        <th className="hidden border-b border-border px-2 py-2.5 text-center text-small font-semibold text-muted-foreground sm:table-cell" style={{ width: 50 }}>
+                        <th className="hidden border-b border-border px-2 py-2 text-center text-small font-semibold text-muted-foreground sm:table-cell" style={{ width: 50 }}>
                           연령
                         </th>
-                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-small font-semibold text-muted-foreground sm:table-cell" style={{ width: 64 }}>
+                        <th className="hidden border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground sm:table-cell" style={{ width: 64 }}>
                           레이팅
                         </th>
-                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-small font-semibold text-muted-foreground sm:table-cell" style={{ width: 56 }}>
+                        <th className="hidden border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground sm:table-cell" style={{ width: 56 }}>
                           부담
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-right text-small font-semibold text-muted-foreground" style={{ width: 88 }}>
+                        <th className="border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground" style={{ width: 88 }}>
                           기록
                         </th>
-                        <th className="hidden border-b border-border px-2 py-2.5 text-right text-small font-semibold text-muted-foreground md:table-cell" style={{ width: 60 }}>
+                        <th className="hidden border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground md:table-cell" style={{ width: 60 }}>
                           착차
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-right text-small font-semibold text-muted-foreground" style={{ width: 86 }}>
+                        <th className="border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground" style={{ width: 86 }}>
                           마체중
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-right text-small font-semibold text-muted-foreground" style={{ width: 110 }}>
+                        <th className="border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground" style={{ width: 110 }}>
                           단승
                         </th>
-                        <th className="border-b border-border px-2 py-2.5 text-right text-small font-semibold text-muted-foreground" style={{ width: 110 }}>
+                        <th className="border-b border-border px-2 py-2 text-right text-small font-semibold text-muted-foreground" style={{ width: 110 }}>
                           연승
                         </th>
                       </tr>
@@ -616,17 +616,17 @@ export default async function RacesPage({
                             key={i}
                             className="border-b border-border last:border-b-0 hover:bg-muted"
                           >
-                            <td className="px-2 py-2.5 text-center font-bold align-middle">
+                            <td className="px-2 py-2 text-center font-bold align-middle">
                               {entriesPhase === "pre" ? (
                                 <GateNum n={e.chul_no} size={24} />
                               ) : (
                                 <RankMedal rank={e.rank} />
                               )}
                             </td>
-                            <td className="px-2 py-2.5 text-center align-middle">
+                            <td className="px-2 py-2 text-center align-middle">
                               <GateNum n={e.chul_no} />
                             </td>
-                            <td className="px-2 py-2.5 text-left align-middle">
+                            <td className="px-2 py-2 text-left align-middle">
                               <Link
                                 href={`/horse/${e.horse_no}`}
                                 className="text-base font-bold text-foreground underline-offset-4 hover:underline"
@@ -674,7 +674,7 @@ export default async function RacesPage({
                                 })()}
                               </div>
                             </td>
-                            <td className="px-2 py-2.5 text-left align-middle leading-tight">
+                            <td className="px-2 py-2 text-left align-middle leading-tight">
                               <div className="flex items-center gap-1.5 text-sm">
                                 {e.jockey_name ? (
                                   e.jockey_no ? (
@@ -717,33 +717,33 @@ export default async function RacesPage({
                                 )}
                               </div>
                             </td>
-                            <td className="hidden px-2 py-2.5 text-center align-middle font-mono text-sm tabular-nums text-muted-foreground sm:table-cell">
+                            <td className="hidden px-2 py-2 text-center align-middle font-mono text-sm tabular-nums text-muted-foreground sm:table-cell">
                               {e.age ?? "-"}
                             </td>
-                            <td className="hidden px-2 py-2.5 text-right align-middle font-mono text-sm tabular-nums sm:table-cell">
+                            <td className="hidden px-2 py-2 text-right align-middle font-mono text-sm tabular-nums sm:table-cell">
                               {e.hr_rating ?? "-"}
                             </td>
-                            <td className="hidden px-2 py-2.5 text-right align-middle font-mono text-sm tabular-nums text-muted-foreground sm:table-cell">
+                            <td className="hidden px-2 py-2 text-right align-middle font-mono text-sm tabular-nums text-muted-foreground sm:table-cell">
                               {e.budam_weight ?? "-"}
                             </td>
                             <td
-                              className={`px-2 py-2.5 text-right align-middle font-mono text-sm tabular-nums font-semibold ${
+                              className={`px-2 py-2 text-right align-middle font-mono text-sm tabular-nums font-semibold ${
                                 e.rank === 1 && entriesPhase === "post" ? "text-primary" : ""
                               } ${entriesPhase === "pre" ? "text-muted-foreground" : ""}`}
                             >
                               {e.record_time ?? "-"}
                             </td>
-                            <td className="hidden px-2 py-2.5 text-right align-middle font-mono text-sm tabular-nums text-muted-foreground md:table-cell">
+                            <td className="hidden px-2 py-2 text-right align-middle font-mono text-sm tabular-nums text-muted-foreground md:table-cell">
                               {e.differ ?? "-"}
                             </td>
-                            <td className="px-2 py-2.5 text-right align-middle font-mono text-sm tabular-nums">
+                            <td className="px-2 py-2 text-right align-middle font-mono text-sm tabular-nums">
                               {e.weight ?? "-"}
                               <WeightDelta diff={e.weight_diff} />
                             </td>
-                            <td className="px-2 py-2.5 text-right align-middle">
+                            <td className="px-2 py-2 text-right align-middle">
                               <OddsBar value={e.win_rate} kind="win" />
                             </td>
-                            <td className="px-2 py-2.5 text-right align-middle">
+                            <td className="px-2 py-2 text-right align-middle">
                               <OddsBar value={e.plc_rate} kind="plc" />
                             </td>
                           </tr>

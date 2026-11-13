@@ -72,7 +72,7 @@ export default function ContactNewForm({ userName }: { userName: string | null }
           <button
             type="submit"
             disabled={isPending}
-            className="inline-flex items-center gap-2 rounded-[10px] bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-[10px] bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
           >
             {isPending ? "등록 중…" : "문의 등록"}
           </button>

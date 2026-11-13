@@ -248,7 +248,7 @@ export default async function HorseDetailPage({
         pedigree={pedigree}
       />
 
-      <div className="mt-5 grid gap-5 md:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0">
           <AutoCommentBlock
             comment={generateHorseComment({
@@ -264,7 +264,7 @@ export default async function HorseDetailPage({
               } : null,
             })}
           />
-          <div className="mt-5">
+          <div className="mt-4">
             <HorseTabs
               horse={horse}
               results={results}
@@ -289,7 +289,7 @@ export default async function HorseDetailPage({
 
         <aside className="flex flex-col gap-3">
           {recentFinishes.length > 0 && (
-            <Card>
+            <Card className="py-0">
               <CardContent className="p-3">
                 <h3 className="mb-2 text-small font-bold uppercase tracking-wider text-muted-foreground">
                   최근 폼

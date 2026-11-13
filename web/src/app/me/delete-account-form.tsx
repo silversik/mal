@@ -21,7 +21,7 @@ export function DeleteAccountForm() {
     <form action={deleteAccountAction} onSubmit={handleSubmit}>
       <button
         type="submit"
-        className="rounded-md border border-negative/50 bg-card px-5 py-2 text-base font-semibold text-negative transition hover:bg-muted"
+        className="rounded-md border border-negative/50 bg-card px-4 py-2 text-base font-semibold text-negative transition hover:bg-muted"
       >
         탈퇴하기
       </button>

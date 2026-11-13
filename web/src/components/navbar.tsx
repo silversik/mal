@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { AuthMenu } from "@/components/auth-menu";
 import { DisplaySettings, TextSizeToggle } from "@/components/display-settings";
@@ -28,7 +29,10 @@ export function Navbar() {
           <TextSizeToggle />
           <div className="hidden items-center gap-2 md:flex">
             <DisplaySettings />
-            <AuthMenu />
+            {/* auth()+DB 조회가 헤더(=페이지 셸 전체)를 막지 않게 Suspense 로 분리. 폴백은 같은 크기 자리. */}
+            <Suspense fallback={<div className="h-11 w-20" aria-hidden="true" />}>
+              <AuthMenu />
+            </Suspense>
           </div>
         </div>
       </div>

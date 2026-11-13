@@ -70,7 +70,7 @@ export function WinRateBars({
   if (rows.length === 0) return null;
 
   return (
-    <div className={`grid gap-2.5 ${className}`}>
+    <div className={`grid gap-2 ${className}`}>
       {rows.map((r) => (
         <div key={r.label}>
           <div className="mb-1 flex items-center justify-between text-small">

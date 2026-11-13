@@ -239,6 +239,12 @@ html { font-size: calc(100% * var(--scale)); }
   min-width: 10rem;
 }
 
+/* AdSense Auto Ads 가 채우지 못한 슬롯은 빈 박스로 자리만 차지한다("진입 시 빈 영역") — 숨김.
+   광고 자체에는 손대지 않음(필터 금지 정책). */
+ins.adsbygoogle[data-ad-status="unfilled"] {
+  display: none !important;
+}
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;

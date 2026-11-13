@@ -76,7 +76,7 @@ export default async function MePage({
       )}
 
       {/* 계정 개요 */}
-      <Card className="mb-6">
+      <Card className="py-0 mb-6">
         <CardContent className="space-y-3 p-6">
           <div>
             <div className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -104,7 +104,7 @@ export default async function MePage({
       </Card>
 
       {/* 닉네임 수정 */}
-      <Card className="mb-6">
+      <Card className="py-0 mb-6">
         <CardContent className="p-6">
           <h2 className="mb-1 font-serif text-lg font-bold text-primary">
             닉네임
@@ -124,7 +124,7 @@ export default async function MePage({
               required
               className="min-w-0 flex-1 rounded-md border border-border bg-card px-3 py-2 text-[0.9375rem] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
-            <button type="submit" className="btn-cta text-sm py-2 px-5 shadow-sm">
+            <button type="submit" className="btn-cta text-sm py-2 px-4 shadow-sm">
               저장
             </button>
           </form>
@@ -132,7 +132,7 @@ export default async function MePage({
       </Card>
 
       {/* 세션 / 탈퇴 */}
-      <Card>
+      <Card className="py-0">
         <CardContent className="space-y-4 p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -144,7 +144,7 @@ export default async function MePage({
               </p>
             </div>
             <form action={logoutAction}>
-              <button type="submit" className="btn-outline text-sm py-2 px-5">
+              <button type="submit" className="btn-outline text-sm py-2 px-4">
                 로그아웃
               </button>
             </form>

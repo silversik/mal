@@ -23,7 +23,7 @@ export default async function LoginPage() {
         소셜 계정 한 번이면 로그인과 회원가입이 모두 끝나요.
       </p>
 
-      <Card className="mt-10 w-full">
+      <Card className="py-0 mt-10 w-full">
         <CardContent className="flex flex-col gap-3 p-6">
           <form
             action={async () => {

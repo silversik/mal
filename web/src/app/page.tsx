@@ -284,7 +284,7 @@ function HeroCommentPanel({
           <Link
             key={String(c.id)}
             href={c.entity_href}
-            className="rounded-lg px-2.5 py-2 transition-colors hover:bg-muted"
+            className="rounded-lg px-2 py-2 transition-colors hover:bg-muted"
           >
             <div className="flex items-center justify-between gap-2">
               <span className="truncate text-sm font-semibold text-secondary">{c.entity_name}</span>
@@ -422,7 +422,7 @@ function HeroSkeleton() {
 function SwiperSkeleton() {
   return (
     <section className="mb-12">
-      <div className="mb-5 flex items-end justify-between border-b-2 border-border pb-2">
+      <div className="mb-4 flex items-end justify-between border-b-2 border-border pb-2">
         <h2 className="font-serif text-3xl font-bold text-primary">최근 경기</h2>
       </div>
       <div className="flex gap-3 overflow-hidden sm:gap-4">
@@ -463,7 +463,7 @@ const SECTION_TIER = {
   },
   l2: {
     section: "mb-10",
-    header: "mb-5 border-b border-border pb-2",
+    header: "mb-4 border-b border-border pb-2",
     h2: "font-serif text-xl font-semibold text-primary",
   },
   l3: {

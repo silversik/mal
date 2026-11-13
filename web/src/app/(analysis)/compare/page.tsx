@@ -68,7 +68,7 @@ export default async function ComparePage({
               defaultValue={q}
               disabled={full}
               placeholder={full ? `최대 ${MAX_HORSES}두까지 비교할 수 있습니다` : "마명 입력 (예: 녹색신호)"}
-              className="min-h-11 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-base placeholder:text-muted-foreground disabled:opacity-60"
+              className="min-h-11 min-w-0 flex-1 rounded-md border border-input bg-card px-3 text-base placeholder:text-muted-foreground disabled:opacity-60"
             />
             <button
               type="submit"

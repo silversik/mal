@@ -122,7 +122,7 @@ export default async function JockeyDetailPage({
 
       <JockeyProfileCard jockey={jockey} recentRanks={recentRanks} winRate={winRate} />
 
-      <div className="mt-5 grid gap-5 md:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_320px]">
         {/* 좌측: 최근 기승 기록 */}
         <div className="min-w-0">
           <SectionHead icon={<IconActivity size={13} />} label="최근 기승 기록" />
@@ -227,7 +227,7 @@ export default async function JockeyDetailPage({
         {/* 우측 사이드바: 승률 카드 + 월별 카드 */}
         <aside className="flex flex-col gap-4">
           {(winRate != null || plcRate != null || showRate != null) && (
-            <Card>
+            <Card className="py-0">
               <CardContent className="p-4">
                 <SectionHead
                   icon={<IconTarget size={13} />}
@@ -243,7 +243,7 @@ export default async function JockeyDetailPage({
           )}
 
           {monthlyHasData && (
-            <Card>
+            <Card className="py-0">
               <CardContent className="p-4">
                 <SectionHead icon={<IconBars size={13} />} label="월별 1착" />
                 <JockeyMonthlyChart data={monthly} width={272} height={110} />
@@ -271,7 +271,7 @@ function JockeyProfileCard({
   const initial = jockey.jk_name?.[0] ?? "?";
 
   return (
-    <Card className="royal-card">
+    <Card className="py-0 royal-card">
       <CardContent className="p-4">
         {/* 헤더 */}
         <div className="flex items-start gap-3">
@@ -291,7 +291,7 @@ function JockeyProfileCard({
                 </ProfileTag>
               )}
             </div>
-            <h1 className="mt-0.5 whitespace-nowrap text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
+            <h1 className="mt-0.5 break-keep text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
               {jockey.jk_name}
               <span className="ml-2 align-middle text-sm font-medium text-muted-foreground">
                 기수
