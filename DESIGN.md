@@ -25,6 +25,13 @@
 - **Mood:** 정밀하고 차분하며 믿음직. "신뢰 = 정밀함 + 절제". 색 thesis: 잔디(turf) →
   **가죽·트랙(leather/coffee)** — 안장·마구간·흙트랙 도메인 결합.
 
+## Brand (2026-11 "가죽 배지")
+- **마크:** brown `#7A4A2B` 라운드 배지 + 크림 `#EFE8DD` 말 실루엣(`components/brand/logo.tsx` `HORSE_PATH`).
+  배지/말 6.07:1 · 흰 탭 7.39:1 · 다크 탭(#202124) 2.18:1 — ink 배지는 다크 탭에서 1.02:1 로 사라져 기각.
+- **적용:** 파비콘 `app/icon.svg` · OG `app/opengraph-image.tsx`(paper 단색 + 배지 + ink 제목, 그라디언트 없음) ·
+  manifest `theme_color`/`background_color` = paper `#EFE8DD`(헤더와 주소창 연속) · 헤더 워드마크 "MAL"(brown)+".KR"(ink).
+- 옛 노랑 `#fcdf68` · 남색 `#1d334e` 는 폐기.
+
 ## Typography
 - **Display/Hero:** Wanted Sans (700–800) — 별도 serif 없이 같은 패밀리 헤비로 통일.
 - **Body:** Wanted Sans (400–500) — 모바일 소형 가독성 우수한 현대 기하 한글.
@@ -112,3 +119,4 @@ purple/violet 그라디언트 · 3열 아이콘-원형 feature grid · 전체 �
 | 2026-05-22 | 초기 디자인 시스템 (전면 리프레시) | /design-consultation. 라이브 audit(Design B+/AI Slop A-) 기반. navy/gold/Pretendard·Playfair → paper/turf-green·Wanted Sans/Geist Mono. 사용자 4대 요청(상단우선·적은컬러·중복제거·모바일) 충족. 미리보기 `/tmp/design-consultation-preview-malkr.html` 승인. |
 | 2026-05-28 | brown 통합 + 다크 + 노안 큰글씨 | /office-hours→/autoplan. 3개 공존 색 시스템(:root navy+gold·.theme-v2 green·.dark navy)을 단일 brown 토큰으로 통합(legacy alias-don't-drop). turf-green→leather/coffee brown(thesis 교체). color-scheme × text-scale 2축 독립. cookie-SSR(루트 레이아웃 cookies() 미사용, beforeInteractive 스크립트로 static 보존) + auto/manual 다크. 헤더 "화면 설정" 단일 컨트롤. 설계문서 `~/.gstack/projects/silversik-mal/esik-dev-design-20260528-161636.md`. autoplan 리뷰: dark accent 4.58:1→#C08A5E, hairline 1.2:1→#D6C8B5, AAA blanket 주장 정정. |
 | 2026-11-13 | 가독성·집중도 개편 (60대+ 노안) | 피드백 "집중 안 되고 보기 불편". 진단: ① 카드/배경 1.12:1·hairline 1.46:1 로 면 구분 부재 ② 16px 미만 클래스 467곳·본문 주색 muted·투명 텍스트 ③ 메달 3중 정의·차트 10색 ④ 컨테이너 6종·분석 h1 이중·이중 패딩 ⑤ 조건부 차트 빈 카드·빈 사이드바·loading 부재. 조치: 토큰 대비 개편(위 표), 글씨 하한 13px + 린트 가드, scale 2단·브라우저 설정 존중·헤더 직접 토글, RankBadge 단일화, PageContainer/SectionLayout, 경주 상세 단일 컬럼, loading 스켈레톤, 데드 컴포넌트 제거. 로컬 측정: 기본 모드 13px 미만 텍스트 페이지당 83~270 → 0, 375px 가로 넘침 0. |
+| 2026-11-13 | 브랜드 자산 "가죽 배지" | 파비콘·OG·manifest 가 옛 노랑/남색이라 공유 미리보기·탭에서 다른 서비스처럼 보였음. 3안(가죽 배지 / 크림 배지 / 짙은 갈색 배지) 중 탭 가시성(흰 7.39 · 다크 2.18)과 사이트 액센트 일치로 가죽 배지 채택(사용자 결정). |
