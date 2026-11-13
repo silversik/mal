@@ -111,7 +111,7 @@ export default async function TrainersPage({
                     )}
                   </div>
                   {t.debut_date && (
-                    <div className="mt-1 text-xs text-muted-foreground">
+                    <div className="mt-1 text-sm text-muted-foreground">
                       데뷔 {t.debut_date}
                     </div>
                   )}

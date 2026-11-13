@@ -369,13 +369,13 @@ export function FamilyTreeDiagram({
               <span className="text-sm font-semibold leading-tight">{popup.node.name}</span>
               <button
                 onClick={() => setPopup(null)}
-                className="mt-0.5 text-muted-foreground hover:text-foreground text-xs leading-none"
+                className="mt-0.5 text-muted-foreground hover:text-foreground text-sm leading-none"
                 aria-label="닫기"
               >
                 ✕
               </button>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {sexGlyph(popup.node)}
               {popup.node.country && ` · ${popup.node.country}`}
               {popup.node.birthYear && ` · ${popup.node.birthYear}년생`}
@@ -387,7 +387,7 @@ export function FamilyTreeDiagram({
                 setPopup(null);
                 router.push(`/horse/${popup.node.horse_no}`);
               }}
-              className="w-full rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:opacity-90"
+              className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:opacity-90"
             >
               말 상세 보기 →
             </button>
@@ -395,7 +395,7 @@ export function FamilyTreeDiagram({
         </div>
       )}
 
-      <p className="mt-1.5 text-caption text-muted-foreground">
+      <p className="mt-1.5 text-small text-muted-foreground">
         노드 클릭 → 미리보기 팝업 · 실선 = 父계 · 점선 = 母계 · 수/암/거 = 성별
       </p>
     </div>

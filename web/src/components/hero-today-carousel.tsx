@@ -132,7 +132,7 @@ export function HeroTodayCarousel({ date, meets }: HeroTodayCarouselProps) {
                 key={m}
                 className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2"
               >
-                <div className="flex w-14 shrink-0 items-center gap-1.5 text-xs font-bold text-white">
+                <div className="flex w-14 shrink-0 items-center gap-1.5 text-sm font-bold text-white">
                   <VenueIcon meet={m} size={12} />
                   {m}
                 </div>
@@ -146,15 +146,15 @@ export function HeroTodayCarousel({ date, meets }: HeroTodayCarouselProps) {
                         type="button"
                         onClick={() => scrollToIdx(idx)}
                         aria-label={`${m} ${r.race_no}R 로 이동`}
-                        className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-caption font-semibold transition ${
+                        className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-small font-semibold transition ${
                           active
-                            ? "border-champagne-gold bg-champagne-gold text-primary"
-                            : "border-white/15 bg-white/5 text-white/70 hover:border-champagne-gold/40 hover:text-champagne-gold"
+                            ? "border-brown bg-brown text-primary"
+                            : "border-white/15 bg-white/5 text-white/70 hover:border-brown/40 hover:text-brown"
                         }`}
                       >
                         <span className="font-mono tabular-nums">{r.race_no}R</span>
                         {r.start_time && (
-                          <span className="font-mono text-caption tabular-nums opacity-80">
+                          <span className="font-mono text-small tabular-nums opacity-80">
                             {r.start_time}
                           </span>
                         )}
@@ -233,21 +233,21 @@ function RaceTile({
     <div className="flex h-full flex-col overflow-hidden rounded-xl bg-white/95 shadow-lg ring-1 ring-white/20">
       {/* 헤더 — 한 줄: [경마장] [라운드] [거리] [flex 공간] [더보기]. 발주시각/race_name 은 라운드 네비/상세 페이지에 노출. */}
       <div className="flex items-center gap-2 border-b border-border bg-primary/5 px-3 py-2">
-        <span className="inline-flex shrink-0 items-center gap-1 text-caption font-semibold text-primary">
+        <span className="inline-flex shrink-0 items-center gap-1 text-small font-semibold text-primary">
           <VenueIcon meet={meet} size={12} className="opacity-70" />
           {meet}
         </span>
-        <span className="shrink-0 font-mono text-caption font-bold tabular-nums text-primary">
+        <span className="shrink-0 font-mono text-small font-bold tabular-nums text-primary">
           {race.race_no}R
         </span>
         {race.distance && (
-          <span className="shrink-0 font-mono text-caption tabular-nums text-muted-foreground">
+          <span className="shrink-0 font-mono text-small tabular-nums text-muted-foreground">
             {race.distance}m
           </span>
         )}
         <Link
           href={href}
-          className="ml-auto inline-flex shrink-0 items-center gap-0.5 rounded bg-champagne-gold/20 px-2 py-0.5 text-caption font-bold text-gold-ink transition hover:bg-champagne-gold/30"
+          className="ml-auto inline-flex shrink-0 items-center gap-0.5 rounded bg-brown/20 px-2 py-0.5 text-small font-bold text-brown transition hover:bg-brown/30"
         >
           더보기
           <span aria-hidden>→</span>
@@ -255,11 +255,11 @@ function RaceTile({
       </div>
 
       {entries.length === 0 ? (
-        <p className="px-4 py-6 text-center text-xs text-muted-foreground">출전 정보 없음</p>
+        <p className="px-4 py-6 text-center text-sm text-muted-foreground">출전 정보 없음</p>
       ) : (
-        <table className="w-full table-fixed text-xs">
+        <table className="w-full table-fixed text-sm">
           <thead>
-            <tr className="border-b border-border text-caption font-semibold uppercase tracking-wider text-muted-foreground/70">
+            <tr className="border-b border-border text-small font-semibold uppercase tracking-wider text-muted-foreground">
               <th className="w-9 px-1.5 py-1.5 text-center">{phase === "post" ? "착순" : "#"}</th>
               <th className="px-1.5 py-1.5 text-center">마명</th>
               <th className="px-1.5 py-1.5 text-center">기수</th>
@@ -267,7 +267,7 @@ function RaceTile({
           </thead>
           <tbody>
             {entries.map((e, i) => (
-              <tr key={i} className={i % 2 === 0 ? "" : "bg-muted/30"}>
+              <tr key={i} className={i % 2 === 0 ? "" : "bg-muted"}>
                 <td className="px-1.5 py-1 text-center font-mono font-bold tabular-nums text-muted-foreground">
                   {phase === "post"
                     ? e.rank ?? "-"

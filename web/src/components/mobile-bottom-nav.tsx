@@ -106,7 +106,7 @@ export function MobileBottomNav() {
               key={href}
               href={href}
               onClick={closeAll}
-              className={`flex flex-col items-center gap-1 py-4 text-xs font-medium transition ${
+              className={`flex flex-col items-center gap-1 py-4 text-sm font-medium transition ${
                 isActive(href)
                   ? "text-primary"
                   : "text-muted-foreground hover:text-primary"
@@ -134,7 +134,7 @@ export function MobileBottomNav() {
                 key={it.href}
                 href={it.href}
                 onClick={closeAll}
-                className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-caption font-medium transition ${
+                className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-small font-medium transition ${
                   active ? "text-primary" : "text-muted-foreground"
                 }`}
               >
@@ -148,7 +148,7 @@ export function MobileBottomNav() {
           <button
             type="button"
             onClick={openMore}
-            className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-caption font-medium transition ${
+            className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-small font-medium transition ${
               moreOpen ? "text-primary" : "text-muted-foreground"
             }`}
             aria-expanded={moreOpen}

@@ -143,7 +143,7 @@ export default async function HorseDetailPage({
                 <Link
                   key={c.horse_no}
                   href={`/horse/${c.horse_no}`}
-                  className="group flex items-center gap-3 rounded-lg border bg-card p-3 transition hover:border-primary/50 hover:bg-accent/30"
+                  className="group flex items-center gap-3 rounded-lg border bg-card p-3 transition hover:border-primary/50 hover:bg-accent"
                 >
                   <HorseMark
                     size={36}
@@ -155,7 +155,7 @@ export default async function HorseDetailPage({
                     <p className="truncate text-sm font-medium group-hover:text-primary">
                       {c.horse_name}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                       {[c.country, c.sex, c.birth_date?.slice(0, 4)]
                         .filter(Boolean)
                         .join(" · ")}
@@ -291,7 +291,7 @@ export default async function HorseDetailPage({
           {recentFinishes.length > 0 && (
             <Card>
               <CardContent className="p-3">
-                <h3 className="mb-2 text-caption font-bold uppercase tracking-wider text-muted-foreground">
+                <h3 className="mb-2 text-small font-bold uppercase tracking-wider text-muted-foreground">
                   최근 폼
                 </h3>
                 <RecentFormStrip finishes={recentFinishes} />
@@ -311,9 +311,9 @@ export default async function HorseDetailPage({
 
 function AutoCommentBlock({ comment }: { comment: string }) {
   return (
-    <div className="mt-4 rounded-md border border-border bg-primary/[0.02] px-4 py-3">
+    <div className="mt-4 rounded-md border border-border bg-muted px-4 py-3">
       <div className="flex items-start gap-2">
-        <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-caption font-bold text-primary">
+        <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-small font-bold text-primary">
           ai
         </span>
         <p className="text-sm leading-relaxed text-foreground">{comment}</p>
@@ -384,7 +384,7 @@ function ProfileCard({
             <h1 className="mt-0.5 text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
               {horse.horse_name}
             </h1>
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
               {sex && (
                 <span className="inline-flex items-center gap-1">
                   <SexBadge sex={horse.sex} />
@@ -429,8 +429,9 @@ function ProfileCard({
         </div>
 
         {/* 메타 + sparkline 그리드 */}
-        <div className="mt-3 grid gap-2.5 sm:grid-cols-[1fr_280px]">
-          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3 self-start">
+        {/* 레이팅 데이터가 없으면 우측 280px 열을 만들지 않는다(예전엔 빈 칸). */}
+        <div className={`mt-3 grid gap-2 ${hasRatingTrend ? "lg:grid-cols-[1fr_280px]" : ""}`}>
+          <div className="grid grid-cols-1 gap-2 self-start sm:grid-cols-3">
             <MetaTile
               icon={<IconUser size={14} />}
               label="마주"
@@ -470,11 +471,11 @@ function ProfileCard({
 
         {characteristics.length > 0 && (
           <div className="mt-2.5 flex flex-wrap items-center gap-1">
-            <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="text-small font-semibold uppercase tracking-wider text-muted-foreground">
               특징
             </span>
             {characteristics.map((c) => (
-              <Badge key={c} variant="secondary" className="font-normal text-caption">
+              <Badge key={c} variant="secondary" className="font-normal text-small">
                 {c}
               </Badge>
             ))}
@@ -550,16 +551,16 @@ function SexBadge({ sex }: { sex: string | null }) {
   if (s.startsWith("거")) {
     return (
       <span className="inline-flex items-center gap-1">
-        <span aria-label="수말 (거세)" className="text-lg leading-none text-blue-500">♂</span>
-        <span className="text-xs text-muted-foreground">(거)</span>
+        <span aria-label="수말 (거세)" className="text-lg leading-none text-foreground">♂</span>
+        <span className="text-sm text-muted-foreground">(거)</span>
       </span>
     );
   }
   if (s.startsWith("수")) {
-    return <span aria-label="수말" className="text-lg leading-none text-blue-500">♂</span>;
+    return <span aria-label="수말" className="text-lg leading-none text-foreground">♂</span>;
   }
   if (s.startsWith("암")) {
-    return <span aria-label="암말" className="text-lg leading-none text-pink-500">♀</span>;
+    return <span aria-label="암말" className="text-lg leading-none text-foreground">♀</span>;
   }
   return <span>{s}</span>;
 }

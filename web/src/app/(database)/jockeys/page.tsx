@@ -106,7 +106,7 @@ export default async function JockeysPage({
                       </span>
                     )}
                   </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
+                  <div className="mt-1 text-sm text-muted-foreground">
                     {j.debut_date && <span>데뷔 {j.debut_date}</span>}
                   </div>
                 </CardContent>

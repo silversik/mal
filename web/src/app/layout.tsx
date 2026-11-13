@@ -92,7 +92,7 @@ export default function RootLayout({
             only guarantees pre-hydration, not pre-paint. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var c=document.cookie;function g(k){var m=c.match(new RegExp('(?:^|; )'+k+'=([^;]*)'));return m?decodeURIComponent(m[1]):null;}var t=g('mal-theme')||'auto';var s=g('mal-scale')||'md';if(['auto','light','dark'].indexOf(t)<0)t='auto';if(['sm','md','lg'].indexOf(s)<0)s='md';var d=document.documentElement;d.setAttribute('data-theme',t);d.setAttribute('data-scale',s);var mq=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)');function res(){var ct=d.getAttribute('data-theme');return ct==='dark'||(ct==='auto'&&mq&&mq.matches);}function ap(){d.classList.toggle('dark',res());}ap();if(mq){(mq.addEventListener?mq.addEventListener('change',ap):mq.addListener(ap));}}catch(e){}})();`,
+            __html: `(function(){try{var c=document.cookie;function g(k){var m=c.match(new RegExp('(?:^|; )'+k+'=([^;]*)'));return m?decodeURIComponent(m[1]):null;}var t=g('mal-theme')||'auto';var s=g('mal-scale')||'md';if(['auto','light','dark'].indexOf(t)<0)t='auto';if(['md','lg'].indexOf(s)<0)s='md';var d=document.documentElement;d.setAttribute('data-theme',t);d.setAttribute('data-scale',s);var mq=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)');function res(){var ct=d.getAttribute('data-theme');return ct==='dark'||(ct==='auto'&&mq&&mq.matches);}function ap(){d.classList.toggle('dark',res());}ap();if(mq){(mq.addEventListener?mq.addEventListener('change',ap):mq.addListener(ap));}}catch(e){}})();`,
           }}
         />
         <SiteJsonLd />

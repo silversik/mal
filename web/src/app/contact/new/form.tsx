@@ -104,7 +104,7 @@ function ContentField() {
         <label className="text-sm font-semibold" htmlFor="content">
           내용 <span className="text-destructive">*</span>
         </label>
-        <span className="text-xs text-muted-foreground font-mono tabular-nums">
+        <span className="text-sm text-muted-foreground font-mono tabular-nums">
           <span ref={countRef}>0</span>/{CONTENT_MAX}
         </span>
       </div>

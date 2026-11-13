@@ -102,7 +102,7 @@ function PedigreeSection({
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-primary/40 hover:bg-accent"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground transition hover:border-primary/40 hover:bg-accent"
         >
           <ExpandIcon />
           크게 보기
@@ -244,10 +244,9 @@ function RaceResultsSection({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[88px] text-center">영상</TableHead>
-                <TableHead className="text-center">경마장</TableHead>
-                <TableHead className="text-center">경주</TableHead>
+                <TableHead className="text-left">일자</TableHead>
                 <TableHead className="text-center">착순</TableHead>
+                <TableHead className="text-center">경주</TableHead>
                 <TableHead className="text-center">기록</TableHead>
                 <TableHead className="text-center">마체중</TableHead>
                 <TableHead className="text-center">기수</TableHead>
@@ -267,51 +266,30 @@ function RaceResultsSection({
                 const video = key ? videoMap.get(key) : null;
                 return (
                   <TableRow key={r.id}>
-                    <TableCell className="py-1.5 text-center">
+                    {/* 일자가 첫 열 — 예전엔 첫 열이 "경주 보기" 썸네일 버튼이고 일자는 툴팁에만 있어
+                        언제 경주인지 표에서 알 수 없었다. 영상이 있으면 작은 표시만. */}
+                    <TableCell className="text-left">
                       {raceHref ? (
                         <Link
                           href={raceHref}
-                          aria-label={`${r.race_date ?? ""} ${r.meet ?? ""} ${r.race_no ?? ""}R 경주 페이지로 이동`}
-                          title={`${r.race_date ?? ""} ${r.meet ?? ""} ${r.race_no ?? ""}R`}
-                          className="group relative mx-auto block h-[45px] w-20 overflow-hidden rounded bg-muted transition hover:opacity-90"
+                          className="inline-flex min-h-11 items-center gap-2 font-mono tabular-nums text-foreground underline-offset-4 hover:underline"
                         >
-                          {video ? (
-                            <>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={`https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`}
-                                alt=""
-                                loading="lazy"
-                                className="h-full w-full object-cover"
-                              />
-                              <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#FF0000] text-white opacity-90 transition group-hover:opacity-100">
-                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                    <path d="M8 5v14l11-7z" />
-                                  </svg>
-                                </span>
-                              </span>
-                            </>
-                          ) : (
-                            <span className="flex h-full w-full items-center justify-center text-caption font-medium text-muted-foreground/60">
-                              경주 보기 →
+                          {r.race_date ?? "-"}
+                          {video && (
+                            <span className="rounded-sm border border-border px-1.5 font-sans text-small font-semibold text-muted-foreground">
+                              ▶ 영상
                             </span>
                           )}
                         </Link>
-                      ) : null}
-                    </TableCell>
-                    <TableCell className="text-center">{r.meet ?? "-"}</TableCell>
-                    <TableCell className="text-center">
-                      {raceHref ? (
-                        <Link href={raceHref} className="text-primary hover:underline">
-                          {r.race_no}R
-                        </Link>
                       ) : (
-                        `${r.race_no}R`
+                        <span className="font-mono tabular-nums">{r.race_date ?? "-"}</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-center font-semibold">
+                    <TableCell className="text-center">
                       <RankBadge rank={r.rank} />
+                    </TableCell>
+                    <TableCell className="text-center whitespace-nowrap">
+                      {r.meet ?? "-"} {r.race_no}R
                     </TableCell>
                     <TableCell className="text-center font-mono tabular-nums">
                       {r.record_time ?? "-"}
@@ -384,7 +362,7 @@ function RankChangesSection({ changes }: { changes: HorseRankChange[] }) {
           <TableBody>
             {changes.map((c) => (
               <TableRow key={c.st_date}>
-                <TableCell className="font-mono text-xs">{c.st_date}</TableCell>
+                <TableCell className="font-mono text-sm">{c.st_date}</TableCell>
                 <TableCell>
                   {c.before_rank ? (
                     <Badge variant="outline" className="font-normal">
@@ -404,7 +382,7 @@ function RankChangesSection({ changes }: { changes: HorseRankChange[] }) {
                     <span className="text-muted-foreground">-</span>
                   )}
                 </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
+                <TableCell className="text-sm text-muted-foreground">
                   {c.blood ?? "-"}
                 </TableCell>
               </TableRow>

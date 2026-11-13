@@ -74,7 +74,7 @@ export default async function OwnerDetailPage({
         <section>
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             보유마{" "}
-            <span className="ml-1 text-xs font-normal text-muted-foreground">
+            <span className="ml-1 text-sm font-normal text-muted-foreground">
               ({horses.length}두)
             </span>
           </h2>
@@ -108,7 +108,7 @@ export default async function OwnerDetailPage({
                         </Link>
                       </TableCell>
                       <TableCell>{h.sex ?? "-"}</TableCell>
-                      <TableCell className="font-mono text-xs">
+                      <TableCell className="font-mono text-sm">
                         {h.birth_date ?? "-"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
@@ -175,7 +175,7 @@ function OwnerProfileCard({ owner }: { owner: Owner }) {
         <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
           {fields.map(([label, value]) => (
             <div key={String(label)}>
-              <dt className="text-xs uppercase tracking-wider text-muted-foreground">
+              <dt className="text-sm uppercase tracking-wider text-muted-foreground">
                 {label}
               </dt>
               <dd className="mt-0.5 text-sm font-medium">{value}</dd>

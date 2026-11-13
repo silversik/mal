@@ -18,7 +18,7 @@ export function VideoRow({ video }: { video: VideoItem }) {
   return (
     <>
       <div
-        className="group flex cursor-pointer items-center gap-3 px-4 py-3 transition hover:bg-muted/40"
+        className="group flex cursor-pointer items-center gap-3 px-4 py-3 transition hover:bg-muted"
         onClick={() => setOpen(true)}
         role="button"
         tabIndex={0}
@@ -46,7 +46,7 @@ export function VideoRow({ video }: { video: VideoItem }) {
             <YoutubeIcon />
           </span>
           {dur && (
-            <span className="absolute right-0.5 bottom-0.5 rounded bg-black/80 px-1 py-px font-mono text-caption leading-none text-white">
+            <span className="absolute right-0.5 bottom-0.5 rounded bg-black/80 px-1 py-px font-mono text-small leading-none text-white">
               {dur}
             </span>
           )}
@@ -99,7 +99,7 @@ function VideoModal({ video, onClose }: { video: VideoItem; onClose: () => void 
         <div className="mt-3 flex items-start justify-between gap-4 text-white">
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-semibold leading-snug">{video.title}</h2>
-            <p className="mt-1 text-xs text-white/60">
+            <p className="mt-1 text-sm text-white/60">
               {video.channel_title ?? "KRBC 한국마사회 경마방송"} ·{" "}
               {formatRelativeKst(video.published_at)}
             </p>
@@ -108,7 +108,7 @@ function VideoModal({ video, onClose }: { video: VideoItem; onClose: () => void 
             href={youtubeWatchUrl(video.video_id)}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 text-xs text-white/70 underline-offset-2 hover:text-white hover:underline"
+            className="shrink-0 text-sm text-white/70 underline-offset-2 hover:text-white hover:underline"
           >
             유튜브에서 보기 ↗
           </a>

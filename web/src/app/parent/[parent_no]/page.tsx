@@ -55,11 +55,11 @@ export default async function ParentPage({
         ]}
       />
 
-      <div className="mb-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+      <div className="mb-1 text-sm font-bold uppercase tracking-wider text-muted-foreground">
         {sideLabel}
       </div>
       <h1 className="text-3xl font-bold tracking-tight">{displayName}</h1>
-      <div className="mt-1 text-xs text-muted-foreground">
+      <div className="mt-1 text-sm text-muted-foreground">
         마번 <code className="font-mono">{parent_no}</code>
         {parent && (
           <Link
@@ -102,7 +102,7 @@ export default async function ParentPage({
               <Link
                 key={c.horse_no}
                 href={`/horse/${c.horse_no}`}
-                className="group flex items-center gap-3 rounded-lg border bg-card p-3 transition hover:border-primary/50 hover:bg-accent/30"
+                className="group flex items-center gap-3 rounded-lg border bg-card p-3 transition hover:border-primary/50 hover:bg-accent"
               >
                 <HorseMark
                   size={32}
@@ -114,14 +114,14 @@ export default async function ParentPage({
                   <p className="truncate text-sm font-semibold group-hover:text-primary">
                     {c.horse_name}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     {[c.country, c.sex, c.birth_date?.slice(0, 4)]
                       .filter(Boolean)
                       .join(" · ")}
                   </p>
                 </div>
                 {c.first_place_count > 0 && (
-                  <Badge variant="secondary" className="shrink-0 text-xs">
+                  <Badge variant="secondary" className="shrink-0 text-sm">
                     {c.first_place_count}승
                   </Badge>
                 )}
@@ -144,7 +144,7 @@ function StatCell({
   return (
     <Card className="py-0">
       <CardContent className="p-3">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground">
+        <div className="text-sm uppercase tracking-wider text-muted-foreground">
           {label}
         </div>
         <div className="mt-1 text-xl font-bold tabular-nums">{value}</div>

@@ -111,7 +111,7 @@ export default async function OwnersPage({
                     )}
                   </div>
                   {o.reg_date && (
-                    <div className="mt-1 text-xs text-muted-foreground">
+                    <div className="mt-1 text-sm text-muted-foreground">
                       등록 {o.reg_date}
                     </div>
                   )}

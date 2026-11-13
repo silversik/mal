@@ -161,7 +161,7 @@ export default async function JockeyDetailPage({
                         <TableCell className="text-center font-semibold">
                           <RankBadge rest="chip" rank={r.rank} />
                         </TableCell>
-                        <TableCell className="text-center font-mono text-xs text-muted-foreground">
+                        <TableCell className="text-center font-mono text-sm text-muted-foreground">
                           {r.race_date}
                         </TableCell>
                         <TableCell className="text-center">{r.meet ?? "-"}</TableCell>
@@ -214,7 +214,7 @@ export default async function JockeyDetailPage({
                 icon={<IconUserPlus size={13} />}
                 label="조교사별 동승"
                 right={
-                  <span className="text-caption text-muted-foreground">
+                  <span className="text-small text-muted-foreground">
                     5회 이상
                   </span>
                 }
@@ -297,7 +297,7 @@ function JockeyProfileCard({
                 기수
               </span>
             </h1>
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
               {jockey.debut_date && (
                 <span className="inline-flex items-center gap-1">
                   <IconCalendar size={12} />
@@ -338,7 +338,7 @@ function JockeyProfileCard({
 
         {recentRanks.length > 0 && (
           <div className="mt-3 rounded-[10px] border border-border bg-card px-3 py-2">
-            <div className="mb-1 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="mb-1 text-small font-semibold uppercase tracking-wider text-muted-foreground">
               최근 폼 ({Math.min(recentRanks.length, 15)}경기)
             </div>
             <RecentFormDots ranks={recentRanks} count={15} />

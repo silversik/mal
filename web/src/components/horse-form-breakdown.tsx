@@ -34,35 +34,35 @@ export function HorseFormBreakdown({ data }: { data: FormBreakdown }) {
         {sections.map((s) => (
           <Card key={s.title} className="py-0">
             <CardContent className="p-3">
-              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">
+              <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-primary">
                 {s.title}
               </h3>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="h-8 px-2 text-xs">{s.firstHeader}</TableHead>
-                    <TableHead className="h-8 px-2 text-center text-xs">출주</TableHead>
-                    <TableHead className="h-8 px-2 text-center text-xs">1-2-3</TableHead>
-                    <TableHead className="h-8 px-2 text-right text-xs">승률</TableHead>
-                    <TableHead className="h-8 px-2 text-right text-xs">복승</TableHead>
+                    <TableHead className="h-8 px-2 text-sm">{s.firstHeader}</TableHead>
+                    <TableHead className="h-8 px-2 text-center text-sm">출주</TableHead>
+                    <TableHead className="h-8 px-2 text-center text-sm">1-2-3</TableHead>
+                    <TableHead className="h-8 px-2 text-right text-sm">승률</TableHead>
+                    <TableHead className="h-8 px-2 text-right text-sm">복승</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {s.rows.map((r) => (
                     <TableRow key={r.bucket}>
-                      <TableCell className="px-2 py-1.5 font-mono text-xs tabular-nums">
+                      <TableCell className="px-2 py-1.5 font-mono text-sm tabular-nums">
                         {r.bucket}
                       </TableCell>
-                      <TableCell className="px-2 py-1.5 text-center font-mono text-xs tabular-nums">
+                      <TableCell className="px-2 py-1.5 text-center font-mono text-sm tabular-nums">
                         {r.starts}
                       </TableCell>
-                      <TableCell className="px-2 py-1.5 text-center font-mono text-xs tabular-nums">
+                      <TableCell className="px-2 py-1.5 text-center font-mono text-sm tabular-nums">
                         {r.win}-{r.place}-{r.show}
                       </TableCell>
-                      <TableCell className="px-2 py-1.5 text-right font-mono text-xs tabular-nums">
+                      <TableCell className="px-2 py-1.5 text-right font-mono text-sm tabular-nums">
                         <RateCell rate={r.win_rate} />
                       </TableCell>
-                      <TableCell className="px-2 py-1.5 text-right font-mono text-xs tabular-nums">
+                      <TableCell className="px-2 py-1.5 text-right font-mono text-sm tabular-nums">
                         <RateCell rate={r.in_money_rate} muted />
                       </TableCell>
                     </TableRow>

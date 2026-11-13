@@ -22,7 +22,7 @@ export function WinRateBar({ rate, layout = "stacked", height = 3, className = "
             style={{ width: `${pct}%` }}
           />
         </div>
-        <span className="font-mono tabular-nums text-xs text-muted-foreground">
+        <span className="font-mono tabular-nums text-sm text-muted-foreground">
           {value.toFixed(1)}%
         </span>
       </div>
@@ -73,7 +73,7 @@ export function WinRateBars({
     <div className={`grid gap-2.5 ${className}`}>
       {rows.map((r) => (
         <div key={r.label}>
-          <div className="mb-1 flex items-center justify-between text-caption">
+          <div className="mb-1 flex items-center justify-between text-small">
             <span className="font-semibold text-muted-foreground">{r.label}</span>
             <span className="font-mono font-bold tabular-nums text-primary">
               {r.value.toFixed(1)}%

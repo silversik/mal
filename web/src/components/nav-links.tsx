@@ -33,10 +33,10 @@ export function NavLinks() {
           <Link
             key={it.href}
             href={it.href}
-            className={`px-3 py-2 text-sm font-semibold transition-all duration-200 ${
+            className={`inline-flex min-h-11 items-center px-3 text-base font-semibold transition-colors ${
               active
                 ? "border-b-2 border-primary text-primary"
-                : "text-slate-grey hover:text-primary"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {it.label}

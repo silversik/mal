@@ -59,7 +59,7 @@ export function FavoriteHorseButton({
       className={
         "inline-flex items-center justify-center rounded-full p-2 transition " +
         "hover:bg-accent disabled:opacity-50 " +
-        (favorited ? "text-yellow-500" : "text-muted-foreground/60 hover:text-yellow-500") +
+        (favorited ? "text-brown" : "text-muted-foreground hover:text-brown") +
         (className ? ` ${className}` : "")
       }
     >

@@ -52,13 +52,13 @@ export function JockeyTrainerCombos({
                   c.trainer_name
                 )}
               </TableCell>
-              <TableCell className="text-center font-mono text-xs tabular-nums">
+              <TableCell className="text-center font-mono text-sm tabular-nums">
                 {c.starts}
               </TableCell>
-              <TableCell className="text-center font-mono text-xs tabular-nums">
+              <TableCell className="text-center font-mono text-sm tabular-nums">
                 {c.win}-{c.place}-{c.show}
               </TableCell>
-              <TableCell className="text-right font-mono text-xs tabular-nums">
+              <TableCell className="text-right font-mono text-sm tabular-nums">
                 {c.win_rate > 0 ? (
                   <span className="font-semibold text-primary">
                     {(c.win_rate * 100).toFixed(0)}%
@@ -67,7 +67,7 @@ export function JockeyTrainerCombos({
                   <span className="text-muted-foreground">-</span>
                 )}
               </TableCell>
-              <TableCell className="text-right font-mono text-xs tabular-nums text-muted-foreground">
+              <TableCell className="text-right font-mono text-sm tabular-nums text-muted-foreground">
                 {c.in_money_rate > 0 ? `${(c.in_money_rate * 100).toFixed(0)}%` : "-"}
               </TableCell>
             </TableRow>

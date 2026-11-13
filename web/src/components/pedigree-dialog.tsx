@@ -27,7 +27,7 @@ export function PedigreeDialog({
   return (
     <Dialog.Root>
       <Dialog.Trigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" className="text-sm">
           족보 보기
         </Button>
       </Dialog.Trigger>
@@ -46,7 +46,7 @@ export function PedigreeDialog({
               <Dialog.Title className="text-lg font-semibold">
                 족보 — {rootName}
               </Dialog.Title>
-              <Dialog.Description className="mt-0.5 text-xs text-muted-foreground">
+              <Dialog.Description className="mt-0.5 text-sm text-muted-foreground">
                 노드 클릭 = 해당 말 상세로 이동 · 우측 원(＋/−) = 접기/펼치기 · 드래그/휠 = 이동·확대
               </Dialog.Description>
             </div>
@@ -57,7 +57,7 @@ export function PedigreeDialog({
             </Dialog.Close>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-hidden rounded-md border bg-muted/30">
+          <div className="min-h-0 flex-1 overflow-hidden rounded-md border bg-muted">
             <PedigreeTree
               data={data}
               maxGenerations={5}

@@ -27,8 +27,8 @@ export function GateNum({ n, size = 26 }: { n: number | null; size?: number }) {
   if (n == null) {
     return (
       <span
-        className="inline-flex items-center justify-center rounded-md border border-border bg-muted font-mono text-xs font-bold tabular-nums text-muted-foreground"
-        style={{ width: size, height: size }}
+        className="inline-flex items-center justify-center rounded-md border border-border bg-muted font-mono text-sm font-bold tabular-nums text-muted-foreground"
+        style={{ width: `${size / 16}rem`, height: `${size / 16}rem` }}
       >
         -
       </span>
@@ -39,12 +39,13 @@ export function GateNum({ n, size = 26 }: { n: number | null; size?: number }) {
     <span
       className="inline-flex items-center justify-center rounded-md font-mono font-bold tabular-nums"
       style={{
-        width: size,
-        height: size,
+        // rem — 큰글씨 모드에서 칩과 숫자가 함께 커진다. 숫자 최소 13px.
+        width: `${size / 16}rem`,
+        height: `${size / 16}rem`,
         background: p.bg,
         color: p.color,
         border: `1px solid ${p.border}`,
-        fontSize: size <= 22 ? 11 : 12,
+        fontSize: size <= 22 ? "0.8125rem" : "0.875rem",
       }}
     >
       {n}
@@ -66,11 +67,11 @@ export function SexBullet({ sex }: { sex: string | null }) {
   if (!sex) return null;
   const s = sex.trim();
   if (s.startsWith("암"))
-    return <span className="font-bold text-[#c2417a]">암</span>;
+    return <span className="font-bold text-foreground">암</span>;
   if (s.startsWith("거"))
     return <span className="font-bold text-muted-foreground">거</span>;
   if (s.startsWith("수"))
-    return <span className="font-bold text-[#2867d8]">수</span>;
+    return <span className="font-bold text-foreground">수</span>;
   return <span className="text-muted-foreground">{s}</span>;
 }
 
@@ -98,7 +99,7 @@ export function WeightDelta({ diff }: { diff: number | null }) {
   if (diff === null) return null;
   if (diff === 0) {
     return (
-      <span className="ml-1 inline-block rounded bg-muted px-1 py-px font-mono text-caption tabular-nums text-muted-foreground">
+      <span className="ml-1 inline-block rounded bg-muted px-1 py-px font-mono text-small tabular-nums text-muted-foreground">
         ±0
       </span>
     );
@@ -106,8 +107,8 @@ export function WeightDelta({ diff }: { diff: number | null }) {
   const positive = diff > 0;
   return (
     <span
-      className={`ml-1 inline-block rounded px-1 py-px font-mono text-caption tabular-nums ${
-        positive ? "bg-destructive/10 text-destructive" : "bg-emerald-50 text-emerald-700"
+      className={`ml-1 inline-block rounded px-1 py-px font-mono text-small tabular-nums ${
+        positive ? "bg-destructive/10 text-destructive" : "bg-positive/10 text-positive"
       }`}
     >
       {positive ? `+${diff}` : diff}
@@ -196,7 +197,7 @@ export function RaceChip({
         : "border-transparent bg-muted text-foreground";
   return (
     <span
-      className={`inline-flex h-6 items-center gap-1 rounded-md border px-2 text-xs font-semibold ${cls}`}
+      className={`inline-flex h-6 items-center gap-1 rounded-md border px-2 text-sm font-semibold ${cls}`}
     >
       {label && <span className="font-medium text-muted-foreground">{label}</span>}
       <span className="font-semibold">{value}</span>
@@ -253,13 +254,13 @@ export function PoolSalesTiles({
               return (
                 <li key={r.pool} className="px-1.5 py-1.5">
                   <div className="flex items-center gap-2">
-                    <span className="w-12 shrink-0 text-caption font-semibold text-muted-foreground">
+                    <span className="w-12 shrink-0 text-small font-semibold text-muted-foreground">
                       {display.name}
                     </span>
-                    <span className="flex-1 font-mono text-xs font-bold tabular-nums">
+                    <span className="flex-1 font-mono text-sm font-bold tabular-nums">
                       {formatAmount(r.amount)}
                     </span>
-                    <span className="w-10 shrink-0 text-right font-mono text-caption tabular-nums text-muted-foreground">
+                    <span className="w-10 shrink-0 text-right font-mono text-small tabular-nums text-muted-foreground">
                       {pct.toFixed(1)}%
                     </span>
                   </div>
@@ -299,10 +300,10 @@ export function PoolSalesTiles({
             const popular = parsePopularChips(r.odds_summary);
             return (
               <div key={r.pool} className="flex flex-col gap-1 bg-card p-3">
-                <span className="text-caption font-semibold text-muted-foreground">
+                <span className="text-small font-semibold text-muted-foreground">
                   {display.name}
                   {display.code && (
-                    <span className="ml-1 font-mono text-caption opacity-60">
+                    <span className="ml-1 font-mono text-small">
                       {display.code}
                     </span>
                   )}
@@ -310,7 +311,7 @@ export function PoolSalesTiles({
                 <span className="font-mono text-[0.9375rem] font-bold tabular-nums">
                   {formatAmount(r.amount)}
                 </span>
-                <span className="font-mono text-caption tabular-nums text-muted-foreground">
+                <span className="font-mono text-small tabular-nums text-muted-foreground">
                   {pct.toFixed(1)}%
                 </span>
                 <span className="block h-1 rounded-sm bg-muted">
@@ -343,9 +344,9 @@ function PopChip({ rank, num, odd }: { rank: number; num: string; odd: string })
         ? { bg: "var(--muted)", color: "var(--muted-foreground)", border: "var(--hairline)" }
         : { bg: "var(--brown-pale)", color: "var(--ink)", border: "var(--brown-deep)" };
   return (
-    <span className="inline-flex items-center gap-1 text-caption">
+    <span className="inline-flex items-center gap-1 text-small">
       <span
-        className="inline-flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full px-1 font-mono text-caption font-bold tabular-nums"
+        className="inline-flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full px-1 font-mono text-small font-bold tabular-nums"
         style={{ background: style.bg, color: style.color, border: `1px solid ${style.border}` }}
       >
         {num}
@@ -497,7 +498,7 @@ export function PodiumCard({ podium }: { podium: PodiumEntry[] }) {
                       {e.horse_name}
                     </Link>
                   </div>
-                  <div className="mt-0.5 flex items-center gap-1.5 text-caption text-muted-foreground">
+                  <div className="mt-0.5 flex items-center gap-1.5 text-small text-muted-foreground">
                     {e.jockey_name &&
                       (e.jockey_no ? (
                         <Link
@@ -519,7 +520,7 @@ export function PodiumCard({ podium }: { podium: PodiumEntry[] }) {
                 </div>
                 {e.win_rate && (
                   <div className="text-right">
-                    <div className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+                    <div className="text-small font-semibold uppercase tracking-wider text-muted-foreground">
                       단승
                     </div>
                     <div className="font-mono text-sm font-bold tabular-nums">

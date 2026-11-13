@@ -106,7 +106,7 @@ export function PoolSalesDonut({
         </text>
       </svg>
 
-      <ul className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-1">
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-1">
         {segments.map((s) => (
           <li key={s.pool} className="flex items-center gap-1.5">
             <span

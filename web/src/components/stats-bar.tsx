@@ -38,15 +38,15 @@ export function StatsBar({
       {/* 상단: 출전 + 승률 / 입상률 */}
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
         <div className="flex items-baseline gap-1.5">
-          <span className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-small font-semibold uppercase tracking-wider text-muted-foreground">
             통산 출전
           </span>
           <span className="font-mono text-2xl font-bold tabular-nums text-foreground">
             {safeTotal.toLocaleString()}
           </span>
-          <span className="text-xs font-medium text-muted-foreground">회</span>
+          <span className="text-sm font-medium text-muted-foreground">회</span>
         </div>
-        <div className="flex items-baseline gap-3 text-xs">
+        <div className="flex items-baseline gap-3 text-sm">
           <span className="inline-flex items-baseline gap-1">
             <span className="font-semibold uppercase tracking-wider text-muted-foreground">
               승률

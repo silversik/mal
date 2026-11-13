@@ -347,14 +347,14 @@ export default async function RacesPage({
         <h1 className="text-2xl font-bold tracking-tight">경기 일람</h1>
         <Link
           href="/races/schedule"
-          className="text-sm text-muted-foreground transition hover:text-primary"
+          className="inline-flex min-h-11 items-center text-base text-muted-foreground transition hover:text-foreground"
         >
           대상경주 일정 →
         </Link>
       </div>
 
       {/* ── 날짜 네비게이션: 이전/다음(경기 있는 날로 점프) + 데이트피커 + 오늘 ── */}
-      <div className="mb-6 flex items-center gap-2">
+      <div className="mb-6 flex flex-wrap items-center gap-2">
         <NavArrow target={prevDate} direction="prev" />
 
         <RaceDatePicker currentDate={currentDate} raceDates={raceDates} />
@@ -364,7 +364,7 @@ export default async function RacesPage({
         {!isToday && (
           <Link
             href="/races"
-            className="shrink-0 rounded-lg border border-champagne-gold/60 bg-champagne-gold/10 px-3 py-1.5 text-sm font-medium text-gold-ink transition hover:bg-champagne-gold/20 whitespace-nowrap"
+            className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg border border-border bg-card px-4 text-base font-semibold text-foreground transition hover:bg-muted"
           >
             오늘
           </Link>
@@ -399,7 +399,7 @@ export default async function RacesPage({
 
             return (
               <div key={meet} className="flex items-center gap-2">
-                <div className="flex w-16 shrink-0 items-center gap-1 text-xs font-semibold text-foreground">
+                <div className="flex w-16 shrink-0 items-center gap-1 text-sm font-semibold text-foreground">
                   <VenueIcon meet={meet} size={13} />
                   <span>{meet}</span>
                 </div>
@@ -416,11 +416,11 @@ export default async function RacesPage({
                       <Link key={r.id} href={href} className="shrink-0">
                         <div
                           className={[
-                            "inline-flex h-8 min-w-9 items-center justify-center rounded-md border px-2 text-xs font-bold tabular-nums transition",
+                            "inline-flex h-8 min-w-9 items-center justify-center rounded-md border px-2 text-sm font-bold tabular-nums transition",
                             isSelected
                               ? "border-primary bg-primary text-primary-foreground shadow-sm"
                               : stakes
-                                ? "border-champagne-gold/60 bg-champagne-gold/10 text-gold-ink hover:bg-champagne-gold/20"
+                                ? "border-brown/60 bg-brown/10 text-brown hover:bg-brown/20"
                                 : status === "종료"
                                   ? "border-border bg-background text-muted-foreground hover:bg-muted"
                                   : "border-border bg-background text-foreground hover:bg-muted",
@@ -505,7 +505,7 @@ export default async function RacesPage({
                   )}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[rgba(255,0,0,0.3)] bg-transparent px-3 text-xs font-semibold text-[#FF0000] transition hover:bg-[rgba(255,0,0,0.06)]"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[rgba(255,0,0,0.3)] bg-transparent px-3 text-sm font-semibold text-[#FF0000] transition hover:bg-[rgba(255,0,0,0.06)]"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.5 15.6V8.4L15.8 12l-6.3 3.6z" />
@@ -515,7 +515,7 @@ export default async function RacesPage({
               )}
               {syncedAt && (
                 <span
-                  className="text-caption text-muted-foreground/70 tabular-nums"
+                  className="text-small text-muted-foreground tabular-nums"
                   title={`데이터 수집 시각: ${syncedAt}`}
                 >
                   데이터 업데이트{" "}
@@ -770,7 +770,7 @@ export default async function RacesPage({
               const showPool = poolSales.length > 0;
               if (!raceVideo && !showPop && !showPvr && !showPace && !showPool) return null;
               return (
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2 [&>*]:min-w-0">
               {raceVideo && (
                 <section>
                   <h3 className="mb-2 text-base font-bold">경주 영상</h3>
@@ -906,12 +906,12 @@ function JockeyChangeBadge({
     .join(" ");
   return (
     <span
-      className="inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/10 px-1 text-caption font-semibold text-amber-700 dark:text-amber-400"
+      className="inline-flex items-center gap-1 rounded border border-brown/50 bg-card px-1.5 text-small font-semibold text-brown"
       title={title}
     >
       교체
       {hasWeightDelta && (
-        <span className="font-mono tabular-nums opacity-80">
+        <span className="font-mono tabular-nums">
           {wb}→{wa}
         </span>
       )}
@@ -939,17 +939,17 @@ function UpcomingStakesPanel({
       <CardContent className="py-8">
         <div className="mb-4 flex items-baseline justify-between gap-3">
           <div>
-            <Badge className="mb-1 bg-champagne-gold text-secondary-foreground">예정</Badge>
+            <Badge className="mb-1 bg-brown text-secondary-foreground">예정</Badge>
             <h2 className="text-base font-bold">
               {formatDateLabel(date)} 예정 대상경주
             </h2>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-sm text-muted-foreground">
               주간 카드가 아직 등록되지 않아 출전표·결과는 일정 공개 후 표시됩니다.
             </p>
           </div>
           <Link
             href="/races/schedule"
-            className="text-xs text-muted-foreground transition hover:text-primary whitespace-nowrap"
+            className="text-sm text-muted-foreground transition hover:text-primary whitespace-nowrap"
           >
             전체 일정 →
           </Link>
@@ -967,13 +967,13 @@ function UpcomingStakesPanel({
                   return (
                     <li key={s.id} className="flex items-center gap-2 px-3 py-2 text-sm">
                       {s.tier && (
-                        <span className="shrink-0 rounded bg-champagne-gold/20 px-1.5 py-0.5 text-caption font-bold text-gold-ink">
+                        <span className="shrink-0 rounded bg-brown/20 px-1.5 py-0.5 text-small font-bold text-brown">
                           {s.tier}
                         </span>
                       )}
                       <span className="min-w-0 flex-1 truncate font-medium">{display}</span>
                       {s.distance && (
-                        <span className="shrink-0 font-mono text-caption tabular-nums text-muted-foreground">
+                        <span className="shrink-0 font-mono text-small tabular-nums text-muted-foreground">
                           {s.distance}m
                         </span>
                       )}

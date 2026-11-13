@@ -70,7 +70,7 @@
   --color-card: var(--card);
 
   /* DESIGN.md 타입 스케일 중 Tailwind 기본에 없는 2단(px 기준 caption 11 · small 13).
-     rem 이라 [data-scale] 축(14/16/20px 루트)을 따른다. line-height 키는 일부러 두지 않아
+     rem 이라 [data-scale] 축(16/20px 루트)을 따른다. line-height 키는 일부러 두지 않아
      예전 `text-[11px]` 처럼 font-size 만 바꾼다. 9·10px 리터럴도 caption 으로 올림(최소값). */
   --text-caption: 0.6875rem;
   --text-small: 0.8125rem;
@@ -131,15 +131,16 @@
   color-scheme: light;
 }
 
-html { font-size: calc(16px * var(--scale)); }
+/* 100% = 브라우저/OS 기본 글꼴 크기(보통 16px). 예전 16px 고정은 노안 사용자가 브라우저에서
+   키워 둔 글꼴 설정을 이 사이트에서만 무시했다. --scale 은 그 위에 곱해지는 사이트 내 확대. */
+html { font-size: calc(100% * var(--scale)); }
 
 /* Explicit light choice — light tokens are the :root default; this block
    positively asserts color-scheme so an explicit "밝게" pick wins over the
    prefers-color-scheme media fallback even when the OS is dark. */
 [data-theme="light"] { color-scheme: light; }
 
-[data-scale="sm"] { --scale: 0.875; } /* 14px */
-[data-scale="md"] { --scale: 1; }     /* 16px */
+[data-scale="md"] { --scale: 1; }     /* 16px (브라우저 기본 기준) */
 [data-scale="lg"] { --scale: 1.25; }  /* 20px */
 
 /* ── Dark. Applied when the script resolves dark (.dark) or user picks dark
@@ -257,8 +258,9 @@ html { font-size: calc(16px * var(--scale)); }
 }
 
 @layer components {
+  /* 프로필 카드 — 장식 상단 ink 보더·그림자 제거(DESIGN: 컬러 보더 카드 금지). 경계는 Card ring(hairline). */
   .royal-card {
-    @apply bg-card rounded-[8px] shadow-subtle border-t-2 border-t-primary overflow-hidden transition-all duration-300;
+    @apply bg-card rounded-[8px] overflow-hidden;
   }
   .btn-cta {
     @apply bg-secondary text-secondary-foreground font-bold px-6 py-2 rounded-[4px] transition-colors;

@@ -60,12 +60,12 @@ export default function Home() {
         <HeroSection todayDate={todayDate} />
       </Suspense>
 
-      <main className="mx-auto w-full max-w-[1080px] px-4 md:px-6 py-12">
+      <main className="mx-auto w-full max-w-[1080px] px-4 py-8 md:px-6">
         <Suspense fallback={<SwiperSkeleton />}>
           <RecentRacesSection />
         </Suspense>
 
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-x-8 lg:grid-cols-2">
           <Suspense fallback={<RowsSkeleton title="최근 승리 마필" href="/horses?sort=wins" />}>
             <RecentWinnersSection />
           </Suspense>
@@ -193,7 +193,7 @@ async function HeroSection({ todayDate }: { todayDate: string }) {
 function HeroMetaItem({ label, value }: { label: string; value: string }) {
   return (
     <span className="flex items-baseline gap-1">
-      <span className="text-caption uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-small uppercase tracking-wide text-muted-foreground">{label}</span>
       <span className="font-mono text-sm font-semibold tabular-nums text-foreground">{value}</span>
     </span>
   );
@@ -219,7 +219,7 @@ function HeroFeatureCard({ race }: { race: RaceInfo }) {
           <VenueIcon meet={race.meet} size={16} />
           <span className="text-sm font-semibold">{race.meet}</span>
         </div>
-        <span className={`rounded-full px-2 py-0.5 text-caption font-semibold ${statusCls}`}>
+        <span className={`rounded-full px-2 py-0.5 text-small font-semibold ${statusCls}`}>
           {status}
         </span>
       </div>
@@ -251,7 +251,7 @@ function HeroStakeCard({ stake }: { stake: UpcomingStake }) {
           <span className="text-sm font-semibold">{stake.meet}</span>
         </div>
         {tierBadge && (
-          <span className="rounded-full border border-secondary px-2 py-0.5 text-caption font-semibold text-secondary">
+          <span className="rounded-full border border-secondary px-2 py-0.5 text-small font-semibold text-secondary">
             {tierBadge}
           </span>
         )}
@@ -276,7 +276,7 @@ function HeroCommentPanel({
   if (comments.length === 0) return null;
   return (
     <div className="flex flex-col rounded-xl border border-border bg-card p-4">
-      <div className="mb-2.5 text-caption font-bold uppercase tracking-[0.1em] text-muted-foreground">
+      <div className="mb-2.5 text-small font-bold uppercase tracking-[0.1em] text-muted-foreground">
         최신 댓글
       </div>
       <div className="flex flex-col gap-1">
@@ -287,10 +287,10 @@ function HeroCommentPanel({
             className="rounded-lg px-2.5 py-2 transition-colors hover:bg-muted"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-xs font-semibold text-secondary">{c.entity_name}</span>
-              <time className="shrink-0 font-mono text-caption tabular-nums text-muted-foreground">{commentTimeAgo(c.created_at)}</time>
+              <span className="truncate text-sm font-semibold text-secondary">{c.entity_name}</span>
+              <time className="shrink-0 font-mono text-small tabular-nums text-muted-foreground">{commentTimeAgo(c.created_at)}</time>
             </div>
-            <p className="line-clamp-1 text-xs text-muted-foreground">{c.content}</p>
+            <p className="line-clamp-1 text-sm text-muted-foreground">{c.content}</p>
           </Link>
         ))}
       </div>
@@ -363,16 +363,16 @@ async function RecentCommentsSection() {
   if (comments.length === 0) return null;
 
   return (
-    <Section title="최신 댓글" href="#" tier="l1">
+    <Section title="최신 댓글" tier="l1">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {comments.map((c) => (
           <Link key={c.id} href={c.entity_href} className="group block rounded-lg border border-primary/8 bg-card p-3 hover:border-secondary/50 hover:shadow-sm transition-all">
             <div className="mb-1 flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold truncate group-hover:text-primary transition-colors">{c.entity_name}</span>
-              <time className="shrink-0 text-caption text-muted-foreground tabular-nums">{commentTimeAgo(c.created_at)}</time>
+              <span className="text-sm font-semibold truncate group-hover:text-primary transition-colors">{c.entity_name}</span>
+              <time className="shrink-0 text-small text-muted-foreground tabular-nums">{commentTimeAgo(c.created_at)}</time>
             </div>
-            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{c.content}</p>
-            <p className="mt-1 text-caption text-muted-foreground/60">{c.author_name ?? "알 수 없음"}</p>
+            <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">{c.content}</p>
+            <p className="mt-1 text-small text-muted-foreground">{c.author_name ?? "알 수 없음"}</p>
           </Link>
         ))}
       </div>
@@ -443,7 +443,7 @@ function RowsSkeleton({ title, href }: { title: string; href: string }) {
             <div className="h-10 w-10 shrink-0 animate-pulse rounded bg-muted" />
             <div className="flex-1 space-y-1.5">
               <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-              <div className="h-3 w-20 animate-pulse rounded bg-muted/70" />
+              <div className="h-3 w-20 animate-pulse rounded bg-muted" />
             </div>
           </div>
         ))}
@@ -455,10 +455,11 @@ function RowsSkeleton({ title, href }: { title: string; href: string }) {
 /* ── Section wrapper ──────────────────────────────────── */
 
 const SECTION_TIER = {
+  // 섹션 제목은 히어로 h1(2xl/3xl)보다 한 단계 아래 — 예전 3xl serif 는 h1 보다 커서 위계가 뒤집혔다.
   l1: {
-    section: "mb-12",
-    header: "mb-5 border-b-2 border-border pb-2",
-    h2: "font-serif text-3xl font-bold text-primary",
+    section: "mb-10",
+    header: "mb-4 border-b border-border pb-1",
+    h2: "text-xl font-bold text-foreground md:text-2xl",
   },
   l2: {
     section: "mb-10",
@@ -467,8 +468,8 @@ const SECTION_TIER = {
   },
   l3: {
     section: "mb-8",
-    header: "mb-4 border-b border-primary/8 pb-2",
-    h2: "text-sm font-bold uppercase tracking-widest text-slate-grey",
+    header: "mb-4 border-b border-border pb-2",
+    h2: "text-sm font-bold uppercase tracking-widest text-muted-foreground",
   },
 } as const;
 
@@ -479,7 +480,7 @@ function Section({
   children,
 }: {
   title: string;
-  href: string;
+  href?: string;
   tier?: "l1" | "l2" | "l3";
   children: React.ReactNode;
 }) {
@@ -488,12 +489,14 @@ function Section({
     <section className={t.section}>
       <div className={`flex items-end justify-between ${t.header}`}>
         <h2 className={t.h2}>{title}</h2>
-        <Link
-          href={href}
-          className="text-sm font-semibold text-slate-grey transition hover:text-primary"
-        >
-          더보기 &rarr;
-        </Link>
+        {href && (
+          <Link
+            href={href}
+            className="inline-flex min-h-11 items-center text-base font-semibold text-muted-foreground transition hover:text-foreground"
+          >
+            더보기 &rarr;
+          </Link>
+        )}
       </div>
       {children}
     </section>
@@ -514,13 +517,13 @@ function HorseRow({ horse }: { horse: RecentWinner }) {
         />
         <div className="min-w-0 flex-1">
           <div className="font-bold truncate group-hover:text-primary transition-colors">{horse.horse_name}</div>
-          <div className="text-caption text-slate-grey uppercase tracking-wider font-semibold">
+          <div className="text-small text-muted-foreground uppercase tracking-wider font-semibold">
             {horse.country} · {horse.sex}
           </div>
         </div>
         <div className="text-right shrink-0">
           <div className="text-sm font-bold text-primary">{horse.win_count}승</div>
-          <div className="text-caption font-mono text-muted-foreground">
+          <div className="text-small font-mono text-muted-foreground">
             {horse.last_win_date}
           </div>
         </div>
@@ -534,12 +537,12 @@ function JockeyRow({ jockey, rank }: { jockey: Jockey; rank: number }) {
     <Link href={`/jockey/${jockey.jk_no}`}>
       <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
         <RankBadge rest="chip" rank={rank} />
-        <div className="w-10 h-10 shrink-0 bg-primary rounded flex items-center justify-center font-bold text-primary-foreground shadow-inner border border-white/10 uppercase">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border bg-muted font-bold text-foreground">
           {jockey.jk_name.slice(0, 1)}
         </div>
         <div className="min-w-0 flex-1">
           <div className="font-bold truncate group-hover:text-primary transition-colors">{jockey.jk_name}</div>
-          <div className="text-caption text-slate-grey font-semibold uppercase tracking-wider">{jockey.meet} 기수</div>
+          <div className="text-small text-muted-foreground font-semibold uppercase tracking-wider">{jockey.meet} 기수</div>
         </div>
         <div className="min-w-[70px] shrink-0">
           <WinRateBar rate={jockey.win_rate} />

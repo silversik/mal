@@ -56,7 +56,7 @@ export function KpiTile({
           {icon}
         </span>
       )}
-      <div className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="text-small font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
       <div
@@ -64,7 +64,7 @@ export function KpiTile({
       >
         {value}
         {sub && (
-          <span className="ml-1 align-baseline text-caption font-medium text-muted-foreground">
+          <span className="ml-1 align-baseline text-small font-medium text-muted-foreground">
             {sub}
           </span>
         )}
@@ -95,13 +95,13 @@ export function MetaTile({
         </span>
       )}
       <div className="min-w-0">
-        <div className="text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="text-small font-semibold uppercase tracking-wider text-muted-foreground">
           {label}
         </div>
         <div className="truncate text-small font-semibold text-foreground">
           {value}
           {sub && (
-            <span className="ml-1 text-caption font-medium text-muted-foreground">
+            <span className="ml-1 text-small font-medium text-muted-foreground">
               {sub}
             </span>
           )}
@@ -131,7 +131,7 @@ export function ProfileTag({
   }[tone];
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-[2px] text-caption font-semibold ${cls}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-[2px] text-small font-semibold ${cls}`}
     >
       {icon}
       {children}
@@ -148,7 +148,7 @@ export function BreadCrumb({
   items: { label: string; href?: string }[];
 }) {
   return (
-    <nav className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+    <nav className="mb-3 flex items-center gap-1.5 text-sm text-muted-foreground">
       {items.map((it, i) => (
         <span key={i} className="inline-flex items-center gap-1.5">
           {it.href ? (

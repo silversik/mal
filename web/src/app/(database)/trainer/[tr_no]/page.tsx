@@ -113,7 +113,7 @@ export default async function TrainerDetailPage({
                           : null;
                       return (
                         <TableRow key={r.id}>
-                          <TableCell className="font-mono text-xs">
+                          <TableCell className="font-mono text-sm">
                             {r.race_date}
                           </TableCell>
                           <TableCell>{r.meet ?? "-"}</TableCell>
@@ -209,7 +209,7 @@ function TrainerProfileCard({ trainer }: { trainer: Trainer }) {
         <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
           {fields.map(([label, value]) => (
             <div key={String(label)}>
-              <dt className="text-xs uppercase tracking-wider text-muted-foreground">
+              <dt className="text-sm uppercase tracking-wider text-muted-foreground">
                 {label}
               </dt>
               <dd className="mt-0.5 text-sm font-medium">{value}</dd>

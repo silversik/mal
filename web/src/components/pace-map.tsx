@@ -86,7 +86,7 @@ export function PaceMap({
       <div className="overflow-x-auto">
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="block h-auto w-full min-w-[420px] text-foreground"
+        className="block h-auto w-full min-w-[420px] max-w-[720px] text-foreground"
         role="img"
         aria-label="페이스 맵"
       >

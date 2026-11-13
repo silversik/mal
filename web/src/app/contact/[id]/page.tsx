@@ -8,8 +8,8 @@ export const dynamic = "force-dynamic";
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   pending:     { label: "접수됨",  cls: "bg-muted text-muted-foreground" },
-  in_progress: { label: "처리중",  cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
-  resolved:    { label: "완료",    cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
+  in_progress: { label: "처리중",  cls: "border border-brown/40 bg-card text-brown" },
+  resolved:    { label: "완료",    cls: "border border-positive/40 bg-card text-positive" },
 };
 
 export async function generateMetadata({
@@ -48,7 +48,7 @@ export default async function ContactPostPage({
         >
           ← 목록으로
         </Link>
-        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${s.cls}`}>
+        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-sm font-semibold ${s.cls}`}>
           {s.label}
         </span>
       </div>
@@ -56,7 +56,7 @@ export default async function ContactPostPage({
       <div className="rounded-[10px] border border-border bg-card p-6 space-y-4">
         <div className="space-y-2">
           <h1 className="text-lg font-bold tracking-tight leading-snug">{post.title}</h1>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono tabular-nums">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground font-mono tabular-nums">
             <span>{post.author_name}</span>
             <span>·</span>
             <span>{post.created_at.slice(0, 10)}</span>
@@ -73,9 +73,9 @@ export default async function ContactPostPage({
       </div>
 
       {post.status === "resolved" && (
-        <div className="rounded-[10px] border border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-900/20 px-5 py-4">
-          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">처리 완료</p>
-          <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-500">
+        <div className="rounded-[10px] border border-positive/40 bg-card px-5 py-4">
+          <p className="text-base font-semibold text-positive">처리 완료</p>
+          <p className="mt-1 text-base text-foreground">
             해당 문의가 처리되었습니다. 추가 문의가 있으시면 새 글을 작성해 주세요.
           </p>
         </div>

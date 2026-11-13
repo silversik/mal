@@ -61,14 +61,14 @@ export function TodayMeetCard({ meet, date, races, byRace, phase }: TodayMeetCar
         <div className="flex items-center gap-2">
           <VenueIcon meet={meet} size={16} />
           <span className="text-sm font-semibold">{meet}</span>
-          <span className="text-xs text-slate-grey">{races.length}경주</span>
+          <span className="text-sm text-muted-foreground">{races.length}경주</span>
         </div>
         <Badge
           variant="outline"
-          className={`border text-caption ${
+          className={`border text-small ${
             phase === "post"
-              ? "border-border bg-muted text-slate-grey"
-              : "border-champagne-gold/40 bg-champagne-gold/10 text-gold-ink"
+              ? "border-border bg-muted text-muted-foreground"
+              : "border-brown/40 bg-brown/10 text-brown"
           }`}
         >
           {phase === "post" ? "결과" : "출전표"}
@@ -154,35 +154,35 @@ function RaceTile({
   return (
     <div className="flex w-full shrink-0 snap-start flex-col">
       {/* Race header */}
-      <div className="flex items-center gap-2 border-b border-border bg-muted/20 px-4 py-2.5">
+      <div className="flex items-center gap-2 border-b border-border bg-muted px-4 py-2.5">
         <Link
           href={href}
-          className="flex h-7 w-11 shrink-0 items-center justify-center rounded bg-primary/10 text-xs font-bold text-primary tabular-nums hover:bg-primary/20"
+          className="flex h-7 w-11 shrink-0 items-center justify-center rounded bg-primary/10 text-sm font-bold text-primary tabular-nums hover:bg-primary/20"
         >
           {race.race_no}R
         </Link>
         {race.race_name && (
-          <span className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-muted-foreground">
             {race.race_name}
           </span>
         )}
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {race.distance && (
-            <span className="font-mono text-caption text-muted-foreground">
+            <span className="font-mono text-small text-muted-foreground">
               {race.distance}m
             </span>
           )}
-          <span className="text-caption text-muted-foreground">{entries.length}두</span>
+          <span className="text-small text-muted-foreground">{entries.length}두</span>
         </div>
       </div>
 
       {/* Entry table */}
       {entries.length === 0 ? (
-        <p className="px-4 py-6 text-center text-xs text-muted-foreground">출전 정보 없음</p>
+        <p className="px-4 py-6 text-center text-sm text-muted-foreground">출전 정보 없음</p>
       ) : (
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border text-caption font-semibold uppercase tracking-wider text-muted-foreground/70">
+            <tr className="border-b border-border text-small font-semibold uppercase tracking-wider text-muted-foreground">
               <th className="w-14 px-3 py-2.5 text-center">{phase === "post" ? "착순" : "#"}</th>
               <th className="px-3 py-2.5 text-center">마명</th>
               <th className="px-3 py-2.5 text-center">기수</th>
@@ -192,7 +192,7 @@ function RaceTile({
             {entries.map((e, i) => (
               <tr
                 key={i}
-                className={i % 2 === 0 ? "" : "bg-muted/30"}
+                className={i % 2 === 0 ? "" : "bg-muted"}
               >
                 <td className="px-3 py-2 text-center font-mono font-bold tabular-nums text-muted-foreground">
                   {phase === "post"

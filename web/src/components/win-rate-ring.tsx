@@ -31,7 +31,7 @@ export function WinRateRing({
           cx={size / 2}
           cy={size / 2}
           r={r}
-          stroke="var(--color-gold)"
+          stroke="var(--brown)"
           strokeWidth={8}
           fill="none"
           strokeLinecap="round"
@@ -46,13 +46,13 @@ export function WinRateRing({
           style={{ fontSize: size * 0.22 }}
         >
           {v.toFixed(1)}
-          <span className="opacity-60" style={{ fontSize: size * 0.13 }}>
+          <span className="text-muted-foreground" style={{ fontSize: "0.8125rem" }}>
             %
           </span>
         </div>
         <div
-          className="mt-1 font-semibold uppercase tracking-wider text-muted-foreground"
-          style={{ fontSize: "0.6875rem" }}
+          className="mt-1 font-semibold text-muted-foreground"
+          style={{ fontSize: "0.8125rem" }}
         >
           {label}
         </div>
