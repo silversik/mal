@@ -28,6 +28,7 @@ src/
 ├── redact.py          serviceKey/key 마스킹 — 로그·대시보드·CLI 예외 출력 공통
 ├── config.py · db.py (SQLAlchemy session_scope) · models.py · logging.py (structlog, 마스킹 renderer)
 ├── clients/           API별 HTTP 클라이언트 — kra_base.py 공통(재시도·XML 폴백·페이징·NODATA/쿼터 판정)
+├── racing_form/       경마지 — 순수 로직(현재 시각을 읽지 않음, now 인자) + SQL provider·저장. 아래 "경마지" 절
 └── jobs/              잡 본체. periodic.py = @track_job("mal.<name>") 스케줄 진입점(run_*)
                        _failloud.py = 단위 루프 "전부 실패면 raise" 헬퍼
 ```
@@ -79,6 +80,30 @@ src/
 - **영상/날씨**: `sync-videos --n` · `sync-weather --days` · `backfill-weather <start> <end> --chunk-days`
 - **one-shot 백필** (작은 chunk·sleep 유지 — 분당 한도): `backfill-race-sales --days` · `backfill-jockey-changes --days`
 - **`periodic-*`**: 스케줄 잡을 `@track_job` 째로 한 번 실행 (대시보드 run 기록됨). `periodic-videos` · `-videos-backfill` · `-videos-bulk` · `-races-today` · `-races-live` · `-races-yesterday`(= sync_yesterday_catchup) · `-jockeys` · `-trainers` · `-owners` · `-jockey-changes` · `-horse-rank-changes` · `-horse-ratings` · `-horses-backfill` · `-horses-refresh` · `-race-plan` · `-race-entries` · `-race-info` · `-race-today-meta` · `-race-dividends` · `-race-sales` · `-chunked-dividends`
+
+## 경마지 (racing form)
+
+경주 전날 18:00 에 고정 발행하는 데이터 예상단. 설계·운영 절차는 [docs/feature/racing-form.md](../docs/feature/racing-form.md),
+payload·규칙 계약은 [docs/spec/racing-form-contract.md](../docs/spec/racing-form-contract.md).
+기준 수치·문구는 `src/racing_form/definitions.py` 의 `RULE_SETS` — 값을 바꾸면 해시 핀 테스트가 깨진다
+(prod 에 등록된 버전은 고치지 말고 새 버전 r2… 를 추가할 것).
+경마지 잡·CLI 는 KRA 를 호출하지 않는다 (기존 테이블만 읽음).
+
+- **잡** (본체 `src/jobs/racing_form_jobs.py`, **스케줄 연결은 PR-2** — 그 전까지 위 스케줄 표에 없음):
+  `mal.publish_racing_form` 매시 정각 + 기동 직후 1회 (D−1 18:00 발행 = 동결) · `mal.settle_racing_form` 10~23시 :15·:45 (잠정 → D+1 13:00 확정).
+- **CLI** — prod 는 `docker exec mal-crawler python -m src.main <cmd>`. 옵션은 `--help` 기준.
+  - `racing-form-build <D> <경마장> [--mode live|replay] [--json]` — 한 호를 계산해 출력만 (쓰기 없음, live 의 발행 창 검사는 경고만)
+  - `racing-form-show` — 저장된 발행본·정산·공지 요약 (읽기 전용)
+  - `racing-form-settle [--date]` — 정산 잡과 같은 규칙으로 1회 정산 (outcomes 쓰기)
+  - `racing-form-backtest --from <D> --to <D> [--meet] --label dev|holdout [--json]` — 과거 시험. dev 는 읽기 전용, holdout 은 정의 해시당 1회 저장 후 출력
+  - `racing-form-preflight` — prod 읽기 전용 데이터 감사 (READ ONLY, statement_timeout 15s / lock_timeout 2s)
+  - `racing-form-verify` — 무결성 점검 (payload 해시 재계산·created_at−published_at·트리거 12개·ALWAYS·레지스트리 해시 vs DB)
+  - `racing-form-notice --kind erratum|withdrawn|paused …` — 운영자 공지 추가 (추가 전용, 지울 수 없음 — 철회해도 집계에 포함)
+  - (PR-2) `periodic-publish-racing-form` · `periodic-settle-racing-form` — 스케줄 잡을 `@track_job` 째로 1회
+- **발행 경로는 잡 하나뿐** — `--publish` 같은 수동 발행 CLI 는 없다.
+- `racing_form_*` 6개 테이블은 추가 전용(트리거 ENABLE ALWAYS — UPDATE·DELETE·TRUNCATE 거부). 로컬·e2e 에서 비우려면
+  같은 트랜잭션에서 `SET LOCAL mal.racing_form_allow_truncate = 'on'` 후 TRUNCATE (`tests/e2e/conftest.py`).
+- DB 보호 장치 테스트: `E2E_DATABASE_URL=… uv run pytest -q tests/test_racing_form_db.py` (없으면 skip, DB 준비는 `tests/e2e/README.md`).
 
 ## 테스트
 

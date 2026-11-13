@@ -55,9 +55,9 @@ uv run python -m src.main smoke
 | 카테고리 | 내용 | 진입 |
 |---|---|---|
 | **api** | 외부 OpenAPI (KRA · KMA · YouTube) 별 엔드포인트·인증·구현 위치 | [docs/api/](docs/api/) |
-| **spec** | 아키텍처 · 배포 · 운영 (Jenkins, docker-compose) | [docs/spec/](docs/spec/) |
+| **spec** | 아키텍처 · 배포 · 운영 (Jenkins, docker-compose) · 경마지 데이터 계약 | [docs/spec/](docs/spec/) · [경마지 계약](docs/spec/racing-form-contract.md) |
 | **tasks** | 페이즈 단위 작업 히스토리 (0001부터 시간순 누적) | [docs/tasks/](docs/tasks/) |
-| **feature** | 운영 중인 기능별 정의서 (기획 의도 · 데이터 흐름 · 컴포넌트) | [docs/feature/](docs/feature/) |
+| **feature** | 운영 중인 기능별 정의서 (기획 의도 · 데이터 흐름 · 컴포넌트) · 경마지 방향 문서 (1단계 구현 중) | [docs/feature/](docs/feature/) · [경마지](docs/feature/racing-form.md) |
 
 새 문서를 추가할 때는 위 4개 디렉토리 중 하나로 분류:
 
