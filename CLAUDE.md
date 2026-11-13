@@ -92,6 +92,7 @@ Next.js web (mal-web, PORT 4000 → nginx → mal.kr)  ·  로컬 dev :3000
 - **잡이 조용히 0건 success** — env 미설정 시 silent skip(return 0) 하면 대시보드가 success 로 기록해 미수집 사고를 못 잡음 (4/25 `KRA_CHULMA_OPERATION` 미설정으로 race_entries 0건). → env 미설정은 명시적 실패로. 새 env 를 읽는 잡을 추가하면 루트 `docker-compose.yml` 의 mal-crawler `environment` 에도 반드시 주입.
 - **UTC 기준 날짜 어긋남** — 스케줄러는 KST 지만 컨테이너 TZ·DB `CURRENT_DATE` 가 UTC 라 `date.today()` 가 하루 밀림 (07:30 catchup 이 D-2 보정, 토 레이팅 snapshot 이 금요일로 기록). → 크롤러 `TZ=Asia/Seoul` + 날짜는 `datetime.now(ZoneInfo("Asia/Seoul"))` 로 명시 (2026-11, `033`/`034`). 외부 API 의 "전날까지만 제공" 한도(KMA ASOS 시간자료)도 KST 어제로 끊는다.
 - **sitemap.xml fetch 타임아웃** — 전체 races 단일 XML 800KB+ → Search Console crawler timeout. → index→chunk 분할 (2026-05).
+- **배포 미반영(Docker 빌드 실패) — 2026-11** — 헤더 `AuthMenu`(auth()=cookies)를 `<Suspense>` 로 감싸자 Next 16 이 DB 쓰는 페이지(`/analysis` 등)를 빌드 시 프리렌더 → Docker 빌드의 dummy `DATABASE_URL` 로 ECONNREFUSED → 이미지 빌드 실패, prod 무변경. Jenkins type-check 는 `tsc` 만 돌려 못 잡음. → AuthMenu 는 Suspense 밖에 둔다. 레이아웃·헤더를 바꾸면 `DATABASE_URL=postgresql://x:x@localhost:5999/x npx next build` 로 DB 없이 빌드되는지 확인.
 - **NextAuth Kakao 재로그인 루프** — Kakao 토큰 만료 + silent refresh 실패 시 무한 redirect. → 토큰 갱신 실패는 명시적 로그아웃 + 로그인 모달로 분리.
 
 ## 디자인 시스템
