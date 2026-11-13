@@ -51,7 +51,7 @@ payload 에는 **float 가 없다** — 부담·기록은 0.1 단위 정수(`*_t
 | `rank` NULL/0 이고 기록 없음 | 미출주 — 이력에서 제외 |
 
 ### 1.2 활성 출전마 (Q1 → `select_active_entries`)
-1. `horse_no` 가 비었거나 meet 가 서울·부경·제주가 아니면 제외.
+1. `horse_no` 가 비었거나 meet 가 서울·부경·제주가 아니면 제외. `chul_no`(출전번호)가 없는 행도 제외하고 경고 `missing_chul_no:<race_no>` (출전번호가 정렬·마지막 동점·화면의 기준값이라 없으면 실을 수 없다).
 2. stale: `updated_at < batch_at − stale.batch_tolerance_min(30분)` 이면 제외. 단 한 경주에서 제외 비율이 `stale.max_drop_pct(50%)` 를 넘으면 그 경주는 제외하지 않고 경고 `stale_kept:<race_no>`.
 3. 같은 날 같은 말이 두 경주에 있으면 `updated_at` 최신 행 1개만 (동률이면 race_no 큰 쪽).
 4. 경주별 활성 N < `field.min_active(5)` 이면 그 경주 `status = "small_field"` → 모든 기준·주목마 예상 안 함.
@@ -62,7 +62,7 @@ payload 에는 **float 가 없다** — 부담·기록은 0.1 단위 정수(`*_t
 - 유효 부담 `budam_tenths`: `jockey_changes.weight_after` 가 있으면 그것, 없으면 출전표 `raw->>'wgBudam'`. ×10 정수.
 - 실제 기수: `btrim(COALESCE(jc.jk_name_after, e.jockey_name))`.
 - 거리: `COALESCE(races.distance, raw rcDist 정수)`, `distance.min_m~max_m(800~3000)` 밖이면 None.
-- 기록 `time_tenths`: `round(race_results.record_time * 10)` (record_time 은 초, `_parse_number` 가 "1:12.8" 도 초로 환산해 적재).
+- 기록 `time_tenths`: `round(race_results.record_time * 10)` (record_time 은 초, `_parse_number` 가 "1:12.8" 도 초로 환산해 적재). 반올림은 ROUND_HALF_UP (SQL numeric `round` 와 같음), 0 이하·`-` 는 None.
 
 ## 2. 기준 (r1)
 
@@ -91,6 +91,13 @@ payload 에는 **float 가 없다** — 부담·기록은 0.1 단위 정수(`*_t
 배지는 말(runner)마다 우선순위(`news.badge_priority`) 순 전체 목록을 payload 에 담고, 화면이 앞 3개 + `<details>` 로 나눈다.
 헤드라인은 호 전체에서 `news.headline_priority` 순으로 최대 6개, 넘친 수는 `headline_overflow`.
 문구 템플릿 키는 `definitions` 의 `wording` (`news_*`). 날짜는 `date_md`("11월 1일"), kg 는 tenths → "55.0".
+
+세부 (구현 `news.py` 기준)
+- 같은 종류의 헤드라인은 경주 → 출전번호 순. 말 헤드라인의 `text` 는 그 말의 배지 문장과 같다 — 경주·출전번호·마명은 웹이 `race_no`·`chul_no`·`horse_no` 로 붙인다. 요약 헤드라인(`summary_*`)은 `race_no`·`chul_no`·`horse_no` 가 모두 null.
+- 180일 이상 복귀 헤드라인은 최대 2개이고, 3번째부터는 헤드라인 후보가 아니다 (`headline_overflow` 에 세지 않음).
+- `RaceV1.stakes.name` = races.race_name → 없으면 race_plans 이름, `grade` = race_plans 등급 → 없으면 races.grade. 오늘 거리를 모르면 stakes 헤드라인은 `"{race_no}R {name} ({grade})"` (등급도 없으면 괄호 생략).
+- 기수 교체 문장에서 before/after 이름이 없으면 `-`.
+- 배지의 `delta` 키는 `rating_change`(정수)·`budam_change`(0.1kg) 에만 있다 (부호 포함, 오늘 − 직전).
 
 | kind | 조건 (이력 = 1.1 의 출주만, < H) | 배지 | 헤드라인 |
 |---|---|---|---|
@@ -205,6 +212,12 @@ type SummaryV1 = {
   counts: { headlines: number; jockey_changes: number; debuts: number; class_changes: number };
 };
 ```
+
+값 세부 (구현 `payload.py` 기준)
+- `edition.warnings` 값: `stale_kept:<race_no>` · `missing_chul_no:<race_no>` (모든 mode) / `entries_stale` · `unresolved_history:<YYYY-MM-DD>|<meet>` (live 만). `entries_batch_at`·`freeze_at` 는 초 단위로 자른 KST ISO.
+- `RunnerV1.horse_name` 은 출전표 마명이 없으면 horse_no. `course` 는 오늘 거리를 알면 항상 객체(starts 0 가능), 모르면 null. `best_time` 은 같은 기록이면 먼저 낸 경주. `last5[].meet` 는 정규화 라벨(서울·부경·제주), 정규화가 안 되면 원문.
+- `SummaryV1.counts.headlines` = `payload.headlines` 길이(넘친 수 제외). `jockey_changes`·`debuts`·`class_changes` = 그 kind 배지를 가진 말 수 (backtest 는 소식을 끄므로 0).
+- 활성 출전마가 0두가 된 경주(중복 제거로 다른 경주로 옮겨 간 경우)도 `field_size: 0`·`small_field` 로 싣는다.
 
 직렬화: Python `json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))` →
 `CAST(:payload AS jsonb)`. `summary` 컬럼은 `CAST(:payload AS jsonb) -> 'summary'` 로 넣는다.

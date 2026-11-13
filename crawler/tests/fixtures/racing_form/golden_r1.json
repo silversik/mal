@@ -1,0 +1,424 @@
+{
+  "_doc": "r1 기준 conformance — 20개 작은 가상 경주, 각각 한 가지 경계를 겨냥한다. expected 는 계약(docs/spec/racing-form-contract.md §2·§2.1)과 definitions r1 문구 템플릿에서 **손으로** 유도했다 (코드 출력 덤프 아님). 입력 규칙: 경주일 2026-11-15(일) 서울, H = 2026-11-14. runners[].form = 최근 1년 안 출주 착순(오래된→최근, 기본 H−7·H−14… 간격, 거리 2300m — 거리 적성과 섞이지 않게), null = 순위 없음(기록 있음), \"x\" = 미출주(착순·기록 없음), {r, ago, dist, meet} = 날짜·거리 지정. runners[].course = 오늘 경마장·거리 통산 착순(H−500일 이전 — 최근 성적에 섞이지 않게). runners[].starts = 날짜·거리·경마장을 지정한 출주. jockeys = {이름: [기승, 1착, 3착 이내, 정규화 기수번호 수]} (최근 90일 같은 경마장 집계). picks = [[mark, chul_no]], consensus.picks = [[mark, chul_no, votes]].",
+  "rules_version": "r1",
+  "definition_sha256": "a3144ab4f55f4e5f223ee23de2f14a418f0f2169ed5cb8c21b6b74570f8673a4",
+  "race_date": "2026-11-15",
+  "meet": "서울",
+  "races": [
+    {
+      "race_no": 1,
+      "why": "rating 기본 — 레이팅 높은 순 ◎5(80) ○2(72) △4(65), 3번은 레이팅 없음. 다른 기준은 자료가 없어 예상 안 함 → A=1 → insufficient",
+      "distance": 1200,
+      "runners": [
+        {"chul": 1, "rating": 60},
+        {"chul": 2, "rating": 72},
+        {"chul": 3, "rating": null},
+        {"chul": 4, "rating": 65},
+        {"chul": 5, "rating": 80},
+        {"chul": 6, "rating": 55}
+      ],
+      "expected": {
+        "rating": {"picks": [[1, 5], [2, 2], [3, 4]], "reasons": ["레이팅 80 · 출전 6두 중 1위", "레이팅 72 · 출전 6두 중 2위", "레이팅 65 · 출전 6두 중 3위"]},
+        "form": {"no_pick": "form_no_pick_eligible", "reason": "최근 1년 2번 이상 뛴 말이 0두뿐 (최소 3두)"},
+        "course": {"no_pick": "course_no_pick_eligible", "reason": "이 경마장·거리에서 3번 이상 뛴 말이 0두뿐 (최소 3두)"},
+        "jockey": {"no_pick": "jockey_no_pick", "reason": "최근 90일 이 경마장에서 20번 이상 탄 기수의 말이 0두뿐 (최소 3두)"},
+        "consensus": {"status": "insufficient", "active_rules": 1, "picks": []}
+      }
+    },
+    {
+      "race_no": 2,
+      "why": "rating 동점 — 75 두 마리는 번호순 ◎2 ○3, 70 두 마리 중 1번 △. 동점자가 있으면 '공동 n위(번호순)', n = 1 + 나보다 높은 말 수 (70 → 3위)",
+      "distance": 1200,
+      "runners": [
+        {"chul": 1, "rating": 70},
+        {"chul": 2, "rating": 75},
+        {"chul": 3, "rating": 75},
+        {"chul": 4, "rating": null},
+        {"chul": 5, "rating": 70}
+      ],
+      "expected": {
+        "rating": {"picks": [[1, 2], [2, 3], [3, 1]], "reasons": ["레이팅 75 · 출전 5두 중 공동 1위(번호순)", "레이팅 75 · 출전 5두 중 공동 1위(번호순)", "레이팅 70 · 출전 5두 중 공동 3위(번호순)"]},
+        "form": {"no_pick": "form_no_pick_eligible", "reason": "최근 1년 2번 이상 뛴 말이 0두뿐 (최소 3두)"},
+        "course": {"no_pick": "course_no_pick_eligible"},
+        "jockey": {"no_pick": "jockey_no_pick"},
+        "consensus": {"status": "insufficient", "active_rules": 1, "picks": []}
+      }
+    },
+    {
+      "race_no": 3,
+      "why": "rating 자격 경계 — N=7 → 최소 max(3, ⌈7/2⌉)=4두, 레이팅 있는 말 정확히 4두 → 예상. form 의 최소도 4두로 같이 오른다",
+      "distance": 1200,
+      "runners": [
+        {"chul": 1, "rating": 50},
+        {"chul": 2, "rating": null},
+        {"chul": 3, "rating": 61},
+        {"chul": 4, "rating": null},
+        {"chul": 5, "rating": 58},
+        {"chul": 6, "rating": null},
+        {"chul": 7, "rating": 49}
+      ],
+      "expected": {
+        "rating": {"picks": [[1, 3], [2, 5], [3, 1]], "reasons": ["레이팅 61 · 출전 7두 중 1위", "레이팅 58 · 출전 7두 중 2위", "레이팅 50 · 출전 7두 중 3위"]},
+        "form": {"no_pick": "form_no_pick_eligible", "reason": "최근 1년 2번 이상 뛴 말이 0두뿐 (최소 4두)"},
+        "course": {"no_pick": "course_no_pick_eligible", "reason": "이 경마장·거리에서 3번 이상 뛴 말이 0두뿐 (최소 3두)"},
+        "jockey": {"no_pick": "jockey_no_pick", "reason": "최근 90일 이 경마장에서 20번 이상 탄 기수의 말이 0두뿐 (최소 3두)"},
+        "consensus": {"status": "insufficient", "active_rules": 1, "picks": []}
+      }
+    },
+    {
+      "race_no": 4,
+      "why": "rating 자격 미달 — N=7 최소 4두인데 레이팅 있는 말 3두 (7번 레이팅 0 은 미평가) → 예상 안 함. 모든 기준 예상 안 함 → A=0",
+      "distance": 1200,
+      "runners": [
+        {"chul": 1, "rating": 50},
+        {"chul": 2, "rating": null},
+        {"chul": 3, "rating": 61},
+        {"chul": 4, "rating": null},
+        {"chul": 5, "rating": 58},
+        {"chul": 6, "rating": null},
+        {"chul": 7, "rating": 0}
+      ],
+      "expected": {
+        "rating": {"no_pick": "rating_no_pick", "reason": "레이팅이 있는 말이 3두뿐 (최소 4두)"},
+        "form": {"no_pick": "form_no_pick_eligible", "reason": "최근 1년 2번 이상 뛴 말이 0두뿐 (최소 4두)"},
+        "course": {"no_pick": "course_no_pick_eligible"},
+        "jockey": {"no_pick": "jockey_no_pick"},
+        "consensus": {"status": "insufficient", "active_rules": 0, "picks": []}
+      }
+    },
+    {
+      "race_no": 5,
+      "why": "small_field — 활성 4두 < field.min_active 5 → 레이팅·성적이 있어도 모든 기준 small_field, 주목마도 small_field (A=0)",
+      "distance": 1200,
+      "runners": [
+        {"chul": 1, "rating": 60, "form": [1, 1]},
+        {"chul": 2, "rating": 70, "form": [2, 1]},
+        {"chul": 3, "rating": 80, "form": [3, 1]},
+        {"chul": 4, "rating": 90}
+      ],
+      "expected": {
+        "rating": {"no_pick": "small_field", "reason": "출전 4두 — 5두 미만이라 예상 안 함"},
+        "form": {"no_pick": "small_field", "reason": "출전 4두 — 5두 미만이라 예상 안 함"},
+        "course": {"no_pick": "small_field", "reason": "출전 4두 — 5두 미만이라 예상 안 함"},
+        "jockey": {"no_pick": "small_field", "reason": "출전 4두 — 5두 미만이라 예상 안 함"},
+        "consensus": {"status": "small_field", "active_rules": 0, "picks": []}
+      }
+    },
+    {
+      "race_no": 6,
+      "why": "N=5 최소 경계 — rating 최소 max(3,3)=3두, 레이팅 3두 정확히 → 예상. 기수 3명(20기승 이상) → 예상 (승률 7/25 > 6/30 > 2/22). 두 기준만 예상 → A=2 → insufficient",
+      "distance": 1200,
+      "runners": [
+        {"chul": 1, "rating": null, "jockey": "한가람"},
+        {"chul": 2, "rating": 66, "jockey": "두나래"},
+        {"chul": 3, "rating": null, "jockey": "세나무"},
+        {"chul": 4, "rating": 64},
+        {"chul": 5, "rating": 68}
+      ],
+      "jockeys": {"한가람": [30, 6, 12, 1], "두나래": [22, 2, 6, 1], "세나무": [25, 7, 11, 1]},
+      "expected": {
+        "rating": {"picks": [[1, 5], [2, 2], [3, 4]], "reasons": ["레이팅 68 · 출전 5두 중 1위", "레이팅 66 · 출전 5두 중 2위", "레이팅 64 · 출전 5두 중 3위"]},
+        "form": {"no_pick": "form_no_pick_eligible", "reason": "최근 1년 2번 이상 뛴 말이 0두뿐 (최소 3두)"},
+        "course": {"no_pick": "course_no_pick_eligible"},
+        "jockey": {"picks": [[1, 3], [2, 1], [3, 2]], "reasons": ["세나무 기수 · 최근 90일 서울 25번 중 7승 (승률 28%)", "한가람 기수 · 최근 90일 서울 30번 중 6승 (승률 20%)", "두나래 기수 · 최근 90일 서울 22번 중 2승 (승률 9%)"]},
+        "consensus": {"status": "insufficient", "active_rules": 2, "picks": []}
+      }
+    },
+    {
+      "race_no": 7,
+      "why": "form 정렬 — 3착 이내 수↓(3번 3회) → 1착 수↓(1·2번 1회 > 5번 0회) → 직전 착순↑(1번 1착 < 2번 2착). 6번은 1전뿐이라 자격 없음",
+      "distance": 1200,
+      "runners": [
+        {"chul": 1, "form": [5, 2, 1]},
+        {"chul": 2, "form": [1, 4, 2]},
+        {"chul": 3, "form": [3, 3, 3]},
+        {"chul": 4, "form": [6, 1]},
+        {"chul": 5, "form": [2, 2, 7]},
+        {"chul": 6, "form": [8]}
+      ],
+      "expected": {
+        "rating": {"no_pick": "rating_no_pick", "reason": "레이팅이 있는 말이 0두뿐 (최소 3두)"},
+        "form": {"picks": [[1, 3], [2, 1], [3, 2]], "reasons": ["최근 3전 3착→3착→3착 (3착 이내 3번)", "최근 3전 5착→2착→1착 (3착 이내 2번)", "최근 3전 1착→4착→2착 (3착 이내 2번)"]},
+        "course": {"no_pick": "course_no_pick_eligible", "reason": "이 경마장·거리에서 3번 이상 뛴 말이 0두뿐 (최소 3두)"},
+        "jockey": {"no_pick": "jockey_no_pick"},
+        "consensus": {"status": "insufficient", "active_rules": 1, "picks": []}
+      }
+    },
+    {
+      "race_no": 8,
+      "why": "form 평균 착순 교차곱 — 4번만 1착이 있어 맨 앞. 1·2·3번은 3착 이내 2회·1착 0·직전 2착으로 같고 평균 착순 3번 5/2 < 1번 9/3 = 2번 9/3 → 3, 1(번호순). 3번의 순위 없음은 출주로 세되 평균에서 빠짐, 2번의 마지막 행은 착순·기록 모두 없어 미출주(무시)",
+      "distance": 1200,
+      "runners": [
+        {"chul": 1, "form": [4, 3, 2]},
+        {"chul": 2, "form": [2, 5, 2, "x"]},
+        {"chul": 3, "form": [null, 3, 2]},
+        {"chul": 4, "form": [6, 1, 3]},
+        {"chul": 5, "form": [7, 2, 3]},
+        {"chul": 6, "form": [1, 9]}
+      ],
+      "expected": {
+        "rating": {"no_pick": "rating_no_pick"},
+        "form": {"picks": [[1, 4], [2, 3], [3, 1]], "reasons": ["최근 3전 6착→1착→3착 (3착 이내 2번)", "최근 3전 순위 없음→3착→2착 (3착 이내 2번)", "최근 3전 4착→3착→2착 (3착 이내 2번)"]},
+        "course": {"no_pick": "course_no_pick_eligible"},
+        "jockey": {"no_pick": "jockey_no_pick"},
+        "consensus": {"status": "insufficient", "active_rules": 1, "picks": []}
+      }
+    },
+    {
+      "race_no": 9,
+      "why": "form 창 경계·표시 하한 — 3번의 H−366 1착은 창 밖(창 안 2전 7·8착 → 자격만), 4번의 H−365 2착은 창 안. 3착 이내가 없는 1·3번은 표시 안 함, 6번 1전뿐. 2·5·4번 모두 3착 이내 1회·1착 0 → 직전 착순 2 < 4 < 9",
+      "distance": 1200,
+      "runners": [
+        {"chul": 1, "form": [5, 6]},
+        {"chul": 2, "form": [4, 2]},
+        {"chul": 3, "form": [{"r": 1, "ago": 366}, 7, 8]},
+        {"chul": 4, "form": [{"r": 2, "ago": 365}, 9]},
+        {"chul": 5, "form": [3, 9, 4]},
+        {"chul": 6, "form": [1]}
+      ],
+      "expected": {
+        "rating": {"no_pick": "rating_no_pick"},
+        "form": {"picks": [[1, 2], [2, 5], [3, 4]], "reasons": ["최근 2전 4착→2착 (3착 이내 1번)", "최근 3전 3착→9착→4착 (3착 이내 1번)", "최근 2전 2착→9착 (3착 이내 1번)"]},
+        "course": {"no_pick": "course_no_pick_eligible"},
+        "jockey": {"no_pick": "jockey_no_pick"},
+        "consensus": {"status": "insufficient", "active_rules": 1, "picks": []}
+      }
+    },
+    {
+      "race_no": 10,
+      "why": "form 표시 하한으로 2두만 — 자격 4두 중 3착 이내가 있는 말은 2·3번뿐 → ◎2(1착 1회) ○3 만, △ 없음",
+      "distance": 1200,
+      "runners": [
+        {"chul": 1, "form": [4, 5]},
+        {"chul": 2, "form": [1, 6, 4]},
+        {"chul": 3, "form": [7, 3]},
+        {"chul": 4, "form": [6, 8]},
+        {"chul": 5}
+      ],
+      "expected": {
+        "rating": {"no_pick": "rating_no_pick"},
+        "form": {"picks": [[1, 2], [2, 3]], "reasons": ["최근 3전 1착→6착→4착 (3착 이내 1번)", "최근 2전 7착→3착 (3착 이내 1번)"]},
+        "course": {"no_pick": "course_no_pick_eligible"},
+        "jockey": {"no_pick": "jockey_no_pick"},
+        "consensus": {"status": "insufficient", "active_rules": 1, "picks": []}
+      }
+    },
+    {
+      "race_no": 11,
+      "why": "form_no_pick_top3 — 자격 5두 모두 최근 3전에 3착 이내 없음 (1번의 1착은 최근 3전 밖 4번째 전)",
+      "distance": 1200,
+      "runners": [
+        {"chul": 1, "form": [1, 5, 6, 7]},
+        {"chul": 2, "form": [4, 4]},
+        {"chul": 3, "form": [5, 9, 8]},
+        {"chul": 4, "form": [10, 6]},
+        {"chul": 5, "form": [7, 7, 7]}
+      ],
+      "expected": {
+        "rating": {"no_pick": "rating_no_pick"},
+        "form": {"no_pick": "form_no_pick_top3", "reason": "최근 3전에서 3착 안에 든 말이 없음"},
+        "course": {"no_pick": "course_no_pick_eligible"},
+        "jockey": {"no_pick": "jockey_no_pick"},
+        "consensus": {"status": "insufficient", "active_rules": 0, "picks": []}
+      }
+    },
+    {
+      "race_no": 12,
+      "why": "form 자격 미달 N=8(최소 4두, 2전 이상 3두 — 4번은 1전) + 주목마 split — rating·course·jockey 3개가 예상(A=3)했지만 v≥3 인 말 없음 (1번 rating◎+jockey△ v=2)",
+      "distance": 1400,
+      "runners": [
+        {"chul": 1, "rating": 90, "form": [1, 2], "jockey": "박새론"},
+        {"chul": 2, "rating": 85, "form": [3, 1]},
+        {"chul": 3, "rating": 80, "form": [2, 2]},
+        {"chul": 4, "rating": 50, "form": [1], "course": [1, 1, 1]},
+        {"chul": 5, "rating": 45, "course": [1, 2, 4]},
+        {"chul": 6, "course": [3, 5, 6]},
+        {"chul": 7, "jockey": "김하랑"},
+        {"chul": 8, "jockey": "이도담"}
+      ],
+      "jockeys": {"김하랑": [30, 9, 15, 1], "이도담": [25, 6, 10, 1], "박새론": [20, 3, 7, 1]},
+      "expected": {
+        "rating": {"picks": [[1, 1], [2, 2], [3, 3]], "reasons": ["레이팅 90 · 출전 8두 중 1위", "레이팅 85 · 출전 8두 중 2위", "레이팅 80 · 출전 8두 중 3위"]},
+        "form": {"no_pick": "form_no_pick_eligible", "reason": "최근 1년 2번 이상 뛴 말이 3두뿐 (최소 4두)"},
+        "course": {"picks": [[1, 4], [2, 5], [3, 6]], "reasons": ["서울 1400m 3번 중 3착 이내 3번 (1착 3번)", "서울 1400m 3번 중 3착 이내 2번 (1착 1번)", "서울 1400m 3번 중 3착 이내 1번 (1착 0번)"]},
+        "jockey": {"picks": [[1, 7], [2, 8], [3, 1]], "reasons": ["김하랑 기수 · 최근 90일 서울 30번 중 9승 (승률 30%)", "이도담 기수 · 최근 90일 서울 25번 중 6승 (승률 24%)", "박새론 기수 · 최근 90일 서울 20번 중 3승 (승률 15%)"]},
+        "consensus": {"status": "split", "active_rules": 3, "picks": []}
+      }
+    },
+    {
+      "race_no": 13,
+      "why": "course 거리 모름 — races.distance 600m 는 800~3000m 밖 → None (COALESCE 가 먼저라 rcDist 1200 으로 넘어가지 않음) → course_no_pick_distance",
+      "distance": 600,
+      "raw_rc_dist": "1200",
+      "runners": [
+        {"chul": 1},
+        {"chul": 2},
+        {"chul": 3},
+        {"chul": 4},
+        {"chul": 5}
+      ],
+      "expected": {
+        "rating": {"no_pick": "rating_no_pick", "reason": "레이팅이 있는 말이 0두뿐 (최소 3두)"},
+        "form": {"no_pick": "form_no_pick_eligible"},
+        "course": {"no_pick": "course_no_pick_distance", "reason": "거리 정보 없음"},
+        "jockey": {"no_pick": "jockey_no_pick"},
+        "consensus": {"status": "insufficient", "active_rules": 0, "picks": []}
+      }
+    },
+    {
+      "race_no": 14,
+      "why": "course 자격 미달 — 서울 1400m 3전 이상은 1번(3전)·2번(4전) 2두, 3번은 1착 2회지만 2전 → 자격 2두 < 3두",
+      "distance": 1400,
+      "runners": [
+        {"chul": 1, "course": [1, 2, 3]},
+        {"chul": 2, "course": [2, 1, 4, 5]},
+        {"chul": 3, "course": [1, 1]},
+        {"chul": 4},
+        {"chul": 5}
+      ],
+      "expected": {
+        "rating": {"no_pick": "rating_no_pick"},
+        "form": {"no_pick": "form_no_pick_eligible"},
+        "course": {"no_pick": "course_no_pick_eligible", "reason": "이 경마장·거리에서 3번 이상 뛴 말이 2두뿐 (최소 3두)"},
+        "jockey": {"no_pick": "jockey_no_pick"},
+        "consensus": {"status": "insufficient", "active_rules": 0, "picks": []}
+      }
+    },
+    {
+      "race_no": 15,
+      "why": "course 정렬 — 3착 이내율 1번 2/3 = 3번 4/6 (교차곱 2·6 = 4·3) → 3착 이내 수 많은 3번 먼저, 다음 2번 3/5 > 4번 3/6. 5번은 서울 0회(부경 1착은 다른 경마장) 표시 안 함, 6번은 2전 자격 없음",
+      "distance": 1200,
+      "runners": [
+        {"chul": 1, "course": [1, 2, 5]},
+        {"chul": 2, "course": [1, 1, 2, 4, 6]},
+        {"chul": 3, "course": [3, 2, 6, 7, 1, 2]},
+        {"chul": 4, "course": [2, 3, 1, 9, 8, 7]},
+        {"chul": 5, "course": [5, 6, 7], "starts": [{"r": 1, "ago": 600, "dist": 1200, "meet": "부경"}]},
+        {"chul": 6, "course": [1, 1]}
+      ],
+      "expected": {
+        "rating": {"no_pick": "rating_no_pick"},
+        "form": {"no_pick": "form_no_pick_eligible", "reason": "최근 1년 2번 이상 뛴 말이 0두뿐 (최소 3두)"},
+        "course": {"picks": [[1, 3], [2, 1], [3, 2]], "reasons": ["서울 1200m 6번 중 3착 이내 4번 (1착 1번)", "서울 1200m 3번 중 3착 이내 2번 (1착 1번)", "서울 1200m 5번 중 3착 이내 3번 (1착 2번)"]},
+        "jockey": {"no_pick": "jockey_no_pick"},
+        "consensus": {"status": "insufficient", "active_rules": 1, "picks": []}
+      }
+    },
+    {
+      "race_no": 16,
+      "why": "course_no_pick_top3 — 자격 3두(1·2·3번) 모두 서울 1600m 3착 이내 0회 (4번 1착 2회는 2전이라 자격 없음)",
+      "distance": 1600,
+      "runners": [
+        {"chul": 1, "course": [4, 5, 6]},
+        {"chul": 2, "course": [7, 8, 9, 4]},
+        {"chul": 3, "course": [5, 5, 5]},
+        {"chul": 4, "course": [1, 1]},
+        {"chul": 5}
+      ],
+      "expected": {
+        "rating": {"no_pick": "rating_no_pick"},
+        "form": {"no_pick": "form_no_pick_eligible"},
+        "course": {"no_pick": "course_no_pick_top3", "reason": "이 경마장·거리에서 3착 안에 든 말이 없음"},
+        "jockey": {"no_pick": "jockey_no_pick"},
+        "consensus": {"status": "insufficient", "active_rules": 0, "picks": []}
+      }
+    },
+    {
+      "race_no": 17,
+      "why": "jockey 자격 — 19기승(1번) 미달, 20기승(2번) 경계 자격, 기수번호 2개(3번)는 동명이인 제외(승률이 가장 높아도), 번호 0개(5번, 모두 NULL)는 동명이인 아님, 6번은 집계 없음. 4·5번 승률 20% 동률 → 3착 이내율 5번 12/25 > 4번 10/30",
+      "distance": 1200,
+      "runners": [
+        {"chul": 1, "jockey": "김가람"},
+        {"chul": 2, "jockey": "이나래"},
+        {"chul": 3, "jockey": "박다온"},
+        {"chul": 4, "jockey": "최라온"},
+        {"chul": 5, "jockey": "정마루"},
+        {"chul": 6, "jockey": "한바다"}
+      ],
+      "jockeys": {"김가람": [19, 5, 9, 1], "이나래": [20, 3, 8, 1], "박다온": [40, 10, 15, 2], "최라온": [30, 6, 10, 1], "정마루": [25, 5, 12, 0]},
+      "expected": {
+        "rating": {"no_pick": "rating_no_pick"},
+        "form": {"no_pick": "form_no_pick_eligible"},
+        "course": {"no_pick": "course_no_pick_eligible"},
+        "jockey": {"picks": [[1, 5], [2, 4], [3, 2]], "reasons": ["정마루 기수 · 최근 90일 서울 25번 중 5승 (승률 20%)", "최라온 기수 · 최근 90일 서울 30번 중 6승 (승률 20%)", "이나래 기수 · 최근 90일 서울 20번 중 3승 (승률 15%)"]},
+        "consensus": {"status": "insufficient", "active_rules": 1, "picks": []}
+      }
+    },
+    {
+      "race_no": 18,
+      "why": "jockey 동점 사슬 — 1~4번 승률 20%·3착 이내율 40% 모두 같음 → 기승 수 많은 순(2번 40, 3번 30) → 20기승 동률인 1·4번은 번호순 1번. 5번 승률 10%",
+      "distance": 1200,
+      "runners": [
+        {"chul": 1, "jockey": "윤소리"},
+        {"chul": 2, "jockey": "장한결"},
+        {"chul": 3, "jockey": "임새벽"},
+        {"chul": 4, "jockey": "오누리"},
+        {"chul": 5, "jockey": "서다솜"}
+      ],
+      "jockeys": {"윤소리": [20, 4, 8, 1], "장한결": [40, 8, 16, 1], "임새벽": [30, 6, 12, 1], "오누리": [20, 4, 8, 1], "서다솜": [50, 5, 20, 1]},
+      "expected": {
+        "rating": {"no_pick": "rating_no_pick"},
+        "form": {"no_pick": "form_no_pick_eligible"},
+        "course": {"no_pick": "course_no_pick_eligible"},
+        "jockey": {"picks": [[1, 2], [2, 3], [3, 1]], "reasons": ["장한결 기수 · 최근 90일 서울 40번 중 8승 (승률 20%)", "임새벽 기수 · 최근 90일 서울 30번 중 6승 (승률 20%)", "윤소리 기수 · 최근 90일 서울 20번 중 4승 (승률 20%)"]},
+        "consensus": {"status": "insufficient", "active_rules": 1, "picks": []}
+      }
+    },
+    {
+      "race_no": 19,
+      "why": "주목마 A=4 — 1번 v=4, 2·3번 v=3 (◎1·○1 로 동률) → 번호순 2번, 최대 2두라 3번 제외. 근거는 받은 기호↑ → 기준 순서: 1번은 form·course(◎) 2개 + 외 2, 2번은 jockey(◎)·course(○) + 외 1",
+      "distance": 1200,
+      "runners": [
+        {"chul": 1, "rating": 75, "form": [1, 1, 1], "course": [1, 1, 2], "jockey": "나래온"},
+        {"chul": 2, "rating": 70, "form": [5, 6], "course": [1, 2, 5], "jockey": "구슬비"},
+        {"chul": 3, "rating": 80, "form": [2, 1, 3], "course": [3, 4, 5], "jockey": "라희수"},
+        {"chul": 4, "rating": 60, "form": [8, 9], "course": [6, 7, 8], "jockey": "다올빛"},
+        {"chul": 5, "rating": 55, "form": [7, 2, 4], "jockey": "모아름"},
+        {"chul": 6, "rating": 50}
+      ],
+      "jockeys": {"나래온": [40, 10, 20, 1], "구슬비": [30, 9, 15, 1], "라희수": [25, 2, 5, 1], "다올빛": [20, 4, 8, 1], "모아름": [10, 1, 3, 1]},
+      "expected": {
+        "rating": {"picks": [[1, 3], [2, 1], [3, 2]], "reasons": ["레이팅 80 · 출전 6두 중 1위", "레이팅 75 · 출전 6두 중 2위", "레이팅 70 · 출전 6두 중 3위"]},
+        "form": {"picks": [[1, 1], [2, 3], [3, 5]], "reasons": ["최근 3전 1착→1착→1착 (3착 이내 3번)", "최근 3전 2착→1착→3착 (3착 이내 3번)", "최근 3전 7착→2착→4착 (3착 이내 1번)"]},
+        "course": {"picks": [[1, 1], [2, 2], [3, 3]], "reasons": ["서울 1200m 3번 중 3착 이내 3번 (1착 2번)", "서울 1200m 3번 중 3착 이내 2번 (1착 1번)", "서울 1200m 3번 중 3착 이내 1번 (1착 0번)"]},
+        "jockey": {"picks": [[1, 2], [2, 1], [3, 4]], "reasons": ["구슬비 기수 · 최근 90일 서울 30번 중 9승 (승률 30%)", "나래온 기수 · 최근 90일 서울 40번 중 10승 (승률 25%)", "다올빛 기수 · 최근 90일 서울 20번 중 4승 (승률 20%)"]},
+        "consensus": {
+          "status": "picked",
+          "active_rules": 4,
+          "picks": [[1, 1, 4], [2, 2, 3]],
+          "details": [
+            {"marks": {"rating": 2, "form": 1, "course": 1, "jockey": 2}, "reasons": ["최근 3전 1착→1착→1착 (3착 이내 3번)", "서울 1200m 3번 중 3착 이내 3번 (1착 2번)"], "reasons_more": 2},
+            {"marks": {"rating": 3, "course": 2, "jockey": 1}, "reasons": ["구슬비 기수 · 최근 90일 서울 30번 중 9승 (승률 30%)", "서울 1200m 3번 중 3착 이내 2번 (1착 1번)"], "reasons_more": 1}
+          ]
+        }
+      }
+    },
+    {
+      "race_no": 20,
+      "why": "주목마 A=3·v=3 — 거리 모름(null)으로 course 가 빠지고 rating·form·jockey 3개가 모두 1번을 ◎ ('예상을 낸 기준 3개가 모두 고름'). 2·3번은 v=2 라 후보 아님. 근거는 모두 ◎ 이라 기준 순서 rating·form 2개 + 외 1",
+      "distance": null,
+      "runners": [
+        {"chul": 1, "rating": 70, "form": [2, 1], "jockey": "하은별"},
+        {"chul": 2, "rating": 65, "form": [3, 3]},
+        {"chul": 3, "rating": 60, "form": [5, 6], "jockey": "주다인"},
+        {"chul": 4, "rating": 55, "form": [1, 2]},
+        {"chul": 5, "rating": null, "jockey": "송이랑"}
+      ],
+      "jockeys": {"하은별": [30, 9, 15, 1], "주다인": [25, 5, 10, 1], "송이랑": [20, 2, 6, 1]},
+      "expected": {
+        "rating": {"picks": [[1, 1], [2, 2], [3, 3]], "reasons": ["레이팅 70 · 출전 5두 중 1위", "레이팅 65 · 출전 5두 중 2위", "레이팅 60 · 출전 5두 중 3위"]},
+        "form": {"picks": [[1, 1], [2, 4], [3, 2]], "reasons": ["최근 2전 2착→1착 (3착 이내 2번)", "최근 2전 1착→2착 (3착 이내 2번)", "최근 2전 3착→3착 (3착 이내 2번)"]},
+        "course": {"no_pick": "course_no_pick_distance", "reason": "거리 정보 없음"},
+        "jockey": {"picks": [[1, 1], [2, 3], [3, 5]], "reasons": ["하은별 기수 · 최근 90일 서울 30번 중 9승 (승률 30%)", "주다인 기수 · 최근 90일 서울 25번 중 5승 (승률 20%)", "송이랑 기수 · 최근 90일 서울 20번 중 2승 (승률 10%)"]},
+        "consensus": {
+          "status": "picked",
+          "active_rules": 3,
+          "picks": [[1, 1, 3]],
+          "details": [
+            {"marks": {"rating": 1, "form": 1, "jockey": 1}, "reasons": ["레이팅 70 · 출전 5두 중 1위", "최근 2전 2착→1착 (3착 이내 2번)"], "reasons_more": 1}
+          ]
+        }
+      }
+    }
+  ]
+}

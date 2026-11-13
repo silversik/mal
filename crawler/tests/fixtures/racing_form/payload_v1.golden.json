@@ -1,0 +1,1472 @@
+{
+  "edition": {
+    "entries_batch_at": "2026-11-14T15:00:00+09:00",
+    "freeze_at": "2026-11-14T18:00:00+09:00",
+    "history_before": "2026-11-14",
+    "meet": "서울",
+    "race_date": "2026-11-15",
+    "results_through": "2026-11-04",
+    "rules_version": "r1",
+    "warnings": [
+      "unresolved_history:2026-11-09|서울"
+    ]
+  },
+  "headline_overflow": 2,
+  "headlines": [
+    {
+      "chul_no": null,
+      "horse_no": null,
+      "kind": "stakes",
+      "race_no": 2,
+      "text": "2R 서울마주협회장배 (L, 1400m)"
+    },
+    {
+      "chul_no": 1,
+      "horse_no": "0042001",
+      "kind": "jockey_change",
+      "race_no": 2,
+      "text": "기수 교체 오누리→서다솜 (기수 부상) · 부담 55.0→54.0kg"
+    },
+    {
+      "chul_no": 3,
+      "horse_no": "0042003",
+      "kind": "class_change",
+      "race_no": 2,
+      "text": "국5등급→국6등급 강급 후 첫 출전"
+    },
+    {
+      "chul_no": 3,
+      "horse_no": "0042003",
+      "kind": "layoff",
+      "race_no": 2,
+      "text": "201일 만의 출전 (직전 4월 28일 3착)"
+    },
+    {
+      "chul_no": 5,
+      "horse_no": "0042005",
+      "kind": "win_streak",
+      "race_no": 2,
+      "text": "3연승 중"
+    },
+    {
+      "chul_no": null,
+      "horse_no": null,
+      "kind": "summary_trainer_change",
+      "race_no": null,
+      "text": "조교사 변경 3두"
+    }
+  ],
+  "races": [
+    {
+      "consensus": {
+        "active_rules": 4,
+        "min_votes": 3,
+        "picks": [
+          {
+            "chul_no": 3,
+            "horse_no": "0041003",
+            "mark": 1,
+            "marks": {
+              "course": 1,
+              "form": 1,
+              "jockey": 1,
+              "rating": 1
+            },
+            "reasons": [
+              "레이팅 75 · 출전 6두 중 1위",
+              "최근 3전 2착→2착→1착 (3착 이내 3번)"
+            ],
+            "reasons_more": 2,
+            "votes": 4
+          },
+          {
+            "chul_no": 1,
+            "horse_no": "0041001",
+            "mark": 2,
+            "marks": {
+              "course": 2,
+              "form": 2,
+              "jockey": 2,
+              "rating": 2
+            },
+            "reasons": [
+              "레이팅 72 · 출전 6두 중 2위",
+              "최근 3전 3착→1착→2착 (3착 이내 3번)"
+            ],
+            "reasons_more": 2,
+            "votes": 4
+          }
+        ],
+        "status": "picked"
+      },
+      "distance": 1200,
+      "field_size": 6,
+      "grade": "국6",
+      "race_name": null,
+      "race_no": 1,
+      "rules": [
+        {
+          "key": "rating",
+          "picks": [
+            {
+              "chul_no": 3,
+              "horse_no": "0041003",
+              "mark": 1,
+              "reason": "레이팅 75 · 출전 6두 중 1위"
+            },
+            {
+              "chul_no": 1,
+              "horse_no": "0041001",
+              "mark": 2,
+              "reason": "레이팅 72 · 출전 6두 중 2위"
+            },
+            {
+              "chul_no": 2,
+              "horse_no": "0041002",
+              "mark": 3,
+              "reason": "레이팅 68 · 출전 6두 중 3위"
+            }
+          ],
+          "status": "picked"
+        },
+        {
+          "key": "form",
+          "picks": [
+            {
+              "chul_no": 3,
+              "horse_no": "0041003",
+              "mark": 1,
+              "reason": "최근 3전 2착→2착→1착 (3착 이내 3번)"
+            },
+            {
+              "chul_no": 1,
+              "horse_no": "0041001",
+              "mark": 2,
+              "reason": "최근 3전 3착→1착→2착 (3착 이내 3번)"
+            },
+            {
+              "chul_no": 5,
+              "horse_no": "0041005",
+              "mark": 3,
+              "reason": "최근 3전 1착→8착→9착 (3착 이내 1번)"
+            }
+          ],
+          "status": "picked"
+        },
+        {
+          "key": "course",
+          "picks": [
+            {
+              "chul_no": 3,
+              "horse_no": "0041003",
+              "mark": 1,
+              "reason": "서울 1200m 4번 중 3착 이내 4번 (1착 2번)"
+            },
+            {
+              "chul_no": 1,
+              "horse_no": "0041001",
+              "mark": 2,
+              "reason": "서울 1200m 3번 중 3착 이내 2번 (1착 1번)"
+            },
+            {
+              "chul_no": 4,
+              "horse_no": "0041004",
+              "mark": 3,
+              "reason": "서울 1200m 3번 중 3착 이내 1번 (1착 0번)"
+            }
+          ],
+          "status": "picked"
+        },
+        {
+          "key": "jockey",
+          "picks": [
+            {
+              "chul_no": 3,
+              "horse_no": "0041003",
+              "mark": 1,
+              "reason": "박다온 기수 · 최근 90일 서울 25번 중 6승 (승률 24%)"
+            },
+            {
+              "chul_no": 1,
+              "horse_no": "0041001",
+              "mark": 2,
+              "reason": "김가람 기수 · 최근 90일 서울 40번 중 8승 (승률 20%)"
+            },
+            {
+              "chul_no": 5,
+              "horse_no": "0041005",
+              "mark": 3,
+              "reason": "정마루 기수 · 최근 90일 서울 35번 중 5승 (승률 14%)"
+            }
+          ],
+          "status": "picked"
+        }
+      ],
+      "runners": [
+        {
+          "age": "4",
+          "badges": [
+            {
+              "kind": "distance_change",
+              "text": "거리 1400m→1200m"
+            },
+            {
+              "delta": 10,
+              "kind": "rating_change",
+              "text": "레이팅 ▲10 (62→72)"
+            },
+            {
+              "kind": "rating_high",
+              "text": "레이팅 개인 최고"
+            }
+          ],
+          "best_time": {
+            "race_date": "2025-08-08",
+            "time_tenths": 730,
+            "track_condition": "양호"
+          },
+          "budam_tenths": 540,
+          "career": {
+            "starts": 6,
+            "top3": 5,
+            "wins": 2
+          },
+          "chul_no": 1,
+          "consensus_mark": 2,
+          "course": {
+            "distance": 1200,
+            "meet": "서울",
+            "starts": 3,
+            "top3": 2,
+            "wins": 1
+          },
+          "days_since_last": 15,
+          "horse_name": "골든1",
+          "horse_no": "0041001",
+          "jockey_change": null,
+          "jockey_name": "김가람",
+          "last5": [
+            {
+              "distance": 1200,
+              "field_size": 9,
+              "meet": "서울",
+              "race_date": "2025-08-29",
+              "race_no": 5,
+              "rank": 4
+            },
+            {
+              "distance": 1200,
+              "field_size": 9,
+              "meet": "서울",
+              "race_date": "2025-09-19",
+              "race_no": 5,
+              "rank": 2
+            },
+            {
+              "distance": 1400,
+              "field_size": 10,
+              "meet": "서울",
+              "race_date": "2026-10-03",
+              "race_no": 3,
+              "rank": 3
+            },
+            {
+              "distance": 1400,
+              "field_size": 10,
+              "meet": "서울",
+              "race_date": "2026-10-17",
+              "race_no": 3,
+              "rank": 1
+            },
+            {
+              "distance": 1400,
+              "field_size": 10,
+              "meet": "서울",
+              "race_date": "2026-10-31",
+              "race_no": 3,
+              "rank": 2
+            }
+          ],
+          "last_start": {
+            "race_date": "2026-10-31",
+            "rank": 2
+          },
+          "marks": {
+            "course": 2,
+            "form": 2,
+            "jockey": 2,
+            "rating": 2
+          },
+          "rating": 72,
+          "rating_prev": 62,
+          "sex": "수",
+          "trainer_name": "박조교"
+        },
+        {
+          "age": "4",
+          "badges": [
+            {
+              "kind": "first_pair",
+              "text": "이나래 기수가 이 말을 처음 탐"
+            },
+            {
+              "kind": "distance_change",
+              "text": "거리 1400m→1200m"
+            },
+            {
+              "delta": 6,
+              "kind": "rating_change",
+              "text": "레이팅 ▲6 (62→68)"
+            },
+            {
+              "kind": "rating_high",
+              "text": "레이팅 개인 최고"
+            }
+          ],
+          "best_time": {
+            "race_date": "2025-09-19",
+            "time_tenths": 772,
+            "track_condition": "양호"
+          },
+          "budam_tenths": 540,
+          "career": {
+            "starts": 6,
+            "top3": 0,
+            "wins": 0
+          },
+          "chul_no": 2,
+          "consensus_mark": null,
+          "course": {
+            "distance": 1200,
+            "meet": "서울",
+            "starts": 3,
+            "top3": 0,
+            "wins": 0
+          },
+          "days_since_last": 15,
+          "horse_name": "골든2",
+          "horse_no": "0041002",
+          "jockey_change": null,
+          "jockey_name": "이나래",
+          "last5": [
+            {
+              "distance": 1200,
+              "field_size": 9,
+              "meet": "서울",
+              "race_date": "2025-08-29",
+              "race_no": 5,
+              "rank": 7
+            },
+            {
+              "distance": 1200,
+              "field_size": 9,
+              "meet": "서울",
+              "race_date": "2025-09-19",
+              "race_no": 5,
+              "rank": 5
+            },
+            {
+              "distance": 1400,
+              "field_size": 10,
+              "meet": "서울",
+              "race_date": "2026-10-03",
+              "race_no": 3,
+              "rank": 5
+            },
+            {
+              "distance": 1400,
+              "field_size": 10,
+              "meet": "서울",
+              "race_date": "2026-10-17",
+              "race_no": 3,
+              "rank": 4
+            },
+            {
+              "distance": 1400,
+              "field_size": 10,
+              "meet": "서울",
+              "race_date": "2026-10-31",
+              "race_no": 3,
+              "rank": 6
+            }
+          ],
+          "last_start": {
+            "race_date": "2026-10-31",
+            "rank": 6
+          },
+          "marks": {
+            "rating": 3
+          },
+          "rating": 68,
+          "rating_prev": 62,
+          "sex": "수",
+          "trainer_name": "최조교"
+        },
+        {
+          "age": "4",
+          "badges": [
+            {
+              "kind": "first_pair",
+              "text": "박다온 기수가 이 말을 처음 탐"
+            },
+            {
+              "kind": "distance_change",
+              "text": "거리 1400m→1200m"
+            },
+            {
+              "delta": 13,
+              "kind": "rating_change",
+              "text": "레이팅 ▲13 (62→75)"
+            },
+            {
+              "kind": "rating_high",
+              "text": "레이팅 개인 최고"
+            },
+            {
+              "kind": "last_win",
+              "text": "직전 경주 1착 (10월 31일)"
+            }
+          ],
+          "best_time": {
+            "race_date": "2025-07-18",
+            "time_tenths": 730,
+            "track_condition": "양호"
+          },
+          "budam_tenths": 540,
+          "career": {
+            "starts": 7,
+            "top3": 7,
+            "wins": 3
+          },
+          "chul_no": 3,
+          "consensus_mark": 1,
+          "course": {
+            "distance": 1200,
+            "meet": "서울",
+            "starts": 4,
+            "top3": 4,
+            "wins": 2
+          },
+          "days_since_last": 15,
+          "horse_name": "골든3",
+          "horse_no": "0041003",
+          "jockey_change": null,
+          "jockey_name": "박다온",
+          "last5": [
+            {
+              "distance": 1200,
+              "field_size": 9,
+              "meet": "서울",
+              "race_date": "2025-08-29",
+              "race_no": 5,
+              "rank": 3
+            },
+            {
+              "distance": 1200,
+              "field_size": 9,
+              "meet": "서울",
+              "race_date": "2025-09-19",
+              "race_no": 5,
+              "rank": 2
+            },
+            {
+              "distance": 1400,
+              "field_size": 10,
+              "meet": "서울",
+              "race_date": "2026-10-03",
+              "race_no": 3,
+              "rank": 2
+            },
+            {
+              "distance": 1400,
+              "field_size": 10,
+              "meet": "서울",
+              "race_date": "2026-10-17",
+              "race_no": 3,
+              "rank": 2
+            },
+            {
+              "distance": 1400,
+              "field_size": 10,
+              "meet": "서울",
+              "race_date": "2026-10-31",
+              "race_no": 3,
+              "rank": 1
+            }
+          ],
+          "last_start": {
+            "race_date": "2026-10-31",
+            "rank": 1
+          },
+          "marks": {
+            "course": 1,
+            "form": 1,
+            "jockey": 1,
+            "rating": 1
+          },
+          "rating": 75,
+          "rating_prev": 62,
+          "sex": "수",
+          "trainer_name": "박조교"
+        },
+        {
+          "age": "4",
+          "badges": [
+            {
+              "kind": "first_pair",
+              "text": "최라온 기수가 이 말을 처음 탐"
+            },
+            {
+              "kind": "distance_change",
+              "text": "거리 1400m→1200m"
+            },
+            {
+              "kind": "trainer_change",
+              "text": "조교사 변경 최조교→정조교"
+            }
+          ],
+          "best_time": {
+            "race_date": "2025-08-08",
+            "time_tenths": 740,
+            "track_condition": "양호"
+          },
+          "budam_tenths": 540,
+          "career": {
+            "starts": 5,
+            "top3": 2,
+            "wins": 0
+          },
+          "chul_no": 4,
+          "consensus_mark": null,
+          "course": {
+            "distance": 1200,
+            "meet": "서울",
+            "starts": 3,
+            "top3": 1,
+            "wins": 0
+          },
+          "days_since_last": 15,
+          "horse_name": "골든4",
+          "horse_no": "0041004",
+          "jockey_change": null,
+          "jockey_name": "최라온",
+          "last5": [
+            {
+              "distance": 1200,
+              "field_size": 9,
+              "meet": "서울",
+              "race_date": "2025-08-08",
+              "race_no": 5,
+              "rank": 2
+            },
+            {
+              "distance": 1200,
+              "field_size": 9,
+              "meet": "서울",
+              "race_date": "2025-08-29",
+              "race_no": 5,
+              "rank": 5
+            },
+            {
+              "distance": 1200,
+              "field_size": 9,
+              "meet": "서울",
+              "race_date": "2025-09-19",
+              "race_no": 5,
+              "rank": 9
+            },
+            {
+              "distance": 1400,
+              "field_size": 10,
+              "meet": "서울",
+              "race_date": "2026-10-17",
+              "race_no": 3,
+              "rank": 7
+            },
+            {
+              "distance": 1400,
+              "field_size": 10,
+              "meet": "서울",
+              "race_date": "2026-10-31",
+              "race_no": 3,
+              "rank": 3
+            }
+          ],
+          "last_start": {
+            "race_date": "2026-10-31",
+            "rank": 3
+          },
+          "marks": {
+            "course": 3
+          },
+          "rating": 61,
+          "rating_prev": 61,
+          "sex": "수",
+          "trainer_name": "정조교"
+        },
+        {
+          "age": "4",
+          "badges": [
+            {
+              "kind": "first_pair",
+              "text": "정마루 기수가 이 말을 처음 탐"
+            },
+            {
+              "kind": "distance_change",
+              "text": "거리 1400m→1200m"
+            },
+            {
+              "delta": 4,
+              "kind": "rating_change",
+              "text": "레이팅 ▲4 (62→66)"
+            },
+            {
+              "kind": "rating_high",
+              "text": "레이팅 개인 최고"
+            }
+          ],
+          "best_time": {
+            "race_date": "2025-08-29",
+            "time_tenths": 750,
+            "track_condition": "양호"
+          },
+          "budam_tenths": 540,
+          "career": {
+            "starts": 5,
+            "top3": 3,
+            "wins": 1
+          },
+          "chul_no": 5,
+          "consensus_mark": null,
+          "course": {
+            "distance": 1200,
+            "meet": "서울",
+            "starts": 2,
+            "top3": 2,
+            "wins": 0
+          },
+          "days_since_last": 15,
+          "horse_name": "골든5",
+          "horse_no": "0041005",
+          "jockey_change": null,
+          "jockey_name": "정마루",
+          "last5": [
+            {
+              "distance": 1200,
+              "field_size": 9,
+              "meet": "서울",
+              "race_date": "2025-08-29",
+              "race_no": 5,
+              "rank": 3
+            },
+            {
+              "distance": 1200,
+              "field_size": 9,
+              "meet": "서울",
+              "race_date": "2025-09-19",
+              "race_no": 5,
+              "rank": 3
+            },
+            {
+              "distance": 1400,
+              "field_size": 10,
+              "meet": "서울",
+              "race_date": "2026-10-03",
+              "race_no": 3,
+              "rank": 1
+            },
+            {
+              "distance": 1400,
+              "field_size": 10,
+              "meet": "서울",
+              "race_date": "2026-10-17",
+              "race_no": 3,
+              "rank": 8
+            },
+            {
+              "distance": 1400,
+              "field_size": 10,
+              "meet": "서울",
+              "race_date": "2026-10-31",
+              "race_no": 3,
+              "rank": 9
+            }
+          ],
+          "last_start": {
+            "race_date": "2026-10-31",
+            "rank": 9
+          },
+          "marks": {
+            "form": 3,
+            "jockey": 3
+          },
+          "rating": 66,
+          "rating_prev": 62,
+          "sex": "수",
+          "trainer_name": "최조교"
+        },
+        {
+          "age": "4",
+          "badges": [
+            {
+              "kind": "first_pair",
+              "text": "한바다 기수가 이 말을 처음 탐"
+            },
+            {
+              "kind": "distance_change",
+              "text": "거리 1400m→1200m"
+            },
+            {
+              "kind": "distance_first",
+              "text": "1200m 첫 출전"
+            },
+            {
+              "kind": "trainer_change",
+              "text": "조교사 변경 최조교→정조교"
+            }
+          ],
+          "best_time": null,
+          "budam_tenths": 540,
+          "career": {
+            "starts": 1,
+            "top3": 0,
+            "wins": 0
+          },
+          "chul_no": 6,
+          "consensus_mark": null,
+          "course": {
+            "distance": 1200,
+            "meet": "서울",
+            "starts": 0,
+            "top3": 0,
+            "wins": 0
+          },
+          "days_since_last": 15,
+          "horse_name": "골든6",
+          "horse_no": "0041006",
+          "jockey_change": null,
+          "jockey_name": "한바다",
+          "last5": [
+            {
+              "distance": 1400,
+              "field_size": 10,
+              "meet": "서울",
+              "race_date": "2026-10-31",
+              "race_no": 3,
+              "rank": 4
+            }
+          ],
+          "last_start": {
+            "race_date": "2026-10-31",
+            "rank": 4
+          },
+          "marks": {},
+          "rating": null,
+          "rating_prev": 60,
+          "sex": "수",
+          "trainer_name": "정조교"
+        }
+      ],
+      "stakes": null,
+      "start_time": "10:35",
+      "status": "ok",
+      "track_type": "더트"
+    },
+    {
+      "consensus": {
+        "active_rules": 2,
+        "min_votes": 3,
+        "picks": [],
+        "status": "insufficient"
+      },
+      "distance": 1400,
+      "field_size": 5,
+      "grade": "L",
+      "race_name": "서울마주협회장배",
+      "race_no": 2,
+      "rules": [
+        {
+          "key": "rating",
+          "picks": [
+            {
+              "chul_no": 1,
+              "horse_no": "0042001",
+              "mark": 1,
+              "reason": "레이팅 80 · 출전 5두 중 1위"
+            },
+            {
+              "chul_no": 5,
+              "horse_no": "0042005",
+              "mark": 2,
+              "reason": "레이팅 78 · 출전 5두 중 2위"
+            },
+            {
+              "chul_no": 3,
+              "horse_no": "0042003",
+              "mark": 3,
+              "reason": "레이팅 70 · 출전 5두 중 3위"
+            }
+          ],
+          "status": "picked"
+        },
+        {
+          "key": "form",
+          "picks": [
+            {
+              "chul_no": 5,
+              "horse_no": "0042005",
+              "mark": 1,
+              "reason": "최근 3전 1착→1착→1착 (3착 이내 3번)"
+            },
+            {
+              "chul_no": 1,
+              "horse_no": "0042001",
+              "mark": 2,
+              "reason": "최근 3전 2착→1착→1착 (3착 이내 3번)"
+            },
+            {
+              "chul_no": 3,
+              "horse_no": "0042003",
+              "mark": 3,
+              "reason": "최근 2전 2착→3착 (3착 이내 2번)"
+            }
+          ],
+          "status": "picked"
+        },
+        {
+          "key": "course",
+          "reason": "이 경마장·거리에서 3번 이상 뛴 말이 2두뿐 (최소 3두)",
+          "reason_code": "course_no_pick_eligible",
+          "status": "no_pick"
+        },
+        {
+          "key": "jockey",
+          "reason": "최근 90일 이 경마장에서 20번 이상 탄 기수의 말이 0두뿐 (최소 3두)",
+          "reason_code": "jockey_no_pick",
+          "status": "no_pick"
+        }
+      ],
+      "runners": [
+        {
+          "age": "4",
+          "badges": [
+            {
+              "kind": "jockey_change",
+              "text": "기수 교체 오누리→서다솜 (기수 부상) · 부담 55.0→54.0kg"
+            },
+            {
+              "kind": "first_pair",
+              "text": "서다솜 기수가 이 말을 처음 탐"
+            },
+            {
+              "delta": -20,
+              "kind": "budam_change",
+              "text": "부담 56.0→54.0kg"
+            },
+            {
+              "delta": 4,
+              "kind": "rating_change",
+              "text": "레이팅 ▲4 (76→80)"
+            },
+            {
+              "kind": "rating_high",
+              "text": "레이팅 개인 최고"
+            },
+            {
+              "kind": "win_streak",
+              "text": "2연승 중"
+            }
+          ],
+          "best_time": {
+            "race_date": "2026-09-12",
+            "time_tenths": 861,
+            "track_condition": "양호"
+          },
+          "budam_tenths": 540,
+          "career": {
+            "starts": 3,
+            "top3": 3,
+            "wins": 2
+          },
+          "chul_no": 1,
+          "consensus_mark": null,
+          "course": {
+            "distance": 1400,
+            "meet": "서울",
+            "starts": 3,
+            "top3": 3,
+            "wins": 2
+          },
+          "days_since_last": 22,
+          "horse_name": "바람개비",
+          "horse_no": "0042001",
+          "jockey_change": {
+            "after": "서다솜",
+            "before": "오누리",
+            "reason": "기수 부상",
+            "weight_after_tenths": 540,
+            "weight_before_tenths": 550
+          },
+          "jockey_name": "서다솜",
+          "last5": [
+            {
+              "distance": 1400,
+              "field_size": 1,
+              "meet": "서울",
+              "race_date": "2026-09-12",
+              "race_no": 4,
+              "rank": 2
+            },
+            {
+              "distance": 1400,
+              "field_size": 1,
+              "meet": "서울",
+              "race_date": "2026-10-03",
+              "race_no": 4,
+              "rank": 1
+            },
+            {
+              "distance": 1400,
+              "field_size": 1,
+              "meet": "서울",
+              "race_date": "2026-10-24",
+              "race_no": 4,
+              "rank": 1
+            }
+          ],
+          "last_start": {
+            "race_date": "2026-10-24",
+            "rank": 1
+          },
+          "marks": {
+            "form": 2,
+            "rating": 1
+          },
+          "rating": 80,
+          "rating_prev": 76,
+          "sex": "수",
+          "trainer_name": "윤조교"
+        },
+        {
+          "age": "4",
+          "badges": [
+            {
+              "kind": "debut",
+              "text": "데뷔전"
+            }
+          ],
+          "best_time": null,
+          "budam_tenths": 540,
+          "career": {
+            "starts": 0,
+            "top3": 0,
+            "wins": 0
+          },
+          "chul_no": 2,
+          "consensus_mark": null,
+          "course": {
+            "distance": 1400,
+            "meet": "서울",
+            "starts": 0,
+            "top3": 0,
+            "wins": 0
+          },
+          "days_since_last": null,
+          "horse_name": "새싹",
+          "horse_no": "0042002",
+          "jockey_change": null,
+          "jockey_name": "장한결",
+          "last5": [],
+          "last_start": null,
+          "marks": {},
+          "rating": null,
+          "rating_prev": null,
+          "sex": "수",
+          "trainer_name": null
+        },
+        {
+          "age": "4",
+          "badges": [
+            {
+              "kind": "class_change",
+              "text": "국5등급→국6등급 강급 후 첫 출전"
+            },
+            {
+              "kind": "layoff",
+              "text": "201일 만의 출전 (직전 4월 28일 3착)"
+            },
+            {
+              "delta": -30,
+              "kind": "budam_change",
+              "text": "부담 56.0→53.0kg"
+            },
+            {
+              "kind": "trainer_change",
+              "text": "조교사 변경 강조교→윤조교"
+            },
+            {
+              "kind": "meet_move",
+              "text": "경마장 이동 (직전 부경)"
+            }
+          ],
+          "best_time": null,
+          "budam_tenths": 530,
+          "career": {
+            "starts": 2,
+            "top3": 2,
+            "wins": 0
+          },
+          "chul_no": 3,
+          "consensus_mark": null,
+          "course": {
+            "distance": 1400,
+            "meet": "서울",
+            "starts": 0,
+            "top3": 0,
+            "wins": 0
+          },
+          "days_since_last": 201,
+          "horse_name": "먼길",
+          "horse_no": "0042003",
+          "jockey_change": null,
+          "jockey_name": "임새벽",
+          "last5": [
+            {
+              "distance": 1200,
+              "field_size": 1,
+              "meet": "부경",
+              "race_date": "2026-04-08",
+              "race_no": 6,
+              "rank": 2
+            },
+            {
+              "distance": 1400,
+              "field_size": 1,
+              "meet": "부경",
+              "race_date": "2026-04-28",
+              "race_no": 7,
+              "rank": 3
+            }
+          ],
+          "last_start": {
+            "race_date": "2026-04-28",
+            "rank": 3
+          },
+          "marks": {
+            "form": 3,
+            "rating": 3
+          },
+          "rating": 70,
+          "rating_prev": 71,
+          "sex": "수",
+          "trainer_name": "윤조교"
+        },
+        {
+          "age": "4",
+          "badges": [
+            {
+              "kind": "no_record",
+              "text": "mal.kr 수집 기록 없음"
+            }
+          ],
+          "best_time": null,
+          "budam_tenths": 540,
+          "career": {
+            "starts": 0,
+            "top3": 0,
+            "wins": 0
+          },
+          "chul_no": 4,
+          "consensus_mark": null,
+          "course": {
+            "distance": 1400,
+            "meet": "서울",
+            "starts": 0,
+            "top3": 0,
+            "wins": 0
+          },
+          "days_since_last": null,
+          "horse_name": "이방인",
+          "horse_no": "0042004",
+          "jockey_change": null,
+          "jockey_name": "윤소리",
+          "last5": [],
+          "last_start": null,
+          "marks": {},
+          "rating": 65,
+          "rating_prev": null,
+          "sex": "수",
+          "trainer_name": null
+        },
+        {
+          "age": "4",
+          "badges": [
+            {
+              "delta": 4,
+              "kind": "rating_change",
+              "text": "레이팅 ▲4 (74→78)"
+            },
+            {
+              "kind": "rating_high",
+              "text": "레이팅 개인 최고"
+            },
+            {
+              "kind": "win_streak",
+              "text": "3연승 중"
+            },
+            {
+              "kind": "quick_return",
+              "text": "11일 만에 다시 출전"
+            }
+          ],
+          "best_time": {
+            "race_date": "2026-10-15",
+            "time_tenths": 850,
+            "track_condition": "양호"
+          },
+          "budam_tenths": 540,
+          "career": {
+            "starts": 3,
+            "top3": 3,
+            "wins": 3
+          },
+          "chul_no": 5,
+          "consensus_mark": null,
+          "course": {
+            "distance": 1400,
+            "meet": "서울",
+            "starts": 3,
+            "top3": 3,
+            "wins": 3
+          },
+          "days_since_last": 11,
+          "horse_name": "연승호",
+          "horse_no": "0042005",
+          "jockey_change": null,
+          "jockey_name": "송이랑",
+          "last5": [
+            {
+              "distance": 1400,
+              "field_size": 1,
+              "meet": "서울",
+              "race_date": "2026-10-15",
+              "race_no": 2,
+              "rank": 1
+            },
+            {
+              "distance": 1400,
+              "field_size": 1,
+              "meet": "서울",
+              "race_date": "2026-10-25",
+              "race_no": 3,
+              "rank": 1
+            },
+            {
+              "distance": 1400,
+              "field_size": 1,
+              "meet": "서울",
+              "race_date": "2026-11-04",
+              "race_no": 4,
+              "rank": 1
+            }
+          ],
+          "last_start": {
+            "race_date": "2026-11-04",
+            "rank": 1
+          },
+          "marks": {
+            "form": 1,
+            "rating": 2
+          },
+          "rating": 78,
+          "rating_prev": 74,
+          "sex": "수",
+          "trainer_name": "윤조교"
+        }
+      ],
+      "stakes": {
+        "grade": "L",
+        "name": "서울마주협회장배"
+      },
+      "start_time": "11:10",
+      "status": "ok",
+      "track_type": "더트"
+    },
+    {
+      "consensus": {
+        "active_rules": 0,
+        "min_votes": 3,
+        "picks": [],
+        "status": "small_field"
+      },
+      "distance": 1000,
+      "field_size": 4,
+      "grade": "국6",
+      "race_name": null,
+      "race_no": 3,
+      "rules": [
+        {
+          "key": "rating",
+          "reason": "출전 4두 — 5두 미만이라 예상 안 함",
+          "reason_code": "small_field",
+          "status": "no_pick"
+        },
+        {
+          "key": "form",
+          "reason": "출전 4두 — 5두 미만이라 예상 안 함",
+          "reason_code": "small_field",
+          "status": "no_pick"
+        },
+        {
+          "key": "course",
+          "reason": "출전 4두 — 5두 미만이라 예상 안 함",
+          "reason_code": "small_field",
+          "status": "no_pick"
+        },
+        {
+          "key": "jockey",
+          "reason": "출전 4두 — 5두 미만이라 예상 안 함",
+          "reason_code": "small_field",
+          "status": "no_pick"
+        }
+      ],
+      "runners": [
+        {
+          "age": "4",
+          "badges": [
+            {
+              "kind": "debut",
+              "text": "데뷔전"
+            }
+          ],
+          "best_time": null,
+          "budam_tenths": 540,
+          "career": {
+            "starts": 0,
+            "top3": 0,
+            "wins": 0
+          },
+          "chul_no": 1,
+          "consensus_mark": null,
+          "course": {
+            "distance": 1000,
+            "meet": "서울",
+            "starts": 0,
+            "top3": 0,
+            "wins": 0
+          },
+          "days_since_last": null,
+          "horse_name": "소수1",
+          "horse_no": "0043001",
+          "jockey_change": null,
+          "jockey_name": null,
+          "last5": [],
+          "last_start": null,
+          "marks": {},
+          "rating": 51,
+          "rating_prev": null,
+          "sex": "수",
+          "trainer_name": null
+        },
+        {
+          "age": "4",
+          "badges": [
+            {
+              "kind": "debut",
+              "text": "데뷔전"
+            }
+          ],
+          "best_time": null,
+          "budam_tenths": 540,
+          "career": {
+            "starts": 0,
+            "top3": 0,
+            "wins": 0
+          },
+          "chul_no": 2,
+          "consensus_mark": null,
+          "course": {
+            "distance": 1000,
+            "meet": "서울",
+            "starts": 0,
+            "top3": 0,
+            "wins": 0
+          },
+          "days_since_last": null,
+          "horse_name": "소수2",
+          "horse_no": "0043002",
+          "jockey_change": null,
+          "jockey_name": null,
+          "last5": [],
+          "last_start": null,
+          "marks": {},
+          "rating": 52,
+          "rating_prev": null,
+          "sex": "수",
+          "trainer_name": null
+        },
+        {
+          "age": "4",
+          "badges": [
+            {
+              "kind": "debut",
+              "text": "데뷔전"
+            }
+          ],
+          "best_time": null,
+          "budam_tenths": 540,
+          "career": {
+            "starts": 0,
+            "top3": 0,
+            "wins": 0
+          },
+          "chul_no": 3,
+          "consensus_mark": null,
+          "course": {
+            "distance": 1000,
+            "meet": "서울",
+            "starts": 0,
+            "top3": 0,
+            "wins": 0
+          },
+          "days_since_last": null,
+          "horse_name": "소수3",
+          "horse_no": "0043003",
+          "jockey_change": null,
+          "jockey_name": null,
+          "last5": [],
+          "last_start": null,
+          "marks": {},
+          "rating": 53,
+          "rating_prev": null,
+          "sex": "수",
+          "trainer_name": null
+        },
+        {
+          "age": "4",
+          "badges": [
+            {
+              "kind": "debut",
+              "text": "데뷔전"
+            }
+          ],
+          "best_time": null,
+          "budam_tenths": 540,
+          "career": {
+            "starts": 0,
+            "top3": 0,
+            "wins": 0
+          },
+          "chul_no": 4,
+          "consensus_mark": null,
+          "course": {
+            "distance": 1000,
+            "meet": "서울",
+            "starts": 0,
+            "top3": 0,
+            "wins": 0
+          },
+          "days_since_last": null,
+          "horse_name": "소수4",
+          "horse_no": "0043004",
+          "jockey_change": null,
+          "jockey_name": null,
+          "last5": [],
+          "last_start": null,
+          "marks": {},
+          "rating": 54,
+          "rating_prev": null,
+          "sex": "수",
+          "trainer_name": null
+        }
+      ],
+      "stakes": null,
+      "start_time": "11:40",
+      "status": "small_field",
+      "track_type": "더트"
+    }
+  ],
+  "rules": [
+    {
+      "definition": "출전표 레이팅이 높은 순서로 고릅니다.",
+      "key": "rating",
+      "label": "레이팅"
+    },
+    {
+      "definition": "최근 1년 안의 최근 3경주에서 3착 안에 든 횟수가 많은 순서로 고릅니다.",
+      "key": "form",
+      "label": "최근 성적"
+    },
+    {
+      "definition": "같은 경마장·같은 거리에서 3착 안에 든 비율이 높은 순서로 고릅니다.",
+      "key": "course",
+      "label": "거리 적성"
+    },
+    {
+      "definition": "기수의 최근 90일 같은 경마장 승률이 높은 순서로 고릅니다.",
+      "key": "jockey",
+      "label": "기수"
+    }
+  ],
+  "schema_version": 1,
+  "summary": {
+    "counts": {
+      "class_changes": 1,
+      "debuts": 5,
+      "headlines": 6,
+      "jockey_changes": 1
+    },
+    "meet": "서울",
+    "race_count": 3,
+    "race_date": "2026-11-15",
+    "races": [
+      {
+        "consensus": {
+          "active_rules": 4,
+          "pick": {
+            "chul_no": 3,
+            "horse_name": "골든3",
+            "horse_no": "0041003",
+            "votes": 4
+          },
+          "status": "picked"
+        },
+        "distance": 1200,
+        "field_size": 6,
+        "race_name": null,
+        "race_no": 1,
+        "stakes": false,
+        "start_time": "10:35"
+      },
+      {
+        "consensus": {
+          "active_rules": 2,
+          "pick": null,
+          "status": "insufficient"
+        },
+        "distance": 1400,
+        "field_size": 5,
+        "race_name": "서울마주협회장배",
+        "race_no": 2,
+        "stakes": true,
+        "start_time": "11:10"
+      },
+      {
+        "consensus": {
+          "active_rules": 0,
+          "pick": null,
+          "status": "small_field"
+        },
+        "distance": 1000,
+        "field_size": 4,
+        "race_name": null,
+        "race_no": 3,
+        "stakes": false,
+        "start_time": "11:40"
+      }
+    ],
+    "rules_version": "r1",
+    "runner_count": 15,
+    "schema_version": 1
+  }
+}

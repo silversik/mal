@@ -80,7 +80,9 @@ CREATE TABLE IF NOT EXISTS racing_form_editions (
         AND deadline_at > freeze_at
         AND published_at >= freeze_at
         AND published_at < deadline_at),
-    CONSTRAINT ck_rf_summary CHECK (payload ? 'summary' AND summary = payload -> 'summary'),
+    -- 객체가 아니면(배열 ["summary"] 등) ? 는 참인데 -> 가 NULL 이라 CHECK 가 통과해 버린다
+    CONSTRAINT ck_rf_summary CHECK (
+        jsonb_typeof(payload) = 'object' AND payload ? 'summary' AND summary = payload -> 'summary'),
     CONSTRAINT ck_rf_sha CHECK (
         payload_sha256 = encode(sha256(convert_to(payload::text, 'UTF8')), 'hex'))
 );
@@ -212,8 +214,9 @@ CREATE TABLE IF NOT EXISTS racing_form_notices (
         (kind = 'missed' AND edition_id IS NULL)
         OR (kind IN ('erratum', 'withdrawn', 'result_changed') AND edition_id IS NOT NULL)
         OR kind IN ('paused', 'publish_failed')),
+    -- until 이 없거나 JSON null·배열이면 ->> 가 NULL → NULL 은 CHECK 를 통과하므로 COALESCE 로 거부
     CONSTRAINT ck_rf_notice_paused CHECK (
-        kind <> 'paused' OR (detail ? 'until' AND (detail ->> 'until') ~ '^\d{4}-\d{2}-\d{2}$'))
+        kind <> 'paused' OR COALESCE((detail ->> 'until') ~ '^\d{4}-\d{2}-\d{2}$', false))
 );
 
 CREATE INDEX IF NOT EXISTS idx_rf_notices_day_meet

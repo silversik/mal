@@ -66,7 +66,8 @@ _R1_PARAMS: dict[str, Any] = {
     "field": {"min_active": 5},
     # 거리 파싱 인정 범위(m)
     "distance": {"min_m": 800, "max_m": 3000},
-    # stale(출전표 최신 배치보다 오래된 행) 제외: updated_at < MAX(updated_at) - batch_tolerance_min.
+    # stale(출전표 최신 배치보다 오래된 행) 제외:
+    #   updated_at < MAX(updated_at) - batch_tolerance_min.
     # 한 경주에서 max_drop_pct 를 넘게 빠지면 빼지 않고 경고만 남긴다.
     "stale": {"batch_tolerance_min": 30, "max_drop_pct": 50},
     "rules": {
@@ -162,7 +163,9 @@ _R1_PARAMS: dict[str, Any] = {
         "course_no_pick_distance": "거리 정보 없음",
         "course_no_pick_top3": "이 경마장·거리에서 3착 안에 든 말이 없음",
         "jockey_no_pick": "최근 90일 이 경마장에서 20번 이상 탄 기수의 말이 {e}두뿐 (최소 {m}두)",
-        "trainer_no_pick": "최근 90일 이 경마장에서 20번 이상 출주한 조교사의 말이 {e}두뿐 (최소 {m}두)",
+        "trainer_no_pick": (
+            "최근 90일 이 경마장에서 20번 이상 출주한 조교사의 말이 {e}두뿐 (최소 {m}두)"
+        ),
         "rating_reason": "레이팅 {rating} · 출전 {n}두 중 {rank}위",
         "rating_reason_tie": "레이팅 {rating} · 출전 {n}두 중 공동 {rank}위(번호순)",
         "form_reason": "최근 {k}전 {seq} (3착 이내 {t}번)",
