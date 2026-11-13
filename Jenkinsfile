@@ -159,10 +159,16 @@ fail=0
 web=$(docker inspect -f "{{.State.Status}}:{{.State.ExitCode}}" mal-web 2>/dev/null || echo "missing:")
 case "$web" in
     running:*)
-        if curl -fsS http://127.0.0.1:4000 >/dev/null; then
+        # 컨테이너가 막 재생성된 직후라 Next 서버가 뜰 때까지 최대 60초 재시도.
+        ok=0
+        for i in $(seq 1 12); do
+            if curl -fsS -o /dev/null http://127.0.0.1:4000; then ok=1; break; fi
+            sleep 5
+        done
+        if [ $ok = 1 ]; then
             echo "[smoke] mal-web OK ($web)"
         else
-            echo "[smoke] mal-web running but HTTP :4000 실패"; fail=1
+            echo "[smoke] mal-web running but HTTP :4000 실패 (60초)"; fail=1
         fi ;;
     exited:0|exited:143)
         echo "[smoke] mal-web manually stopped ($web) — tolerated" ;;
