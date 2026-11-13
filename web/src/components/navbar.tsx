@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Suspense } from "react";
 
 import { AuthMenu } from "@/components/auth-menu";
 import { DisplaySettings, TextSizeToggle } from "@/components/display-settings";
@@ -29,10 +28,10 @@ export function Navbar() {
           <TextSizeToggle />
           <div className="hidden items-center gap-2 md:flex">
             <DisplaySettings />
-            {/* auth()+DB 조회가 헤더(=페이지 셸 전체)를 막지 않게 Suspense 로 분리. 폴백은 같은 크기 자리. */}
-            <Suspense fallback={<div className="h-11 w-20" aria-hidden="true" />}>
-              <AuthMenu />
-            </Suspense>
+            {/* Suspense 로 감싸지 말 것: auth()(cookies) 가 Suspense 밖에 있어야 모든 페이지가
+                요청 시 렌더(ƒ)로 유지된다. 감싸면 Next 16 이 DB 를 쓰는 페이지(/analysis 등)를
+                빌드 시점에 프리렌더하려다, DB 없는 Docker 빌드에서 실패한다 (2026-11 배포 미반영 사고). */}
+            <AuthMenu />
           </div>
         </div>
       </div>
