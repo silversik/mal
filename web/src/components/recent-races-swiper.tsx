@@ -3,18 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { RankBadge } from "@/components/rank-badge";
 import { VenueIcon } from "@/components/venue-icon";
 import type { RaceInfo, TopFinisher } from "@/lib/races";
 import type { VideoItem } from "@/lib/video-helpers";
 
 const MEETS = ["서울", "제주", "부경"] as const;
 type Meet = (typeof MEETS)[number];
-
-const RANK_MEDAL: Record<number, string> = {
-  1: "🥇",
-  2: "🥈",
-  3: "🥉",
-};
 
 const MAX_DOTS = 8;
 const SCROLL_DURATION_MS = 350;
@@ -359,12 +354,8 @@ function RecentRaceCard({
         ) : (
           finishers.slice(0, 3).map((f) => (
             <div key={f.horse_no} className="flex items-center gap-2 text-sm">
-              <span
-                className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-sm leading-none"
-                aria-label={`${f.rank}위`}
-              >
-                {RANK_MEDAL[f.rank] ?? f.rank}
-              </span>
+              {/* 이모지 메달(🥇) → 사이트 공용 메달 배지(색+형태). DESIGN: 이모지 장식 금지. */}
+              <RankBadge size="sm" rest="chip" rank={f.rank} className="h-5 w-5" />
               <span className="min-w-0 flex-1 truncate font-semibold text-foreground group-hover:text-primary">
                 {f.horse_name}
               </span>
