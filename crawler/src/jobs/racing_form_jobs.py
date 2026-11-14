@@ -1,9 +1,9 @@
 """경마지 잡 본체 — 발행 `publish_racing_form` · 정산 `settle_racing_form` (계약 §5~§7).
 
-**PR-1 에서는 스케줄에 연결하지 않는다.** PR-2 에서 배선한다:
-`monitoring.JOB_CATALOG`(category racing_form) · `periodic.py` 의 `@track_job` 래퍼(여기서
-`datetime.now(KST)` 를 읽어 now 로 넘기고, 돌려받은 실패 목록을 `_raise_collected` 로 한꺼번에
-올림) · `scheduler_main.py` `add_job`(발행: 매시 정각 + 기동 직후 1회, 정산: 10~23시 :15·:45) +
+스케줄 배선 (PR-2): `monitoring.JOB_CATALOG`(category racing_form) · `periodic.py` 의
+`@track_job` 래퍼 `run_publish_racing_form` · `run_settle_racing_form`(여기서 `datetime.now(KST)` 를
+읽어 now 로 넘기고, 돌려받은 실패 목록을 `_raise_collected` 로 한꺼번에 올림) ·
+`scheduler_main.py` `add_job`(발행: 매시 정각 + 기동 직후 1회, 정산: 10~23시 :15·:45) +
 `TRIGGER_JOBS`.
 
 공통

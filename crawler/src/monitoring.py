@@ -212,6 +212,18 @@ JOB_CATALOG: dict[str, dict] = {
         # 매일 03:00
         "expected_interval_sec": _expected_interval(_DAY),
     },
+    "mal.publish_racing_form": {
+        "category": "racing_form",
+        "description": "경마지 발행 — D−1 18:00 동결·발행, 마감(D 08:00) 미발행 시 missed 공지",
+        # CronTrigger minute=0 + 기동 직후 1회 — 최대 공백 1시간
+        "expected_interval_sec": _expected_interval(_HOUR),
+    },
+    "mal.settle_racing_form": {
+        "category": "racing_form",
+        "description": "경마지 정산 — 경주 결과로 예상 판정, D+1 13:00 확정",
+        # 10~23시 :15·:45 — 최대 공백 23:45 → 다음날 10:15 = 10시간 30분
+        "expected_interval_sec": _expected_interval(10 * _HOUR + 30 * _MIN),
+    },
 }
 
 _registered: set[str] = set()

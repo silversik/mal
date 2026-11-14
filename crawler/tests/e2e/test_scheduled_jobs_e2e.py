@@ -6,22 +6,32 @@
 
 타임라인 (D = 경주일 토요일, D1 = D+1, T = 실제 오늘, U = 다음 예정 경주일):
   D-1 14:00 races_live(비경기일 skip) · 09:00 race_entries · 12:00 backfill_races_from_entries
+      17:00 publish_racing_form(동결 전 0 · 기준 정의 등록) · 18:00/19:00 publish_racing_form
+      (서울·부경 발행 / 재실행 0)
   D   05:00 race_plan · 07:30 horse_ratings(토) · 09:05 race_today_meta · 13:00 races_live
-      21:00 videos · 22:30 races_live(마지막 tick) · 22:50 sales
-      23:00 videos_backfill · 23:05 races_today(backstop)
+      21:00 videos · 22:30 races_live(마지막 tick) · 22:45 settle_racing_form(잠정 3경주)
+      22:50 sales · 23:00 videos_backfill · 23:05 races_today(backstop)
   D1  02:30 chunked_dividends · 03:00 weather · 06:00 jockeys · 06:15 trainers · 06:20 owners
       06:25 jockey_changes · 06:30 horses_backfill · 06:35 rank_changes · 07:00 horses_refresh
-      07:30 yesterday_catchup · 09:00/10:00 yesterday_residual · 11:00 videos_bulk
+      07:30 yesterday_catchup · 09:00/10:00 yesterday_residual · 10:15 settle_racing_form(부경 2R)
+      11:00 videos_bulk · 13:15/13:45 settle_racing_form(4경주 확정 / 재실행 0)
   T   12:00 race_entries(U) · 12:10 backfill_races_from_entries · 12:30 favorites ×2
-그 뒤 web/src/lib/*.ts 의 실제 SQL 로 화면 쿼리가 시드된 경주/마필을 돌려주는지 확인.
+그 뒤 web/src/lib/*.ts 의 실제 SQL 로 화면 쿼리가 시드된 경주/마필을 돌려주는지 확인
+(경마지는 racing_form.ts 의 SQL 상수를 파일에서 글자 그대로 꺼내 실행).
 """
 # web/src/lib 의 SQL 을 글자 그대로 복사해 둔 줄이 길다.
 # ruff: noqa: E501
 from __future__ import annotations
 
+import re
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 from zoneinfo import ZoneInfo
+
+import pytest
+from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 
 from src.monitoring import JOB_CATALOG
 
@@ -38,7 +48,22 @@ EXPECTED_SCHEDULED = {
     "mal.sync_race_today_meta", "mal.sync_race_sales",
     "mal.sync_videos_backfill", "mal.sync_videos_bulk",
     "mal.build_favorite_notifications", "mal.sync_weather",
+    "mal.publish_racing_form", "mal.settle_racing_form",
 }
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _racing_form_e2e_rules():
+    """경마지 기준을 r1-e2e 로 — 가짜 세계는 경주당 3두라 경주 하한을 3 으로 낮춘 정의.
+
+    마스터 기반 가드(경력마 커버리지 등)는 r1-e2e 에서 꺼져 있고 단위 테스트가 검증한다.
+    """
+    from src.racing_form import definitions
+
+    mp = pytest.MonkeyPatch()
+    mp.setattr(definitions, "ACTIVE", "r1-e2e")
+    yield
+    mp.undo()
 
 
 def _d(e2e) -> date:
@@ -67,6 +92,10 @@ def test_00_scheduler_registers_every_job_and_trigger_map(e2e):
     # 컨테이너 기동 시 JOB_CATALOG 전부 대시보드 등록
     assert set(e2e.registered) == set(JOB_CATALOG)
     assert "day_of_week='sat'" in str(e2e.triggers["mal.sync_horse_ratings"])
+    # 경마지: 발행 매시 정각(+ 기동 직후 1회는 next_run_time), 정산 10~23시 :15·:45
+    assert "cron[minute='0']" in str(e2e.triggers["mal.publish_racing_form"])
+    settle = str(e2e.triggers["mal.settle_racing_form"])
+    assert "hour='10-23'" in settle and "minute='15,45'" in settle
 
 
 # ====================================================================== D - 1
@@ -113,6 +142,91 @@ def test_03_backfill_races_from_entries(e2e):
         1200, "국6등급", None, "11:00")  # rcName '일반' 은 race_name 미기록
     assert (s2["race_name"], s2["start_time"]) == ("가을특별", "14:30")
     assert (b1["distance"], b1["start_time"]) == (1300, None)  # 부경 출전표엔 stTime 없음
+
+
+def test_03b_publish_racing_form_before_freeze_registers_rule_set(e2e):
+    D0 = _d(e2e) - timedelta(days=1)
+    n = e2e.run("mal.publish_racing_form", D0, 17, 0)
+    assert n == 0  # 동결(D−1 18:00) 전 — 할 일 없음은 정상
+    assert e2e.web.requests == []  # KRA 호출 없음
+    rs = e2e.one("SELECT rules_version, registered_at FROM racing_form_rule_sets")
+    # 첫 발행 잡 실행이 기준 정의를 등록 → 출시 경계(launchAt) = 잡 시계
+    assert rs == {"rules_version": "r1-e2e",
+                  "registered_at": datetime(D0.year, D0.month, D0.day, 17, 0, tzinfo=KST)}
+    assert e2e.q("SELECT id FROM racing_form_editions") == []
+
+
+def test_03c_publish_racing_form_at_freeze(e2e):
+    D = _d(e2e)
+    D0 = D - timedelta(days=1)
+    n = e2e.run("mal.publish_racing_form", D0, 18, 0)
+    assert n == 2  # 서울·부경
+    assert e2e.web.requests == []
+    eds = {r["meet"]: r for r in e2e.q(
+        "SELECT * FROM racing_form_editions ORDER BY meet")}
+    assert set(eds) == {"서울", "부경"}
+    freeze = datetime(D0.year, D0.month, D0.day, 18, 0, tzinfo=KST)
+    for meet, ed in eds.items():
+        assert ed["issue_no"] == 1, meet
+        assert ed["rules_version"] == "r1-e2e"
+        assert ed["history_before"] == D0
+        assert ed["published_at"] == freeze and ed["freeze_at"] == freeze
+        assert (ed["race_count"], ed["runner_count"]) == (2, 6)
+    # 서울 마감 = min(D 08:00, 첫 발주 11:00 − 60분) = 08:00
+    assert eds["서울"]["deadline_at"] == datetime(D.year, D.month, D.day, 8, 0, tzinfo=KST)
+
+    payload = eds["서울"]["payload"]
+    assert payload["schema_version"] == 1
+    s1 = next(r for r in payload["races"] if r["race_no"] == 1)
+    rules = {r["key"]: r for r in s1["rules"]}
+    assert [(p["mark"], p["horse_no"]) for p in rules["rating"]["picks"]] == [
+        (1, "0041003"), (2, "0041002"), (3, "0041001")]
+    # 과거 결과가 없는 세계 — 레이팅 말고는 예상 안 함 (사유 코드 확인)
+    assert {k: (v["status"], v.get("reason_code")) for k, v in rules.items()} == {
+        "rating": ("picked", None),
+        "form": ("no_pick", "form_no_pick_eligible"),
+        "course": ("no_pick", "course_no_pick_eligible"),
+        "jockey": ("no_pick", "jockey_no_pick"),
+    }
+    assert s1["consensus"]["picks"] == []  # 기준 1개(A=1)뿐 — 주목마 없음
+    assert s1["consensus"]["active_rules"] == 1
+
+    # picks 행 = payload (레이팅 ◎○△ × 4경주, 주목마 0)
+    picks = e2e.q("SELECT e.meet, p.race_no, p.rule_key, p.mark, p.horse_no, p.chul_no "
+                  "FROM racing_form_picks p JOIN racing_form_editions e ON e.id = p.edition_id "
+                  "ORDER BY e.meet, p.race_no, p.rule_key, p.mark")
+    assert len(picks) == 12
+    assert {p["rule_key"] for p in picks} == {"rating"}
+    from_payload = sorted(
+        (meet, r["race_no"], x["key"], pk["mark"], pk["horse_no"], pk["chul_no"])
+        for meet, ed in eds.items() for r in ed["payload"]["races"] for x in r["rules"]
+        if x["status"] == "picked" for pk in x["picks"])
+    assert sorted((p["meet"], p["race_no"], p["rule_key"], p["mark"], p["horse_no"],
+                   p["chul_no"]) for p in picks) == from_payload
+    # 출전표의 원래 기수가 동결된다 (기수변경은 D+1 06:25 에 수집 → 웹이 덧씌움)
+    s2 = next(r for r in payload["races"] if r["race_no"] == 2)
+    runner = next(x for x in s2["runners"] if x["horse_no"] == "0041005")
+    assert runner["jockey_name"] == "한교체"
+
+    # 재실행은 0 (이미 발행)
+    assert e2e.run("mal.publish_racing_form", D0, 19, 0) == 0
+    assert len(e2e.q("SELECT id FROM racing_form_editions")) == 2
+
+
+def _assert_db_rejects(e2e, sql: str, match: str | None = None) -> None:
+    """036 보호 트리거가 이 문장을 거부한다 (트랜잭션은 롤백)."""
+    with pytest.raises(DBAPIError, match=match), e2e.engine.begin() as c:
+        c.execute(text(sql))
+
+
+def test_03d_racing_form_editions_and_picks_are_append_only(e2e):
+    for sql in ("UPDATE racing_form_editions SET issue_no = issue_no",
+                "DELETE FROM racing_form_editions",
+                "UPDATE racing_form_picks SET reason = reason",
+                "DELETE FROM racing_form_picks",
+                "UPDATE racing_form_rule_sets SET registered_at = registered_at"):
+        _assert_db_rejects(e2e, sql, match="수정·삭제할 수 없습니다")
+    assert len(e2e.q("SELECT id FROM racing_form_picks")) == 12
 
 
 # ========================================================================== D
@@ -240,6 +354,22 @@ def test_10b_races_live_skips_dividends_when_complete(e2e):
     D = _d(e2e)
     e2e.run("mal.sync_races_live", D, 22, 30)
     assert e2e.web.kra_calls("API301") == []
+
+
+def test_10c_settle_racing_form_race_day_evening(e2e):
+    D = _d(e2e)
+    n = e2e.run("mal.settle_racing_form", D, 22, 45)
+    assert n == 3  # 결과가 나온 서울 1·2R + 부경 1R (부경 2R 은 KRA 공표 지연 → 대기)
+    assert e2e.web.requests == []
+    rows = e2e.q("SELECT e.meet, o.race_no, o.status, o.is_final, o.winners, o.placed, "
+                 "o.starters FROM racing_form_race_outcomes o "
+                 "JOIN racing_form_editions e ON e.id = o.edition_id ORDER BY e.meet, o.race_no")
+    assert [(r["meet"], r["race_no"], r["status"], r["is_final"]) for r in rows] == [
+        ("부경", 1, "official", False), ("서울", 1, "official", False),
+        ("서울", 2, "official", False)]
+    s1 = next(r for r in rows if (r["meet"], r["race_no"]) == ("서울", 1))
+    assert (s1["winners"], sorted(s1["placed"]), s1["starters"]) == (
+        ["0041002"], ["0041001", "0041002", "0041003"], 3)
 
 
 def test_12_race_sales(e2e):
@@ -420,6 +550,13 @@ def test_26_yesterday_residual_skips_when_complete(e2e):
     assert e2e.web.requests == []
 
 
+def test_26b_settle_racing_form_late_race(e2e):
+    n = e2e.run("mal.settle_racing_form", _d1(e2e), 10, 15)
+    assert n == 1  # D+1 09:00 residual 이 받은 부경 2R — 나머지는 digest 그대로라 안 씀
+    assert e2e.one("SELECT COUNT(*) AS n FROM racing_form_race_outcomes "
+                   "WHERE NOT is_final")["n"] == 4
+
+
 def test_28_videos_bulk_walks_playlist_until_cutoff(e2e):
     D = _d(e2e)
     n = e2e.run("mal.sync_videos_bulk", _d1(e2e), 11, 0)
@@ -432,6 +569,21 @@ def test_28_videos_bulk_walks_playlist_until_cutoff(e2e):
     assert old == {"race_date": D - timedelta(days=28), "meet": "서울", "race_no": 1}
     total = e2e.one("SELECT COUNT(*) AS n FROM kra_videos")
     assert total["n"] == 6
+
+
+def test_28b_settle_racing_form_finalizes_after_d1_13(e2e):
+    D1 = _d1(e2e)
+    n = e2e.run("mal.settle_racing_form", D1, 13, 15)
+    assert n == 4  # D+1 13:00 확정 — 4경주 모두 확정
+    rows = e2e.q("SELECT is_final, finalized_at FROM racing_form_race_outcomes")
+    assert len(rows) == 4 and all(r["is_final"] for r in rows)
+    assert {r["finalized_at"] for r in rows} == {
+        datetime(D1.year, D1.month, D1.day, 13, 15, tzinfo=KST)}
+    # 확정 정산은 UPDATE·DELETE 거부, 재실행은 0
+    _assert_db_rejects(e2e, "UPDATE racing_form_race_outcomes SET starters = starters")
+    _assert_db_rejects(e2e, "DELETE FROM racing_form_race_outcomes")
+    assert e2e.run("mal.settle_racing_form", D1, 13, 45) == 0
+    assert e2e.q("SELECT kind FROM racing_form_notices") == []
 
 
 def test_29_race_entries_upcoming_week(e2e):
@@ -886,6 +1038,58 @@ def test_45_healthcheck_data_checks(e2e):
     assert not [b for b in bad if b[0] == "FAIL"], bad
     allowed = {"대상경주 계획 (race_plans)"}
     assert {b[1] for b in bad} <= allowed, bad
+    # 경마지 3행 — D 두 호 발행(·U 는 동결 전), D+1 13:30 전이라 정산 경고 없음, 보호 장치 정상
+    rf = {c.name: c for c in checks if c.area == "경마지"}
+    assert set(rf) == {"경마지 발행", "경마지 정산", "경마지 보호 장치"}
+    assert all(c.status == Status.OK for c in rf.values()), rf
+    assert "발행 2" in rf["경마지 발행"].detail
+    assert "확정 4/4경주" in rf["경마지 정산"].detail
+    assert "트리거 12개 ALWAYS" in rf["경마지 보호 장치"].detail
+
+
+_WEB_RACING_FORM_TS = Path(__file__).resolve().parents[3] / "web/src/lib/racing_form.ts"
+
+
+def _web_sql(name: str) -> str:
+    """web/src/lib/racing_form.ts 의 `export const NAME = `...`;` 를 글자 그대로 꺼낸다."""
+    src = _WEB_RACING_FORM_TS.read_text(encoding="utf-8")
+    m = re.search(rf"export const {name} = `(.*?)`;", src, re.DOTALL)
+    assert m, name
+    assert "${" not in m.group(1), name  # 보간 없는 상수만
+    return m.group(1)
+
+
+def test_46_web_racing_form_jockeys_and_record(e2e):
+    D = e2e.world.D.isoformat()
+    # racing_form.ts getCurrentJockeys — 발행 후 기수 변경 (diffJockeys 입력)
+    cur = e2e.web_query(_web_sql("CURRENT_JOCKEYS_SQL"), D, "서울")
+    ed = e2e.one("SELECT payload FROM racing_form_editions WHERE meet='서울'")
+    frozen = {(r["race_no"], x["horse_no"]): x["jockey_name"]
+              for r in ed["payload"]["races"] for x in r["runners"]}
+    changed = [(c["race_no"], c["horse_no"], frozen[(c["race_no"], c["horse_no"])],
+                c["jockey_name"], c["reason"])
+               for c in cur if frozen.get((c["race_no"], c["horse_no"])) != c["jockey_name"]]
+    assert changed == [(2, "0041005", "한교체", "이과천", "기수부상")]
+
+    # racing_form.ts getRuleRecord — 확정 정산만 (전체 경마장·기간·버전)
+    params = (None, None, None, None)
+    cells = {(c["rule_key"], c["mark"]): c
+             for c in e2e.web_query(_web_sql("RULE_RECORD_SQL"), *params)}
+    assert set(cells) == {("rating", 1), ("rating", 2), ("rating", 3)}
+    r1, r2, r3 = cells[("rating", 1)], cells[("rating", 2)], cells[("rating", 3)]
+    assert (r1["n"], r1["wins"], r1["top3"], r1["voids"]) == (4, 1, 4, 0)
+    assert (r2["n"], r2["wins"]) == (4, 1)
+    assert (r3["n"], r3["wins"]) == (4, 2)
+    assert abs(r1["random_win"] - 4 / 3) < 1e-9  # 무작위 = Σ 1/3 × 4경주
+    assert abs(r1["random_top3"] - 4.0) < 1e-9  # 3두 경주라 3착 이내는 전부
+    # 경주 후 1번 인기 = Σ(|favorites ∩ winners| / |favorites|) — 배당 숫자는 안 꺼냄
+    assert (r1["fav_races"], r1["fav_win"]) == (4, 2.0)
+    rules = {r["rule_key"]: r for r in e2e.web_query(_web_sql("RULE_RECORD_RULES_SQL"), *params)}
+    assert (rules["rating"]["races_picked"], rules["rating"]["races_n"],
+            rules["rating"]["races_any_win"]) == (4, 4, 4)
+    totals = e2e.web_query(_web_sql("RULE_RECORD_TOTALS_SQL"), *params)
+    assert totals == [{"races": 4, "races_void": 0, "editions": 2, "first_date": D,
+                       "last_date": D}]
 
 
 # ============================================== E2E 가 발견해 고친 production 버그 (회귀 방지)

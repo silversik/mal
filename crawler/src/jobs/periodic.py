@@ -21,6 +21,7 @@ from ..logging import get_logger
 from ..monitoring import track_job
 from .backfill_races_from_entries import backfill_races_metadata_from_entries
 from .chunked_backfill_dividends import run_chunk as run_chunked_dividends_chunk
+from .racing_form_jobs import publish_racing_form, settle_racing_form
 from .sync_favorite_notifications import build_favorite_notifications
 from .sync_horse_rank_changes import sync_all as sync_horse_rank_changes_all
 from .sync_horse_ratings import sync_all_meets as sync_horse_ratings_all_meets
@@ -469,3 +470,29 @@ def run_sync_weather() -> int:
     명시적 실패 → 모니터링 빨간 신호.
     """
     return sync_weather_recent(days=7)
+
+
+def _raise_racing_form_failures(failures: list[str]) -> None:
+    """호·경주별 실패 메시지를 _raise_collected 로 한꺼번에 올린다 (없으면 아무것도 안 함)."""
+    if failures:
+        _raise_collected([], " | ".join(failures))
+
+
+@track_job("mal.publish_racing_form")
+def run_publish_racing_form() -> int:
+    """경마지 발행 — 매시 정각 + 기동 직후 1회 (docs/feature/racing-form.md 9.1).
+
+    실제 발행은 D−1 18:00 동결 시각(창 안이면 D 07:00 까지 재시도). D 08:00 실행에서
+    출전표가 있는데 발행본이 없으면 missed 공지 + 실패 1회. 할 일 없는 0 은 정상.
+    """
+    published, failures = publish_racing_form(datetime.now(KST))
+    _raise_racing_form_failures(failures)
+    return published
+
+
+@track_job("mal.settle_racing_form")
+def run_settle_racing_form() -> int:
+    """경마지 정산 — 10~23시 :15·:45. 잠정 정산 → D+1 13:00 확정 → D+7 무효."""
+    written, failures = settle_racing_form(datetime.now(KST))
+    _raise_racing_form_failures(failures)
+    return written
