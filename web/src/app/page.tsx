@@ -336,11 +336,11 @@ async function RecentWinnersSection() {
       {horses.length === 0 ? (
         <EmptyState title="아직 집계된 우승 마필이 없습니다." />
       ) : (
-        <div className="space-y-2">
+        <RowList>
           {horses.map((h) => (
             <HorseRow key={h.horse_no} horse={h} />
           ))}
-        </div>
+        </RowList>
       )}
     </Section>
   );
@@ -389,11 +389,11 @@ async function TopJockeysSection() {
       {jockeys.length === 0 ? (
         <EmptyState title="아직 집계된 기수 성적이 없습니다." />
       ) : (
-        <div className="space-y-2">
+        <RowList>
           {jockeys.map((j, i) => (
             <JockeyRow key={j.jk_no} jockey={j} rank={i + 1} />
           ))}
-        </div>
+        </RowList>
       )}
     </Section>
   );
@@ -437,17 +437,17 @@ function SwiperSkeleton() {
 function RowsSkeleton({ title, href }: { title: string; href: string }) {
   return (
     <Section title={title} href={href} tier="l1">
-      <div className="space-y-2">
+      <RowList>
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
-            <div className="h-10 w-10 shrink-0 animate-pulse rounded bg-muted" />
+          <li key={i} className="flex min-h-16 items-center gap-3 px-4 py-3">
+            <div className="h-10 w-10 shrink-0 rounded-md bg-muted motion-safe:animate-pulse" />
             <div className="flex-1 space-y-1.5">
-              <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-              <div className="h-3 w-20 animate-pulse rounded bg-muted" />
+              <div className="h-4 w-32 rounded bg-muted motion-safe:animate-pulse" />
+              <div className="h-3 w-20 rounded bg-muted motion-safe:animate-pulse" />
             </div>
-          </div>
+          </li>
         ))}
-      </div>
+      </RowList>
     </Section>
   );
 }
@@ -505,10 +505,25 @@ function Section({
 
 /* ── Cards ────────────────────────────────────────────── */
 
+/**
+ * 한 카드 안의 구분선 목록. 예전엔 행마다 테두리 상자였는데 <Link>(인라인)에 space-y 간격이
+ * 먹지 않아 상자 8개가 맞붙어 이중 테두리로 겹쳐 보였다 — 카드 1장 + divide-y 로 정리.
+ */
+function RowList({ children }: { children: React.ReactNode }) {
+  return (
+    <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+      {children}
+    </ul>
+  );
+}
+
 function HorseRow({ horse }: { horse: RecentWinner }) {
   return (
-    <Link href={`/horse/${horse.horse_no}`}>
-      <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
+    <li>
+      <Link
+        href={`/horse/${horse.horse_no}`}
+        className="flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-muted"
+      >
         <HorseMark
           size={40}
           radius={8}
@@ -516,38 +531,39 @@ function HorseRow({ horse }: { horse: RecentWinner }) {
           markFill={coatBodyHex(horse.coat_color)}
         />
         <div className="min-w-0 flex-1">
-          <div className="font-bold truncate group-hover:text-primary transition-colors">{horse.horse_name}</div>
-          <div className="text-small text-muted-foreground uppercase tracking-wider font-semibold">
+          <div className="truncate text-base font-bold text-foreground">{horse.horse_name}</div>
+          <div className="truncate text-small text-muted-foreground">
             {horse.country} · {horse.sex}
           </div>
         </div>
-        <div className="text-right shrink-0">
-          <div className="text-sm font-bold text-primary">{horse.win_count}승</div>
-          <div className="text-small font-mono text-muted-foreground">
+        <div className="shrink-0 text-right">
+          <div className="font-mono text-base font-bold tabular-nums text-foreground">{horse.win_count}승</div>
+          <div className="font-mono text-small tabular-nums text-muted-foreground">
             {horse.last_win_date}
           </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </li>
   );
 }
 
 function JockeyRow({ jockey, rank }: { jockey: Jockey; rank: number }) {
+  // 이니셜 아바타(성 한 글자 상자)는 순위 배지와 겹치는 장식이라 제거.
   return (
-    <Link href={`/jockey/${jockey.jk_no}`}>
-      <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-lg hover:border-secondary/50 hover:shadow-sm transition-all group">
+    <li>
+      <Link
+        href={`/jockey/${jockey.jk_no}`}
+        className="flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-muted"
+      >
         <RankBadge rest="chip" rank={rank} />
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border bg-muted font-bold text-foreground">
-          {jockey.jk_name.slice(0, 1)}
-        </div>
         <div className="min-w-0 flex-1">
-          <div className="font-bold truncate group-hover:text-primary transition-colors">{jockey.jk_name}</div>
-          <div className="text-small text-muted-foreground font-semibold uppercase tracking-wider">{jockey.meet} 기수</div>
+          <div className="truncate text-base font-bold text-foreground">{jockey.jk_name}</div>
+          <div className="truncate text-small text-muted-foreground">{jockey.meet} 기수</div>
         </div>
-        <div className="min-w-[70px] shrink-0">
+        <div className="w-24 shrink-0">
           <WinRateBar rate={jockey.win_rate} />
         </div>
-      </div>
-    </Link>
+      </Link>
+    </li>
   );
 }

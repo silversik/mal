@@ -52,7 +52,7 @@ function readTheme(): Theme {
 }
 
 // <html data-*> 가 단일 진실원(인라인 스크립트가 쿠키로 첫 페인트 전에 세팅). 컨트롤들은
-// useSyncExternalStore 로 그 속성을 구독 — 헤더 토글 ↔ 화면 설정 팝오버가 항상 동기.
+// useSyncExternalStore 로 그 속성을 구독 — 여러 곳(데스크톱 헤더·모바일 더보기)의 컨트롤이 항상 동기.
 const CHANGE = "mal-display-change";
 function subscribe(cb: () => void) {
   window.addEventListener(CHANGE, cb);
@@ -68,32 +68,6 @@ function applyScale(next: Scale) {
 function useScale(): [Scale, (s: Scale) => void] {
   const scale = React.useSyncExternalStore(subscribe, readScale, () => "md" as Scale);
   return [scale, applyScale];
-}
-
-/**
- * 헤더에 바로 노출하는 "글씨 크게" 토글 — 노안 사용자가 설정 메뉴를 열지 않고 한 번에 찾도록.
- * 화면 설정 팝오버의 글씨 크기와 같은 상태(쿠키 mal-scale)를 공유.
- */
-export function TextSizeToggle({ className = "" }: { className?: string }) {
-  const [scale, setScale] = useScale();
-  const large = scale === "lg";
-  return (
-    <button
-      type="button"
-      aria-pressed={large}
-      onClick={() => setScale(large ? "md" : "lg")}
-      className={`inline-flex min-h-[max(44px,2.75rem)] items-center gap-1.5 rounded-md border px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
-        large
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-border bg-card text-foreground hover:bg-accent"
-      } ${className}`}
-    >
-      <span aria-hidden="true" className="text-base font-extrabold leading-none">
-        가<span className="text-small align-super">+</span>
-      </span>
-      글씨 크게
-    </button>
-  );
 }
 
 export function DisplaySettings() {
