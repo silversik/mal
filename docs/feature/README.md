@@ -7,6 +7,7 @@
 | 즐겨찾기 마필 · 인앱 알림 | [favorites-notifications.md](favorites-notifications.md) |
 | 마필 상세 — 조건별 성적 분석 | [horse-form-breakdown.md](horse-form-breakdown.md) |
 | 발주시각 기상 조건별 성적 | [weather-form.md](weather-form.md) |
+| 경마지 (racing form) — 전날 18:00 고정 발행 데이터 예상단·말 소식·적중 공개 (1단계 구현 중, 미공개) | [racing-form.md](racing-form.md) · 계약 [../spec/racing-form-contract.md](../spec/racing-form-contract.md) |
 
 ## 새 기능 정의서 작성 체크리스트
 

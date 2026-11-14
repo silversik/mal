@@ -63,6 +63,34 @@ export function ProfileSkeleton() {
   );
 }
 
+/** 경마지(/form) — 머리(제목·경마장 칩·발행 도장) → 상태 상자 → 경주 한 줄 목록. */
+export function FormSkeleton() {
+  return (
+    <PageContainer aria-busy="true" aria-label="불러오는 중" className="space-y-6 py-6 md:py-8">
+      <div className="space-y-3">
+        <Bar className="h-4 w-28" />
+        <Bar className="h-8 w-64 max-w-full" />
+        <div className="flex gap-2">
+          <Bar className="h-11 w-16" />
+          <Bar className="h-11 w-16" />
+        </div>
+        <Bar className="h-4 w-full max-w-md" />
+        <Bar className="h-4 w-full max-w-lg" />
+      </div>
+      <Bar className="h-20 w-full rounded-xl" />
+      <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+        {Array.from({ length: 8 }, (_, i) => (
+          <div key={i} className="flex items-center gap-3 px-3 py-3">
+            <Bar className="h-9 w-10" />
+            <Bar className="h-6 w-6" />
+            <Bar className="h-4 flex-1" />
+          </div>
+        ))}
+      </div>
+    </PageContainer>
+  );
+}
+
 /** 경기 일람 — 날짜 내비 + 경주 칩 + 출전표. */
 export function RaceSkeleton() {
   return (
