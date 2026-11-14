@@ -33,12 +33,18 @@ export function WithdrawnBanner({
   );
 }
 
-/** 정정 공지 목록 — 발행본은 고치지 않고 공지로만 알린다 (계약 §7). */
+/**
+ * 정정 공지 목록 — 발행본은 고치지 않고 공지로만 알린다 (계약 §7). 정정은 호 단위(경주 범위 없음)라
+ * 경주면에서는 label "이 호의 정정" 으로 그 경주의 변경과 구분한다.
+ */
 export function ErrataList({
   errata,
+  label = "정정",
   className,
 }: {
   errata: readonly FormNotice[];
+  /** 머리 문구 앞부분 — "{label} n건 — …" */
+  label?: string;
   className?: string;
 }) {
   if (errata.length === 0) return null;
@@ -47,7 +53,10 @@ export function ErrataList({
       role="note"
       className={cn("rounded-xl border border-border bg-card px-4 py-3 text-base", className)}
     >
-      <p className="font-semibold text-foreground">정정 {errata.length}건 — 발행본은 고치지 않고 공지로만 알립니다</p>
+      <p className="font-semibold text-foreground">
+        {label} <span className="font-mono tabular-nums">{errata.length}</span>건 — 발행본은 고치지
+        않고 공지로만 알립니다
+      </p>
       <ul className="mt-1 space-y-1">
         {errata.map((n) => (
           <li key={n.id} className="text-sm leading-relaxed text-foreground">

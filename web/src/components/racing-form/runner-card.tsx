@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { MarksReceived, FocusLabel } from "./consensus-box";
 import { deltaClass, deltaText, kgText, rankText, shortDate, TAP, timeText } from "./format";
 import { NewsBadges } from "./news-badges";
+import { NumText } from "./num-text";
 import { SUMMARY_RESET } from "./rule-list";
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
@@ -170,8 +171,12 @@ export function RunnerCard({ runner, hidePicks }: { runner: RunnerV1; hidePicks:
             ) : null}
           </span>
         </Fact>
-        <Fact label="간격">{intervalText(runner)}</Fact>
-        <Fact label="같은 거리">{courseText(runner)}</Fact>
+        <Fact label="간격">
+          <NumText text={intervalText(runner)} />
+        </Fact>
+        <Fact label="같은 거리">
+          <NumText text={courseText(runner)} />
+        </Fact>
         <Fact label="최고기록">
           {runner.best_time ? (
             <span>
@@ -186,7 +191,9 @@ export function RunnerCard({ runner, hidePicks }: { runner: RunnerV1; hidePicks:
           )}
         </Fact>
         <Fact label="통산">
-          {runner.career.starts}전 · 1착 {runner.career.wins}번 · 3착 이내 {runner.career.top3}번
+          <NumText
+            text={`${runner.career.starts}전 · 1착 ${runner.career.wins}번 · 3착 이내 ${runner.career.top3}번`}
+          />
           <span className="text-sm text-muted-foreground"> (수집 기록)</span>
         </Fact>
       </dl>

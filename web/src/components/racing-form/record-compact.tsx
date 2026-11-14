@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 
 import {
   CONSENSUS_KEY,
@@ -83,16 +84,27 @@ export function RecordCompact({
   const cons = rows.find((r) => r.key === CONSENSUS_KEY) ?? null;
 
   if (variant === "line") {
-    const parts = rules.map((r) => `${r.label} ${honmei(r).win.text}`);
     return (
       <div className="space-y-1">
         <p className="text-base leading-relaxed text-foreground">
           <span className="text-muted-foreground">{scopeText(record)}</span>
-          {cons ? <> — 주목마 1착 {honmei(cons).win.text}</> : null}
-          {parts.length > 0 ? (
+          {cons ? (
+            <>
+              {" "}
+              — 주목마 1착{" "}
+              <span className="font-mono tabular-nums">{honmei(cons).win.text}</span>
+            </>
+          ) : null}
+          {rules.length > 0 ? (
             <>
               {" · "}
-              <PickMark mark={1} /> 1착: {parts.join(" · ")}
+              <PickMark mark={1} /> 1착:{" "}
+              {rules.map((r, i) => (
+                <Fragment key={r.key}>
+                  {i > 0 ? " · " : null}
+                  {r.label} <span className="font-mono tabular-nums">{honmei(r).win.text}</span>
+                </Fragment>
+              ))}
             </>
           ) : null}
         </p>

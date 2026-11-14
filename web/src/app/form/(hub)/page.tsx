@@ -3,7 +3,12 @@ import Link from "next/link";
 import { cache } from "react";
 
 import { PageContainer } from "@/components/page-container";
-import { EditionCard, SettlementText, type EditionCardData } from "@/components/racing-form/edition-card";
+import {
+  EditionCard,
+  editionCardSub,
+  SettlementText,
+  type EditionCardData,
+} from "@/components/racing-form/edition-card";
 import { FormSection } from "@/components/racing-form/form-section";
 import { TAP } from "@/components/racing-form/format";
 import { PickLegend } from "@/components/racing-form/legend";
@@ -89,12 +94,6 @@ export async function generateMetadata(
     ogImages: openGraph?.images,
     twitterImages: twitter?.images,
   });
-}
-
-function summarySub(e: EditionHead): string | null {
-  if (!e.summary) return null;
-  const picked = e.summary.races.filter((r) => r.consensus.status === "picked").length;
-  return `${e.race_count}경주 · 주목마 ${picked}경주 · 말 소식 ${e.summary.counts.headlines}건`;
 }
 
 function tallyOf(tallies: readonly EditionTally[], id: number): EditionTally | null {
@@ -217,7 +216,7 @@ export default async function FormHubPage() {
           title: `${dateKo(k.date)} ${k.meet}`,
           issue: edition ? issueLabel(edition.issue_no) : null,
           status,
-          sub: edition ? summarySub(edition) : null,
+          sub: edition ? editionCardSub(edition) : null,
           settlement:
             edition && tally
               ? settlementLine({

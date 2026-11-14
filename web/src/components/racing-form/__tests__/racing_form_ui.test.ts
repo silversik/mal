@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type {
   EditionHead,
   FormNotice,
+  SummaryRaceV1,
   FrontRaceV1,
   FrontRunnerV1,
   HeadlineV1,
@@ -19,6 +20,10 @@ import {
   ResponsibleGamblingNotice,
 } from "../../responsible-gambling-notice";
 import { parseBacktest } from "../backtest-section";
+import { ChangesBox } from "../changes-box";
+import { editionCardSub, SettlementText } from "../edition-card";
+import { ErrataList } from "../edition-notices";
+import { NumText } from "../num-text";
 import { deltaText, kgText, racesDayPath, rankText, timeText } from "../format";
 import { buildHeadlineItems } from "../headlines";
 import { PickMark } from "../pick-mark";
@@ -410,5 +415,106 @@ describe("parseBacktest — 과거 시험 보고서 v1 (계약 §10) → 기록 
     expect(parseBacktest(row({ ...report, report_version: 2 }))).toBeNull();
     expect(parseBacktest(row({ ...report, overall: { ...report.overall, cells: [{ rule_key: "x" }] } }))).toBeNull();
     expect(parseBacktest(row("not an object"))).toBeNull();
+  });
+});
+
+describe("경주면 변경 상자 · 호 정정 — 정정은 호 단위라 경주의 변경으로 세지 않는다", () => {
+  const name = (h: string) => (h === "0041002" ? "녹색신호" : h);
+  const erratum = notice({
+    id: 21,
+    kind: "erratum",
+    edition_id: 1,
+    public_text: "3R 출전마 카드의 거리 표기가 잘못되었습니다",
+    noticed_at: "2026-11-08T09:10:00.000000+09:00",
+  });
+
+  it("ChangesBox 는 이 경주의 기수 변경만 — 없으면 '발행 후 바뀐 것 없음'", () => {
+    const none = renderToStaticMarkup(createElement(ChangesBox, { diffs: [], horseName: name }));
+    expect(none).toContain("이 경주의 발행 후 변경");
+    expect(none).toContain("발행 후 바뀐 것 없음");
+    expect(none).not.toContain("정정");
+    const one = renderToStaticMarkup(
+      createElement(ChangesBox, {
+        diffs: [{ race_no: 1, horse_no: "0041002", chul_no: 2, before: "갑기수", after: "을기수", reason: "부상" }],
+        horseName: name,
+      }),
+    );
+    expect(one).toContain("발행 후 기수 변경");
+    expect(one).toContain("녹색신호");
+    expect(one).not.toContain("발행 후 바뀐 것 없음");
+  });
+
+  it("ErrataList — 경주면은 '이 호의 정정 n건', 1면은 '정정 n건', 없으면 그리지 않음", () => {
+    const race = renderToStaticMarkup(
+      createElement(ErrataList, { errata: [erratum], label: "이 호의 정정" }),
+    );
+    expect(race).toContain("이 호의 정정 <span");
+    expect(race.replace(/<[^>]+>/g, "")).toContain("이 호의 정정 1건 — 발행본은 고치지 않고 공지로만 알립니다");
+    expect(race).toContain("3R 출전마 카드의 거리 표기가 잘못되었습니다");
+    const front = renderToStaticMarkup(createElement(ErrataList, { errata: [erratum] }));
+    expect(front.replace(/<[^>]+>/g, "")).toContain("정정 1건 — 발행본은 고치지 않고 공지로만 알립니다");
+    expect(renderToStaticMarkup(createElement(ErrataList, { errata: [] }))).toBe("");
+  });
+});
+
+describe("숫자 글꼴 — 문장 안 숫자도 Geist Mono tabular-nums (DESIGN.md Data/Numbers)", () => {
+  const mono = (html: string) =>
+    [...html.matchAll(/<span class="font-mono tabular-nums">([^<]*)<\/span>/g)].map((m) => m[1]);
+
+  it("NumText — 정수·분수·소수·시각·% 만 감싸고 글자는 그대로", () => {
+    const html = renderToStaticMarkup(
+      createElement(NumText, { text: "주목마 9경주 중 1착 3/9 · 3착 이내 6/9 · 무효 0 · 52.5kg 14:30 25%" }),
+    );
+    expect(mono(html)).toEqual(["9", "1", "3/9", "3", "6/9", "0", "52.5", "14:30", "25%"]);
+    expect(html.replace(/<[^>]+>/g, "")).toBe(
+      "주목마 9경주 중 1착 3/9 · 3착 이내 6/9 · 무효 0 · 52.5kg 14:30 25%",
+    );
+    expect(renderToStaticMarkup(createElement(NumText, { text: "주목마 없음" }))).toBe("주목마 없음");
+  });
+
+  it("결산 한 줄 — 분수가 mono, 문장은 그대로", () => {
+    const html = renderToStaticMarkup(
+      createElement(SettlementText, {
+        line: {
+          head: "오늘 서울 12경주",
+          consensus: "주목마 6경주 중 1착 0/6 · 3착 이내 2/6 · 무효 0",
+          marks: "1착: 레이팅 1/11 · 최근 성적 0/11",
+          provisional: null,
+          text: "",
+        },
+      }),
+    );
+    expect(mono(html)).toEqual(["6", "1", "0/6", "3", "2/6", "0", "1", "1/11", "0/11"]);
+    expect(html.replace(/<[^>]+>/g, "")).toContain("주목마 6경주 중 1착 0/6 · 3착 이내 2/6 · 무효 0 / ");
+  });
+});
+
+describe("editionCardSub — 허브 카드 보조 줄", () => {
+  const race = (status: SummaryRaceV1["consensus"]["status"], no: number): SummaryRaceV1 => ({
+    race_no: no,
+    race_name: null,
+    start_time: null,
+    distance: null,
+    field_size: 10,
+    stakes: false,
+    consensus: { status, active_rules: 4, pick: null },
+  });
+  const summary = (headlines: number) => ({
+    schema_version: 1 as const,
+    race_date: "2026-11-14",
+    meet: "서울",
+    rules_version: "r1",
+    race_count: 3,
+    runner_count: 30,
+    races: [race("picked", 1), race("picked", 2), race("split", 3)],
+    counts: { headlines, jockey_changes: 0, debuts: 0, class_changes: 0 },
+  });
+
+  it("counts.headlines 는 1면 머리기사 수('외 n건' 제외) — '주요 소식' 으로, 0 이면 뺀다", () => {
+    expect(editionCardSub({ race_count: 3, summary: summary(6) })).toBe(
+      "3경주 · 주목마 2경주 · 주요 소식 6건",
+    );
+    expect(editionCardSub({ race_count: 3, summary: summary(0) })).toBe("3경주 · 주목마 2경주");
+    expect(editionCardSub({ race_count: 3, summary: null })).toBeNull();
   });
 });

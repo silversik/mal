@@ -1,9 +1,10 @@
 import Link from "next/link";
 
-import type { SettlementLine } from "@/lib/racing_form-shared";
+import type { EditionHead, SettlementLine } from "@/lib/racing_form-shared";
 import { cn } from "@/lib/utils";
 
 import { TAP } from "./format";
+import { NumText } from "./num-text";
 import { PickMark } from "./pick-mark";
 
 export type EditionCardData = {
@@ -15,10 +16,27 @@ export type EditionCardData = {
   issue: string | null;
   /** 상태 한 줄 — 발행 시각 또는 editionStateText */
   status: string;
-  /** 보조 한 줄 (주목마 n경주 · 말 소식 n건 등) */
+  /** 보조 한 줄 (주목마 n경주 · 주요 소식 n건 등) */
   sub: string | null;
   settlement: SettlementLine | null;
 };
+
+/**
+ * 허브 카드 보조 줄 "12경주 · 주목마 7경주 · 주요 소식 6건". summary.counts.headlines 는 1면 머리기사 수
+ * (최대 6, "외 n건" 은 빼고 센다 — 계약 §4)라 "말 소식"(전체)이 아니라 "주요 소식" 이라 부른다. 0 이면 뺀다.
+ */
+export function editionCardSub(e: Pick<EditionHead, "race_count" | "summary">): string | null {
+  if (!e.summary) return null;
+  const picked = e.summary.races.filter((r) => r.consensus.status === "picked").length;
+  const headlines = e.summary.counts.headlines;
+  return [
+    `${e.race_count}경주`,
+    `주목마 ${picked}경주`,
+    headlines > 0 ? `주요 소식 ${headlines}건` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 
 /** 허브 "이번 주" 호 카드 — 카드 전체가 1면 링크. */
 export function EditionCard({ card }: { card: EditionCardData }) {
@@ -48,11 +66,11 @@ export function SettlementText({ line, withHead = false }: { line: SettlementLin
   return (
     <span className="block text-sm leading-relaxed text-foreground">
       {withHead ? <span className="font-semibold">{line.head} — </span> : null}
-      {line.consensus}
+      <NumText text={line.consensus} />
       {line.marks ? (
         <>
           {" / "}
-          <PickMark mark={1} /> {line.marks}
+          <PickMark mark={1} /> <NumText text={line.marks} />
         </>
       ) : null}
       {line.provisional ? <span className="text-muted-foreground"> ({line.provisional})</span> : null}

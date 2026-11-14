@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { PageContainer } from "@/components/page-container";
 import { ChangesBox } from "@/components/racing-form/changes-box";
 import { ConsensusBox } from "@/components/racing-form/consensus-box";
-import { WithdrawnBanner } from "@/components/racing-form/edition-notices";
+import { ErrataList, WithdrawnBanner } from "@/components/racing-form/edition-notices";
 import { FormSection } from "@/components/racing-form/form-section";
 import { PickLegend } from "@/components/racing-form/legend";
 import { RaceHeader, RaceNav } from "@/components/racing-form/race-header";
@@ -141,6 +141,8 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
       {s.state === "withdrawn" ? (
         <WithdrawnBanner text={editionStateText(s) ?? "철회됨 — 기록에 포함"} hidePicks={s.hidePicks} />
       ) : null}
+      {/* 정정은 호 단위 — 이 경주의 변경 상자가 아니라 호 공지로 (경주 범위가 없다) */}
+      <ErrataList errata={s.errata} label="이 호의 정정" />
 
       <ResultRow
         state={resultState}
@@ -151,7 +153,7 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
         now={ed.now}
       />
 
-      <ChangesBox diffs={diffs} errata={s.errata} horseName={horseName} />
+      <ChangesBox diffs={diffs} horseName={horseName} />
 
       {!hidePicks ? (
         <>

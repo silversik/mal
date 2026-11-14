@@ -49,7 +49,7 @@ import {
 import { getRacesByDate } from "@/lib/races";
 import { cn } from "@/lib/utils";
 
-import { loadEdition, parseEditionParams } from "../../_lib/load";
+import { loadEdition, parseEditionParams } from "../../../_lib/load";
 
 // 요청 시점에만 DB 를 친다 (빌드의 placeholder DATABASE_URL 로 프리렌더하지 않게).
 export const dynamic = "force-dynamic";
@@ -229,7 +229,9 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
       ) : null}
       <ErrataList errata={s.errata} />
 
-      {!hidePicks ? <PickLegend /> : null}
+      {/* 범례는 상시 (DESIGN 2026-11-13) — 예상을 숨긴 호도 기준 성적·결산 줄에 ◎ 가 나온다. 기호 뜻만
+          알리고 예상은 드러내지 않는다. */}
+      <PickLegend />
       <StatusBlock settlement={settlement} next={next} changes={changes} />
 
       {front ? (

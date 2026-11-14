@@ -5,6 +5,7 @@ import type { SettlementLine } from "@/lib/racing_form-shared";
 import { cn } from "@/lib/utils";
 
 import { TAP } from "./format";
+import { NumText } from "./num-text";
 import { PickMark } from "./pick-mark";
 
 /** 발행 후 기수 변경 한 건 (덧씌움 — 고정본은 그대로). */
@@ -59,11 +60,12 @@ export function StatusBlock({
       {settlement ? (
         <div className="space-y-1 text-base leading-relaxed text-foreground">
           <p>
-            <span className="font-semibold">{settlement.head}</span> — {settlement.consensus}
+            <span className="font-semibold">{settlement.head}</span> —{" "}
+            <NumText text={settlement.consensus} />
           </p>
           {settlement.marks ? (
             <p>
-              <PickMark mark={1} /> {settlement.marks}
+              <PickMark mark={1} /> <NumText text={settlement.marks} />
             </p>
           ) : null}
           {settlement.provisional ? (

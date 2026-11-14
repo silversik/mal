@@ -1,26 +1,25 @@
 import { GateNum } from "@/components/race-detail-ui";
-import { publishStampKo, type FormNotice, type JockeyDiff } from "@/lib/racing_form-shared";
+import type { JockeyDiff } from "@/lib/racing_form-shared";
 
 import { changeText, JOCKEY_CHANGE_SOURCE_NOTE } from "./status-block";
 
 /**
  * 경주면 "이 경주의 발행 후 변경" 상자 (계획 4.6-3 · 4.7) — 덧씌움만, 고정본은 그대로.
  *  - 발행 후 기수 변경: payload 기수 vs 지금 실제 기수 (내용 비교)
- *  - 그 호의 정정 공지
  *  - 없으면 "발행 후 바뀐 것 없음" (변경이 없다는 것도 알린다)
+ * 이 경주의 것만 싣는다. 정정 공지는 경주 범위가 없어(호 단위) 이 상자가 아니라 경주면 위쪽의
+ * 호 정정 목록(ErrataList)에 둔다 — 정정이 있다고 다른 경주가 "바뀌었다"고 보이지 않게.
  * "출전표에서 빠짐" 은 SHOW_SCRATCH_HINT 가 꺼져 있어 싣지 않는다 (감사 통과 전).
  */
 export function ChangesBox({
   diffs,
-  errata,
   horseName,
 }: {
   /** 이 경주의 발행 후 기수 변경 */
   diffs: readonly JockeyDiff[];
-  errata: readonly FormNotice[];
   horseName: (horseNo: string) => string;
 }) {
-  const none = diffs.length === 0 && errata.length === 0;
+  const none = diffs.length === 0;
   return (
     <section
       aria-labelledby="changes-title"
@@ -44,13 +43,6 @@ export function ChangesBox({
               <span className="sr-only">번</span>
               <span className="font-semibold">{horseName(d.horse_no)}</span>
               <span>{changeText(d)}</span>
-            </li>
-          ))}
-          {errata.map((n) => (
-            <li key={`n-${n.id}`} className="text-base leading-relaxed text-foreground">
-              <span className="font-semibold">정정</span>{" "}
-              <span className="text-sm text-muted-foreground">({publishStampKo(n.noticed_at)})</span>{" "}
-              {n.public_text}
             </li>
           ))}
         </ul>
