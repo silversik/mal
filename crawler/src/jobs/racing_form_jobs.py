@@ -30,7 +30,9 @@
 - 경주마다 settle.settle_race →
   행 없음: INSERT · 확정 전 + digest 다름: UPDATE ·
   확정 전 + 같음 + 확정 시각(D+1 13:00) 지남: 확정만 ·
-  확정 + digest 다름: UPDATE 하지 않고 result_changed 공지 (dedup) — 새로 기록했을 때만 실패 1회.
+  확정 + finish·status 다름: UPDATE 하지 않고 result_changed 공지 (dedup) — 새로 기록했을 때만
+  실패 1회 · 확정 + 단승 배당(favorites)만 다름 (확정 뒤 늦게 들어온 배당 포함): 공지·실패 없이
+  로그만, 확정 정산은 그대로 (KRA 결과 변경이 아니라 우리 수집이 늦은 것이다).
   확정 시각 이후 처음 정산되는 경주는 INSERT/UPDATE 와 함께 바로 확정한다.
 - 대기(pending)는 쓰지 않는다. 단 결과 행이 있는데 확정 시각이 지나도 분류할 수 없으면 실패
   (분류가 될 때까지 매 실행).
@@ -401,14 +403,33 @@ def _apply_outcome(
         return 0, None
     if row.results_digest == out.results_digest:
         return 0, None
-    return 0, _result_changed(now, ed, row, out, repo)
+    # 확정 행의 favorites 로 다시 잰 digest — finish·status 가 바뀌었을 때만 확정 정산과 다르다.
+    judged_digest = settle.results_digest(out.finish, list(row.favorites), out.status)
+    if judged_digest == row.results_digest:
+        # 단승 배당만 다름 (확정 뒤 늦게 들어온 배당 포함) — KRA 결과 변경이 아니다.
+        # 확정 정산 그대로 (그 경주는 경주 후 1번 인기 비교에 들어가지 않은 채로 남는다).
+        log.info(
+            "racing_form_post_final_dividends_changed",
+            label=f"{ed.race_date.isoformat()} {ed.meet} {out.race_no}R",
+            before=list(row.favorites),
+            after=list(out.favorites),
+        )
+        return 0, None
+    return 0, _result_changed(now, ed, row, out, repo, judged_digest)
 
 
 def _result_changed(
-    now: datetime, ed: EditionRef, row: OutcomeRow, out: Outcome, repo: Repo
+    now: datetime,
+    ed: EditionRef,
+    row: OutcomeRow,
+    out: Outcome,
+    repo: Repo,
+    judged_digest: str,
 ) -> str | None:
     """확정 뒤 결과 변경 — 정산 행은 그대로 두고 result_changed 공지(dedup).
 
+    after.results_digest 와 dedup 은 judged_digest(새 finish·status + 확정 행의 favorites) 로 한다
+    — 같은 결과 변경 뒤에 배당이 늦게 들어와도 같은 변경을 다시 공지하지 않게.
     새로 기록했을 때만 실패 메시지를 돌려준다."""
     detail: dict[str, Any] = {
         "race_no": out.race_no,
@@ -420,7 +441,7 @@ def _result_changed(
         },
         "after": {
             "status": out.status,
-            "results_digest": out.results_digest,
+            "results_digest": judged_digest,
             "winners": list(out.winners),
             "placed": list(out.placed),
         },
@@ -431,7 +452,7 @@ def _result_changed(
         meet=ed.meet,
         edition_id=ed.id,
         public_text=RESULT_CHANGED_TEMPLATE.format(race_no=out.race_no),
-        dedup_key=store.result_changed_key(ed.id, out.race_no, out.results_digest),
+        dedup_key=store.result_changed_key(ed.id, out.race_no, judged_digest),
         noticed_at=now,
         detail=detail,
         source="job",
@@ -444,9 +465,9 @@ def _result_changed(
         "racing_form_result_changed",
         label=label,
         before=row.results_digest[:12],
-        after=out.results_digest[:12],
+        after=judged_digest[:12],
     )
     return (
         f"{label} 정산 확정 뒤 결과 변경 (result_changed — 확정 정산은 그대로): "
-        f"{row.results_digest[:12]} → {out.results_digest[:12]}"
+        f"{row.results_digest[:12]} → {judged_digest[:12]}"
     )

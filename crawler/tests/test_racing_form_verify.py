@@ -26,7 +26,7 @@ def editions_ok() -> list[dict[str, Any]]:
 
 
 def triggers_ok() -> list[dict[str, Any]]:
-    return [{"name": n, "table_name": t, "enabled": "A"}
+    return [{"name": n, "schema_name": "mal", "table_name": t, "enabled": "A"}
             for n, t in sorted(verify.EXPECTED_TRIGGERS.items())]
 
 
@@ -44,6 +44,7 @@ def picks_ok() -> list[dict[str, Any]]:
 def data_ok() -> dict[Any, Any]:
     return {
         verify._EDITIONS: editions_ok(),
+        verify._LIVE_SCHEMA: [{"schema_name": "mal"}],
         verify._TRIGGERS: triggers_ok(),
         verify._RULE_SETS: rule_sets_ok(),
         verify._PICKS: picks_ok(),
@@ -117,17 +118,39 @@ def test_trigger_problems() -> None:
     rows = triggers_ok()
     rows = [r for r in rows if r["name"] != "trg_rf_picks_guard"]
     rows[0] = {**rows[0], "enabled": "O"}
-    rows.append({"name": "trg_rf_extra", "table_name": "racing_form_picks", "enabled": "A"})
-    rows.append({"name": "trg_rf_notices_guard", "table_name": "racing_form_editions",
+    rows.append({"name": "trg_rf_extra", "schema_name": "mal", "table_name": "racing_form_picks",
                  "enabled": "A"})
+    rows.append({"name": "trg_rf_notices_guard", "schema_name": "mal",
+                 "table_name": "racing_form_editions", "enabled": "A"})
     data = data_ok()
     data[verify._TRIGGERS] = rows
     details = [p.detail for p in run(data).problems]
-    assert any("13개 (기대 12개)" in d for d in details)
+    assert any("13개 (기대 12개, 스키마 mal)" in d for d in details)
     assert any("없는 트리거: trg_rf_picks_guard" in d for d in details)
     assert any("모르는 트리거: trg_rf_extra" in d for d in details)
     assert any("ENABLE ALWAYS('A') 가 아님" in d for d in details)
-    assert any("racing_form_editions 에 붙어 있음" in d for d in details)
+    assert any("mal.racing_form_editions 에 붙어 있음 (기대 mal.racing_form_notices)" in d
+               for d in details)
+
+
+def test_trigger_check_is_scoped_to_search_path_schema() -> None:
+    """다른 스키마의 사본(복구 때 남긴 mal_broken_* 등)을 세지 않는다 — search_path 가 036 표를
+    찾는 스키마만. 표가 안 풀리면 0행 → 12개 모두 없는 트리거."""
+    sql = " ".join(str(verify._TRIGGERS).split())
+    assert "c.relnamespace = (SELECT relnamespace FROM pg_class" in sql
+    assert "to_regclass('racing_form_editions')" in sql
+    assert "to_regclass('racing_form_editions')" in str(verify._LIVE_SCHEMA)
+    # 살아 있는 스키마의 트리거가 모두 사라짐 (다른 스키마의 사본은 세지 않으므로 0개)
+    data = data_ok()
+    data[verify._TRIGGERS] = []
+    details = [p.detail for p in run(data).problems]
+    assert details[0] == "trg_rf_ 트리거 0개 (기대 12개, 스키마 mal)"
+    assert details[1].startswith("없는 트리거: ") and details[1].count("trg_rf_") == 12
+    # 036 표가 search_path 에서 안 풀림
+    data[verify._LIVE_SCHEMA] = []
+    details = [p.detail for p in run(data).problems if p.check == "triggers"]
+    assert details[0] == (
+        "trg_rf_ 트리거 0개 (기대 12개, search_path 에서 racing_form_editions 를 찾지 못함)")
 
 
 def test_rule_set_problems() -> None:

@@ -276,14 +276,15 @@ def test_holdout_refused_before_any_computation(monkeypatch: pytest.MonkeyPatch)
 def test_holdout_saves_before_returning(monkeypatch: pytest.MonkeyPatch) -> None:
     order: list[str] = []
     monkeypatch.setattr(backtest, "holdout_row", lambda conn, sha: None)
+    computed = {"report_version": 1, "counts": {"editions_failed": 0}, "errors": []}
     monkeypatch.setattr(backtest, "compute_report",
-                        lambda *a, **k: order.append("compute") or {"report_version": 1})
+                        lambda *a, **k: order.append(f"compute:{k['fail_fast']}") or computed)
     monkeypatch.setattr(backtest, "save_report",
                         lambda *a, **k: order.append(f"save:{k['public']}:{k['code_rev']}") or 1)
     rep = backtest.run_backtest(lambda: None, R1, D, D, ["서울"], "holdout", NOW, save=True,
                                 public=True, code_rev="abc")
-    assert rep == {"report_version": 1}
-    assert order == ["compute", "save:True:abc"]
+    assert rep == computed
+    assert order == ["compute:True", "save:True:abc"]  # holdout 은 첫 실패에서 멈춘다
 
 
 def test_compute_report_reopens_transaction_after_db_error(
@@ -337,3 +338,94 @@ def test_compute_report_reopens_transaction_after_db_error(
     # 달력 1 + 첫 호(DB 오류로 롤백) 1 + 이어 가는 트랜잭션 1 — 일반 예외는 트랜잭션을 버리지 않는다
     assert len(opened) == 3 and rolled_back == ["rollback"]
     assert rep["runtime_ms"]["editions"] == 3
+
+
+def _fake_compute_world(
+    monkeypatch: pytest.MonkeyPatch, days: list[date], fail: dict[date, BaseException]
+) -> list[date]:
+    """compute_report 의 DB 자리 — 달력 = days, score_edition 은 fail 에 든 날만 그 예외."""
+    from contextlib import contextmanager
+
+    from src.racing_form.types import CalendarRow
+
+    @contextmanager
+    def fake_ro(factory: Any, **kw: Any) -> Any:
+        yield object()
+
+    class FakeBP:
+        def __init__(self, sql: Any) -> None:
+            pass
+
+        def calendar(self, lo: date, hi: date, meets: tuple[str, ...]) -> list[CalendarRow]:
+            return [CalendarRow(d, "서울", 1, None) for d in days if lo <= d <= hi]
+
+    scored: list[date] = []
+
+    def fake_score(bp: Any, d: date, meet: str, defn: Any) -> list[RaceScore]:
+        scored.append(d)
+        if d in fail:
+            raise fail[d]
+        return []
+
+    monkeypatch.setattr(backtest.queries, "read_only_provider", fake_ro)
+    monkeypatch.setattr(backtest, "BacktestProvider", FakeBP)
+    monkeypatch.setattr(backtest, "score_edition", fake_score)
+    return scored
+
+
+@pytest.mark.parametrize("make_err", ["db", "other"])
+def test_holdout_with_failed_edition_is_not_saved_and_can_rerun(
+    monkeypatch: pytest.MonkeyPatch, make_err: str
+) -> None:
+    """한 호라도 실패하면(일시적 DB 오류 포함) holdout 은 그 자리에서 멈추고 저장·반환하지 않는다
+    — 정의 해시당 1회를 써 버리지 않으니, 원인 해결 뒤 다시 실행하면 저장된다."""
+    from sqlalchemy.exc import DBAPIError
+
+    days = [D, D + timedelta(days=1), D + timedelta(days=7)]
+    err: BaseException = (
+        DBAPIError("SELECT 1", {}, Exception("canceling statement due to lock timeout "
+                                              "serviceKey=hunter2"))
+        if make_err == "db" else KeyError("bad row")
+    )
+    fail = {days[1]: err}
+    scored = _fake_compute_world(monkeypatch, days, fail)
+    saved: list[dict[str, Any]] = []
+    monkeypatch.setattr(backtest, "holdout_row", lambda conn, sha: None)
+    monkeypatch.setattr(backtest, "save_report",
+                        lambda conn, report, **k: saved.append(report) or 1)
+    with pytest.raises(backtest.HoldoutIncomplete) as ei:
+        backtest.run_backtest(lambda: None, R1, D, D + timedelta(days=7), ["서울"], "holdout",
+                              NOW, save=True)
+    assert saved == []
+    assert scored == days[:2]  # 첫 실패에서 멈춘다 — 남은 호를 계산하지 않음
+    msg = str(ei.value)
+    assert "저장하지 않았다" in msg and "다시 실행할 수 있다" in msg
+    assert f"{days[1].isoformat()} 서울" in msg and "hunter2" not in msg
+    assert [f["race_date"] for f in ei.value.failures] == [days[1].isoformat()]
+    assert isinstance(ei.value, BacktestError)  # CLI: stderr + exit 2
+
+    fail.clear()  # 원인 해결 → 같은 정의 해시로 다시 실행 → 저장
+    rep = backtest.run_backtest(lambda: None, R1, D, D + timedelta(days=7), ["서울"], "holdout",
+                                NOW, save=True)
+    assert saved == [rep] and rep["counts"]["editions_failed"] == 0
+    assert rep["counts"]["editions"] == 3
+
+
+def test_holdout_report_with_errors_is_never_saved(monkeypatch: pytest.MonkeyPatch) -> None:
+    """이중 안전장치 — compute_report 가 오류 든 보고서를 돌려줘도 holdout 은 저장하지 않는다."""
+    monkeypatch.setattr(backtest, "holdout_row", lambda conn, sha: None)
+    errors = [{"race_date": "2026-10-10", "meet": "서울", "error": "OperationalError: boom"}]
+    monkeypatch.setattr(backtest, "compute_report", lambda *a, **k: {
+        "counts": {"editions_failed": 1}, "errors": errors})
+    monkeypatch.setattr(backtest, "save_report",
+                        lambda *a, **k: pytest.fail("오류가 든 holdout 을 저장하면 안 된다"))
+    with pytest.raises(backtest.HoldoutIncomplete, match="2026-10-10 서울 OperationalError"):
+        backtest.run_backtest(lambda: None, R1, D, D, None, "holdout", NOW, save=True)
+
+
+def test_dev_keeps_going_after_failed_edition(monkeypatch: pytest.MonkeyPatch) -> None:
+    days = [D, D + timedelta(days=1), D + timedelta(days=7)]
+    scored = _fake_compute_world(monkeypatch, days, {days[0]: KeyError("bad row")})
+    rep = backtest.run_backtest(lambda: None, R1, D, D + timedelta(days=7), ["서울"], "dev", NOW)
+    assert scored == days and rep["counts"]["editions_failed"] == 1
+    assert rep["counts"]["editions"] == 2

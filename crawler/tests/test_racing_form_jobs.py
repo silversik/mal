@@ -378,6 +378,63 @@ def test_post_final_digest_change_records_result_changed_once() -> None:
     assert not [a for a in repo.calls_of("finalize_outcome") if a[1] == 1 and a[2] > finals_at]
 
 
+def test_post_final_late_dividends_are_not_a_result_change() -> None:
+    """배당 수집이 늦어 favorites [] 로 확정 → 뒤에 배당이 들어옴.
+
+    공지·실패 없이 확정 정산 그대로."""
+    p, repo, eid = published_world()
+    add_results(p, 1, R1_HORSES, [1, 2, 3, 4, 5, 6])
+    add_results(p, 2, R2_HORSES, [1, 2, 3, 4, 5])
+    assert settle_at(p, repo, kst(2026, 11, 16, 13, 15)) == (2, [])  # 배당 없이 바로 확정
+    before = copy.deepcopy(repo.outcomes)
+    assert before[(eid, 1)]["is_final"] and before[(eid, 1)]["favorites"] == []
+    p.add_dividend(D, MEET, 1, "2", "1.9")  # D+2 백필 등으로 늦게 들어온 단승 배당
+    p.add_dividend(D, MEET, 1, "1", "4.0")
+    p.add_dividend(D, MEET, 2, "3", "2.2")
+    for when in (kst(2026, 11, 17, 10, 15), kst(2026, 11, 17, 10, 45)):
+        assert settle_at(p, repo, when) == (0, [])
+    assert repo.outcomes == before  # 확정 정산 그대로 (favorites [] — 1번 인기 비교 밖)
+    assert repo.notices_of("result_changed") == []
+
+
+def test_post_final_rank_swap_with_new_dividends_is_one_result_changed() -> None:
+    p, repo, eid = published_world()
+    add_results(p, 1, R1_HORSES, [1, 2, 3, 4, 5, 6])
+    assert settle_at(p, repo, kst(2026, 11, 16, 13, 15)) == (1, [])
+    before = copy.deepcopy(outcome(repo, eid, 1))
+    for r in p.result_rows:  # 확정 뒤 KRA 정정 + 같은 때 배당도 들어옴
+        if r.race_date == D and r.race_no == 1 and r.rank in (1, 2):
+            r.rank = 3 - r.rank
+    p.add_dividend(D, MEET, 1, "2", "1.9")
+    count, failures = settle_at(p, repo, kst(2026, 11, 17, 10, 15))
+    assert count == 0 and len(failures) == 1 and "result_changed" in failures[0]
+    (n,) = repo.notices_of("result_changed")
+    assert n["detail"]["after"]["winners"] == ["0041002"]
+    assert settle_at(p, repo, kst(2026, 11, 17, 10, 45)) == (0, [])
+    assert len(repo.notices_of("result_changed")) == 1
+    assert outcome(repo, eid, 1) == before
+
+
+def test_result_changed_then_late_dividends_does_not_notice_again() -> None:
+    """정정 공지 뒤 배당이 늦게 들어와도 같은 결과 변경.
+
+    두 번째 공지·실패 없음 (dedup = finish·status 만 반영한 judged digest)."""
+    p, repo, eid = published_world()
+    add_results(p, 1, R1_HORSES, [1, 2, 3, 4, 5, 6])
+    assert settle_at(p, repo, kst(2026, 11, 16, 13, 15)) == (1, [])
+    for r in p.result_rows:
+        if r.race_date == D and r.race_no == 1 and r.rank in (1, 2):
+            r.rank = 3 - r.rank
+    count, failures = settle_at(p, repo, kst(2026, 11, 16, 13, 45))
+    assert count == 0 and len(failures) == 1
+    (n,) = repo.notices_of("result_changed")
+    p.add_dividend(D, MEET, 1, "2", "1.9")
+    assert settle_at(p, repo, kst(2026, 11, 17, 10, 15)) == (0, [])
+    assert repo.notices_of("result_changed") == [n]
+    after_digest = n["detail"]["after"]["results_digest"]
+    assert n["dedup_key"] == store.result_changed_key(eid, 1, after_digest)
+
+
 def test_race_void_at_d_plus_7() -> None:
     p, repo, eid = published_world()
     add_results(p, 1, R1_HORSES, [1, 2, 3, 4, 5, 6])

@@ -105,7 +105,7 @@ class EditionRef:
 
 @dataclass(frozen=True)
 class OutcomeRow:
-    """racing_form_race_outcomes 의 판정·상태 열."""
+    """racing_form_race_outcomes 의 판정·상태 열 (+ 확정 뒤 변경 판정에 쓰는 favorites)."""
 
     edition_id: int
     race_no: int
@@ -117,6 +117,7 @@ class OutcomeRow:
     finalized_at: datetime | None = None
     winners: tuple[str, ...] = field(default_factory=tuple)
     placed: tuple[str, ...] = field(default_factory=tuple)
+    favorites: tuple[str, ...] = field(default_factory=tuple)
 
 
 @runtime_checkable
@@ -342,7 +343,7 @@ _EDITIONS_FOR_SETTLEMENT = text(
 
 _OUTCOME_COLUMNS = """
     edition_id, race_no, status, results_digest, is_final,
-    first_settled_at, settled_at, finalized_at, winners, placed
+    first_settled_at, settled_at, finalized_at, winners, placed, favorites
 """
 _GET_OUTCOMES = text(
     f"SELECT {_OUTCOME_COLUMNS} FROM racing_form_race_outcomes"
@@ -448,6 +449,7 @@ def _outcome_row(r: Mapping[str, Any]) -> OutcomeRow:
         finalized_at=r["finalized_at"],
         winners=tuple(r["winners"] or ()),
         placed=tuple(r["placed"] or ()),
+        favorites=tuple(r["favorites"] or ()),
     )
 
 

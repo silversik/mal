@@ -20,6 +20,9 @@
   · label="dev": 아무것도 쓰지 않는다 (save 불가). label="holdout": save 필수. 같은 정의 해시의
     holdout 행이 이미 있으면 **계산하지 않고** 거부 → 계산 → INSERT (report_sha256 은 SQL 에서,
     is_public 은 이때 정함 — 추가 전용이라 나중에 바꿀 수 없다) → 그 뒤에 반환(출력).
+  · holdout 은 한 호라도 실패하면(DB 오류·예상 밖 예외) 그 자리에서 멈추고 **저장·출력하지 않는다**
+    (HoldoutIncomplete) — 일시적인 인프라 오류가 정의 해시당 1회인 holdout 을 써 버리지 않게.
+    원인을 고친 뒤 다시 실행할 수 있다. dev 는 실패한 호를 세고 계속 간다.
   · ensure_rule_set 은 부르지 않는다 (기준 정의 등록은 발행 잡만).
 - 현재 시각을 읽지 않는다 — now 는 인자. 실행 시간 통계만 단조 타이머(기본 time.perf_counter,
   주입 가능)로 잰다.
@@ -81,6 +84,23 @@ class BacktestError(RuntimeError):
 
 class HoldoutExists(BacktestError):
     """같은 정의 해시의 holdout 보고서가 이미 있다 — 계산하지 않고 거부."""
+
+
+class HoldoutIncomplete(BacktestError):
+    """holdout 계산 중 실패한 호가 있다 — 저장·출력하지 않는다 (다시 실행할 수 있다).
+
+    failures: ({race_date, meet, error}, ...) — 오류 문구는 마스킹·앞 300자.
+    결과 수치는 담지 않는다.
+    """
+
+    def __init__(self, failures: Sequence[Mapping[str, Any]]) -> None:
+        self.failures = tuple(dict(f) for f in failures)
+        where = "; ".join(f"{f['race_date']} {f['meet']} {f['error']}" for f in self.failures)
+        super().__init__(
+            f"holdout 과거 시험 중 실패한 호 {len(self.failures)}개 — 저장하지 않았다 — "
+            f"원인 해결 후 다시 실행할 수 있다 (정의 해시당 1회 규칙은 저장된 보고서에만 걸린다): "
+            f"{where}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -642,10 +662,13 @@ class Tally:
     def add_error(self, d: date, meet: str, exc: BaseException) -> None:
         self.editions_failed += 1
         if len(self.errors) < MAX_ERRORS_IN_REPORT:
-            msg = " ".join(redact(f"{type(exc).__name__}: {exc}").split())
-            self.errors.append(
-                {"race_date": d.isoformat(), "meet": meet, "error": msg[:_ERROR_TEXT_MAX]}
-            )
+            self.errors.append(error_entry(d, meet, exc))
+
+
+def error_entry(d: date, meet: str, exc: BaseException) -> dict[str, Any]:
+    """보고서 errors[] 한 건 — 오류 문구는 마스킹 + 공백 정리 + 앞 300자."""
+    msg = " ".join(redact(f"{type(exc).__name__}: {exc}").split())
+    return {"race_date": d.isoformat(), "meet": meet, "error": msg[:_ERROR_TEXT_MAX]}
 
 
 def _median(values: Sequence[int]) -> int:
@@ -785,8 +808,14 @@ def compute_report(
     timer: Timer | None = None,
     statement_timeout_ms: int = STATEMENT_TIMEOUT_MS,
     lock_timeout_ms: int = LOCK_TIMEOUT_MS,
+    fail_fast: bool = False,
 ) -> dict[str, Any]:
-    """읽기만 — 월 단위 READ ONLY 트랜잭션으로 과거 시험을 돌려 보고서를 만든다 (저장 없음)."""
+    """읽기만 — 월 단위 READ ONLY 트랜잭션으로 과거 시험을 돌려 보고서를 만든다 (저장 없음).
+
+    fail_fast (holdout): 첫 실패 호에서 HoldoutIncomplete 로 멈춘다 — 오류가 든 보고서를
+    만들지 않는다.
+    아니면(dev) 실패한 호를 세고 다음 호로 간다 (DB 오류면 트랜잭션을 새로 연다).
+    """
     factory = _as_factory(conn)
     meets_n = normalize_meets(meets)
     clock = timer or time.perf_counter
@@ -812,12 +841,13 @@ def compute_report(
                         t0 = clock()
                         try:
                             races = score_edition(bp, d, meet, defn)
-                        except DBAPIError as e:  # 트랜잭션이 깨짐 → 새로 연다
+                        except Exception as e:
+                            if fail_fast:  # holdout — 저장·출력 없이 멈춘다 (트랜잭션은 롤백)
+                                raise HoldoutIncomplete([error_entry(d, meet, e)]) from e
                             tally.add_error(d, meet, e)
-                            raise _Reopen from e
-                        except Exception as e:  # 이 호만 실패, 다음 호는 계속
-                            tally.add_error(d, meet, e)
-                            continue
+                            if isinstance(e, DBAPIError):  # 트랜잭션이 깨짐 → 새로 연다
+                                raise _Reopen from e
+                            continue  # 이 호만 실패, 다음 호는 계속
                         finally:
                             tally.durations_ms.append(int(round((clock() - t0) * 1000)))
                         tally.add_edition(d, meet, races)
@@ -895,6 +925,7 @@ def run_backtest(
     """과거 시험 한 번 → 보고서 dict. holdout 은 저장이 끝난 뒤에만 돌려준다.
 
     conn: None(src.db.session_scope) · Engine · 트랜잭션 팩토리. meets: None = 서울·부경·제주.
+    holdout 에서 한 호라도 실패하면 HoldoutIncomplete — 저장하지 않고 보고서도 돌려주지 않는다.
     """
     if label not in LABELS:
         raise BacktestError(f"label 은 dev 또는 holdout ({label!r})")
@@ -923,7 +954,12 @@ def run_backtest(
                 f"{defn.version} (정의 {sha[:12]}) 의 holdout 보고서가 이미 있다 "
                 f"(id {existing['id']}) — 정의 해시당 1회라 계산하지 않는다"
             )
-    report = compute_report(factory, defn, d_from, d_to, meets_n, label=label, timer=timer)
+    holdout = label == "holdout"
+    report = compute_report(
+        factory, defn, d_from, d_to, meets_n, label=label, timer=timer, fail_fast=holdout
+    )
+    if holdout and report["counts"]["editions_failed"]:  # fail_fast 의 이중 안전장치
+        raise HoldoutIncomplete(report["errors"])
     if save:
         save_report(
             factory,

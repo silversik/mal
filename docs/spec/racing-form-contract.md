@@ -264,7 +264,8 @@ launchAt = `MIN(racing_form_rule_sets.registered_at)`. missed 판정은 `freeze_
 - `favorites` = 단승 배당(`race_dividends.win_rate` > 0) 최저인 말들(동률 모두, 출전번호→horse_no 매핑). 배당 없으면 `{}`.
 - `pop_ranks` = 단승 배당 오름차순 competition rank `{horse_no: rank}`.
 - `results_digest` = sha256(정렬 JSON `{finish, favorites, status}`).
-- upsert: 행이 없으면 INSERT(first_settled_at=settled_at=now). 있고 `is_final=false` 이고 digest 가 다르면 UPDATE. now ≥ D+1 13:00 이면 is_final=true, finalized_at=now (확정 시각 이후 처음 정산되는 경주는 바로 확정). 확정 행의 digest 가 달라지면 UPDATE 하지 않고 `result_changed` 공지 + 잡 실패 1회.
+- upsert: 행이 없으면 INSERT(first_settled_at=settled_at=now). 있고 `is_final=false` 이고 digest 가 다르면 UPDATE. now ≥ D+1 13:00 이면 is_final=true, finalized_at=now (확정 시각 이후 처음 정산되는 경주는 바로 확정). 확정 행은 UPDATE 하지 않는다: 확정 행의 finish·status 가 달라지면 `result_changed` 공지 + 잡 실패 1회. 단승 배당(favorites)만 달라지면 (확정 뒤 늦게 들어온 배당 포함 — KRA 결과 변경이 아니라 수집 지연) 공지·실패 없이 로그(`racing_form_post_final_dividends_changed`)만 남기고 확정 정산은 그대로 둔다 (그 경주는 경주 후 1번 인기 비교 밖에 남는다).
+- 확정 뒤 변경 판정 = `judged_digest` = sha256(정렬 JSON `{새 finish, 확정 행의 favorites, 새 status}`) ≠ 확정 행의 `results_digest`. 같은 결과 변경 뒤에 배당이 늦게 들어와도 judged_digest 는 그대로라 다시 공지하지 않는다.
 
 세부 (구현 `store.py` · `jobs/racing_form_jobs.py` 기준)
 - 정산 잡 범위 = D ∈ [오늘−14, 오늘] 의 발행본 **전부**. 모든 경주가 확정된 호도 다시 읽어 확정 뒤 결과 변경을 감시한다. 정의는 그 호의 `rules_version` (`definitions.get`).
@@ -291,8 +292,8 @@ launchAt = `MIN(racing_form_rule_sets.registered_at)`. missed 판정은 `freeze_
 |---|---|---|---|---|
 | `missed` | 발행 잡 (D 08:00 실행) | NULL | `missed\|{D}\|{meet}` | 미발행 상태 사유 |
 | `publish_failed` | 발행 잡 (같은 사유 첫 실패만 잡 실패) | NULL | `publish_failed\|{D}\|{meet}\|{reason_code}` | 노출 안 함 |
-| `result_changed` | 정산 잡 | 필수 | `result_changed\|{edition_id}\|{race_no}\|{digest[:16]}` | 기록 페이지 |
-| `erratum` · `withdrawn` | 운영자 CLI | 필수 | `{kind}\|{D}\|{meet}\|{sha256(text)[:12]}` | 1면 배너 / 기록 |
+| `result_changed` | 정산 잡 (확정 행의 finish·status 변경만 — 배당만 변경은 공지 안 함) | 필수 | `result_changed\|{edition_id}\|{race_no}\|{judged_digest[:16]}` (§6) | 기록 페이지 |
+| `erratum` · `withdrawn` | 운영자 CLI | 필수 | `{kind}\|{D}\|{meet}\|{sha256(text)[:12]}` | 1면 배너 · 그 호 경주면의 호 공지(정정 = "이 호의 정정 n건", 경주 범위 없음 — "이 경주의 발행 후 변경" 에는 넣지 않음) / 기록 |
 | `paused` | 운영자 CLI | NULL | `paused\|{D}\|{meet or *}\|{until}` | 쉼 상태 |
 
 - `paused`: `race_date` = 시작일, `detail.until` = 종료일(포함), meet NULL = 전체. 잡은 이 기간 호를 발행·missed 처리하지 않는다.
@@ -304,7 +305,7 @@ launchAt = `MIN(racing_form_rule_sets.registered_at)`. missed 판정은 `freeze_
 |---|---|---|
 | `missed` | `"이번 호는 발행하지 않았습니다 — {사유}"`. 사유 = 마지막 `publish_failed` 사유 코드의 일반 문구: `no_entries` "출전표 자료를 확인하지 못했습니다" · `history_coverage_low` "과거 성적 자료가 충분하지 않았습니다" · `all_nopick_majority` "예상을 낼 수 있는 경주가 적었습니다" · `results_present` "발행 전에 경주 결과가 먼저 들어왔습니다" · `not_in_window`·실패 기록 없음 "발행 시간 안에 발행하지 못했습니다" · `error:*` "발행 처리 중 문제가 생겼습니다" | `{reason_code: string \| null}` |
 | `publish_failed` | `"발행 실패 내부 기록 (사유 코드 {reason_code})"` (노출 안 함) | `{reason_code, error: 예외 클래스, message: 예외 문구 앞 500자 (API 키 마스킹)}` |
-| `result_changed` | `"{race_no}R 결과가 정산 확정 뒤 바뀌었습니다 — 기록은 확정한 정산을 그대로 씁니다"` | `{race_no, before: {status, results_digest, winners, placed}, after: {…같은 키}}` |
+| `result_changed` | `"{race_no}R 결과가 정산 확정 뒤 바뀌었습니다 — 기록은 확정한 정산을 그대로 씁니다"` | `{race_no, before: {status, results_digest, winners, placed}, after: {…같은 키}}` — `after.results_digest` = judged_digest (§6) |
 
 모든 잡 공지는 `source = 'job'`, `noticed_at` = 잡의 now.
 
@@ -338,6 +339,10 @@ launchAt = `MIN(racing_form_rule_sets.registered_at)`. missed 판정은 `freeze_
 - **저장**: dev 는 저장하지 않는다(--save 거부). holdout 은 `--save` 필수, 정의 해시(definition_sha256)당 1행 —
   이미 있으면 **계산하지 않고** 거부, 계산 → INSERT(`report_sha256` 은 SQL `encode(sha256(convert_to(CAST(:report AS
   jsonb)::text,'UTF8')),'hex')`, `is_public` 은 이때 정함 — 추가 전용이라 바꿀 수 없다) → 그 뒤에 출력.
+  holdout 은 **한 호라도 실패하면**(DB 오류·예상 밖 예외) 첫 실패에서 멈추고 저장도 출력도 하지 않는다
+  (`HoldoutIncomplete`, CLI exit 2 — 실패한 호의 날짜·경마장·마스킹한 오류만 알린다). 정의 해시당 1회 규칙은
+  저장된 행에만 걸리므로 원인을 고친 뒤 다시 실행할 수 있다. 그래서 저장된 holdout 은 항상
+  `counts.editions_failed = 0`·`errors = []` 이다.
   `ensure_rule_set` 은 부르지 않는다. 기간 끝은 실행일(KST) 전날까지.
 - **입력 Q1b**: 그날 `race_results` 의 출주(§1.1 `rank ≥ 1` 또는 기록 > 0)로 만든 명단 — 레이팅 = 결과 raw
   `hrRating`, 기수·조교사 = 결과 컬럼(실제 기수), 부담 = raw `wgBudam`, 출전번호 = raw `chulNo`, 기수변경 없음,
@@ -346,8 +351,9 @@ launchAt = `MIN(racing_form_rule_sets.registered_at)`. missed 판정은 `freeze_
   나머지(Q2 이력·Q3 집계·Q6 메타·정산 결과·배당)는 `SqlProvider` 그대로, H = D−1.
 - **계산**: 발행과 같은 `build_edition(mode="backtest")`(소식 끔, 예비 기준 함께) + 정산과 같은
   `settle.settle_race`. 정산 시각은 D+7 00:00 KST 로 고정(실행 시각과 무관 — 결정적). 판정은 §6.1, 주목마는
-  1순위만. 월 단위 READ ONLY 트랜잭션(`statement_timeout` 60초·`lock_timeout` 5초, SET LOCAL). 한 호의 오류는
-  그 호만 실패(`counts.editions_failed`, `errors` 앞 20건) — DB 오류면 트랜잭션을 새로 열어 이어 간다.
+  1순위만. 월 단위 READ ONLY 트랜잭션(`statement_timeout` 60초·`lock_timeout` 5초, SET LOCAL). dev 에서 한 호의
+  오류는 그 호만 실패(`counts.editions_failed`, `errors` 앞 20건) — DB 오류면 트랜잭션을 새로 열어 이어 간다.
+  holdout 은 위 '저장' 대로 첫 실패에서 멈춘다.
 - **숫자는 정수 또는 `[분자, 분모]` 쌍만** (float 없음). 기대값(`random_*`·`fav_*`)은 정확한 기약분수, 참여율
   `participation` 은 약분하지 않은 `[예상 낸 경주, 경주]`. 퍼센트는 화면이 계산한다. `runtime_ms` 는 실행마다
   달라 보고서 해시도 실행마다 다르다.
@@ -400,7 +406,9 @@ type BacktestReportV1 = {
   를 쿼리마다 READ ONLY 트랜잭션(15초/2초)으로. 항목 상태 OK·INFO·WARN·FAIL, **exit 1 은 FAIL(점검 실패·PG < 11)
   만** — WARN 은 사전 등록·G1 에서 사람이 판단. 백업 TOC 는 호스트 명령만 출력.
 - `racing-form-verify` (`verify.py`) — payload 해시 SQL 재계산 + summary, `|created_at − published_at|` ≤ 5분
-  (`--max-clock-skew-min`), `trg_rf_` 12개 이름·테이블·`tgenabled='A'`, rule_sets 해시·정의 JSON = 레지스트리
+  (`--max-clock-skew-min`), search_path 의 스키마(`racing_form_editions` 가 풀리는 스키마)에서 `trg_rf_` 12개
+  이름·테이블·`tgenabled='A'` (다른 스키마의 사본 — 복구 때 남긴 `mal_broken_*` 등 — 은 세지 않는다; PR-2
+  healthcheck '경마지 보호 장치' 행도 같은 조회), rule_sets 해시·정의 JSON = 레지스트리
   (모르는 버전 = 문제), picks = payload(호마다 행 수·키, race_date·meet·rule_version). 문제가 있으면 exit 1.
   잡 시계를 주입해 발행한 DB(로컬 시드 등)는 시계 점검만 문제로 나온다.
 - `racing-form-build` 는 READ ONLY dry-run — live 의 창(`not_in_window`)·D 결과(`results_present`)는 경고로 바꿔

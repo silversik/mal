@@ -226,6 +226,11 @@ def _conn_stats_sql(name_col: str, id_key: str) -> Any:
     distinct_ids = 같은 meet·race_date < :h 전체의 정규화 번호 개수 (NULL·빈 값 제외).
     창 안 출주가 0 인 이름은 돌려주지 않는다 (규칙상 자격 없음과 같다).
     name_col·id_key 는 이 모듈의 고정 값만 넘긴다.
+
+    안쪽 SELECT 가 번호를 정규화(id_norm)해 raw 를 버리고, `OFFSET 0` 이 그 하위 질의를 끌어올리지
+    못하게 막는다 — 펜스가 없으면 planner 가 하위 질의를 풀어 COUNT(DISTINCT …) 를 위한 정렬에
+    race_results.raw(행당 ~1.4KB) 를 싣고 가서 호당 수백 MB 의 임시 파일을 쓴다
+    (과거 시험은 호당 2회).
     """
     return text(
         f"""
@@ -234,18 +239,19 @@ def _conn_stats_sql(name_col: str, id_key: str) -> Any:
                COUNT(*) FILTER (WHERE s.race_date >= :lo AND s.rank = 1)::int     AS wins,
                COUNT(*) FILTER (
                    WHERE s.race_date >= :lo AND s.rank BETWEEN 1 AND 3)::int        AS top3,
-               COUNT(DISTINCT NULLIF(ltrim(btrim(s.id_raw), '0'), ''))::int        AS distinct_ids
+               COUNT(DISTINCT s.id_norm)::int                                      AS distinct_ids
           FROM (
                 SELECT btrim(rr.{name_col}) AS name,
                        rr.race_date,
                        rr.rank,
                        COALESCE(rr.rank >= 1 OR round(rr.record_time * 10) > 0, FALSE)
                            AS is_start,
-                       rr.raw ->> '{id_key}' AS id_raw
+                       NULLIF(ltrim(btrim(rr.raw ->> '{id_key}'), '0'), '') AS id_norm
                   FROM race_results rr
                  WHERE btrim(rr.{name_col}) = ANY(CAST(:names AS text[]))
                    AND rr.meet = ANY(CAST(:meets AS text[]))
                    AND rr.race_date < :h
+                OFFSET 0  -- 펜스: 끌어올리면 raw 가 정렬로 딸려 간다 (위 설명)
                ) s
          GROUP BY s.name
         HAVING COUNT(*) FILTER (WHERE s.race_date >= :lo AND s.is_start) > 0

@@ -335,6 +335,7 @@ class MemoryRepo:
             finalized_at=r["finalized_at"],
             winners=tuple(r["winners"]),
             placed=tuple(r["placed"]),
+            favorites=tuple(r["favorites"]),
         )
 
     def get_outcomes(self, edition_id: int) -> dict[int, OutcomeRow]:

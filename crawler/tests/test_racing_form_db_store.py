@@ -539,6 +539,29 @@ def test_homonym_counts_and_trainer_ids(engine: Engine, world: World) -> None:
         assert seoul["가상조교갑"].distinct_ids == 0  # 서울 이력에는 trNo 가 없다
 
 
+def test_q3_aggregate_does_not_carry_raw(engine: Engine, world: World) -> None:
+    """Q3 하위 질의는 번호를 정규화해 raw 를 버리고 OFFSET 0 펜스로 끌어올림을 막는다.
+
+    펜스가 없으면 COUNT(DISTINCT) 정렬에 race_results.raw(행당 ~1.4KB) 가 딸려 가
+    큰 이력에서 호당 수백 MB 를 쓴다."""
+    from src.racing_form import queries
+
+    def outputs(node: dict[str, Any]) -> list[str]:
+        out = list(node.get("Output", []))
+        for child in node.get("Plans", []):
+            out.extend(outputs(child))
+        return out
+
+    for sql, names in ((queries._Q3_JOCKEY, JOCKEYS), (queries._Q3_TRAINER, TRAINERS)):
+        params = {"names": list(names), "meets": queries.meet_aliases(MEET), "h": H,
+                  "lo": H - timedelta(days=90)}
+        with engine.connect() as c:
+            (plan,) = c.execute(text("EXPLAIN (VERBOSE, FORMAT JSON) " + sql.text),
+                                params).scalar()
+        outs = outputs(plan["Plan"])
+        assert outs and "rr.raw" not in outs
+
+
 def test_calendar_first_post_is_parsed_time(engine: Engine, world: World) -> None:
     """start_time 이 '9:50' 처럼 앞자리 0 이 없어도 가장 이른 시각을 'HH:MM' 으로."""
     day = date(2099, 12, 20)
@@ -843,6 +866,16 @@ def test_settle_job_provisional_final_and_result_changed(engine: Engine, world: 
     assert all(r["is_final"] and r["finalized_at"] == fin and r["settled_at"] == s1
                for r in rows.values())
     assert settle_racing_form(fin + timedelta(minutes=30)) == (0, [])
+    assert sql_repo(engine).get_outcome(eid, 1).favorites == ("RF99103",)
+
+    # 확정 뒤 늦게 들어온 2R 단승 배당 (favorites [] 로 확정) — KRA 결과 변경이 아니다:
+    # 공지·실패 없이 확정 정산 그대로
+    assert rows[2]["favorites"] == []
+    seed_dividends(engine, [dict(race_date=D, meet=MEET, race_no=2, chul_no_text="2",
+                                 win_rate="1.8")])
+    assert settle_racing_form(fin + timedelta(minutes=45)) == (0, [])
+    assert outcome_rows(engine, eid) == rows
+    assert q(engine, "SELECT id FROM racing_form_notices WHERE kind = 'result_changed'") == []
 
     # 확정 뒤 KRA 정정 — 1R 1착·2착이 뒤바뀜 → UPDATE 하지 않고 result_changed 1회
     with engine.begin() as c:

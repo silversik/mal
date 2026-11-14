@@ -7,8 +7,11 @@
 1. payload — 모든 발행본의 payload_sha256 을 SQL 로 다시 계산해 저장값과 비교,
    summary = payload.summary.
 2. 시계 — |created_at(DB 시계) − published_at(잡 시계)| ≤ max_clock_skew (기본 5분).
-3. 보호 트리거 — `starts_with(tgname, 'trg_rf_') AND NOT tgisinternal` 가 정확히 12개, 이름·테이블이
-   036 과 같고 모두 tgenabled = 'A' (ENABLE ALWAYS).
+3. 보호 트리거 — search_path 의 스키마(`racing_form_editions` 가 풀리는 스키마)에서
+   `starts_with(tgname, 'trg_rf_') AND NOT tgisinternal` 가 정확히 12개, 이름·테이블이 036 과
+   같고 모두 tgenabled = 'A' (ENABLE ALWAYS). 다른 스키마의 사본(복구 때 남긴 `mal_broken_*`
+   등)은 세지 않는다 — 세면 살아 있는 표의 트리거가 사라져도 사본 때문에 12개로 보이거나,
+   멀쩡해도 24개로 보인다.
 4. 기준 정의 — racing_form_rule_sets 각 행의 definition_sha256 =
    definitions.RULE_SETS[버전] 의 해시,
    저장된 definition JSON = 레지스트리 JSON. 레지스트리에 없는 버전은 문제.
@@ -71,16 +74,31 @@ _EDITIONS = text(
     """
 )
 
+# search_path 가 036 표(racing_form_editions)를 찾는 스키마 — 못 찾으면 0행
+_LIVE_SCHEMA = text(
+    """
+    SELECT n.nspname::text AS schema_name
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE c.oid = to_regclass('racing_form_editions')
+    """
+)
+
+# 그 스키마의 트리거만 (표가 안 풀리면 0행 → 없는 트리거 12개로 나온다)
 _TRIGGERS = text(
     """
     SELECT t.tgname::text     AS name,
+           n.nspname::text    AS schema_name,
            c.relname::text    AS table_name,
            t.tgenabled::text  AS enabled
       FROM pg_trigger t
       JOIN pg_class c ON c.oid = t.tgrelid
+      JOIN pg_namespace n ON n.oid = c.relnamespace
      WHERE starts_with(t.tgname::text, 'trg_rf_')
        AND NOT t.tgisinternal
-     ORDER BY t.tgname
+       AND c.relnamespace = (SELECT relnamespace FROM pg_class
+                              WHERE oid = to_regclass('racing_form_editions'))
+     ORDER BY t.tgname, n.nspname, c.relname
     """
 )
 
@@ -262,14 +280,21 @@ def _fmt_delta(td: timedelta) -> str:
 
 
 def _check_triggers(factory: SessionFactory, report: VerifyReport) -> None:
-    rows = _rows(factory, _TRIGGERS)
+    with queries.read_only_provider(factory) as p:
+        live = [dict(r) for r in p.conn.execute(_LIVE_SCHEMA).mappings().all()]
+        rows = [dict(r) for r in p.conn.execute(_TRIGGERS).mappings().all()]
     report.triggers = len(rows)
     found = {r["name"]: r for r in rows}
     if len(rows) != len(EXPECTED_TRIGGERS):
+        where = (
+            f"스키마 {live[0]['schema_name']}"
+            if live
+            else "search_path 에서 racing_form_editions 를 찾지 못함"
+        )
         report.problems.append(
             Problem(
                 "triggers",
-                f"trg_rf_ 트리거 {len(rows)}개 (기대 {len(EXPECTED_TRIGGERS)}개)",
+                f"trg_rf_ 트리거 {len(rows)}개 (기대 {len(EXPECTED_TRIGGERS)}개, {where})",
             )
         )
     missing = sorted(set(EXPECTED_TRIGGERS) - set(found))
@@ -280,18 +305,19 @@ def _check_triggers(factory: SessionFactory, report: VerifyReport) -> None:
         report.problems.append(Problem("triggers", f"모르는 트리거: {', '.join(unknown)}"))
     for r in rows:
         want_table = EXPECTED_TRIGGERS.get(r["name"])
+        table = f"{r['schema_name']}.{r['table_name']}"
         if want_table is not None and r["table_name"] != want_table:
             report.problems.append(
                 Problem(
                     "triggers",
-                    f"{r['name']} 가 {r['table_name']} 에 붙어 있음 (기대 {want_table})",
+                    f"{r['name']} 가 {table} 에 붙어 있음 (기대 {r['schema_name']}.{want_table})",
                 )
             )
         if r["enabled"] != "A":
             report.problems.append(
                 Problem(
                     "triggers",
-                    f"{r['name']} 상태 {r['enabled']!r} — ENABLE ALWAYS('A') 가 아님",
+                    f"{r['name']} ({table}) 상태 {r['enabled']!r} — ENABLE ALWAYS('A') 가 아님",
                 )
             )
 

@@ -251,7 +251,7 @@ law.go.kr (호주·프랑스는 racingaustralia.horse · pmu.fr)을 추가한 �
 | 발행 창 `[freeze_at, deadline_at)` | 반열린 구간. deadline = min(D 08:00, 첫 발주 − 60분; 모르면 08:00). 판정은 분 단위로 자른 예약 시각, `published_at` 은 실제 시각 |
 | D 08:00 실행 | 출전표가 있는데 발행본이 없으면 `missed` 공지 1건 + 잡 실패 1회 (발행과 같은 advisory lock 안에서 재확인) |
 | D 10:15 ~ 23:45 (:15·:45) | 정산 잡의 잠정 정산 |
-| D+1 13:00 | 정산 확정 (이후 불변). 확정 뒤 KRA 결과가 바뀌면 `result_changed` 공지 + 잡 실패 1회, 자동 수정 없음 |
+| D+1 13:00 | 정산 확정 (이후 불변). 확정 뒤 KRA 결과(착순·상태)가 바뀌면 `result_changed` 공지 + 잡 실패 1회, 자동 수정 없음. 단승 배당만 달라지면(확정 뒤 늦게 들어온 배당 포함) 공지·실패 없이 로그만 — 확정 정산 그대로 |
 | D+7 | 결과가 끝내 없으면 경주 무효 확정 |
 
 - D 결과가 하나라도 있으면 발행하지 않는다.
@@ -327,8 +327,9 @@ law.go.kr (호주·프랑스는 racingaustralia.horse · pmu.fr)을 추가한 �
 
 1. 머리 "3R · 14:30 · 1200m · 국6 · 12두" + 경주명 · "‹ 이전 · 목록 · 다음 ›"(44px) ·
    "출전표·결과 원본(경기 일람) ›" (`raceDetailPath`, `web/src/lib/race-seo.ts:58-60`).
-2. 결과 줄 (3상태).
-3. 이 경주의 발행 후 변경.
+2. 결과 줄 (3상태). 그 위에 호 공지 — 철회 배너, 그 호의 정정 "이 호의 정정 n건" (정정은 경주 범위가 없는 호
+   단위라 경주의 변경 상자에 넣지 않는다).
+3. 이 경주의 발행 후 변경 — 그 경주의 발행 후 기수 변경만, 없으면 "발행 후 바뀐 것 없음".
 4. 범례 + **주목마 상자** (최대 2두) — 중립 테두리 "주목" 라벨(갈색·◎ 아님) · GateNum·마명 ·
    "예상을 낸 기준 4개 중 3개가 고름" · 받은 기호 · 근거 2개 (나머지는 "외 n").
 5. **기준별 목록** (고정 순서) — ◎○△ 각각 GateNum + 마명 (모바일에서도 마명, 단일 DOM). 예상 안 한 기준에는 사유.
@@ -459,7 +460,8 @@ law.go.kr (호주·프랑스는 racingaustralia.horse · pmu.fr)을 추가한 �
   마스터 기반 가드는 끈다.
 - **dev** — 버그 수정만, 파라미터 변경은 최대 1회(문서화) → 후보 정의(4 + 예비) 해시 고정.
 - **holdout** — 후보 해시당 1회. `--label holdout` 은 결과 행을 먼저 INSERT 한 뒤 출력하고, 행이 이미 있으면 계산을
-  거부한다 (부분 UNIQUE).
+  거부한다 (부분 UNIQUE). 계산 중 한 호라도 실패하면(일시적 DB 오류 포함) 그 자리에서 멈추고 저장도 출력도 하지
+  않는다 — 1회를 쓰지 않았으니 원인을 고친 뒤 다시 실행한다 (저장된 holdout 은 늘 오류 0).
 - **통과 조건**
   1. 결정성·as-of 테스트
   2. 오류 0, 호당 5초 미만, 1년치 10분 미만
@@ -641,7 +643,7 @@ FAQ: "회수율은 일부러 공개하지 않습니다 — 베팅 권유가 아�
 | job key | 스케줄 | 동작 |
 |---|---|---|
 | `mal.publish_racing_form` | `CronTrigger(minute=0)` + `next_run_time=now` (기동 직후 1회) | `ensure_rule_set` → 창 안·미발행·D 결과 없음이면 발행 → D 08:00 실행에서 missed (D ≤ 오늘, freeze_at ≥ 최초 registered_at, paused 아님) + 실패 1회. 할 일 없는 0 은 정상 |
-| `mal.settle_racing_form` | `CronTrigger(hour="10-23", minute="15,45")` | D ∈ [오늘−7, 오늘] 발행본: 잠정 upsert(digest 가 다를 때만) → D+1 13:00 이후 확정 → D+7 무효 → 확정본 digest 변경 시 `result_changed` + 실패 1회. 결과가 있는데 정산 0·분류 불가 행은 실패 |
+| `mal.settle_racing_form` | `CronTrigger(hour="10-23", minute="15,45")` | D ∈ [오늘−14, 오늘] 발행본: 잠정 upsert(digest 가 다를 때만) → D+1 13:00 이후 확정 → D+7 무효 → 확정본의 finish·status 변경 시 `result_changed` + 실패 1회 (단승 배당만 달라지면 로그만, 확정 정산 그대로). 결과가 있는데 정산 0·분류 불가 행은 실패 |
 
 - PR-2 배선: `monitoring.JOB_CATALOG`(category `racing_form`, 기대 주기 발행 1시간·정산 10시간 30분) ·
   `periodic.py` `@track_job` 래퍼(여기서 `datetime.now(KST)` 를 읽어 넘김) · `scheduler_main.py` `add_job` 2줄 +
@@ -674,7 +676,10 @@ FAQ: "회수율은 일부러 공개하지 않습니다 — 베팅 권유가 아�
   `getPublicBacktest`·`getRuleRecord`(`unstable_cache` 600초 — try/catch 는 캐시 바깥)·`getEditionMeetsSafe`·
   `getFormSitemapUrlsSafe`(실패 시 []).
 - 라우트 5개 + 각 `loading.tsx` — 전부 `export const dynamic = "force-dynamic"`, `await params`, 날짜·slug·경주번호(1~30)
-  검증 실패 시 `notFound()`. `generateStaticParams`·새 OG 라우트 없음. title 에 "· mal.kr" 를 직접 쓰지 않는다(레이아웃 템플릿).
+  검증 실패 시 `notFound()`. 형식 검증(날짜·slug = `[date]/[meet]/layout.tsx`, 경주번호 = `[race]/layout.tsx`)은 DB 를
+  읽지 않는 레이아웃이 loading(Suspense) 바깥에서 해 실제 404 를 낸다 — 그래서 1면의 page·loading 은 `(front)` 그룹에
+  두어 그 loading 이 경주면을 감싸지 않게 한다. DB 를 봐야 아는 없음(계획 없음·그 호에 없는 경주)은 200 + noindex.
+  `generateStaticParams`·새 OG 라우트 없음. title 에 "· mal.kr" 를 직접 쓰지 않는다(레이아웃 템플릿).
   `BreadcrumbJsonLd`·`PageContainer`·h1 하나, 댓글 없음.
 - 컴포넌트 `web/src/components/racing-form/` · 고지 `web/src/components/responsible-gambling-notice.tsx` — 디자인 결정은
   [DESIGN.md](../../DESIGN.md) Decisions Log 2026-11-13 (PickMark·'주목' 라벨·레이아웃·고지).
@@ -706,7 +711,7 @@ PR-1 에서는 잡이 등록되지 않아 아무것도 발행·정산되지 않�
 |---|---|---|
 | 경마지 발행 | 036 미적용, 운영 전, freeze+35분 미발행, missed 기록 후 3일 이내 | freeze+125분 미발행, 마감+30분이 지나도 발행본·missed 모두 없음 (paused·출시 전 제외) |
 | 경마지 정산 | D+1 13:30 미확정, D+2 13:30 미확정이지만 결과 행 없음 | D+2 13:30 미확정이고 결과 행 있음 |
-| 경마지 보호 장치 | – | payload 해시 불일치, 트리거 12개 미만 또는 ALWAYS 아님, 레지스트리 해시 ≠ DB 행 (버전별) |
+| 경마지 보호 장치 | – | payload 해시 불일치, (search_path 스키마의) 트리거 12개 미만 또는 ALWAYS 아님, 레지스트리 해시 ≠ DB 행 (버전별) — `racing-form-verify` 와 같은 조회 |
 
 PR-2 에서 [docs/spec/deployment.md](../spec/deployment.md) 헬스체크 표에 이 3행을 더한다.
 
@@ -719,7 +724,7 @@ PR-2 에서 [docs/spec/deployment.md](../spec/deployment.md) 헬스체크 표에
 | `racing-form-build <D> <경마장> [--mode live\|replay] [--json]` | 없음 | 한 호를 계산해 출력만 (dry-run). live 의 발행 창 검사는 경고만 |
 | `racing-form-show` | 없음 | 저장된 발행본·정산·공지 요약 |
 | `racing-form-preflight` | 없음 | prod 읽기 전용 감사 ①~⑱ (9.7) |
-| `racing-form-verify` | 없음 | 무결성 — payload 해시 SQL 재계산, created_at−published_at, 트리거 12개·ALWAYS, 레지스트리 해시 vs DB 행 |
+| `racing-form-verify` | 없음 | 무결성 — payload 해시 SQL 재계산, created_at−published_at, 트리거 12개·ALWAYS (search_path 스키마만 — 복구 때 남긴 다른 스키마 사본은 세지 않음), 레지스트리 해시 vs DB 행 |
 | `racing-form-backtest --from <D> --to <D> [--meet] --label dev\|holdout [--json]` | holdout 만 | 과거 시험. dev 는 읽기 전용, holdout 은 정의 해시당 1회 저장한 뒤 출력 |
 | `racing-form-settle [--date]` | 있음 | 정산 잡과 같은 규칙으로 1회 정산 (outcomes) |
 | `racing-form-notice --kind erratum\|withdrawn\|paused …` | 있음 | 운영자 공지 추가 (추가 전용 — 지울 수 없음). 철회해도 집계에 포함됨을 출력 |
@@ -734,7 +739,8 @@ PR-2 에서 [docs/spec/deployment.md](../spec/deployment.md) 헬스체크 표에
 **정정 (erratum)** — 발행본의 사실 오류(근거 숫자·소식 문장·입력 데이터)를 알린다.
 1. 범위 확인: `racing-form-show` 로 발행본을 보고 `/races` 원본과 대조.
 2. `racing-form-notice --kind erratum …` — 대상 호(경주일·경마장)와 공개 문구. 문구는 사실만 쓴다.
-3. 1면 배너 + 기록 페이지 발행 이력에 남는다. 예상·판정·집계는 그대로.
+3. 1면 배너 + 그 호 경주면의 "이 호의 정정 n건" 블록 + 기록 페이지 발행 이력에 남는다 (경주면의 "이 경주의 발행 후
+   변경" 에는 넣지 않는다 — 정정은 경주 범위가 없다). 예상·판정·집계는 그대로.
 - 같은 문구는 dedup 으로 한 번만 들어간다. 잘못 쓴 정정은 지울 수 없으니 새 정정으로 바로잡는다.
 
 **철회 (withdrawn)** — 호 전체가 잘못 나갔을 때 (가드가 못 잡은 버그, 잘못된 입력).
@@ -778,8 +784,9 @@ prod 호스트의 컨테이너 안에서 돌린다.
 2. 결과로 r1 정책을 사전 등록한다 — 작은 PR-1b (5.7 표, `definitions.py`, 해시 핀 갱신).
 3. 비혼잡 시간(화 03:30 전후 — 02:30·03:00 야간 잡 뒤, 04:40 백업과 겹치지 않게)에
    `racing-form-backtest --from 2025-01-01 --to 2025-12-31 --label dev` → 후보 정의 해시 고정.
-4. `racing-form-backtest --from 2026-01-01 --to 2026-10-31 --label holdout` **1회** — 이 명령만 prod 에 한 행을 쓴다
-   (`racing_form_backtests`, 추가 전용).
+4. `racing-form-backtest --from 2026-01-01 --to 2026-10-31 --label holdout --save` **1회** — 이 명령만 prod 에 한 행을
+   쓴다 (`racing_form_backtests`, 추가 전용). 한 호라도 실패하면(잠금·타임아웃·연결 끊김 등) 저장·출력 없이 exit 2 로
+   멈춘다 — 1회를 쓰지 않았으니 원인을 확인하고 다시 실행한다.
 5. 경주 주말에 1회 이상 D−1 18:05 에 `racing-form-build <D> <경마장> --json` dry-run → `/races` 와 대조.
 6. preflight·dev·dry-run 은 prod 대신 백업 덤프를 임시 DB 에 복원해 돌려도 된다. 리허설 스크립트는 끝나면 DB 를
    DROP 하므로 [backup.md](../spec/backup.md) "실제 복구" 2단계처럼 `trap` 줄을 주석 처리하고 쓴다.
@@ -948,7 +955,8 @@ mal.publish_racing_form (매시 정각 + 기동 직후 1회, PR-2)
         ↓
 mal.settle_racing_form (10~23시 :15·:45, PR-2)
   → race_results · race_dividends (D, meet) → settle_race → racing_form_race_outcomes upsert (잠정)
-  → D+1 13:00 확정 (이후 불변) · D+7 무효 · 확정 뒤 digest 변경 → notices(result_changed) + 잡 실패
+  → D+1 13:00 확정 (이후 불변) · D+7 무효 · 확정 뒤 finish·status 변경 → notices(result_changed) + 잡 실패
+    (확정 뒤 단승 배당만 변경 → 로그만)
         ↓
 운영자 CLI racing-form-notice → notices (erratum · withdrawn · paused)
         ↓
@@ -971,7 +979,7 @@ web/src/lib/racing_form.ts (raw SQL, payload 에서 한 경주만 jsonb_array_el
 | healthcheck | `crawler/src/healthcheck.py` `QUERIES` `racing_form_*`·`check_racing_form` | PR-2 |
 | 테스트 (크롤러) | `crawler/tests/test_racing_form_*.py` · `crawler/tests/racing_form_fakes.py` · `crawler/tests/fixtures/racing_form/` (`schedule_vectors.json`·`golden_r1.json`·`payload_v1.golden.json`) · `crawler/tests/e2e/conftest.py` `_DATA_TABLES`(`:212`) | PR-1 (e2e 타임라인·test_healthcheck 는 PR-2) |
 | 웹 lib | `web/src/lib/racing_form-shared.ts` (순수) · `web/src/lib/racing_form.ts` (SQL) | PR-1 |
-| 웹 라우트 | `web/src/app/form/page.tsx` · `[date]/page.tsx` · `[date]/[meet]/page.tsx` · `[date]/[meet]/[race]/page.tsx` · `record/page.tsx` + 각 `loading.tsx` | PR-1 (메뉴 링크 없음·noindex) |
+| 웹 라우트 | `web/src/app/form/(hub)/page.tsx` · `[date]/page.tsx` · `[date]/[meet]/(front)/page.tsx` · `[date]/[meet]/[race]/page.tsx` · `record/page.tsx` + 각 `loading.tsx` · URL 검증 레이아웃 `[date]/[meet]/layout.tsx`·`[date]/[meet]/[race]/layout.tsx` | PR-1 (메뉴 링크 없음·noindex) |
 | 웹 컴포넌트 | `web/src/components/racing-form/` (pick-mark·edition-stamp·status-block·race-list·headlines·record-compact·race-header·consensus-box·rule-list·runner-card·news-badges·record-table·legend) · `web/src/components/responsible-gambling-notice.tsx` · `page-skeleton.tsx` `FormSkeleton` | PR-1 |
 | 웹 테스트 | `web/src/lib/__tests__/racing_form.test.ts` · `racing_form_sql.test.ts` | PR-1 |
 | 재사용 부품 | `RankBadge`·`medalClass` (`web/src/components/rank-badge.tsx:20,54`) · `RecentFormStrip` (`recent-form-strip.tsx:8`) · `GateNum`·`SexBullet`·`RaceChip` (`race-detail-ui.tsx:26,66,183`) · `WinRateBar` (`win-rate-bar.tsx:10`) · `EmptyState` · `PageContainer` · `BreadcrumbJsonLd` · `normalizeRaceDate`·`raceDetailPath` (`web/src/lib/race-seo.ts:24,58`) · `kstToday` (`web/src/lib/kst.ts:12`) | 기존 |

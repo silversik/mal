@@ -6,7 +6,8 @@
 
 - build --json: 계산만 — 행 수가 그대로.  show: 저장된 호 요약.
 - backtest dev: 보고서를 돌려주고 쓰지 않는다. holdout --save: 정확히 1행, 두 번째는 계산 없이 거부.
-- preflight: exit 0 · 쓰기 없음.  verify: 시계 점검 외에는 문제 없음 (시드는 잡 시계를 주입한다).
+- preflight: exit 0 · 쓰기 없음.  verify: 시계 점검 외에는 문제 없음 (시드는 잡 시계를 주입한다),
+  다른 스키마의 사본 트리거는 세지 않는다 (search_path 스키마만).
 - notice: paused 는 --until 필수, dedup, withdrawn 은 "기록에 포함" 안내.
 테스트는 파일 순서대로 돈다 (공지 테스트가 마지막 — 앞 테스트의 출력이 공지 수에 기대지 않게).
 
@@ -330,6 +331,64 @@ def test_verify_only_reports_injected_clock(seeded: tuple[Engine, Any],
     problems = [ln.strip() for ln in res.output.splitlines() if ln.startswith("  [")]
     assert len(problems) == 3 and all(p.startswith("[clock]") for p in problems)
     assert counts(engine) == before
+
+
+def test_verify_trigger_check_ignores_other_schemas(seeded: tuple[Engine, Any],
+                                                    cli: Callable[..., Any]) -> None:
+    """보호 트리거는 search_path 의 스키마에서만 센다 (복구 절차가 남기는 다른 스키마의 사본 제외).
+
+    ① 사본 스키마에 trg_rf_ 트리거가 있어도 mal 은 12/12 (예전: 13개 → 거짓 경보).
+    ② search_path 의 표에 트리거가 없으면 mal 에 12개가 있어도 0개 (예전: 12/12 → 놓침).
+    """
+    from src.racing_form import verify
+
+    engine, _ = seeded
+    copy, lost = "rf_broken_copy_test", "rf_live_lost_test"
+
+    def make(schema: str, *, trigger: bool) -> None:
+        with engine.begin() as c:
+            c.execute(text(f"DROP SCHEMA IF EXISTS {schema} CASCADE"))
+            c.execute(text(f"CREATE SCHEMA {schema}"))
+            c.execute(text(f"CREATE TABLE {schema}.racing_form_editions (id bigint)"))
+            if trigger:
+                c.execute(text(f"CREATE FUNCTION {schema}.noop() RETURNS trigger "
+                               "LANGUAGE plpgsql AS $$BEGIN RETURN NULL; END$$"))
+                c.execute(text(f"CREATE TRIGGER trg_rf_editions_guard BEFORE UPDATE ON "
+                               f"{schema}.racing_form_editions FOR EACH ROW "
+                               f"EXECUTE FUNCTION {schema}.noop()"))
+                c.execute(text(f"ALTER TABLE {schema}.racing_form_editions "
+                               "ENABLE ALWAYS TRIGGER trg_rf_editions_guard"))
+
+    def drop(schema: str) -> None:
+        with engine.begin() as c:
+            c.execute(text(f"DROP SCHEMA IF EXISTS {schema} CASCADE"))
+
+    def trigger_problems(schema: str) -> tuple[int, list[str]]:
+        other = create_engine(engine.url, future=True,
+                              connect_args={"options": f"-csearch_path={schema}"})
+        try:
+            rep = verify.run_verify(other)
+        finally:
+            other.dispose()
+        return rep.triggers, [p.detail for p in rep.problems if p.check == "triggers"]
+
+    try:
+        make(copy, trigger=True)
+        res = cli("racing-form-verify", "--max-clock-skew-min", "100000")  # ①
+        assert res.exit_code == 0, res.output
+        assert "보호 트리거 12/12" in res.output and "[triggers]" not in res.output
+        n, trig = trigger_problems(copy)
+        assert n == 1 and trig[0] == f"trg_rf_ 트리거 1개 (기대 12개, 스키마 {copy})"
+        assert trig[1].startswith("없는 트리거: ") and trig[1].count("trg_rf_") == 11
+        drop(copy)
+
+        make(lost, trigger=False)  # ② mal 에는 12개 그대로
+        n, trig = trigger_problems(lost)
+        assert n == 0 and trig[0] == f"trg_rf_ 트리거 0개 (기대 12개, 스키마 {lost})"
+        assert trig[1].startswith("없는 트리거: ") and trig[1].count("trg_rf_") == 12
+    finally:
+        drop(copy)
+        drop(lost)
 
 
 # ============================================================== 공지 (쓰기 — 마지막)
