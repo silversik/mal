@@ -14,7 +14,7 @@ vi.mock("next/cache", () => ({
 }));
 
 import * as rf from "../racing_form";
-import type { PayloadV1 } from "../racing_form-shared";
+import { editionState, type PayloadV1 } from "../racing_form-shared";
 
 const GOLDEN = JSON.parse(
   readFileSync(
@@ -25,7 +25,8 @@ const GOLDEN = JSON.parse(
   ),
 ) as PayloadV1;
 
-const SQL_CONSTANTS = Object.entries(rf).filter(
+// 모듈 export 는 함수·SQL 리터럴 타입이 섞인 유니온이라 unknown 으로 넓힌 뒤 거른다.
+const SQL_CONSTANTS = Object.entries(rf as Record<string, unknown>).filter(
   (e): e is [string, string] => e[0].endsWith("_SQL") && typeof e[1] === "string",
 );
 
@@ -87,6 +88,11 @@ describe("SQL 상수 — e2e 가 글자 그대로 복사해 실행할 수 있는
     expect(sql).not.toContain("${");
     expect(sql).not.toMatch(/\b(INSERT|UPDATE|DELETE|TRUNCATE|DROP|ALTER|CREATE)\b/i);
     expect(sql).not.toMatch(/\bNOW\(\)|CURRENT_DATE|CURRENT_TIMESTAMP/i); // 시각은 파라미터로만
+    // KST 시각은 µs 까지 (.MS 는 µs 를 버려 '늦게 발행'·출시 경계가 크롤러와 어긋난다)
+    expect(sql).not.toContain(".MS");
+    for (const fmt of sql.match(/'YYYY-MM-DD"T"[^']*'/g) ?? []) {
+      expect([`'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"'`, `'YYYY-MM-DD"T"HH24:MI:SS"Z"'`]).toContain(fmt);
+    }
   });
 });
 
@@ -218,6 +224,28 @@ describe("결과 매핑", () => {
     queryMock.mockResolvedValueOnce([headRow(2, { schema_version: 2 })]);
     expect((await rf.getEditionHead("2026-11-15", "서울"))?.summary).toBeNull();
     expect(await rf.getEditionHead("2026-11-16", "서울")).toBeNull();
+  });
+
+  it("getEditionHead µs 시각 → editionState 늦게 발행 판정이 크롤러와 같다 (19:00:00.000400)", async () => {
+    const at = (published_at: string) => ({
+      ...headRow(1, GOLDEN.summary),
+      freeze_at: "2026-11-14T18:00:00.000000+09:00",
+      deadline_at: "2026-11-15T08:00:00.000000+09:00",
+      published_at,
+    });
+    const stateOf = async (published_at: string) => {
+      queryMock.mockResolvedValueOnce([at(published_at)]);
+      const head = await rf.getEditionHead("2026-11-15", "서울");
+      return editionState({
+        planned: null,
+        edition: head,
+        notices: [],
+        now: "2026-11-15T09:00:00+09:00",
+        launchAt: "2026-11-01T18:00:00.000400+09:00",
+      });
+    };
+    expect(await stateOf("2026-11-14T19:00:00.000400+09:00")).toMatchObject({ state: "published", late: true });
+    expect(await stateOf("2026-11-14T19:00:00.000000+09:00")).toMatchObject({ state: "published", late: false });
   });
 
   it("getEditionRaces / getRaceSlice — 모르는 schema 는 null", async () => {

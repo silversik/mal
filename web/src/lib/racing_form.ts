@@ -6,9 +6,10 @@
  *   (`e2e.web_query`: `$n` → psycopg 파라미터). 그래서 SQL 에는 사용자 입력·경마장 한글 라벨을
  *   끼워 넣지 않고 전부 `$n` 파라미터로 넘긴다 (배열은 `= ANY($n::text[])`).
  *   SQL 안에 백슬래시 정규식을 쓰지 않는다 (템플릿 문자열에서 `\d` 가 `d` 로 바뀜 → `[0-9]`).
- * - 시각은 KST ISO 문자열 "YYYY-MM-DDTHH:MI:SS.mmm+09:00" 로 꺼낸다 (published_at 의 '늦게 발행'
- *   판정이 밀리초 단위라 초에서 자르지 않는다). 날짜는 "YYYY-MM-DD". sitemap lastmod 만 UTC "…Z"
- *   (sitemap-shared.ts 와 같은 형식).
+ * - 시각은 KST ISO 문자열 "YYYY-MM-DDTHH:MI:SS.ffffff+09:00" (µs, `to_char … .US`) 로 꺼낸다 —
+ *   '늦게 발행'(published_at > freeze_at + 60분)·출시 경계(freeze_at < launchAt)를 크롤러처럼 µs 로
+ *   판정하려고 자르지 않는다 (`.MS` 는 µs 를 버려 19:00:00.000400 이 제때 발행으로 읽힌다).
+ *   날짜는 "YYYY-MM-DD". sitemap lastmod 만 UTC "…Z" (sitemap-shared.ts 와 같은 형식).
  * - payload 는 필요한 조각만 jsonb 로 잘라 읽는다 (경주면 = 그 경주 하나, 1면 = 출전마 빼고).
  * - `*Safe` 함수와 getRuleRecord 는 실패해도 화면을 깨지 않게 [] / null 을 돌려준다.
  *   getRuleRecord 의 try/catch 는 unstable_cache **바깥**이다 — 실패가 600초 동안 캐시되지 않게.
@@ -130,7 +131,7 @@ export async function getFormCalendar(from: string, to: string): Promise<FormCal
 
 export const LAUNCH_AT_SQL = `
 SELECT to_char(MIN(s.registered_at) AT TIME ZONE 'Asia/Seoul',
-               'YYYY-MM-DD"T"HH24:MI:SS.MS"+09:00"') AS launch_at
+               'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"') AS launch_at
   FROM racing_form_rule_sets s`;
 
 /** 최초 기준 등록 시각 (첫 발행 잡이 만든다). 없으면 null = 출시 전. */
@@ -154,13 +155,13 @@ SELECT e.id::int AS id,
        to_char(e.history_before, 'YYYY-MM-DD') AS history_before,
        to_char(e.results_through, 'YYYY-MM-DD') AS results_through,
        to_char(e.entries_batch_at AT TIME ZONE 'Asia/Seoul',
-               'YYYY-MM-DD"T"HH24:MI:SS.MS"+09:00"') AS entries_batch_at,
+               'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"') AS entries_batch_at,
        to_char(e.freeze_at AT TIME ZONE 'Asia/Seoul',
-               'YYYY-MM-DD"T"HH24:MI:SS.MS"+09:00"') AS freeze_at,
+               'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"') AS freeze_at,
        to_char(e.deadline_at AT TIME ZONE 'Asia/Seoul',
-               'YYYY-MM-DD"T"HH24:MI:SS.MS"+09:00"') AS deadline_at,
+               'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"') AS deadline_at,
        to_char(e.published_at AT TIME ZONE 'Asia/Seoul',
-               'YYYY-MM-DD"T"HH24:MI:SS.MS"+09:00"') AS published_at,
+               'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"') AS published_at,
        e.race_count,
        e.runner_count,
        e.summary
@@ -179,13 +180,13 @@ SELECT e.id::int AS id,
        to_char(e.history_before, 'YYYY-MM-DD') AS history_before,
        to_char(e.results_through, 'YYYY-MM-DD') AS results_through,
        to_char(e.entries_batch_at AT TIME ZONE 'Asia/Seoul',
-               'YYYY-MM-DD"T"HH24:MI:SS.MS"+09:00"') AS entries_batch_at,
+               'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"') AS entries_batch_at,
        to_char(e.freeze_at AT TIME ZONE 'Asia/Seoul',
-               'YYYY-MM-DD"T"HH24:MI:SS.MS"+09:00"') AS freeze_at,
+               'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"') AS freeze_at,
        to_char(e.deadline_at AT TIME ZONE 'Asia/Seoul',
-               'YYYY-MM-DD"T"HH24:MI:SS.MS"+09:00"') AS deadline_at,
+               'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"') AS deadline_at,
        to_char(e.published_at AT TIME ZONE 'Asia/Seoul',
-               'YYYY-MM-DD"T"HH24:MI:SS.MS"+09:00"') AS published_at,
+               'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"') AS published_at,
        e.race_count,
        e.runner_count,
        e.summary
@@ -331,11 +332,11 @@ SELECT o.race_no,
        o.pop_ranks,
        o.is_final,
        to_char(o.first_settled_at AT TIME ZONE 'Asia/Seoul',
-               'YYYY-MM-DD"T"HH24:MI:SS.MS"+09:00"') AS first_settled_at,
+               'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"') AS first_settled_at,
        to_char(o.settled_at AT TIME ZONE 'Asia/Seoul',
-               'YYYY-MM-DD"T"HH24:MI:SS.MS"+09:00"') AS settled_at,
+               'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"') AS settled_at,
        to_char(o.finalized_at AT TIME ZONE 'Asia/Seoul',
-               'YYYY-MM-DD"T"HH24:MI:SS.MS"+09:00"') AS finalized_at
+               'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"') AS finalized_at
   FROM racing_form_race_outcomes o
  WHERE o.edition_id = $1::bigint
  ORDER BY o.race_no`;
@@ -517,7 +518,7 @@ SELECT n.id::int AS id,
        CASE WHEN n.detail ->> 'race_no' ~ '^[0-9]{1,2}$'
             THEN (n.detail ->> 'race_no')::int END AS race_no,
        to_char(n.noticed_at AT TIME ZONE 'Asia/Seoul',
-               'YYYY-MM-DD"T"HH24:MI:SS.MS"+09:00"') AS noticed_at
+               'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"') AS noticed_at
   FROM racing_form_notices n
  WHERE n.kind IN ('missed', 'erratum', 'withdrawn', 'result_changed', 'paused')
    AND (
@@ -553,7 +554,7 @@ SELECT n.id::int AS id,
        CASE WHEN n.detail ->> 'race_no' ~ '^[0-9]{1,2}$'
             THEN (n.detail ->> 'race_no')::int END AS race_no,
        to_char(n.noticed_at AT TIME ZONE 'Asia/Seoul',
-               'YYYY-MM-DD"T"HH24:MI:SS.MS"+09:00"') AS noticed_at
+               'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"') AS noticed_at
   FROM racing_form_notices n
  WHERE n.kind IN ('missed', 'erratum', 'withdrawn', 'result_changed', 'paused')
    AND (
@@ -603,7 +604,7 @@ SELECT s.rules_version,
        s.definition,
        s.definition_sha256,
        to_char(s.registered_at AT TIME ZONE 'Asia/Seoul',
-               'YYYY-MM-DD"T"HH24:MI:SS.MS"+09:00"') AS registered_at
+               'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"') AS registered_at
   FROM racing_form_rule_sets s
  WHERE s.rules_version = $1`;
 
@@ -625,7 +626,7 @@ SELECT b.id::int AS id,
        b.report,
        b.code_rev,
        to_char(b.computed_at AT TIME ZONE 'Asia/Seoul',
-               'YYYY-MM-DD"T"HH24:MI:SS.MS"+09:00"') AS computed_at
+               'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"') AS computed_at
   FROM racing_form_backtests b
  WHERE b.is_public
  ORDER BY (b.label = 'holdout') DESC, b.computed_at DESC, b.id DESC

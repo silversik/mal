@@ -10,7 +10,8 @@
  * - 일정 규칙은 crawler/src/racing_form/schedule.py 를 +09:00 산술로 옮겼다 — 프로세스 TZ 와 무관.
  *   벡터 crawler/tests/fixtures/racing_form/schedule_vectors.json 을 양쪽 테스트가 함께 쓴다.
  * - 시각 문자열은 오프셋이 붙은 ISO8601 만 받는다 (`…+09:00` / `…Z`). 오프셋 없는 문자열은
- *   프로세스 TZ 로 해석되므로 RangeError.
+ *   프로세스 TZ 로 해석되므로 RangeError. 소수 초는 µs 까지 읽고 시각 비교는 µs 로 한다
+ *   (DB·크롤러 정밀도 — '늦게 발행' 19:00:00.000400 같은 경계가 크롤러와 같게 판정된다).
  * - 금지어(FORBIDDEN_WORDS)·기준 라벨(RULE_LABEL)은 크롤러 정본과 vitest 가 대조한다.
  */
 import type { Metadata } from "next";
@@ -198,7 +199,7 @@ export type FrontRunnerV1 = {
 };
 
 // ============================================================================
-// 2. DB 읽기 결과 타입 (racing_form.ts 가 채운다). 시각은 KST ISO "…T18:00:00.000+09:00".
+// 2. DB 읽기 결과 타입 (racing_form.ts 가 채운다). 시각은 KST ISO µs "…T18:00:00.000000+09:00".
 // ============================================================================
 
 export type FormMeet = "서울" | "제주" | "부경";
@@ -1000,7 +1001,7 @@ export const MARK_TEXT: Readonly<Record<Mark, string>> = { 1: "◎", 2: "○", 3
 /** r1 일정 수치 — definitions.RULE_SETS["r1"].params 의 history·schedule·settle 과 같다. */
 export const FORM_SCHEDULE = {
   historyOffsetDays: 1,
-  freezeMin: 17 * 60,
+  freezeMin: 18 * 60,
   deadlineMin: 8 * 60,
   firstPostMarginMin: 60,
   lateAfterMin: 60,
@@ -1016,18 +1017,57 @@ const MIN_MS = 60_000;
 const DAY_MS = 86_400_000;
 const KST_OFFSET_MS = 9 * 60 * MIN_MS;
 const OFFSET_SUFFIX_RE = /(?:Z|[+-]\d{2}:?\d{2})$/;
+/** 오프셋이 붙은 ISO8601 — 소수 초는 µs 까지 읽는다 (그 아래 자리는 버림, Python datetime 과 같음). */
+const ISO_INSTANT_RE =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?(?:(Z)|([+-])(\d{2})(?::?(\d{2}))?)$/;
 
 /** 시각 입력 — Date · epoch ms · 오프셋이 붙은 ISO 문자열. */
 export type Instant = Date | number | string;
 
+/**
+ * 오프셋 ISO 문자열 → epoch µs. DB 는 µs 까지 저장하고(racing_form.ts 가 `.US` 로 꺼냄) 크롤러
+ * schedule.is_late 도 µs 로 비교하므로, Date.parse(ms 에서 잘림) 대신 직접 읽는다.
+ * epoch µs 는 2255년까지 Number 안전 정수 범위 안이다.
+ */
+function parseIsoUs(s: string): number {
+  const m = ISO_INSTANT_RE.exec(s);
+  if (!m) {
+    // ISO 가 아닌 오프셋 표기(RFC 2822 등)는 엔진 파서에 맡긴다 (ms 정밀도)
+    return OFFSET_SUFFIX_RE.test(s) ? Date.parse(s) * 1000 : Number.NaN;
+  }
+  const [y, mo, d, h, mi] = [m[1], m[2], m[3], m[4], m[5]].map(Number);
+  const sec = m[6] === undefined ? 0 : Number(m[6]);
+  const offH = m[10] === undefined ? 0 : Number(m[10]);
+  const offM = m[11] === undefined ? 0 : Number(m[11]);
+  if (h > 23 || mi > 59 || sec > 59 || offH > 23 || offM > 59) return Number.NaN;
+  const base = Date.UTC(y, mo - 1, d, h, mi, sec);
+  const dt = new Date(base);
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) {
+    return Number.NaN; // 2월 30일 같은 없는 날짜
+  }
+  const offsetMin = m[8] === "Z" ? 0 : (m[9] === "-" ? -1 : 1) * (offH * 60 + offM);
+  const fracUs = m[7] === undefined ? 0 : Number(`${m[7]}000000`.slice(0, 6));
+  return (base - offsetMin * MIN_MS) * 1000 + fracUs;
+}
+
+/** 시각 → epoch µs. 비교는 모두 이 값으로 한다 (크롤러와 같은 µs 정밀도). */
+function toUs(t: Instant): number {
+  let us: number;
+  if (t instanceof Date) us = t.getTime() * 1000;
+  else if (typeof t === "number") us = t * 1000;
+  else us = parseIsoUs(t.trim()); // 오프셋 없는 문자열은 프로세스 TZ 로 해석되므로 받지 않는다 (NaN)
+  if (!Number.isFinite(us)) throw new RangeError(`racing_form: 시각 형식 오류 ${String(t)}`);
+  return us;
+}
+
+/** 시각 → epoch ms (µs 아래는 버림) — 표기·Date 생성용. */
 function toMs(t: Instant): number {
-  let ms: number;
-  if (t instanceof Date) ms = t.getTime();
-  else if (typeof t === "number") ms = t;
-  else if (OFFSET_SUFFIX_RE.test(t.trim())) ms = Date.parse(t.trim());
-  else ms = Number.NaN; // 오프셋 없는 문자열은 프로세스 TZ 로 해석되므로 받지 않는다
-  if (!Number.isFinite(ms)) throw new RangeError(`racing_form: 시각 형식 오류 ${String(t)}`);
-  return ms;
+  return Math.floor(toUs(t) / 1000);
+}
+
+/** a < b (µs). */
+function before(a: Instant, b: Instant): boolean {
+  return toUs(a) < toUs(b);
 }
 
 /** "YYYY-MM-DD" → 그 날짜 00:00 UTC 의 epoch ms (실재하지 않는 날짜는 RangeError). */
@@ -1059,7 +1099,10 @@ export function kstDateOf(t: Instant): string {
   return new Date(toMs(t) + KST_OFFSET_MS).toISOString().slice(0, 10);
 }
 
-/** KST ISO 문자열 "2026-11-13T18:00:00.000+09:00" (DB 읽기 결과와 같은 형식). */
+/**
+ * KST ISO 문자열 "2026-11-13T18:00:00.000+09:00" (ms — 여기서 계산한 시각용).
+ * DB 읽기 결과(racing_form.ts)는 µs "…T18:00:00.000000+09:00" 이고, 둘 다 이 모듈의 함수가 받는다.
+ */
 export function isoKst(t: Instant): string {
   return new Date(toMs(t) + KST_OFFSET_MS).toISOString().replace("Z", "+09:00");
 }
@@ -1073,6 +1116,12 @@ export function parseHhmm(value: string | null | undefined): number | null {
   const mi = Number(m[2]);
   if (h > 23 || mi > 59) return null;
   return h * 60 + mi;
+}
+
+/** 발주 시각 표기 — '9:30' · '0930' · '9:30:00' → "09:30" (crawler parse.fmt_hhmm). 이상하면 null. */
+export function formatHhmm(value: string | null | undefined): string | null {
+  const m = parseHhmm(value);
+  return m === null ? null : `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
 }
 
 /** H — 과거 성적은 race_date < H. */
@@ -1118,9 +1167,9 @@ export function isPastDeadline(
   return scheduledMinute(now).getTime() >= deadlineAt(raceDate, firstPost).getTime();
 }
 
-/** 늦게 발행 = published_at > freeze_at + 60분 (밀리초 단위로 비교). */
+/** 늦게 발행 = published_at > freeze_at + 60분 (µs 단위로 비교 — 19:00:00.000400 은 늦게 발행). */
 export function isLate(publishedAt: Instant, raceDate: string): boolean {
-  return toMs(publishedAt) > lateLimitAt(raceDate).getTime();
+  return before(lateLimitAt(raceDate), publishedAt);
 }
 
 /** 정산 확정 = (D+1) 13:00 KST. */
@@ -1199,8 +1248,11 @@ export function issueLabel(issueNo: number): string {
 // ============================================================================
 
 export type EditionStateInput = {
-  /** Q0 달력 행 (그날 그 경마장에 출전표가 있는 경주가 있음) */
-  planned: Pick<FormCalendarRow, "race_date" | "meet" | "first_post"> | null;
+  /**
+   * Q0 달력 행 (그날 그 경마장에 출전표가 있는 경주가 있음). FormCalendarRow 를 그대로 넘기면 된다
+   * — meet 는 비교에만 쓰므로 string 으로 받는다 (발행본 머리 EditionHead.meet 와 같은 타입).
+   */
+  planned: { race_date: string; meet: string; first_post: string | null } | null;
   edition: Pick<
     EditionHead,
     "id" | "race_date" | "meet" | "freeze_at" | "deadline_at" | "published_at"
@@ -1276,7 +1328,7 @@ function sameMeet(a: string | null, b: string): boolean {
 }
 
 function byNoticed(a: FormNotice, b: FormNotice): number {
-  return toMs(a.noticed_at) - toMs(b.noticed_at) || a.id - b.id;
+  return toUs(a.noticed_at) - toUs(b.noticed_at) || a.id - b.id;
 }
 
 function textOrNull(s: string | null | undefined): string | null {
@@ -1297,10 +1349,29 @@ function pausedCovers(n: FormNotice, date: string): boolean {
   return n.race_date <= date && (n.until ?? n.race_date) >= date;
 }
 
+/** missed 공지 public_text 의 머리 — crawler jobs.MISSED_TEMPLATE "이번 호는 발행하지 않았습니다 — {사유}". */
+export const MISSED_HEAD = "이번 호는 발행하지 않았습니다";
+const MISSED_PREFIX_RE = /^이번 호는 발행하지 않았습니다\s*(?:—|-)?\s*/;
+
+/** missed 공지 → 사유만 ("출전표 자료를 확인하지 못했습니다"). 템플릿 머리는 뗀다, 비면 null. */
+export function missedReasonOf(publicText: string | null | undefined): string | null {
+  const t = textOrNull(publicText);
+  return t === null ? null : textOrNull(t.replace(MISSED_PREFIX_RE, ""));
+}
+
+/** 쉼 화면 문구의 머리 — "이번 주는 쉽니다 — {사유}". */
+export const PAUSED_HEAD = "이번 주는 쉽니다";
+const PAUSED_PREFIX_RE = /^이번 주는 쉽니다\s*(?:—|-)?\s*/;
+
+/** paused 공지(운영자 문구 = 사유) → 사유만. 운영자가 머리까지 적었으면 떼어 두 번 나오지 않게. */
+export function pausedReasonOf(publicText: string | null | undefined): string | null {
+  const t = textOrNull(publicText);
+  return t === null ? null : textOrNull(t.replace(PAUSED_PREFIX_RE, ""));
+}
+
 /** 계약 §8 판정 순서: published(withdrawn) → none → prelaunch → paused → planned → delayed → missed. */
 export function editionState(input: EditionStateInput): EditionState {
   const { planned, edition, notices, launchAt } = input;
-  const nowMs = toMs(input.now);
 
   if (edition) {
     const mine = notices.filter((n) => noticeOfEdition(n, edition));
@@ -1339,7 +1410,8 @@ export function editionState(input: EditionStateInput): EditionState {
     deadlineAt: isoKst(deadline),
   };
 
-  if (launchAt === null || freeze.getTime() < toMs(launchAt)) {
+  // 크롤러 missed 판정(freeze_at ≥ launchAt 인 호만)과 같은 경계 — µs 로 비교
+  if (launchAt === null || before(freeze, launchAt)) {
     return { ...base, state: "prelaunch", notFound: true, indexable: false };
   }
 
@@ -1357,13 +1429,16 @@ export function editionState(input: EditionStateInput): EditionState {
       state: "paused",
       notFound: false,
       indexable: false,
-      pausedReason: textOrNull(paused.public_text),
+      pausedReason: pausedReasonOf(paused.public_text),
       pausedNotice: paused,
     };
   }
 
-  if (nowMs < freeze.getTime()) return { ...base, state: "planned", notFound: false, indexable: false };
-  if (nowMs < deadline.getTime()) {
+  // freeze·deadline 은 분 단위 시각이라 now 를 분으로 자른 판정(크롤러 in_window)과 결과가 같다
+  if (before(input.now, freeze)) {
+    return { ...base, state: "planned", notFound: false, indexable: false };
+  }
+  if (before(input.now, deadline)) {
     return { ...base, state: "delayed", notFound: false, indexable: false };
   }
 
@@ -1381,9 +1456,43 @@ export function editionState(input: EditionStateInput): EditionState {
     state: "missed",
     notFound: false,
     indexable: false,
-    missedReason: missed ? textOrNull(missed.public_text) : null,
+    missedReason: missed ? missedReasonOf(missed.public_text) : null,
     missedNotice: missed,
   };
+}
+
+/**
+ * 상태 안내 한 줄 — 계획 4.3 표의 화면 문구. 404 상태(none·prelaunch)와 제때 발행된 호는 null.
+ *  - planned   "11월 14일(토) 서울 경마지 — 11월 13일(금) 오후 6시 발행 예정"
+ *  - delayed   "발행이 늦어지고 있습니다 — 오전 8시까지 다시 시도합니다" (마감 시각)
+ *  - missed    "이번 호는 발행하지 않았습니다 — {사유 | 확인 중}"
+ *  - paused    "이번 주는 쉽니다 — {사유}"
+ *  - withdrawn "철회됨 — 기록에 포함 ({공지 시각}·{사유})"
+ *  - published(late) "늦게 발행 — {실제 발행 시각}"
+ */
+export function editionStateText(s: EditionState): string | null {
+  switch (s.state) {
+    case "planned":
+      return `${editionTitleKo(s.raceDate, s.meet)} — ${publishStampKo(s.freezeAt)} 발행 예정`;
+    case "delayed": {
+      const c = kstClock(s.deadlineAt);
+      return `발행이 늦어지고 있습니다 — ${clockKo(c.hour, c.minute)}까지 다시 시도합니다`;
+    }
+    case "missed":
+      return `${MISSED_HEAD} — ${s.missedReason ?? "확인 중"}`;
+    case "paused":
+      return s.pausedReason ? `${PAUSED_HEAD} — ${s.pausedReason}` : PAUSED_HEAD;
+    case "withdrawn": {
+      const reason = textOrNull(s.withdrawnNotice.public_text);
+      const when = publishStampKo(s.withdrawnNotice.noticed_at);
+      return `철회됨 — 기록에 포함 (${reason ? `${when}·${reason}` : when})`;
+    }
+    case "published":
+      return s.late ? `늦게 발행 — ${publishStampKo(s.publishedAt)}` : null;
+    case "prelaunch":
+    case "none":
+      return null;
+  }
 }
 
 // ============================================================================
@@ -1402,7 +1511,7 @@ export function raceResultState(args: {
 }): RaceResultState {
   if (args.outcome !== null && args.outcome !== undefined) return "result";
   const post = parseHhmm(args.startTime) ?? RESULT_FALLBACK_POST_MIN;
-  return toMs(args.now) < atKst(args.raceDate, post).getTime() ? "before_post" : "settling";
+  return before(args.now, atKst(args.raceDate, post)) ? "before_post" : "settling";
 }
 
 export type PickOutcome = "pending" | "void" | "win" | "top3" | "miss";
@@ -1465,13 +1574,30 @@ function normName(v: string | null | undefined): string | null {
   return t ? t : null;
 }
 
-/** payload races → 비교용 목록 (1면: EditionFront.runners 를 그대로 써도 된다). */
+/**
+ * 발행 시점 기수변경 행의 전·후 이름이 같은지 (정규화 이름, 둘 다 있을 때만) — crawler
+ * news.is_same_jockey 와 같다. "A→A" 는 교체가 아니다 (크롤러는 배지·헤드라인을 내지 않고
+ * payload 의 runner.jockey_change 객체만 남긴다 — 계약 §3).
+ */
+export function isSameJockey(jc: Pick<JockeyChangeV1, "before" | "after">): boolean {
+  const b = normName(jc.before);
+  const a = normName(jc.after);
+  return b !== null && a !== null && b === a;
+}
+
+/** 출전마 카드의 "기수 교체" 표시용 — 발행 시점 기수변경이 없거나 "A→A" 면 null. */
+export function shownJockeyChange(runner: Pick<RunnerV1, "jockey_change">): JockeyChangeV1 | null {
+  const jc = runner.jockey_change;
+  return jc !== null && !isSameJockey(jc) ? jc : null;
+}
+
+/** payload races → 비교용 목록 (1면: EditionFront.runners 를 그대로 써도 된다). race_no 는 늘 채운다. */
 export function publishedJockeys(
   races: ReadonlyArray<{
     race_no: number;
     runners: ReadonlyArray<{ horse_no: string; chul_no: number; jockey_name: string | null }>;
   }>,
-): PublishedJockey[] {
+): (PublishedJockey & { race_no: number })[] {
   return races.flatMap((r) =>
     r.runners.map((u) => ({
       race_no: r.race_no,
@@ -1807,7 +1933,7 @@ export function settlementLine(args: {
   const allFinal = tally.races_final >= tally.races_settled && tally.races_settled >= raceCount;
   if (!allFinal) {
     const fin = finalizeAt(raceDate);
-    if (toMs(args.now) < fin.getTime()) {
+    if (before(args.now, fin)) {
       const finDate = kstDateOf(fin);
       const when =
         finDate === addDays(today, 1) ? "내일" : finDate === today ? "오늘" : dateKo(finDate);

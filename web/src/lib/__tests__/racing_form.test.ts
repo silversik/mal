@@ -4,12 +4,17 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  CONSENSUS_MIN_ACTIVE_RULES,
+  CONSENSUS_MIN_VOTES,
+  FIELD_MIN_ACTIVE,
   FORBIDDEN_GLYPHS,
   FORBIDDEN_WORDS,
   FORM_INDEXABLE,
   FORM_MEETS,
+  FORM_SCHEDULE,
   MARK_LABEL,
   MARK_TEXT,
+  MISSED_HEAD,
   RULE_LABEL,
   RULE_ORDER,
   SHOW_SCRATCH_HINT,
@@ -19,9 +24,11 @@ import {
   deadlineAt,
   diffJockeys,
   editionState,
+  editionStateText,
   editionTitleKo,
   finalizeAt,
   findForbidden,
+  formatHhmm,
   formDatePath,
   formEditionPath,
   formHubPath,
@@ -33,12 +40,14 @@ import {
   inWindow,
   isLate,
   isPastDeadline,
+  isSameJockey,
   isoKst,
   issueLabel,
   kstDateOf,
   lateLimitAt,
   mdKo,
   meetFromSlug,
+  missedReasonOf,
   normalizeFormDate,
   normalizeFormRaceNo,
   parseEditionFront,
@@ -55,6 +64,7 @@ import {
   recordRows,
   runnerAnchorId,
   settlementLine,
+  shownJockeyChange,
   slugFromMeet,
   summaryConsensusLine,
   voidAfter,
@@ -98,6 +108,7 @@ const FORBIDDEN = readJson<{ words: string[]; glyphs: string[] }>(
   "crawler/src/racing_form/data/forbidden_words.json",
 );
 const DEFINITIONS_PY = readText("crawler/src/racing_form/definitions.py");
+const JOBS_PY = readText("crawler/src/jobs/racing_form_jobs.py");
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 const ms = (iso: string) => Date.parse(iso);
@@ -165,6 +176,48 @@ describe("일정 — schedule_vectors.json (crawler schedule.py 와 같은 결�
     expect(() => freezeAt("2026-02-30")).toThrow(RangeError);
     expect(kstDateOf("2026-11-13T15:30:00Z")).toBe("2026-11-14");
     expect(kstDateOf("2026-11-13T14:59:59.999Z")).toBe("2026-11-13");
+  });
+
+  it("µs 정밀도 — DB(.US)·크롤러 is_late 와 같은 경계 (Date.parse 는 ms 에서 잘림)", () => {
+    const D14 = "2026-11-14";
+    expect(isLate("2026-11-13T19:00:00.000000+09:00", D14)).toBe(false);
+    expect(isLate("2026-11-13T19:00:00.000001+09:00", D14)).toBe(true);
+    expect(isLate("2026-11-13T19:00:00.000400+09:00", D14)).toBe(true);
+    expect(isLate("2026-11-13T10:00:00.0004Z", D14)).toBe(true);
+    expect(isLate("2026-11-13T19:00:00.0000009+09:00", D14)).toBe(false); // µs 아래는 버림
+    // Date · epoch ms 입력도 받는다
+    expect(isLate(new Date("2026-11-13T10:00:00.001Z"), D14)).toBe(true);
+    expect(isLate(Date.parse("2026-11-13T10:00:00Z"), D14)).toBe(false);
+    // 표기는 버림 (반올림하지 않음)
+    expect(publishStampKo("2026-11-13T18:59:59.999999+09:00")).toBe("11월 13일(금) 오후 6시 59분");
+  });
+
+  it("오프셋 표기 (+09:00 · +0900 · +09 · Z · 음수) 와 잘못된 시각", () => {
+    expect(kstDateOf("2026-11-13T15:00:00+0000")).toBe("2026-11-14");
+    expect(kstDateOf("2026-11-14T00:00:00+09")).toBe("2026-11-14");
+    expect(kstDateOf("2026-11-13T23:59:59.9999999-08:00")).toBe("2026-11-14");
+    expect(kstDateOf("2026-11-13T23:59+09:00")).toBe("2026-11-13");
+    expect(isoKst("2026-11-13T09:00:00.123456Z")).toBe("2026-11-13T18:00:00.123+09:00");
+    for (const bad of [
+      "2026-11-13T24:00:00Z",
+      "2026-11-13T18:60:00+09:00",
+      "2026-02-30T00:00:00Z",
+      "2026-11-13 18:00:00",
+      "2026-11-13",
+      "",
+    ]) {
+      expect(() => kstDateOf(bad), bad).toThrow(RangeError);
+    }
+    expect(() => kstDateOf(new Date(Number.NaN))).toThrow(RangeError);
+  });
+
+  it("formatHhmm — 발주 시각 표기 (crawler parse.fmt_hhmm)", () => {
+    expect(formatHhmm("9:30")).toBe("09:30");
+    expect(formatHhmm("0930")).toBe("09:30");
+    expect(formatHhmm(" 14:05:00 ")).toBe("14:05");
+    expect(formatHhmm("25:00")).toBeNull();
+    expect(formatHhmm("")).toBeNull();
+    expect(formatHhmm(null)).toBeNull();
   });
 });
 
@@ -497,6 +550,76 @@ describe("editionState — 8 상태", () => {
       missedReason: "출전표 수집 지연",
     });
   });
+
+  it("prelaunch 경계는 µs — 크롤러 missed 판정(freeze_at ≥ launchAt)과 같다", () => {
+    const base = { planned: PLANNED, edition: null, notices: [], now: "2026-11-14T09:00:00+09:00" };
+    expect(editionState({ ...base, launchAt: "2026-11-13T18:00:00.000001+09:00" }).state).toBe("prelaunch");
+    expect(editionState({ ...base, launchAt: "2026-11-13T18:00:00.000000+09:00" }).state).toBe("missed");
+  });
+
+  it("missed 사유 — 잡 공지는 템플릿 문장 전체라 머리를 떼고 사유만 (crawler MISSED_TEMPLATE 대조)", () => {
+    const tpl = /^MISSED_TEMPLATE = "([^"]+)"$/m.exec(JOBS_PY)?.[1];
+    expect(tpl).toBe(`${MISSED_HEAD} — {reason}`);
+    const block = /^MISSED_REASONS: dict\[str, str\] = \{([\s\S]*?)^\}/m.exec(JOBS_PY)?.[1] ?? "";
+    const reasons = [
+      ...[...block.matchAll(/: "([^"]+)"/g)].map((m) => m[1]),
+      ...[...JOBS_PY.matchAll(/^MISSED_REASON_(?:ERROR|NONE) = "([^"]+)"$/gm)].map((m) => m[1]),
+    ];
+    expect(reasons.length).toBe(7);
+    for (const r of reasons) {
+      const text = tpl!.replace("{reason}", r);
+      expect(missedReasonOf(text)).toBe(r);
+      const s = editionState({
+        planned: PLANNED,
+        edition: null,
+        notices: [notice({ kind: "missed", public_text: text })],
+        now: "2026-11-14T08:00:00+09:00",
+        launchAt: LAUNCH,
+      });
+      expect(s).toMatchObject({ state: "missed", missedReason: r });
+      // 화면 문장에 머리가 두 번 들어가지 않는다
+      expect(editionStateText(s)).toBe(text);
+    }
+    expect(missedReasonOf(MISSED_HEAD)).toBeNull();
+    expect(missedReasonOf("  ")).toBeNull();
+    expect(missedReasonOf("운영자 문구")).toBe("운영자 문구");
+  });
+
+  it("editionStateText — 계획 4.3 화면 문구", () => {
+    const st = (now: string, planned = PLANNED, notices: FormNotice[] = []) =>
+      editionState({ planned, edition: null, notices, now, launchAt: LAUNCH });
+    expect(editionStateText(st("2026-11-13T12:00:00+09:00"))).toBe(
+      "11월 14일(토) 서울 경마지 — 11월 13일(금) 오후 6시 발행 예정",
+    );
+    expect(editionStateText(st("2026-11-13T18:05:00+09:00"))).toBe(
+      "발행이 늦어지고 있습니다 — 오전 8시까지 다시 시도합니다",
+    );
+    expect(editionStateText(st("2026-11-14T06:00:00+09:00", { ...PLANNED, first_post: "08:30" }))).toBe(
+      "발행이 늦어지고 있습니다 — 오전 7시 30분까지 다시 시도합니다",
+    );
+    expect(editionStateText(st("2026-11-14T08:00:00+09:00"))).toBe(
+      "이번 호는 발행하지 않았습니다 — 확인 중",
+    );
+    const paused = notice({ kind: "paused", race_date: "2026-11-14", meet: null, until: "2026-11-15", public_text: "시스템 점검" });
+    expect(editionStateText(st("2026-11-13T12:00:00+09:00", PLANNED, [paused]))).toBe("이번 주는 쉽니다 — 시스템 점검");
+    const pausedBlank = { ...paused, id: 999, public_text: "" };
+    expect(editionStateText(st("2026-11-13T12:00:00+09:00", PLANNED, [pausedBlank]))).toBe("이번 주는 쉽니다");
+    // 운영자가 머리까지 적어도 한 번만
+    const pausedFull = { ...paused, id: 998, public_text: "이번 주는 쉽니다 — 시스템 점검" };
+    expect(st("2026-11-13T12:00:00+09:00", PLANNED, [pausedFull])).toMatchObject({ pausedReason: "시스템 점검" });
+    expect(editionStateText(st("2026-11-13T12:00:00+09:00", PLANNED, [pausedFull]))).toBe("이번 주는 쉽니다 — 시스템 점검");
+
+    const pub = (published_at: string, notices: FormNotice[] = []) =>
+      editionState({ planned: PLANNED, edition: { ...EDITION, published_at }, notices, now: "2026-11-14T09:00:00+09:00", launchAt: LAUNCH });
+    expect(editionStateText(pub("2026-11-13T18:00:01.250000+09:00"))).toBeNull();
+    expect(editionStateText(pub("2026-11-13T19:05:00.000000+09:00"))).toBe("늦게 발행 — 11월 13일(금) 오후 7시 5분");
+    const w = notice({ kind: "withdrawn", edition_id: 7, public_text: "명단 오류", noticed_at: "2026-11-13T21:30:00.000000+09:00" });
+    expect(editionStateText(pub("2026-11-13T18:00:01.250000+09:00", [w]))).toBe(
+      "철회됨 — 기록에 포함 (11월 13일(금) 오후 9시 30분·명단 오류)",
+    );
+    expect(editionStateText(editionState({ planned: null, edition: null, notices: [], now: "2026-11-14T09:00:00+09:00", launchAt: LAUNCH }))).toBeNull();
+    expect(editionStateText(editionState({ planned: PLANNED, edition: null, notices: [], now: "2026-11-14T09:00:00+09:00", launchAt: null }))).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -578,6 +701,20 @@ describe("diffJockeys — 이름 내용 비교 (시각 아님)", () => {
     expect(diffJockeys(loose, [cur(5, "H1", "B")])).toEqual([
       { race_no: 5, horse_no: "H1", chul_no: 2, before: "A", after: "B", reason: null },
     ]);
+  });
+
+  it("발행 시점 기수 교체 표시 — 'A→A' 는 교체가 아니다 (crawler news.is_same_jockey)", () => {
+    expect(isSameJockey({ before: "가기수", after: " 가기수 " })).toBe(true);
+    expect(isSameJockey({ before: "가기수", after: "나기수" })).toBe(false);
+    expect(isSameJockey({ before: null, after: "가기수" })).toBe(false);
+    expect(isSameJockey({ before: " ", after: "" })).toBe(false);
+
+    const changed = GOLDEN.races[1].runners.find((u) => u.horse_no === "0042001")!;
+    expect(shownJockeyChange(changed)).toMatchObject({ before: "오누리", after: "서다솜" });
+    expect(changed.badges.some((b) => b.kind === "jockey_change")).toBe(true);
+    const same = { jockey_change: { ...changed.jockey_change!, after: "오누리 " } };
+    expect(shownJockeyChange(same)).toBeNull();
+    expect(shownJockeyChange({ jockey_change: null })).toBeNull();
   });
 
   it("publishedJockeys + 정렬 (경주 → 출전번호)", () => {
@@ -787,6 +924,32 @@ describe("크롤러 정본과 같은 값", () => {
     expect(py).toEqual({ ...RULE_LABEL });
     const keysBlock = /RULE_KEYS: tuple\[str, \.\.\.\] = \(([^)]*)\)/.exec(DEFINITIONS_PY);
     expect([...keysBlock![1].matchAll(/"(\w+)"/g)].map((m) => m[1])).toEqual([...RULE_ORDER]);
+  });
+
+  it("일정·주목마 수치 = definitions.py r1 params (FORM_SCHEDULE 등)", () => {
+    // "freeze_min": 18 * 60 같은 정수 산술(+·*)만 쓰는 dict 리터럴 값을 읽는다 (r1 이 첫 등장)
+    const py = (key: string): number => {
+      const m = new RegExp(`"${key}": ([0-9*+ ]+)[,}\\n]`).exec(DEFINITIONS_PY);
+      expect(m, key).not.toBeNull();
+      return m![1]
+        .split("+")
+        .map((t) => t.split("*").reduce((acc, x) => acc * Number(x.trim()), 1))
+        .reduce((a, b) => a + b, 0);
+    };
+    expect({ ...FORM_SCHEDULE }).toEqual({
+      historyOffsetDays: py("offset_days"),
+      freezeMin: py("freeze_min"),
+      deadlineMin: py("deadline_min"),
+      firstPostMarginMin: py("first_post_margin_min"),
+      lateAfterMin: py("late_after_min"),
+      finalizeAfterMin: py("finalize_after_min"),
+      raceVoidAllNullAfterMin: py("race_void_all_null_after_min"),
+      voidAfterDays: py("void_after_days"),
+    });
+    expect(FORM_SCHEDULE.freezeMin).toBe(18 * 60);
+    expect(CONSENSUS_MIN_ACTIVE_RULES).toBe(py("min_active_rules"));
+    expect(CONSENSUS_MIN_VOTES).toBe(py("min_votes"));
+    expect(FIELD_MIN_ACTIVE).toBe(py("min_active"));
   });
 
   it("기호 slot 라벨 (화면 기호는 PickMark SVG — 글리프는 aria·평문 전용)", () => {
