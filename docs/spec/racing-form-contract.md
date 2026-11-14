@@ -26,15 +26,16 @@ payload 에는 **float 가 없다** — 부담·기록은 0.1 단위 정수(`*_t
 
 | Q | 쓰임 | 소스·조건 |
 |---|---|---|
-| Q0 달력 | 발행 대상 (D, meet) | `races r` (race_date 범위, meet ∈ 서울·부경·제주) 중 `EXISTS race_entries e (같은 race_date·meet·race_no)`. 경주 수, 첫 발주 = `MIN(NULLIF(btrim(r.start_time),''))` ('HH:MM' 사전순) |
+| Q0 달력 | 발행 대상 (D, meet) | `races r` (race_date 범위, meet ∈ 서울·부경·제주) 중 `EXISTS race_entries e (같은 race_date·meet·race_no)`. 경주 수, 첫 발주 = `NULLIF(btrim(r.start_time),'')` 중 **(시, 분)으로 가장 이른 값**을 'HH:MM' 으로 (해석 안 되는 값은 무시). `start_time` 은 `'9:30'` 처럼 앞자리 0 이 없을 수 있어 문자열 MIN 을 쓰지 않는다 (`queries.first_post_of` — 웹 달력도 같게) |
 | Q1 출전명단 | 활성 출전마 | `race_entries` (D, meet) 전 행 + `MAX(updated_at) OVER (PARTITION BY race_date, meet)` = 배치 시각. 실제 기수: `LEFT JOIN LATERAL (SELECT … FROM jockey_changes jc WHERE jc.race_date=e.race_date AND jc.race_no=e.race_no AND jc.horse_no=e.horse_no ORDER BY jc.updated_at DESC, jc.id DESC LIMIT 1)` (meet 미사용) |
 | Q2 이력 | 말별 과거 성적 | `race_results rr WHERE rr.horse_no = ANY(:horse_nos) AND rr.race_date < :h` + `LEFT JOIN races ra USING (race_date, meet, race_no)` 로 거리 |
-| Q3 기수·조교사 | 최근 90일 같은 경마장 | `race_results` 를 **이름 하나(btrim)로** 묶음, meet = 호의 meet, `race_date ∈ [H−90, H)`. 동명이인 판정은 같은 meet·`race_date < H` 전체에서 `COUNT(DISTINCT NULLIF(ltrim(btrim(rr.raw->>'jkNo'),'0'),''))` ≥ 2 |
+| Q3 기수·조교사 | 최근 90일 같은 경마장 | `race_results` 를 **이름 하나(btrim)로** 묶음, meet = 호의 meet(`부경` 은 `부산경남` 도 같은 경마장), `race_date ∈ [H−90, H)`. 출주는 §1.1 (`rank ≥ 1` 또는 `round(record_time*10) > 0`), 창 안 출주가 0 인 이름은 돌려주지 않는다. 동명이인 판정은 같은 meet·`race_date < H` 전체에서 `COUNT(DISTINCT NULLIF(ltrim(btrim(rr.raw->>'jkNo'),'0'),''))` ≥ 2 (조교사는 `raw->>'trNo'` 로 같은 값을 세지만 r1 은 쓰지 않는다) |
 | Q4 등급변동 | 소식 class_change | `horse_rank_changes` (horse_no = ANY, st_date ≤ D), 말별 st_date 최신 1건 |
 | Q5 마스터 | 소식 debut/no_record, live 가드 | `horses.total_race_count` (horse_no = ANY) |
 | Q6 경주 메타 | 거리·등급·발주·대상경주 | `races` (D, meet): race_no, race_name, distance, grade, track_type, start_time, `raw->>'rcDist'`. 대상경주는 `race_plans` (race_date = D, race_no, meet ∈ {meet, '부경'이면 '부산경남'}) 도 본다 |
 | results_through | 도장 "성적 반영 ~까지" | `SELECT MAX(race_date) FROM race_results WHERE race_date < :h` |
 | D 결과 존재 | live 발행 차단 | `EXISTS (SELECT 1 FROM race_results WHERE race_date = :d AND meet = :meet)` |
+| 미해결 이력 | live 경고 `unresolved_history` | `races` 중 `race_date ∈ [H−14, H)` 이고 같은 (race_date, meet, race_no) 의 `race_results` 가 없는 경주 → (race_date, meet) 중복 없이 (경주 단위 — `periodic._has_unresolved_races_on` 과 같은 판정) |
 | 정산 입력 | 결과·배당 | `race_results` (D, meet), `race_dividends` (D, meet, `win_rate`; **`horse_no` 컬럼에 출전번호(chulNo)가 들어 있다** → 정수로 바꿔 결과의 `raw->>'chulNo'` 와 매핑) |
 
 공통 규칙
@@ -239,6 +240,13 @@ v1 안에서는 **키 추가만** 허용. 웹은 모르는 `schema_version` 이�
 
 launchAt = `MIN(racing_form_rule_sets.registered_at)`. missed 판정은 `freeze_at ≥ launchAt` 인 호만.
 
+세부 (구현 `store.py` · `jobs/racing_form_jobs.py` 기준)
+- 트랜잭션 첫 문장이 `SET TRANSACTION ISOLATION LEVEL READ COMMITTED`, 다음이 advisory lock. missed 기록(`record_missed`)도 같은 lock 안에서 발행본 없음을 재확인한 뒤 넣는다.
+- `insert_edition` 은 `mode = live` 빌드만 받는다 (그 밖은 ValueError — 발행 경로는 잡 하나). picks 는 저장 직전에 `payload.picks_rows(payload)` 로 다시 만든다. `published_at` = 발행 창 판정에 쓴 잡의 now (tz-aware). DB CHECK 는 실제 시각으로 반열린 창을 본다 — 분 단위로 자른 시각이 창 안이면 실제 시각도 창 안이다.
+- 발행 잡 한 실행: `ensure_rule_set` → Q0 달력 D ∈ [오늘−7, 오늘+7] → 호마다 (발행본 있음·쉼 → 건너뜀) / 창 안 → 발행 / 마감 지남 · D ≤ 오늘 · `freeze_at ≥ launchAt` → missed. 반환 (새 호 수, 실패 메시지).
+- 발행 실패 사유 코드(`reason_code`) = `GuardError`·`NotPublishable` 의 code (`no_entries` · `history_coverage_low` · `all_nopick_majority` · `results_present` · `not_in_window`), 그 밖 예외는 `error:<예외 클래스 이름>`. 같은 (D, meet, 사유)의 두 번째부터는 잡 실패로 올리지 않는다 (경고 로그만).
+- 정의 해시 불일치(`ensure_rule_set` RuntimeError)는 그 실행 전체의 실패다 (dedup 없음 — 고칠 때까지 매 실행).
+
 ## 6. 정산 (`racing_form_race_outcomes`)
 
 경주마다 (발행본의 races[] 기준):
@@ -257,6 +265,12 @@ launchAt = `MIN(racing_form_rule_sets.registered_at)`. missed 판정은 `freeze_
 - `pop_ranks` = 단승 배당 오름차순 competition rank `{horse_no: rank}`.
 - `results_digest` = sha256(정렬 JSON `{finish, favorites, status}`).
 - upsert: 행이 없으면 INSERT(first_settled_at=settled_at=now). 있고 `is_final=false` 이고 digest 가 다르면 UPDATE. now ≥ D+1 13:00 이면 is_final=true, finalized_at=now (확정 시각 이후 처음 정산되는 경주는 바로 확정). 확정 행의 digest 가 달라지면 UPDATE 하지 않고 `result_changed` 공지 + 잡 실패 1회.
+
+세부 (구현 `store.py` · `jobs/racing_form_jobs.py` 기준)
+- 정산 잡 범위 = D ∈ [오늘−14, 오늘] 의 발행본 **전부**. 모든 경주가 확정된 호도 다시 읽어 확정 뒤 결과 변경을 감시한다. 정의는 그 호의 `rules_version` (`definitions.get`).
+- UPDATE·확정은 항상 `WHERE NOT is_final` — 확정 행에는 UPDATE 를 시도하지 않는다 (트리거 P0001 을 부르지 않음). `first_settled_at` 은 INSERT 때만 쓴다. digest 가 같아 확정만 할 때는 `is_final`·`finalized_at` 만 바꾸고 `settled_at` 은 그대로 둔다.
+- 대기(pending)는 행을 쓰지 않는다. 결과 행이 있는데 now ≥ D+1 13:00 에도 대기(결과 행 < 명단 50%)면 잡 실패 (분류될 때까지 매 실행).
+- 반환 (새로 쓰거나 갱신·확정한 행 수, 실패 메시지). 한 경주·한 호의 오류는 다른 경주·호를 막지 않는다.
 
 ### 6.1 표시 판정 (웹·집계 공통)
 | 판정 | 조건 |
@@ -284,6 +298,15 @@ launchAt = `MIN(racing_form_rule_sets.registered_at)`. missed 판정은 `freeze_
 - `paused`: `race_date` = 시작일, `detail.until` = 종료일(포함), meet NULL = 전체. 잡은 이 기간 호를 발행·missed 처리하지 않는다.
 - `public_text` 는 템플릿으로만 만든다 (예외 메시지 원문 금지). 운영자 문구는 그대로.
 - 철회해도 예상은 그대로 보이고 집계에 포함된다(예외 없음). `detail.hide_picks = true` (법적 사유) 일 때만 화면에서 예상을 숨긴다.
+
+잡이 만드는 공지 문구·detail (구현 `jobs/racing_form_jobs.py` · `store.py` 기준)
+| kind | public_text | detail |
+|---|---|---|
+| `missed` | `"이번 호는 발행하지 않았습니다 — {사유}"`. 사유 = 마지막 `publish_failed` 사유 코드의 일반 문구: `no_entries` "출전표 자료를 확인하지 못했습니다" · `history_coverage_low` "과거 성적 자료가 충분하지 않았습니다" · `all_nopick_majority` "예상을 낼 수 있는 경주가 적었습니다" · `results_present` "발행 전에 경주 결과가 먼저 들어왔습니다" · `not_in_window`·실패 기록 없음 "발행 시간 안에 발행하지 못했습니다" · `error:*` "발행 처리 중 문제가 생겼습니다" | `{reason_code: string \| null}` |
+| `publish_failed` | `"발행 실패 내부 기록 (사유 코드 {reason_code})"` (노출 안 함) | `{reason_code, error: 예외 클래스, message: 예외 문구 앞 500자 (API 키 마스킹)}` |
+| `result_changed` | `"{race_no}R 결과가 정산 확정 뒤 바뀌었습니다 — 기록은 확정한 정산을 그대로 씁니다"` | `{race_no, before: {status, results_digest, winners, placed}, after: {…같은 키}}` |
+
+모든 잡 공지는 `source = 'job'`, `noticed_at` = 잡의 now.
 
 ## 8. 웹 화면 상태 (`editionState`)
 
