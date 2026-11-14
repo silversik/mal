@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import sys
 import traceback
-from datetime import datetime
+from datetime import date, datetime
 from types import TracebackType
 
 import typer
@@ -510,6 +510,241 @@ def cmd_healthcheck(
     from .healthcheck import run_healthcheck
 
     raise typer.Exit(run_healthcheck(json_output=json_output, check_dashboard_url=dashboard))
+
+
+# ============================================================================
+# 경마지 (racing form) — 운영자 CLI (docs/feature/racing-form.md 9.3).
+# 발행 명령은 없다 — 발행은 잡 규칙 하나뿐 (mal.publish_racing_form, PR-2 에서 스케줄 연결).
+# 무거운 모듈은 명령 안에서 import 한다. 시각은 여기서 KST 로 읽어 넘긴다.
+# ============================================================================
+
+
+def _kst_now() -> datetime:
+    from zoneinfo import ZoneInfo
+
+    return datetime.now(ZoneInfo("Asia/Seoul"))
+
+
+def _rf_day(value: str) -> date:
+    from .racing_form.ops import parse_day
+
+    try:
+        return parse_day(value)
+    except ValueError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(code=2) from None
+
+
+def _rf_meet(value: str) -> str:
+    from .racing_form.ops import parse_meet
+
+    try:
+        return parse_meet(value)
+    except ValueError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(code=2) from None
+
+
+def _git_rev() -> str | None:
+    """holdout 기록용 코드 리비전 — git 이 있으면 HEAD (컨테이너엔 없음 → None)."""
+    import subprocess
+    from pathlib import Path
+
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(Path(__file__).resolve().parent), "rev-parse", "--short=12", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=True,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    rev = out.stdout.strip()
+    return rev or None
+
+
+@app.command("racing-form-build")
+def cmd_racing_form_build(
+    race_date: str = typer.Argument(..., help="경주일 (YYYY-MM-DD 또는 YYYYMMDD)"),
+    meet: str = typer.Argument(..., help="서울·부경·제주 (또는 seoul·busan·jeju)"),
+    mode: str = typer.Option("live", "--mode", help="live | replay"),
+    json_output: bool = typer.Option(False, "--json", help="meta·payload 전체를 JSON 으로"),
+) -> None:
+    """[racing-form] 한 호를 계산해 출력만 (dry-run, READ ONLY — 쓰지 않음).
+
+    live 의 발행 창·D 결과 검사는 경고로만 남긴다. 데이터 가드 실패면 exit 1.
+    """
+    from .racing_form import ops
+
+    d, m = _rf_day(race_date), _rf_meet(meet)
+    if mode not in ops.BUILD_MODES:
+        typer.echo(f"--mode 는 live 또는 replay ({mode!r})", err=True)
+        raise typer.Exit(code=2)
+    run_ = ops.dry_run_build(d, m, _kst_now(), mode=mode)
+    typer.echo(ops.render_build_json(run_) if json_output else ops.render_build_text(run_))
+    raise typer.Exit(code=1 if run_.error_code else 0)
+
+
+@app.command("racing-form-show")
+def cmd_racing_form_show(
+    race_date: str = typer.Argument(..., help="경주일 (YYYY-MM-DD 또는 YYYYMMDD)"),
+    meet: str = typer.Argument(..., help="서울·부경·제주 (또는 seoul·busan·jeju)"),
+) -> None:
+    """[racing-form] 저장된 발행본·정산·공지 요약 (READ ONLY). 발행본이 없으면 exit 1."""
+    from .racing_form import ops
+
+    out, found = ops.show_edition(_rf_day(race_date), _rf_meet(meet))
+    typer.echo(out)
+    raise typer.Exit(code=0 if found else 1)
+
+
+@app.command("racing-form-settle")
+def cmd_racing_form_settle(
+    race_date: str | None = typer.Option(
+        None, "--date", help="이 경주일 발행본만 (생략 시 잡과 같이 오늘−14 ~ 오늘)"
+    ),
+) -> None:
+    """[racing-form] 정산 잡과 같은 규칙으로 1회 정산 (now = 지금 KST). 실패가 있으면 exit 1."""
+    from .racing_form import ops
+
+    d = _rf_day(race_date) if race_date else None
+    n, failures = ops.settle_once(_kst_now(), d=d)
+    typer.echo(f"정산 {n}행 기록 · 실패 {len(failures)}")
+    for f in failures:
+        typer.echo(f"  - {redact(f)}")
+    raise typer.Exit(code=1 if failures else 0)
+
+
+@app.command("racing-form-backtest")
+def cmd_racing_form_backtest(
+    date_from: str = typer.Option(..., "--from", help="시작 경주일 (포함)"),
+    date_to: str = typer.Option(..., "--to", help="끝 경주일 (포함, 어제까지)"),
+    meet: list[str] | None = typer.Option(  # noqa: B008 — typer 다중 옵션은 list 여야 한다
+        None, "--meet", help="경마장 (여러 번 가능, 생략 시 서울·부경·제주)"
+    ),
+    label: str = typer.Option(..., "--label", help="dev (읽기 전용) | holdout (저장 필수, 1회)"),
+    save: bool = typer.Option(False, "--save", help="보고서 저장 — holdout 만 (필수)"),
+    public: bool = typer.Option(
+        False, "--public", help="저장 행을 공개로 (/form/record) — 나중에 바꿀 수 없음"
+    ),
+    json_output: bool = typer.Option(False, "--json", help="보고서 JSON 전체"),
+    rules_version: str | None = typer.Option(
+        None, "--rules-version", help="후보 기준 버전 (생략 시 ACTIVE)"
+    ),
+    code_rev: str | None = typer.Option(
+        None, "--code-rev", help="코드 리비전 (holdout 기록용, 생략 시 git HEAD 시도)"
+    ),
+) -> None:
+    """[racing-form] 과거 시험 — dev 는 쓰지 않고, holdout 은 정의 해시당 1회 저장한 뒤 출력.
+
+    명단은 결과표 출주(Q1b), 월 단위 READ ONLY. ensure_rule_set 을 부르지 않는다.
+    """
+    import json as _json
+
+    from .racing_form import backtest, definitions
+
+    d_from, d_to = _rf_day(date_from), _rf_day(date_to)
+    meets = [_rf_meet(m) for m in meet] if meet else None
+    version = rules_version or definitions.ACTIVE
+    defn = definitions.RULE_SETS.get(version)
+    if defn is None:
+        typer.echo(f"모르는 기준 버전: {version!r}", err=True)
+        raise typer.Exit(code=2)
+    rev = code_rev or (_git_rev() if save else None)
+    try:
+        report = backtest.run_backtest(
+            None, defn, d_from, d_to, meets, label, _kst_now(),
+            save=save, public=public, code_rev=rev,
+        )
+    except backtest.HoldoutExists as e:
+        typer.echo(f"거부: {e}", err=True)
+        raise typer.Exit(code=1) from None
+    except backtest.BacktestError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(code=2) from None
+    if save:
+        typer.echo(
+            f"{label} 보고서 저장됨 — {defn.version} 정의 {report['definition_sha256'][:12]} · "
+            f"공개 {'예' if public else '아니오'} · code_rev {rev or '-'}",
+            err=True,
+        )
+    if json_output:
+        typer.echo(_json.dumps(report, ensure_ascii=False, indent=2))
+    else:
+        typer.echo(backtest.render_text(report))
+
+
+@app.command("racing-form-preflight")
+def cmd_racing_form_preflight(
+    json_output: bool = typer.Option(False, "--json", help="표 대신 JSON 으로 출력"),
+) -> None:
+    """[racing-form] 출시 전 읽기 전용 감사 18항목 (쿼리마다 READ ONLY, 15초/2초).
+
+    exit 0 = FAIL 없음 (WARN 은 사람이 판단), 1 = 점검 실패 또는 출시 불가 조건.
+    prod: `docker exec mal-crawler python -m src.main racing-form-preflight`.
+    """
+    from . import db as _db
+    from .racing_form import preflight
+
+    out, code = preflight.run_cli(_db.engine, _kst_now(), json_output=json_output)
+    typer.echo(out)
+    raise typer.Exit(code=code)
+
+
+@app.command("racing-form-verify")
+def cmd_racing_form_verify(
+    max_clock_skew_min: int = typer.Option(
+        5, "--max-clock-skew-min", help="|created_at − published_at| 허용 (분)"
+    ),
+) -> None:
+    """[racing-form] 무결성 점검 (READ ONLY) — payload 해시 SQL 재계산, DB 시계 vs 잡 시계,
+    보호 트리거 12개·ALWAYS, 기준 정의 해시 vs 레지스트리, 예상 행 = payload. 문제가 있으면 exit 1.
+    """
+    from datetime import timedelta
+
+    from .racing_form import verify
+
+    report = verify.run_verify(None, max_clock_skew=timedelta(minutes=max_clock_skew_min))
+    typer.echo(verify.render_text(report))
+    raise typer.Exit(code=0 if report.ok else 1)
+
+
+@app.command("racing-form-notice")
+def cmd_racing_form_notice(
+    kind: str = typer.Option(..., "--kind", help="erratum | withdrawn | paused"),
+    race_date: str = typer.Option(..., "--date", help="경주일 (paused 는 시작일)"),
+    meet: str | None = typer.Option(
+        None, "--meet", help="경마장 (erratum·withdrawn 필수, paused 는 생략 = 전체)"
+    ),
+    until: str | None = typer.Option(None, "--until", help="paused 종료일 (그날 포함, 필수)"),
+    public_text: str = typer.Option(..., "--text", help="공개 문구 — 사실만, 그대로 노출된다"),
+    hide_picks: bool = typer.Option(
+        False, "--hide-picks", help="withdrawn 법적 사유일 때만 — 화면에서 예상을 숨김"
+    ),
+) -> None:
+    """[racing-form] 운영자 공지 추가 (추가 전용 — 지울 수 없다). 철회해도 기록에 포함된다."""
+    from .racing_form import ops
+
+    d = _rf_day(race_date)
+    m = _rf_meet(meet) if meet else None
+    u = _rf_day(until) if until else None
+    try:
+        res = ops.add_operator_notice(
+            kind=kind, d=d, meet=m, public_text=public_text, now=_kst_now(),
+            until=u, hide_picks=hide_picks,
+        )
+    except ValueError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(code=2) from None
+    if res.inserted:
+        typer.echo(
+            f"공지 추가됨 — {res.kind} {d.isoformat()} {m or '전체'}"
+            + (f" (호 {res.edition_id})" if res.edition_id else "")
+            + f" · dedup_key {res.dedup_key}"
+        )
+    for msg in res.messages:
+        typer.echo(msg)
 
 
 if __name__ == "__main__":

@@ -200,6 +200,30 @@ def test_jockey_change_text_variants() -> None:
     assert "jockey_change" not in badges()
 
 
+def test_same_jockey_change_row_has_no_badge_or_headline() -> None:
+    """기수변경 행의 전·후 이름이 같으면("A→A") 배지·헤드라인 없음 — payload 기록은 그대로."""
+    kw = {"jc_before": " 한교체", "jc_after": "한교체 ", "jc_reason": "착오 정정",
+          "jc_weight_before": "55.0", "jc_weight_after": "54.0"}
+    e = make_entrant(1, R1, horse_no="A", jockey="한교체", **kw)
+    got = news.runner_badges(
+        e, d=D, meet="서울", distance=1200, rank_change=None, master=MasterRow("A", 3), defn=R1
+    )
+    assert "jockey_change" not in {b.kind for b in got}
+    # payload 의 runner.jockey_change 는 남는다 (이름은 정규화, 부담 변화 포함)
+    assert e.runner.jockey_change is not None
+    assert e.runner.jockey_change.to_json() == {
+        "before": "한교체", "after": "한교체", "reason": "착오 정정",
+        "weight_before_tenths": 550, "weight_after_tenths": 540,
+    }
+    heads, overflow = news.build_headlines([_race_news(1, [(e, tuple(got))])], R1)
+    assert all(h.kind != "jockey_change" for h in heads) and overflow == 0
+    # 한쪽 이름이 없거나 다르면 기존대로 배지
+    assert badges(jc_before=None, jc_after="한교체")["jockey_change"].text == "기수 교체 -→한교체"
+    assert badges(jc_before="한교체", jc_after="이과천")["jockey_change"].text == (
+        "기수 교체 한교체→이과천")
+    assert news.is_same_jockey(e.runner.jockey_change)
+
+
 def test_class_change_window_and_direction() -> None:
     hist = last_at(40)
     last_date = days_before_d(40)

@@ -103,7 +103,7 @@ payload 에는 **float 가 없다** — 부담·기록은 0.1 단위 정수(`*_t
 | kind | 조건 (이력 = 1.1 의 출주만, < H) | 배지 | 헤드라인 |
 |---|---|---|---|
 | `stakes` (경주) | grade 에 `G`·`L`·`대상` 포함 또는 race_name 에 `대상` (web `isStakesRace` 와 같음), 또는 race_plans 에 (D, race_no) 행 | – | 경주마다 1개 `news_stakes` |
-| `jockey_change` | Q1 의 jockey_changes 행 존재 | `news_jockey_change` + reason 있으면 `news_jockey_change_reason` + 부담 변화 있으면 `news_jockey_change_weight` | 행마다 |
+| `jockey_change` | Q1 의 jockey_changes 행 존재. 단 before·after 정규화 이름이 **같으면**(둘 다 있음, "A→A") 교체가 아니라 배지·헤드라인 없음 (`news.is_same_jockey`) — `runners[].jockey_change` 객체는 그대로 싣는다 (웹도 before = after 를 교체로 표시하지 않는다) | `news_jockey_change` + reason 있으면 `news_jockey_change_reason` + 부담 변화 있으면 `news_jockey_change_weight` | 행마다 |
 | `debut` / `no_record` | 이력 0건. 마스터 total_race_count == 0 → debut, 그 밖(마스터 >0 또는 없음) → no_record | `news_debut` / `news_no_record` | 요약 `headline_summary_debut` (debut 수) |
 | `layoff` | 마지막 출주로부터 일수 ≥ 90 | `news_layoff` (rank 는 `rank_token`/`rank_token_none`) | ≥ 180 일 때, 최대 2개 |
 | `quick_return` | 일수 ≤ 14 | `news_quick_return` | – |
@@ -329,3 +329,80 @@ launchAt = `MIN(racing_form_rule_sets.registered_at)`. missed 판정은 `freeze_
 - 금지어: `crawler/src/racing_form/data/forbidden_words.json` (정본). 웹 `racing_form-shared.ts` 의 `FORBIDDEN_WORDS` 는 같은 내용이어야 하며 vitest 가 파일과 대조한다.
 - 기준 라벨: `definitions.RULE_LABELS` ↔ 웹 `RULE_LABEL` (vitest 대조).
 - 일정 벡터: `crawler/tests/fixtures/racing_form/schedule_vectors.json` ↔ 양쪽 테스트.
+
+## 10. 과거 시험 보고서 v1 (`racing_form_backtests.report`)
+
+만드는 곳: `crawler/src/racing_form/backtest.py` (`racing-form-backtest`). 웹은 `getPublicBacktest` 로 공개 행
+1건(holdout 우선)의 `report` 를 받아 `/form/record` "과거 데이터로 시험(참고)" 에 쓴다 — 실전과 합산하지 않는다.
+
+- **저장**: dev 는 저장하지 않는다(--save 거부). holdout 은 `--save` 필수, 정의 해시(definition_sha256)당 1행 —
+  이미 있으면 **계산하지 않고** 거부, 계산 → INSERT(`report_sha256` 은 SQL `encode(sha256(convert_to(CAST(:report AS
+  jsonb)::text,'UTF8')),'hex')`, `is_public` 은 이때 정함 — 추가 전용이라 바꿀 수 없다) → 그 뒤에 출력.
+  `ensure_rule_set` 은 부르지 않는다. 기간 끝은 실행일(KST) 전날까지.
+- **입력 Q1b**: 그날 `race_results` 의 출주(§1.1 `rank ≥ 1` 또는 기록 > 0)로 만든 명단 — 레이팅 = 결과 raw
+  `hrRating`, 기수·조교사 = 결과 컬럼(실제 기수), 부담 = raw `wgBudam`, 출전번호 = raw `chulNo`, 기수변경 없음,
+  updated_at = batch_at = D−1 15:00 KST. **달력도 결과에서** 만든다(지난 경주일엔 race_entries 가 없어 Q0 가
+  비므로). 경주 거리는 `races.distance` 가 없으면 결과 raw `rcDist`(경주 전에 공표되는 값 — as-of 누수 아님).
+  나머지(Q2 이력·Q3 집계·Q6 메타·정산 결과·배당)는 `SqlProvider` 그대로, H = D−1.
+- **계산**: 발행과 같은 `build_edition(mode="backtest")`(소식 끔, 예비 기준 함께) + 정산과 같은
+  `settle.settle_race`. 정산 시각은 D+7 00:00 KST 로 고정(실행 시각과 무관 — 결정적). 판정은 §6.1, 주목마는
+  1순위만. 월 단위 READ ONLY 트랜잭션(`statement_timeout` 60초·`lock_timeout` 5초, SET LOCAL). 한 호의 오류는
+  그 호만 실패(`counts.editions_failed`, `errors` 앞 20건) — DB 오류면 트랜잭션을 새로 열어 이어 간다.
+- **숫자는 정수 또는 `[분자, 분모]` 쌍만** (float 없음). 기대값(`random_*`·`fav_*`)은 정확한 기약분수, 참여율
+  `participation` 은 약분하지 않은 `[예상 낸 경주, 경주]`. 퍼센트는 화면이 계산한다. `runtime_ms` 는 실행마다
+  달라 보고서 해시도 실행마다 다르다.
+
+```ts
+type Frac = [number, number];                 // [분자, 분모]
+type BacktestCell = {                          // 웹 RuleRecordCell 과 같은 뜻 — 기대값만 분수
+  rule_key: RuleKey | "consensus"; mark: 1 | 2 | 3;
+  n: number; wins: number; top3: number; voids: number;   // n = 무효 아닌 표시 수
+  random_win: Frac; random_top3: Frac;         // Σ(|winners|/starters), Σ(|placed|/starters)
+  fav_races: number; fav_win: Frac; fav_top3: Frac;      // 배당 있는 경주에서 1번 인기 기대
+  pop_n: number; pop_sum: number;              // 평균 인기 순위 = pop_sum / pop_n
+};
+type BacktestRule = {                          // 웹 RuleRecordRule + 참여율
+  rule_key: RuleKey | "consensus";
+  races_picked: number; races_n: number; races_any_win: number;
+  participation: Frac;                         // [races_picked, section.races]
+};
+type BacktestSection = {
+  editions: number; races: number;             // races = 정산된 경주 (race_void 포함)
+  races_void: number; small_field: number; unsettled: number;
+  first_date: string | null; last_date: string | null;
+  cells: BacktestCell[];   // rules + extra_rules 순서로 mark 1·2·3, 마지막에 consensus mark 1
+  rules: BacktestRule[];   // 같은 순서 + consensus
+  substitutions: {         // 예비(by)가 발행 기준(replaced)을 대신한 조합의 주목마(1순위)
+    replaced: RuleKey; by: RuleKey; rules: RuleKey[]; cell: BacktestCell; rule: BacktestRule;
+  }[];
+};
+type BacktestReportV1 = {
+  report_version: 1;
+  label: "dev" | "holdout";
+  candidate_version: string; definition_sha256: string;
+  period: { from: string; to: string };
+  meets: string[];                             // 서울·부경·제주 순
+  rules: RuleKey[]; extra_rules: RuleKey[];
+  input: "results_starters";
+  counts: { editions: number; editions_failed: number; races: number; settled: number;
+            races_void: number; small_field: number; unsettled: number };
+  overall: BacktestSection;
+  by_meet: Record<string, BacktestSection>;
+  agreement: { a: RuleKey; b: RuleKey; agree: number; both: number }[]; // 둘 다 ◎ 를 낸 경주 중 같은 말
+  runtime_ms: { total: number; editions: number; edition_max: number; edition_median: number };
+  errors: { race_date: string; meet: string; error: string }[];
+};
+```
+
+## 11. 운영 도구 (읽기 전용 점검·CLI)
+
+- `racing-form-preflight` (`preflight.py`) — 출시 전 감사 18항목. 자체 `QUERIES`(SELECT·WITH·EXPLAIN 만, NOW() 없음)
+  를 쿼리마다 READ ONLY 트랜잭션(15초/2초)으로. 항목 상태 OK·INFO·WARN·FAIL, **exit 1 은 FAIL(점검 실패·PG < 11)
+  만** — WARN 은 사전 등록·G1 에서 사람이 판단. 백업 TOC 는 호스트 명령만 출력.
+- `racing-form-verify` (`verify.py`) — payload 해시 SQL 재계산 + summary, `|created_at − published_at|` ≤ 5분
+  (`--max-clock-skew-min`), `trg_rf_` 12개 이름·테이블·`tgenabled='A'`, rule_sets 해시·정의 JSON = 레지스트리
+  (모르는 버전 = 문제), picks = payload(호마다 행 수·키, race_date·meet·rule_version). 문제가 있으면 exit 1.
+  잡 시계를 주입해 발행한 DB(로컬 시드 등)는 시계 점검만 문제로 나온다.
+- `racing-form-build` 는 READ ONLY dry-run — live 의 창(`not_in_window`)·D 결과(`results_present`)는 경고로 바꿔
+  계산을 계속하고, 데이터 가드 실패는 exit 1. `racing-form-notice` 는 §7 의 dedup_key·detail 그대로
+  (`--hide-picks` → `detail.hide_picks = true`, withdrawn 만), source = operator.

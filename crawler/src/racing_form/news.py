@@ -18,7 +18,7 @@ from typing import Any
 
 from . import parse, wording
 from .definitions import RuleSetDef
-from .features import Entrant
+from .features import Entrant, JockeyChange
 from .types import MasterRow, RaceMeta, RankChange
 
 
@@ -114,6 +114,13 @@ def class_direction(before: str | None, after: str | None) -> str:
     return "class_down" if a[1] > b[1] else "class_up"
 
 
+def is_same_jockey(jc: JockeyChange) -> bool:
+    """기수변경 행의 전·후 이름이 같은지 (정규화 이름, 둘 다 있을 때만) — "A→A" 는 교체가 아니다."""
+    before = parse.norm_name(jc.before)
+    after = parse.norm_name(jc.after)
+    return before is not None and after is not None and before == after
+
+
 def _priority(defn: RuleSetDef) -> dict[str, int]:
     return {k: i for i, k in enumerate(defn.p("news", "badge_priority"))}
 
@@ -152,9 +159,10 @@ def runner_badges(
     out: list[Badge] = []
     last = f.last
 
-    # 기수 교체 (발행 시점 jockey_changes 행)
+    # 기수 교체 (발행 시점 jockey_changes 행). 전·후 이름이 같은 행("A→A")은 교체가 아니라
+    # 배지·헤드라인을 내지 않는다 — payload 의 runner.jockey_change 는 그대로 남는다.
     jc = r.jockey_change
-    if jc is not None:
+    if jc is not None and not is_same_jockey(jc):
         text = w("news_jockey_change", before=jc.before or "-", after=jc.after or "-")
         if jc.reason:
             text += w("news_jockey_change_reason", reason=jc.reason)
