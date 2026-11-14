@@ -13,6 +13,9 @@ Dockerfile CMD 에서 기동.
 """
 from __future__ import annotations
 
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -22,6 +25,8 @@ from .jobs.periodic import (
     run_backfill_races_from_entries,
     run_build_favorite_notifications,
     run_chunked_dividends_backfill,
+    run_publish_racing_form,
+    run_settle_racing_form,
     run_sync_horse_rank_changes,
     run_sync_horse_ratings,
     run_sync_horses_backfill,
@@ -231,6 +236,23 @@ def main() -> None:
         id="mal.sync_weather",
         **common,
     )
+    # 경마지 발행 — 매시 정각 + 기동 직후 1회(next_run_time). Jenkins 배포가 컨테이너를
+    # 재시작하고 메모리 jobstore 는 놓친 실행을 재생하지 않으므로, 18:00 전후 재시작에도
+    # 곧바로 발행 창을 다시 본다 (창 밖이면 할 일 없음 0). KRA 호출 없음.
+    sched.add_job(
+        run_publish_racing_form,
+        CronTrigger(minute=0),
+        id="mal.publish_racing_form",
+        next_run_time=datetime.now(ZoneInfo(KST)),
+        **common,
+    )
+    # 경마지 정산 — 10~23시 :15·:45 (live 결과 30분 주기 사이). D+1 13:00 이후 확정.
+    sched.add_job(
+        run_settle_racing_form,
+        CronTrigger(hour="10-23", minute="15,45"),
+        id="mal.settle_racing_form",
+        **common,
+    )
 
     # 대시보드 "지금 실행" 트리거 폴링 — 15초마다 pending_trigger 확인해서 즉시 실행.
     # 각 job id 는 위 add_job 의 id 와 동일 key 를 사용 (대시보드 UI 와 1:1).
@@ -258,6 +280,8 @@ def main() -> None:
         "mal.chunked_dividends_backfill": run_chunked_dividends_backfill,
         "mal.build_favorite_notifications": run_build_favorite_notifications,
         "mal.sync_weather": run_sync_weather,
+        "mal.publish_racing_form": run_publish_racing_form,
+        "mal.settle_racing_form": run_settle_racing_form,
     }
 
     def _trigger_poll() -> None:

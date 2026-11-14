@@ -635,7 +635,7 @@ FAQ: "회수율은 일부러 공개하지 않습니다 — 베팅 권유가 아�
 | `queries.py` · `store.py` | Q0~Q6·정산 입력 SQL provider / `ensure_rule_set`·`insert_edition`(advisory lock + 재확인 + issue_no)·`insert_notice`·`upsert_outcome`·`finalize_outcomes` |
 | `backtest.py` · `preflight.py` · `verify.py` | Q1b 재생(월 단위, READ ONLY) / 읽기 전용 감사 / 무결성 점검 |
 
-### 8.4 잡 (본체 PR-1, 스케줄 연결 PR-2)
+### 8.4 잡 (본체 PR-1, 스케줄 연결 PR-2 — 연결 완료)
 
 본체는 `crawler/src/jobs/racing_form_jobs.py`. 호별 실패를 모아 periodic 이 `_raise_collected`
 (`crawler/src/jobs/periodic.py:269-279`)로 한꺼번에 올린다.
@@ -645,9 +645,10 @@ FAQ: "회수율은 일부러 공개하지 않습니다 — 베팅 권유가 아�
 | `mal.publish_racing_form` | `CronTrigger(minute=0)` + `next_run_time=now` (기동 직후 1회) | `ensure_rule_set` → 창 안·미발행·D 결과 없음이면 발행 → D 08:00 실행에서 missed (D ≤ 오늘, freeze_at ≥ 최초 registered_at, paused 아님) + 실패 1회. 할 일 없는 0 은 정상 |
 | `mal.settle_racing_form` | `CronTrigger(hour="10-23", minute="15,45")` | D ∈ [오늘−14, 오늘] 발행본: 잠정 upsert(digest 가 다를 때만) → D+1 13:00 이후 확정 → D+7 무효 → 확정본의 finish·status 변경 시 `result_changed` + 실패 1회 (단승 배당만 달라지면 로그만, 확정 정산 그대로). 결과가 있는데 정산 0·분류 불가 행은 실패 |
 
-- PR-2 배선: `monitoring.JOB_CATALOG`(category `racing_form`, 기대 주기 발행 1시간·정산 10시간 30분) ·
-  `periodic.py` `@track_job` 래퍼(여기서 `datetime.now(KST)` 를 읽어 넘김) · `scheduler_main.py` `add_job` 2줄 +
-  `TRIGGER_JOBS` 2항목.
+- PR-2 배선 (완료): `monitoring.JOB_CATALOG`(category `racing_form`, 기대 주기 발행 1시간·정산 10시간 30분) ·
+  `periodic.py` `@track_job` 래퍼 `run_publish_racing_form`·`run_settle_racing_form`(여기서 `datetime.now(KST)` 를
+  읽어 넘기고, 호별 실패 메시지는 `_raise_collected` 로 한꺼번에 올림) · `scheduler_main.py` `add_job` 2줄
+  (발행은 `next_run_time` 으로 기동 직후 1회) + `TRIGGER_JOBS` 2항목. e2e 타임라인이 두 잡을 스케줄 진입점째로 돌린다.
 - 새 env 없음 → 루트 docker-compose 변경 없음. models.py 미러 모델은 만들지 않는다 (INSERT 는 `text()`, notifications 선례).
 - 경마지 잡은 KRA 를 호출하지 않는다 — 분당 한도에 영향 없음.
 
@@ -690,9 +691,9 @@ FAQ: "회수율은 일부러 공개하지 않습니다 — 베팅 권유가 아�
 
 ## ⑨ 운영
 
-### 9.1 스케줄 (PR-2 에서 연결)
+### 9.1 스케줄 (PR-2 에서 연결 — 완료)
 
-PR-1 에서는 잡이 등록되지 않아 아무것도 발행·정산되지 않는다. PR-2 머지 뒤:
+PR-2 머지(= 배포) 뒤 첫 실행(기동 직후 1회)이 기준 정의를 등록하고(`registered_at` = 출시 경계 launchAt), 그 뒤 동결되는 호부터 발행한다:
 
 | 잡 | 시각 | 의존하는 입력 (선행 잡) |
 |---|---|---|
@@ -701,9 +702,10 @@ PR-1 에서는 잡이 등록되지 않아 아무것도 발행·정산되지 않�
 
 - 웹이 덧씌우는 발주 시각은 `mal.sync_race_today_meta`(06~21시 매시 05분)가 채운다 — 부경은 당일 06:05 이후.
 
-### 9.2 healthcheck (PR-2, 읽기 전용)
+### 9.2 healthcheck (PR-2, 읽기 전용 — 구현 완료)
 
-`QUERIES` 에 `racing_form_*` 6개(`:now`·`:today` 파라미터, NOW() 금지, 쓰기 키워드 금지 —
+`QUERIES` 에 `racing_form_*` 8개(테이블 유무·기준 정의·달력·발행본·공지·정산·payload 해시·트리거, `:today` 파라미터,
+NOW() 금지, 쓰기 키워드 금지 —
 `crawler/tests/test_healthcheck.py` `test_queries_have_no_write_statements`), `check_racing_form` 을 `check_data` 안에서
 `_guard("경마지", …)` 로 감싼다. 임계값 상수는 `crawler/src/healthcheck.py:55-79` 블록 옆.
 
@@ -713,7 +715,9 @@ PR-1 에서는 잡이 등록되지 않아 아무것도 발행·정산되지 않�
 | 경마지 정산 | D+1 13:30 미확정, D+2 13:30 미확정이지만 결과 행 없음 | D+2 13:30 미확정이고 결과 행 있음 |
 | 경마지 보호 장치 | – | payload 해시 불일치, (search_path 스키마의) 트리거 12개 미만 또는 ALWAYS 아님, 레지스트리 해시 ≠ DB 행 (버전별) — `racing-form-verify` 와 같은 조회 |
 
-PR-2 에서 [docs/spec/deployment.md](../spec/deployment.md) 헬스체크 표에 이 3행을 더한다.
+- 036 미적용 → 3행 모두 WARN "운영 전". 기준 정의 미등록(첫 발행 잡 전) → 발행·정산 WARN "운영 전", 보호 장치는
+  트리거·해시를 그대로 본다. 한 행의 조회 실패는 그 행만 FAIL (나머지 행은 계속).
+- [docs/spec/deployment.md](../spec/deployment.md) 헬스체크 표에 이 3행을 더했다 (PR-2).
 
 ### 9.3 CLI
 
@@ -728,7 +732,7 @@ PR-2 에서 [docs/spec/deployment.md](../spec/deployment.md) 헬스체크 표에
 | `racing-form-backtest --from <D> --to <D> [--meet] --label dev\|holdout [--json]` | holdout 만 | 과거 시험. dev 는 읽기 전용, holdout 은 정의 해시당 1회 저장한 뒤 출력 |
 | `racing-form-settle [--date]` | 있음 | 정산 잡과 같은 규칙으로 1회 정산 (outcomes) |
 | `racing-form-notice --kind erratum\|withdrawn\|paused …` | 있음 | 운영자 공지 추가 (추가 전용 — 지울 수 없음). 철회해도 집계에 포함됨을 출력 |
-| (PR-2) `periodic-publish-racing-form` · `periodic-settle-racing-form` | 있음 | 스케줄 잡을 `@track_job` 째로 1회 (대시보드 run 기록) |
+| `periodic-publish-racing-form` · `periodic-settle-racing-form` (PR-2) | 있음 | 스케줄 잡을 `@track_job` 째로 1회 (대시보드 run 기록) |
 
 **발행 경로는 잡 규칙 하나뿐이다** — `--publish` 같은 수동 발행 CLI 는 두지 않는다.
 
@@ -766,7 +770,7 @@ PR-2 에서 [docs/spec/deployment.md](../spec/deployment.md) 헬스체크 표에
 - Jenkins 배포는 mal-crawler 컨테이너를 stop·rm 후 다시 올리고(`Jenkinsfile:120-142`), APScheduler 메모리 저장소는
   놓친 실행을 재생하지 않는다. 기동 직후 1회 실행으로 보완하지만, 18:00 발행과 배포가 겹치지 않게 한다.
 - **PR-2 머지 이후 목·금·토 17:30~18:15 에는 main 에 push 하지 않는다** (금·토·일 경주의 D−1 18:00 발행).
-  SCM 폴링이 `H/2` 라 17:58 push 도 18:00 전후 배포로 이어진다. PR-2 에서 deployment.md 에 함께 적는다.
+  SCM 폴링이 `H/2` 라 17:58 push 도 18:00 전후 배포로 이어진다. [deployment.md](../spec/deployment.md) §2 에도 적었다 (PR-2).
 - 놓쳐도 D 07:00 까지 매시 재시도하고, freeze + 60분을 넘긴 발행은 "늦게 발행"으로 표기된다.
 
 ### 9.6 롤백
@@ -977,7 +981,7 @@ web/src/lib/racing_form.ts (raw SQL, payload 에서 한 경주만 jsonb_array_el
 | CLI (스케줄 잡 1회) | `crawler/src/main.py` `periodic-publish-racing-form`·`periodic-settle-racing-form` | PR-2 |
 | 스케줄 연결 | `crawler/src/monitoring.py` `JOB_CATALOG` · `crawler/src/jobs/periodic.py` `@track_job` 래퍼 · `crawler/src/scheduler_main.py` `add_job`·`TRIGGER_JOBS`(`:237-261`) | PR-2 |
 | healthcheck | `crawler/src/healthcheck.py` `QUERIES` `racing_form_*`·`check_racing_form` | PR-2 |
-| 테스트 (크롤러) | `crawler/tests/test_racing_form_*.py` · `crawler/tests/racing_form_fakes.py` · `crawler/tests/fixtures/racing_form/` (`schedule_vectors.json`·`golden_r1.json`·`payload_v1.golden.json`) · `crawler/tests/e2e/conftest.py` `_DATA_TABLES`(`:212`) | PR-1 (e2e 타임라인·test_healthcheck 는 PR-2) |
+| 테스트 (크롤러) | `crawler/tests/test_racing_form_*.py` · `crawler/tests/racing_form_fakes.py` · `crawler/tests/fixtures/racing_form/` (`schedule_vectors.json`·`golden_r1.json`·`payload_v1.golden.json`) · `crawler/tests/e2e/conftest.py` `_DATA_TABLES`(`:212`) · e2e 타임라인 `crawler/tests/e2e/test_scheduled_jobs_e2e.py` (test_03b~03d·10c·26b·28b·45·46) · `crawler/tests/test_healthcheck.py` 경마지 행 | PR-1 (e2e 타임라인·test_healthcheck 는 PR-2) |
 | 웹 lib | `web/src/lib/racing_form-shared.ts` (순수) · `web/src/lib/racing_form.ts` (SQL) | PR-1 |
 | 웹 라우트 | `web/src/app/form/(hub)/page.tsx` · `[date]/page.tsx` · `[date]/[meet]/(front)/page.tsx` · `[date]/[meet]/[race]/page.tsx` · `record/page.tsx` + 각 `loading.tsx` · URL 검증 레이아웃 `[date]/[meet]/layout.tsx`·`[date]/[meet]/[race]/layout.tsx` | PR-1 (메뉴 링크 없음·noindex) |
 | 웹 컴포넌트 | `web/src/components/racing-form/` (pick-mark·edition-stamp·status-block·race-list·headlines·record-compact·race-header·consensus-box·rule-list·runner-card·news-badges·record-table·legend) · `web/src/components/responsible-gambling-notice.tsx` · `page-skeleton.tsx` `FormSkeleton` | PR-1 |
@@ -988,7 +992,7 @@ web/src/lib/racing_form.ts (raw SQL, payload 에서 한 경주만 jsonb_array_el
 ### 운영 의존성
 
 - **환경변수**: 없음 (새 env 0, 루트 docker-compose 변경 없음).
-- **스케줄**: PR-2 에서 `mal.publish_racing_form`·`mal.settle_racing_form` 연결 (9.1). 선행 수집 잡이 제때 돌아야 한다 —
+- **스케줄**: PR-2 에서 `mal.publish_racing_form`·`mal.settle_racing_form` 연결 완료 (9.1). 선행 수집 잡이 제때 돌아야 한다 —
   특히 `mal.sync_race_entries` 가 D−1 18:00 전에 출전표를 채워야 발행된다.
 - **배포**: PR-2 이후 목·금·토 17:30~18:15 main push 금지 (9.5). 036 은 Jenkins `Migrate DB` 가 자동 적용.
 - **DB**: 보호 트리거 12개가 살아 있어야 한다 (`racing-form-verify`·healthcheck). 백업에 racing_form 함수·트리거 포함 확인 (9.7).

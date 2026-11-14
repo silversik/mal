@@ -54,6 +54,27 @@ E2E_DATABASE_URL='postgresql+psycopg://mal:mal_dev_pw@localhost:5432/mal_e2e' \
 | 예정일 U | 실제 오늘 이후 첫 금/토/일. 출전표는 경주일 3일 전 공표 → 즐겨찾기 알림 |
 | 그 외 | XML 응답(API308), 페이징(등급변동 250행 = 2페이지), 중복 row dedupe, KMA "전날까지" 한도, YouTube uploads head 캡(3) + search + 12개월 walk, EUC-KR HTML |
 
+## 타임라인
+
+테스트 함수 순서 = 가짜 시계 순서다. 전체 목록은
+[`test_scheduled_jobs_e2e.py`](test_scheduled_jobs_e2e.py) 모듈 docstring. 경마지(racing form) 부분:
+
+| 시각 (KST) | 테스트 | 잡 | 기대 |
+|---|---|---|---|
+| D−1 17:00 | `test_03b` | `mal.publish_racing_form` | 동결 전 → 0. 첫 실행이 기준 정의 `r1-e2e` 를 등록 (`registered_at` = 잡 시계) |
+| D−1 18:00 / 19:00 | `test_03c` | `mal.publish_racing_form` | 서울·부경 2호 발행. 서울 1R 레이팅 ◎○△ = 0041003·0041002·0041001, 나머지 기준은 예상 안 함(사유 코드), 주목마 없음(A=1), picks 12행 = payload. 재실행 0 |
+| (DB) | `test_03d` | — | editions·picks·rule_sets UPDATE/DELETE 를 036 트리거가 거부 |
+| D 22:45 | `test_10c` | `mal.settle_racing_form` | 결과가 나온 3경주 잠정 정산 (부경 2R 은 공표 지연 → 대기) |
+| D+1 10:15 | `test_26b` | `mal.settle_racing_form` | residual(09:00)이 받은 부경 2R 1경주 |
+| D+1 13:15 / 13:45 | `test_28b` | `mal.settle_racing_form` | 4경주 확정, 확정 행 UPDATE/DELETE 거부, 재실행 0, 공지 없음 |
+| D+1 12:00 | `test_45` | healthcheck | 경마지 3행(발행·정산·보호 장치) OK |
+| — | `test_46` | 웹 SQL | `web/src/lib/racing_form.ts` 의 SQL 상수를 파일에서 그대로 꺼내 실행 — 발행 후 기수 변경 서울 2R 0041005 한교체→이과천, 기록(레이팅 ◎ 4경주 1착 1·3착 이내 4, 무작위 4/3, 1번 인기 2/4) |
+
+- 모듈 autouse fixture 가 `racing_form.definitions.ACTIVE = "r1-e2e"` 로 바꾼다. 가짜 세계는 경주당
+  3두라 경주 하한을 3 으로 낮추고 마스터 기반 가드를 끈 정의다 (가드는 단위 테스트가 검증).
+- 경마지 테이블은 TRUNCATE 거부 트리거가 있어서 conftest 가 같은 트랜잭션에서
+  `SET LOCAL mal.racing_form_allow_truncate = 'on'` 후 비운다.
+
 DB 쪽 `NOW()`/`CURRENT_DATE` 는 가짜 시계로 바꿀 수 없다. 이 값을 쓰는 곳은 videos
 backfill 창, 즐겨찾기 알림, 웹 `KST_TODAY` 다. 그래서 D 는 과거, U 는 미래에 둔다.
 

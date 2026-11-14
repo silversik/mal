@@ -1,7 +1,7 @@
 """경마지 무결성 점검 (읽기 전용) — `racing-form-verify`. 계약 §5·§8.1(036)·계획 §8.2.
 
 036 의 CHECK 는 잡이 넣은 값(published_at 등)만 본다. DB 시계·해시·트리거 상태·레지스트리는 여기서
-점검한다 (PR-2 의 healthcheck '경마지 보호 장치' 행과 같은 뜻).
+점검한다 (healthcheck '경마지 보호 장치' 행과 같은 뜻 — `healthcheck.check_racing_form_guard`).
 
 점검 (각각 READ ONLY 트랜잭션 하나 — 한 점검이 실패해도 나머지는 계속, 실패 자체가 문제로 남는다)
 1. payload — 모든 발행본의 payload_sha256 을 SQL 로 다시 계산해 저장값과 비교,

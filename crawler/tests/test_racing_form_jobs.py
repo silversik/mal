@@ -482,3 +482,69 @@ def test_settle_unknown_rules_version_is_edition_failure() -> None:
     repo.editions[0]["rules_version"] = "r0-없음"
     count, failures = settle_at(p, repo, kst(2026, 11, 16, 13, 15))
     assert count == 0 and len(failures) == 1 and "정산 실패" in failures[0]
+
+
+# ---------------------------------------------------------------------------
+# 스케줄 진입점 (periodic.run_*) — 잡의 now·실패 목록 전달 (PR-2 배선)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def periodic(monkeypatch: pytest.MonkeyPatch):
+    import importlib
+    import sys
+    import types
+
+    client = types.SimpleNamespace(
+        safe_register=lambda **kw: None,
+        safe_start_run=lambda job_key: None,
+        safe_finish_run=lambda run_id, **kw: None,
+    )
+    pkg = types.ModuleType("crawler_core")
+    pkg.client = client  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "crawler_core", pkg)
+    monkeypatch.setitem(sys.modules, "crawler_core.client", client)  # type: ignore[arg-type]
+    monkeypatch.delitem(sys.modules, "src.monitoring", raising=False)
+    monkeypatch.delitem(sys.modules, "src.jobs.periodic", raising=False)
+    return importlib.import_module("src.jobs.periodic")
+
+
+@pytest.mark.parametrize(
+    ("run_name", "job_name"),
+    [("run_publish_racing_form", "publish_racing_form"),
+     ("run_settle_racing_form", "settle_racing_form")],
+)
+def test_periodic_wrappers_pass_kst_now_and_raise_collected_failures(
+    periodic, monkeypatch: pytest.MonkeyPatch, run_name: str, job_name: str,
+) -> None:
+    seen: list[datetime] = []
+    result: dict[str, tuple[int, list[str]]] = {"v": (2, [])}
+
+    def fake(now: datetime) -> tuple[int, list[str]]:
+        seen.append(now)
+        return result["v"]
+
+    monkeypatch.setattr(periodic, job_name, fake)
+    run = getattr(periodic, run_name)
+    assert run() == 2
+    assert seen[0].tzinfo is not None and seen[0].utcoffset() == timedelta(hours=9)
+
+    result["v"] = (1, ["2026-11-15 서울 발행 실패 (no_entries): x"])
+    with pytest.raises(Exception, match="no_entries") as one:
+        run()
+    assert "추가로" not in str(one.value)
+
+    result["v"] = (0, ["A 실패", "B 실패"])
+    with pytest.raises(RuntimeError) as many:
+        run()
+    assert "A 실패" in str(many.value) and "B 실패" in str(many.value)
+
+
+def test_job_catalog_racing_form_specs(periodic) -> None:
+    from src.monitoring import _HOUR, _MIN, JOB_CATALOG, _expected_interval
+
+    pub = JOB_CATALOG["mal.publish_racing_form"]
+    st = JOB_CATALOG["mal.settle_racing_form"]
+    assert pub["category"] == st["category"] == "racing_form"
+    assert pub["expected_interval_sec"] == _expected_interval(_HOUR)
+    assert st["expected_interval_sec"] == _expected_interval(10 * _HOUR + 30 * _MIN)
