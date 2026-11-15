@@ -16,11 +16,11 @@ export async function AuthMenu() {
     const displayName =
       profile?.display_name ?? session.user.name ?? "회원";
     return (
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <NotificationsBell />
         <Link
           href="/me"
-          className="hidden text-sm font-semibold text-muted-foreground transition hover:text-primary md:inline"
+          className="hidden h-11 items-center px-1 text-sm font-semibold text-muted-foreground transition hover:text-foreground md:inline-flex"
           title="마이페이지"
         >
           {displayName}
@@ -31,7 +31,7 @@ export async function AuthMenu() {
             await signOut({ redirectTo: "/" });
           }}
         >
-          <button type="submit" className="btn-outline text-sm py-1.5 px-4">
+          <button type="submit" className="btn-outline inline-flex h-11 items-center rounded-md py-0 px-4 text-sm">
             LOGOUT
           </button>
         </form>
@@ -40,8 +40,9 @@ export async function AuthMenu() {
   }
 
   return (
-    <div className="flex items-center gap-4">
-      <Link href="/login" className="btn-cta text-sm py-1.5 px-4 shadow-sm">
+    // 헤더 우측 컨트롤은 모두 높이 44px(h-11)·rounded-md 로 통일 — 화면 설정 아이콘 버튼과 나란히.
+    <div className="flex items-center">
+      <Link href="/login" className="btn-cta inline-flex h-11 items-center rounded-md py-0 px-4 text-sm">
         LOGIN
       </Link>
     </div>

@@ -25,7 +25,7 @@ export function Navbar() {
 
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2">
-            <DisplaySettings />
+            <DisplaySettings iconOnly />
             {/* Suspense 로 감싸지 말 것: auth()(cookies) 가 Suspense 밖에 있어야 모든 페이지가
                 요청 시 렌더(ƒ)로 유지된다. 감싸면 Next 16 이 DB 를 쓰는 페이지(/analysis 등)를
                 빌드 시점에 프리렌더하려다, DB 없는 Docker 빌드에서 실패한다 (2026-11 배포 미반영 사고). */}
