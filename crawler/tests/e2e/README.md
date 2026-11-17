@@ -52,6 +52,7 @@ E2E_DATABASE_URL='postgresql+psycopg://mal:mal_dev_pw@localhost:5432/mal_e2e' \
 | 복식배당 | 부경 복식은 D+1 00:00 이후 공표 → 02:30 야간 gap 백필이 채움 |
 | 신규 마필 | `0041009` 는 D+1 06:00 에 KRA 마필정보 등록 → not-found 원장 생성·해소 경로 |
 | 예정일 U | 실제 오늘 이후 첫 금/토/일. 출전표는 경주일 3일 전 공표 → 즐겨찾기 알림 |
+| 늦은 변경 | U-1 15:00 `0041004` 출전취소(출전표에서 빠짐) · 16:00 U 서울 1R 기수변경 → 17:25 `sync_late_changes` 가 경마지 18:00 동결 전 반영, `scratched_at` 표시 |
 | 그 외 | XML 응답(API308), 페이징(등급변동 250행 = 2페이지), 중복 row dedupe, KMA "전날까지" 한도, YouTube uploads head 캡(3) + search + 12개월 walk, EUC-KR HTML |
 
 DB 쪽 `NOW()`/`CURRENT_DATE` 는 가짜 시계로 바꿀 수 없다. 이 값을 쓰는 곳은 videos
