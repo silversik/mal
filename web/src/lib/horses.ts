@@ -286,7 +286,9 @@ export type ParentChildAggregate = {
   total_win: number;
   total_place: number;
   total_show: number;
-  /** 자식 중 최소 1승 한 비율. */
+  /** 1승 이상 경험한 자손 수 (first_place_count > 0). */
+  winners: number;
+  /** 자손 중 1승 이상 경험한 자손 비율 (winners / total_children) — 경주 승률 아님. */
   win_rate: number;
 };
 
@@ -346,6 +348,7 @@ export async function getParentChildAggregate(
     total_win: Number(r.total_win),
     total_place: Number(r.total_place),
     total_show: Number(r.total_show),
+    winners: Number(r.winners),
     win_rate: totalChildren > 0 ? Number(r.winners) / totalChildren : 0,
   };
 }

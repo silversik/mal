@@ -142,16 +142,6 @@ const MEET_ORDER = ["서울", "제주", "부경"] as const;
 
 /* ── date helpers ────────────────────────────────────────── */
 
-function offsetDate(dateStr: string, days: number): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const dt = new Date(y, m - 1, d + days);
-  return [
-    dt.getFullYear(),
-    String(dt.getMonth() + 1).padStart(2, "0"),
-    String(dt.getDate()).padStart(2, "0"),
-  ].join("-");
-}
-
 /**
  * 정렬된 YYYY-MM-DD 리스트(`raceDates`)에서 기준일의 바로 이전/다음
  * "경기 있는 날" 을 반환. 현재 날짜가 리스트에 없어도 주변 레이스데이로 점프한다.
