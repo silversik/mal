@@ -46,7 +46,7 @@
 ## 2. 운영 메모
 
 - **배포** — main push 마다 Jenkins `mal` 잡이 배포한다. 이번 머지는 2026-11-18(수) 00:40~01:30 KST, 경주 없는 시간.
-  #91 반영까지는 mal.kr 에서 확인했다. 나머지는 3.B 의 확인 목록으로.
+  #91(마필 "기록 요약" 배지)·#97(about 문구) 반영을 mal.kr 에서 확인했다. Jenkins 로그·마이그레이션 적용은 3.B 의 확인 목록으로.
 - **038 은 `race_results` 전체를 한 번 UPDATE** 한다 (`jk_no`·`tr_no` 가 NULL 이고 raw 에 값이 있는 행). 인덱스 2개가
   걸린 컬럼이라 테이블 크기만큼 쓰기가 생긴다. 멱등이라 실패 시 재실행 가능.
 - **`mal.sync_late_changes`** — 대상일 `races` 가 비면 KRA 호출 0. 회당 ≤4 call. `KRA_CHULMA_OPERATION` 미설정이면
@@ -99,6 +99,20 @@ PR-1(#87)은 머지·배포됐고(빈 테이블·CLI·메뉴 링크 없는 `/for
 
 - 계획 원본은 저장소 밖(경마지 세션 컨테이너의 `~/.claude/plans/radiant-finding-lightning.md`)에 있다. 위 내용은
   그 §9.5·§11.3e 를 옮긴 것이다. `--public` 으로 저장한 holdout 행은 나중에 비공개로 바꿀 수 없다.
+- 경마지 세션이 넘긴 사실 (저장소 문서에 없거나 흩어져 있던 것, 코드로 대조함):
+  - **r1 은 아직 prod 에 등록되지 않았다** — `ensure_rule_set` 은 발행 잡만 부르는데 PR-2 전이라 잡이 없다. 그래서 PR-2
+    머지 전까지는 `crawler/src/racing_form/definitions.py` 의 r1 을 버전을 올리지 않고 그 자리에서 고쳐도 된다. 고치면
+    해시 핀(`tests/test_racing_form_definitions.py`, r1 = `a3144ab4…`)·`golden_r1.json`·`payload_v1.golden.json` 을 함께
+    갱신한다 (`RACING_FORM_UPDATE_GOLDEN=1`). 머지 뒤 수치 변경은 반드시 r2.
+  - preflight 는 READ ONLY (문당 15s·락 2s), `--json` 가능. exit 1 은 FAIL 일 때만이고 WARN 은 사람이 판단한다.
+    ② 의 `SHOW_SCRATCH_HINT` 는 지금 꺼져 있다 — 037 `scratched_at` 이 생겼으니 그것으로 대체할지 함께 검토.
+  - 백테스트 기간: dev `racing-form-backtest --from 2025-01-01 --to 2025-12-31 --label dev` (읽기 전용, `--save` 금지) →
+    holdout `--from 2026-01-01 --to 2026-10-31 --label holdout --save --public`. holdout 은 두 번째 저장이 부분 UNIQUE 로
+    거부되고, 실패한 호가 있으면 저장하지 않고 exit 2 (재실행 가능). `--to` 는 오늘(KST) 이전. 한가한 새벽에,
+    04:40 백업과 겹치지 않게. 통과 조건·미달 처리는 [feature 문서 §5.5](../feature/racing-form.md).
+  - 발행분은 삭제할 수 없다 — 철회는 `racing-form-notice --kind withdrawn`.
+  - 로컬 테스트 DB 는 세션 컨테이너에만 있었다. 새로 만들려면 `crawler/tests/e2e/setup_db.sh` 로 DB 를 만들고
+    `uv run python -m tests.racing_form_seed --db <이름> [--today YYYY-MM-DD]` 로 시드 (같은 `--today` 면 결정적).
 - 머지 뒤: 첫 발행 18:05 확인 (대시보드·`racing-form-show`·1면·healthcheck 3행) → PR-3(사이트 연결, G2).
 - #89 브랜치(`claude/quirky-mendel-pp3kwg`)는 #94~#96 을 이미 포함한다. #97 이 main 에 들어갔으므로 머지 전에
   main 을 한 번 merge 해 두면 된다 (rebase·force-push 금지 — 이 저장소 관례).
@@ -137,7 +151,7 @@ PR-1(#87)은 머지·배포됐고(빈 테이블·CLI·메뉴 링크 없는 `/for
 | 기수변경·출전취소 당일 반영 | #95 | 머지 → 보관 |
 | 영천(meet 4) 경주 수집 | #96 | 머지 → 보관 |
 | 자잘한 불일치 정리 | #97 | 통합 브랜치로 머지 → 보관 |
-| 경마지 콘텐츠 개선 | #89 | **열어 둠** — 첫 호 11/26 로 정리, PR draft 유지, 미push 작업 없음. G1 을 이어갈 세션 (3.A) |
+| 경마지 콘텐츠 개선 | #89 | **열어 둠** — 첫 호 11/26 로 정리, PR draft 유지, 미push 작업 없음, PR 확인 예약은 세션이 삭제. G1 을 이어갈 세션 (3.A) |
 
 머지된 PR 의 `claude/*` 브랜치는 원격에 남아 있다 — 지워도 된다.
 
