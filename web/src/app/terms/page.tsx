@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "이용약관",
@@ -23,7 +24,7 @@ export default function TermsPage() {
       <section className="space-y-3">
         <h2 className="text-base font-semibold">제1조 (목적)</h2>
         <p className="text-sm leading-relaxed text-foreground/90">
-          이 약관은 mal.kr(이하 "서비스")이 제공하는 경마 데이터 아카이빙·분석 서비스의 이용
+          이 약관은 mal.kr(이하 &ldquo;서비스&rdquo;)이 제공하는 경마 데이터 아카이빙·분석 서비스의 이용
           조건과 절차, 운영자와 이용자의 권리·의무를 규정함을 목적으로 합니다.
         </p>
       </section>
@@ -92,9 +93,9 @@ export default function TermsPage() {
         <p className="text-sm leading-relaxed text-foreground/90">
           이 약관은 대한민국 법률에 따르며, 분쟁 발생 시 운영자 소재지를 관할하는 법원을
           전속 관할 법원으로 합니다. 문의는{" "}
-          <a href="/contact" className="text-primary underline underline-offset-2 hover:opacity-80">
+          <Link href="/contact" className="text-primary underline underline-offset-2 hover:opacity-80">
             문의 페이지
-          </a>
+          </Link>
           를 이용해 주세요.
         </p>
       </section>

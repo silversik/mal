@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { RankBadge, medalClass } from "@/components/rank-badge";
+import { deltaText } from "@/components/racing-form/format";
 
 /**
  * KRA 게이트 컬러 — 8가지 표준 (출전번호 9 이상은 mod 로 wrap).
@@ -94,24 +95,25 @@ export function FormDots({ finishes }: { finishes: (number | null)[] }) {
   );
 }
 
-/** 마체중 ± 증감 칩. */
+/** 마체중 ± 증감 칩 — 색 + ▲▼ 부호 병기 (DESIGN Color: 색맹 대비, compact 셀에서도 부호 생략 금지). */
 export function WeightDelta({ diff }: { diff: number | null }) {
   if (diff === null) return null;
-  if (diff === 0) {
-    return (
-      <span className="ml-1 inline-block rounded bg-muted px-1 py-px font-mono text-small tabular-nums text-muted-foreground">
-        ±0
-      </span>
-    );
-  }
-  const positive = diff > 0;
+  const { text, sign } = deltaText(diff);
+  const label =
+    sign === 0 ? "마체중 변화 없음" : `마체중 ${Math.abs(diff)}kg ${sign > 0 ? "증가" : "감소"}`;
+  const tone =
+    sign === 0
+      ? "bg-muted text-muted-foreground"
+      : sign > 0
+        ? "bg-destructive/10 text-destructive"
+        : "bg-positive/10 text-positive";
   return (
     <span
-      className={`ml-1 inline-block rounded px-1 py-px font-mono text-small tabular-nums ${
-        positive ? "bg-destructive/10 text-destructive" : "bg-positive/10 text-positive"
-      }`}
+      className={`ml-1 inline-block rounded px-1 py-px font-mono text-small tabular-nums ${tone}`}
+      aria-label={label}
+      title={label}
     >
-      {positive ? `+${diff}` : diff}
+      {text}
     </span>
   );
 }

@@ -708,9 +708,9 @@ export default async function RacesPage({
                                 ) : (
                                   <span className="text-muted-foreground">-</span>
                                 )}
-                                {e.jockey_changed_from && (
+                                {isRealJockeyChange(e.jockey_changed_from, e.jockey_name) && (
                                   <JockeyChangeBadge
-                                    from={e.jockey_changed_from}
+                                    from={e.jockey_changed_from!}
                                     to={e.jockey_name}
                                     reason={e.jockey_change_reason}
                                     weightBefore={e.jockey_weight_before}
@@ -902,6 +902,12 @@ export default async function RacesPage({
       )}
     </main>
   );
+}
+
+/** 변경 전 기수명이 있고 현재(실제) 기수와 다를 때만 교체 — 같으면 "A → A" 배지가 된다. */
+function isRealJockeyChange(from: string | null, to: string | null): boolean {
+  const f = from?.trim();
+  return !!f && f !== (to?.trim() ?? "");
 }
 
 /**

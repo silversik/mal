@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "서비스 소개",
@@ -59,9 +60,9 @@ export default function AboutPage() {
           비영리적 아카이빙·분석 목적으로만 사용됩니다.
         </p>
         <p className="text-sm leading-relaxed text-foreground/90">
-          경주 결과는 KRA 공식 발표 이후 자동으로 수집되며, 실수 정정이 발생할 경우 별도
-          corrections 기록을 통해 원본 데이터를 유지합니다. 경주 결과의 최종적인 공식 기록은
-          한국마사회 공식 사이트를 우선 참고하시기 바랍니다.
+          경주 결과는 KRA 공식 발표 이후 자동으로 수집되며, 이후 KRA 가 결과를 정정하면 다음
+          수집 때 정정된 공식 값으로 갱신됩니다(정정 전 값은 별도로 보관하지 않습니다). 경주
+          결과의 최종적인 공식 기록은 한국마사회 공식 사이트를 우선 참고하시기 바랍니다.
         </p>
       </section>
 
@@ -79,9 +80,9 @@ export default function AboutPage() {
         <h2 className="text-base font-semibold">운영</h2>
         <p className="text-sm leading-relaxed text-foreground/90">
           mal.kr은 개인 개발자에 의해 운영됩니다. 서비스에 관한 문의는{" "}
-          <a href="/contact" className="text-primary underline underline-offset-2 hover:opacity-80">
+          <Link href="/contact" className="text-primary underline underline-offset-2 hover:opacity-80">
             문의 페이지
-          </a>
+          </Link>
           를 통해 주시기 바랍니다.
         </p>
       </section>

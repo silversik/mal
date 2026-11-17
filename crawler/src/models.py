@@ -83,6 +83,7 @@ class RaceResult(Base):
     )
 
     jk_no: Mapped[str | None] = mapped_column(String(20))
+    tr_no: Mapped[str | None] = mapped_column(String(20))
 
     horse: Mapped[Horse] = relationship(back_populates="results")
 
