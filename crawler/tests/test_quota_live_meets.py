@@ -199,7 +199,7 @@ def test_dividends_all_meets_default_unchanged(monkeypatch: pytest.MonkeyPatch) 
     FakeDividendClient.calls = []
     monkeypatch.setattr(sync_race_dividends, "RaceDividendClient", FakeDividendClient)
     sync_race_dividends.sync_date_all_meets(date(2026, 11, 7))
-    assert [m for _, m in FakeDividendClient.calls] == [1, 2, 3]
+    assert [m for _, m in FakeDividendClient.calls] == [1, 2, 3, 4]
 
 
 # ------------------------------------------------------------ enrich limit
@@ -217,7 +217,7 @@ def races_env(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
 
 
 def test_sync_date_all_meets_passes_backfill_limit(races_env: list[dict[str, Any]]) -> None:
-    assert sync_races.sync_date_all_meets(date(2026, 11, 7)) == 3
+    assert sync_races.sync_date_all_meets(date(2026, 11, 7)) == 4
     assert races_env == [{"limit": 50}]
 
 
@@ -232,7 +232,7 @@ def test_sync_date_all_meets_enrich_failure_does_not_block(
 
     monkeypatch.setattr(sync_races, "backfill_missing_raw", boom)
     # 결과는 이미 적재됨 — 배당 등 후속 단계가 막히지 않게 경고만
-    assert sync_races.sync_date_all_meets(date(2026, 11, 7)) == 3
+    assert sync_races.sync_date_all_meets(date(2026, 11, 7)) == 4
 
 
 def test_cli_backfill_can_pass_larger_limit(

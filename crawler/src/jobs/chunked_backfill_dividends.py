@@ -62,6 +62,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from ..clients.kra_base import is_quota_error
 from ..db import session_scope
 from ..logging import get_logger
+from ..meets import MEET_NAMES
 from ..models import RaceComboDividend, RaceResult, SyncMeta
 
 log = get_logger(__name__)
@@ -76,7 +77,8 @@ SOURCE_KEY = "chunked_backfill_dividends"
 
 KST = ZoneInfo("Asia/Seoul")
 
-_MEET_CODE = {"서울": 1, "제주": 2, "부경": 3}
+# race_results.meet 정규화 라벨(서울/제주/부경/영천) → API meet 코드
+_MEET_CODE = {name: int(code) for code, name in MEET_NAMES.items()}
 
 
 def _kst_today() -> date:

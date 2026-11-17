@@ -20,7 +20,7 @@ export default function AboutPage() {
         <p className="text-sm leading-relaxed text-foreground/90">
           mal.kr은 한국마사회(KRA)가 공공데이터포털(data.go.kr)을 통해 제공하는 경마 공공데이터를
           기반으로 마필·기수·조교사·마주의 성적과 혈통 정보를 체계적으로 아카이빙하고 분석하는
-          서비스입니다. 서울·부산경남·제주 세 경마장의 경주 결과를 매일 수집하여 누구나 무료로
+          서비스입니다. 서울·부산경남·제주·영천 네 경마장의 경주 결과를 매일 수집하여 누구나 무료로
           조회할 수 있도록 제공합니다.
         </p>
         <p className="text-sm leading-relaxed text-foreground/90">

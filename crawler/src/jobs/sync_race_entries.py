@@ -14,6 +14,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from ..clients.race_chulma import RaceChulmaClient, api_item_to_race_entry_fields
 from ..db import session_scope
 from ..logging import get_logger
+from ..meets import MEET_CODES
 from ..models import Race, RaceEntry
 from ._failloud import UnitFailures
 
@@ -116,7 +117,7 @@ def sync_upcoming(days_ahead: int = 10) -> int:
     fails = UnitFailures("race_entries")
     with RaceChulmaClient() as client:
         for d in dates:
-            for meet in (1, 2, 3):
+            for meet in MEET_CODES:
                 try:
                     items = client.list_by_date(d, meet=meet)
                 except Exception as exc:  # noqa: BLE001

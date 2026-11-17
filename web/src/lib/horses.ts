@@ -606,6 +606,7 @@ export async function getHorseFormBreakdown(
               WHEN '서울' THEN 119
               WHEN '제주' THEN 184
               WHEN '부경' THEN 159
+              WHEN '영천' THEN 281
             END
         AND w.obs_time = date_trunc('hour',
               (rr.race_date::text || ' ' || lpad(r.start_time, 5, '0') || ':00')::timestamp

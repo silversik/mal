@@ -11,6 +11,7 @@ from ..db import session_scope
 from ..jobs.sync_horses import INLINE_BACKFILL_LIMIT, backfill_missing_raw
 from ..jobs.sync_race_info import backfill_races_from_results
 from ..logging import get_logger
+from ..meets import MEET_CODES
 from ..models import RaceResult
 
 log = get_logger(__name__)
@@ -107,7 +108,7 @@ def sync_date(rc_date: date, meet: int) -> int:
 
 
 def sync_date_all_meets(rc_date: date) -> int:
-    """Sync all 3 meets (서울/제주/부경) for a given date, then backfill `races`.
+    """Sync all meets (서울/제주/부경/영천) for a given date, then backfill `races`.
 
     스텁으로 삽입된 새 마필(raw NULL)이 있다면 API42_1 으로 enrich 해 모색/특징까지
     채워둔다 — 아바타에 색이 누락되는 일을 방지.
@@ -116,7 +117,7 @@ def sync_date_all_meets(rc_date: date) -> int:
     경고로만 남긴다 — 실패 신호는 06:30 전용 잡이 RuntimeError 로 올린다.
     """
     total = 0
-    for meet in (1, 2, 3):
+    for meet in MEET_CODES:
         total += sync_date(rc_date, meet=meet)
     backfill_races_from_results()
     try:

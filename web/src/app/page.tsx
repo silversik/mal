@@ -4,6 +4,7 @@ import Link from "next/link";
 import { HorseMark } from "@/components/brand/logo";
 import { coatBodyHex, coatBgHex } from "@/lib/coat";
 import { VenueIcon } from "@/components/venue-icon";
+import { RACE_VENUES } from "@/lib/meets";
 import { EmptyState } from "@/components/empty-state";
 import { WinRateBar } from "@/components/win-rate-bar";
 import { RecentRacesSwiper } from "@/components/recent-races-swiper";
@@ -38,7 +39,7 @@ function getRaceStatus(race: Pick<RaceInfo, "race_date" | "has_results">): "예�
   return race.has_results ? "종료" : "진행중";
 }
 
-const MEET_ORDER = ["서울", "제주", "부경"] as const;
+const MEET_ORDER = RACE_VENUES;
 
 function isStakesRace(r: RaceInfo): boolean {
   return !!(

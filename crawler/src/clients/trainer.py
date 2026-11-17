@@ -16,6 +16,7 @@ from datetime import date, datetime
 from typing import Any
 
 from ..config import settings
+from ..meets import MEET_NAMES
 from .kra_base import KraClient
 
 ENDPOINT = "API308"
@@ -41,7 +42,7 @@ class TrainerClient(KraClient):
 
 # --------------------------------------------------------------------- mapping
 
-_MEET_NAMES = {"1": "서울", "2": "제주", "3": "부경"}
+_MEET_NAMES = MEET_NAMES
 
 
 def _parse_date(value: Any) -> date | None:
