@@ -312,7 +312,11 @@ export default async function RacesPage({
   const entriesPhase = entriesResult.phase;
   const [compareSummaries, recentFinishesMap] = entries.length > 0 && selectedRace
     ? await Promise.all([
-        getHorseCompareSummaries(entries.map((e) => e.horse_no)),
+        // as-of: 이 경주 이전 결과만 — 과거 카드에 이후 성적이 새지 않게.
+        getHorseCompareSummaries(entries.map((e) => e.horse_no), {
+          raceDate: currentDate,
+          raceNo: selectedRace.race_no,
+        }),
         getRecentFinishesBulk(
           entries.map((e) => e.horse_no),
           currentDate,
