@@ -39,6 +39,16 @@ ssh -i /Users/esik/keyfile/service-ssh.pem root@49.50.138.31
 
 빌드 트리거: git push → Jenkins (`http://localhost:8080`).
 
+### 배포 금지 시간 — 목·금·토 17:30~18:15 KST main push 금지
+
+- `Build & restart` 가 mal-crawler 를 재시작하고, APScheduler 메모리 jobstore 는 재시작 중 놓친 실행을
+  재생하지 않는다. 경마지 발행 `mal.publish_racing_form` 은 금·토·일 경주의 **D−1 18:00 (목·금·토)** 에
+  동결·발행한다.
+- 발행 잡은 기동 직후 1회(`next_run_time`) 돌고 D 07:00 까지 매시 재시도하므로 놓쳐도 회복되지만,
+  freeze + 60분을 넘기면 "늦게 발행" 으로 공개 표기된다 → 18:00 과 배포가 겹치지 않게 한다.
+- SCM 폴링이 `H/2` 라 17:58 push 도 18:00 전후 배포가 된다. **목·금·토 17:30~18:15 KST 에는 main 에
+  push·머지하지 않는다** (근거·절차: [racing-form.md ⑨ 9.5](../feature/racing-form.md)).
+
 ---
 
 ## 3. 수동 배포 (Jenkins 우회)
@@ -176,6 +186,9 @@ echo $?   # 0 = 전부 OK · 1 = FAIL 하나 이상 · 2 = WARN 만
 | 마필 | horse_ratings ≤8일, 등급변동·기수변경 갱신, raw NULL vs not-found 원장 | 레이팅 >8일 WARN / >15일 FAIL 등 |
 | 외부 | 날씨(관측소별 최신 ≥ 어제, 03:30 전엔 그저께), 경주 매칭 영상 vs 직전 경주일 | 날씨 하루 지연 = WARN · 영상 7일 이상 뒤처짐 = FAIL |
 | 기타 | race_plans 올해 / 11~12월엔 내년, sync_meta 원장(배당 백필 exhausted, last_error) | 올해 계획 없음 = FAIL(1월은 WARN) · 내년 계획 없음 = WARN |
+| 경마지 | **경마지 발행** — 발행 달력 D ∈ [오늘−7, 오늘+7] (races ∩ race_entries) 의 호별 발행본·missed 공지 (출시 전·paused 호 제외) | 036 미적용·기준 정의 미등록 = WARN "운영 전" · freeze(D−1 18:00)+35분 미발행 = WARN · missed 기록 후 3일 이내 = WARN · freeze+125분 미발행 = FAIL · 마감+30분 지나도 발행본·missed 모두 없음 = FAIL |
+| 경마지 | **경마지 정산** — 최근 14일 발행본의 경주별 확정 여부 | D+1 13:30 미확정 = WARN · D+2 13:30 미확정 + 결과 행 없음 = WARN · D+2 13:30 미확정 + 결과 행 있음 = FAIL |
+| 경마지 | **경마지 보호 장치** — payload 해시·summary SQL 재계산, `trg_rf_*` 트리거 12개(search_path 스키마)·ENABLE ALWAYS, 레지스트리 정의 해시 = DB 행 (`racing-form-verify` 와 같은 조회) | 하나라도 어긋나면 FAIL (036 미적용만 WARN) |
 | 대시보드 | `GET DASHBOARD_URL` (3초) | 실패해도 WARN 만 |
 
 FAIL 행의 내용 열에 다음 조치(예: `sync-race-date YYYY-MM-DD`)가 같이 찍힌다. WARN 은 휴장·KRA 공개 지연

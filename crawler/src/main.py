@@ -21,6 +21,8 @@ import typer
 from .clients.horse_detail import HorseDetailClient
 from .jobs.periodic import (
     run_chunked_dividends_backfill,
+    run_publish_racing_form,
+    run_settle_racing_form,
     run_sync_horse_rank_changes,
     run_sync_horse_ratings,
     run_sync_horses_backfill,
@@ -425,6 +427,20 @@ def cmd_periodic_horse_ratings() -> None:
     typer.echo(f"upserted {n} horse_rating rows")
 
 
+@app.command("periodic-publish-racing-form")
+def cmd_periodic_publish_racing_form() -> None:
+    """[scheduled] publish_racing_form — tracked run (잡 규칙 그대로, 별도 발행 경로 아님)."""
+    n = run_publish_racing_form()
+    typer.echo(f"published {n} racing_form editions")
+
+
+@app.command("periodic-settle-racing-form")
+def cmd_periodic_settle_racing_form() -> None:
+    """[scheduled] settle_racing_form — tracked run."""
+    n = run_settle_racing_form()
+    typer.echo(f"settled {n} racing_form outcome rows")
+
+
 @app.command("sync-weather")
 def cmd_sync_weather(
     days: int = typer.Option(7, help="직전 N일 ASOS 일자료 재수집 (cron 과 동일)"),
@@ -514,7 +530,7 @@ def cmd_healthcheck(
 
 # ============================================================================
 # 경마지 (racing form) — 운영자 CLI (docs/feature/racing-form.md 9.3).
-# 발행 명령은 없다 — 발행은 잡 규칙 하나뿐 (mal.publish_racing_form, PR-2 에서 스케줄 연결).
+# 발행 명령은 없다 — 발행은 잡 규칙 하나뿐 (mal.publish_racing_form · periodic-publish-racing-form).
 # 무거운 모듈은 명령 안에서 import 한다. 시각은 여기서 KST 로 읽어 넘긴다.
 # ============================================================================
 
