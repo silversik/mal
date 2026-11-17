@@ -36,7 +36,7 @@ uv run python -m src.scheduler_main
 ## 절대 어기지 말 것
 
 1. **owner / nickname 컬럼은 추가만, drop 금지** — prod 500이 두 번 났고 그 때문에 Migrate 스테이지 자동화가 도입됨. drop이 필요하면 새 마이그레이션으로 NULL-허용으로 만들고, 코드에서 사용 중단된 후에야 별도 마이그레이션으로 drop. **동일 마이그레이션 안에서 add+drop 금지** (mock betting 제거는 `023` add → `032` drop 으로 분리된 좋은 예).
-2. **KRA 데이터는 immutable history** — 한 번 들어온 `race_results` 는 절대 수정 안 함. 보정 필요 시 별도 corrections/catchup 잡으로. live 결과는 `sync_races_live` 가 30분 주기로 갱신, 종료 후 잔여 정정은 `sync_yesterday_catchup`(07:30) + `sync_yesterday_residual`(09~12시, 미해결 race 있을 때만 KRA 호출).
+2. **race_results 는 KRA 원천 데이터** — 웹·수동 SQL 로 수정 금지, 쓰기 경로는 크롤러 upsert(`uq_race_results`) 뿐. KRA 정정은 재수집 시 rank·record_time·weight·jockey/trainer·raw 를 최신 공식값으로 덮어쓴다(정정 전 값 미보존). 정정 반영은 `sync_races_live`(30분) → `sync_yesterday_catchup`(07:30) + `sync_yesterday_residual`(09~12시, 미해결 race 있을 때만 KRA 호출).
 3. **KRA OpenAPI key 는 IP 화이트리스트 + 분당 호출 한도**. 로컬에서 prod key 쓰면 prod 잡이 라인업·날씨 fetch 미스. 로컬 테스트는 dev key 또는 fixture replay. 백필 잡은 **작은 chunk + 지수 백오프** (1년 walk 통째로 돌리면 분당 한도 초과 → timeout).
 4. **`web/.env.local` 의 `DATABASE_URL` 은 `localhost:5432` (로컬 docker postgres) 만**. 운영 DB(`49.50.138.31`) 직접 connect 시 임의 query 가 prod 락을 잡음. prod 컨테이너는 `mal_app` role 로 접속 → `search_path = mal, public`.
 5. **`crawler/_crawler_core` symlink** (`→ ../../crawler/core`) — sibling `crawler` 레포의 공유 패키지(`crawler_core`, 대시보드 리포트 클라이언트)를 editable 로 설치 (`pyproject.toml [tool.uv.sources]`). 호스트 dev 편의용, 삭제 금지. 컨테이너 빌드는 build context `..` 로 sibling 을 포함.
@@ -54,7 +54,7 @@ uv run python -m src.scheduler_main
   - `src/healthcheck.py` — 읽기 전용 운영 점검 (`healthcheck` CLI). prod: `docker exec mal-crawler python -m src.main healthcheck`.
   - `src/monitoring.py` — `JOB_CATALOG` + `@track_job` 데코레이터. run 시작/종료를 통합 **crawler-dashboard** 에 HTTP 리포트, 실패 시 Telegram 알림(`crawler_core` 가 처리). 대시보드 down 이어도 잡은 계속.
   - systemd 타이머(`crawler/systemd/`)는 제거됨 — 스케줄은 `scheduler_main.py` 내장 APScheduler 가 유일. 새 잡 = `monitoring.JOB_CATALOG` + `scheduler_main` `add_job` + `TRIGGER_JOBS`.
-- **`db/migrations/`** — `NNN_*.sql` 번호 순(현재 `037`까지). `db/run-migrations.sh` 가 `_migrations_applied` 체크 후 미적용분만 실행. 새 마이그레이션은 마지막 번호+1.
+- **`db/migrations/`** — `NNN_*.sql` 번호 순(현재 `038`까지). `db/run-migrations.sh` 가 `_migrations_applied` 체크 후 미적용분만 실행. 새 마이그레이션은 마지막 번호+1.
 - **`db/backup-mal.sh` · `db/restore-rehearsal.sh`** — `mal` 스키마 pg_dump 백업(+스키마 밖 트리거 함수 sidecar) · 임시 DB 복원 리허설. 서버 cron 설정은 `docs/spec/backup.md`.
 - **`docker/`** — **로컬 개발 전용** (Postgres 16 단독). prod 는 루트 `docker-compose.yml`(mal-web :4000 / mal-crawler) 을 `/srv/stack/docker-compose.yml` 이 include 로 통합.
 - **`docs/`** — `api/`(외부 API 4종) · `spec/`(아키텍처·배포) · `feature/`(기능 정의서) · `tasks/`(`NNNN-*` 페이즈 히스토리).

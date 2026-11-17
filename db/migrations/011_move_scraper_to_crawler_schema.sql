@@ -22,22 +22,25 @@ BEGIN;
 -- 1. crawler 스키마 보장 (init.sql 에서 이미 만들었을 수 있음)
 CREATE SCHEMA IF NOT EXISTS crawler;
 
--- 2. 테이블 이동 — 이미 crawler 로 옮겨져 있으면 스킵
+-- 2. 테이블 이동 — 이미 crawler 로 옮겨져 있으면 스킵.
+--    prod 는 search_path = mal 이라 current_schema() = 'mal' (원래 조건과 동일).
+--    로컬 docker initdb 는 mal 스키마 없이 public 에 008 이 만들므로 current_schema() 로도 찾는다.
 DO $$
+DECLARE
+    t   TEXT;
+    src TEXT;
 BEGIN
-    IF EXISTS (
-        SELECT 1 FROM information_schema.tables
-        WHERE table_schema = 'mal' AND table_name = 'scraper_jobs'
-    ) THEN
-        ALTER TABLE mal.scraper_jobs SET SCHEMA crawler;
-    END IF;
-
-    IF EXISTS (
-        SELECT 1 FROM information_schema.tables
-        WHERE table_schema = 'mal' AND table_name = 'scraper_runs'
-    ) THEN
-        ALTER TABLE mal.scraper_runs SET SCHEMA crawler;
-    END IF;
+    FOREACH t IN ARRAY ARRAY['scraper_jobs', 'scraper_runs'] LOOP
+        SELECT table_schema INTO src
+          FROM information_schema.tables
+         WHERE table_name = t
+           AND table_schema IN ('mal', current_schema())
+         ORDER BY (table_schema = 'mal') DESC
+         LIMIT 1;
+        IF src IS NOT NULL AND src <> 'crawler' THEN
+            EXECUTE format('ALTER TABLE %I.%I SET SCHEMA crawler', src, t);
+        END IF;
+    END LOOP;
 END $$;
 
 -- 3. 확장 컬럼 — service / category
@@ -63,12 +66,20 @@ CREATE INDEX IF NOT EXISTS idx_crawler_jobs_service
 
 -- 7. 대시보드·크롤러 전용 role 에 권한 부여 — crawler_app 이 자기 스키마 소유자면 생략해도 OK.
 --    init.sql 이 ALTER SCHEMA crawler OWNER TO crawler_app 로 세팅했다면 이 GRANT 는 no-op.
-GRANT USAGE ON SCHEMA crawler TO crawler_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA crawler TO crawler_app;
-GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA crawler TO crawler_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA crawler
-    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO crawler_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA crawler
-    GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO crawler_app;
+--    로컬 docker initdb 에는 crawler_app role 이 없으므로 role 이 있을 때만 실행 (prod 는 항상 존재).
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'crawler_app') THEN
+        GRANT USAGE ON SCHEMA crawler TO crawler_app;
+        GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA crawler TO crawler_app;
+        GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA crawler TO crawler_app;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA crawler
+            GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO crawler_app;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA crawler
+            GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO crawler_app;
+    ELSE
+        RAISE NOTICE '011: role crawler_app 없음 — GRANT 생략 (로컬 dev)';
+    END IF;
+END $$;
 
 COMMIT;
