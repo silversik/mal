@@ -43,7 +43,7 @@ src/
 | job key | 스케줄 | 하는 일 | 쓰는 테이블 |
 |---|---|---|---|
 | `mal.sync_videos` | 3시간마다 | KRBC YouTube 최신 업로드 20건 | `kra_videos`, `sync_meta` |
-| `mal.sync_race_entries` | 3시간마다 | 향후 10일 출전표 (API26_2, `KRA_CHULMA_OPERATION` 필수) | `race_entries`, `races` |
+| `mal.sync_race_entries` | 3시간마다 | 향후 10일 출전표 (API26_2, `KRA_CHULMA_OPERATION` 필수) — 오늘~+4일 매일(공휴일 경주) + 이후 금/토/일. 한 날짜 3경마장 모두 실패면 잡 실패 | `race_entries`, `races` |
 | `mal.backfill_races_from_entries` | 3시간마다 | `race_entries.raw` → races 빈 메타(거리·등급·발주시각) 백필 | `races` |
 | `mal.build_favorite_notifications` | 1시간마다 | 즐겨찾기 마필 출주 확정 → 인앱 알림 (dedup_key) | `notifications` |
 | `mal.chunked_dividends_backfill` | 매일 02:30 | 결과는 있는데 combo 배당 빠진 (date, meet) gap 청크 백필 (~15 call 예산, 3회 실패 skip) | `race_dividends`, `race_combo_dividends`, `sync_meta` |

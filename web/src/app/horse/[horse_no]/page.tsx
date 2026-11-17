@@ -60,9 +60,8 @@ import {
 import {
   getHorseRankChanges,
 } from "@/lib/horse_rank_changes";
-import { RatingSparkline } from "@/components/rating-sparkline";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
-import { getVideosForRaces, raceKey } from "@/lib/videos";
+import { getVideosForRaces } from "@/lib/videos";
 import { Suspense } from "react";
 import { CommentSection } from "@/components/comment-section";
 
@@ -260,6 +259,7 @@ export default async function HorseDetailPage({
               sire_aggregate: sireAgg ? {
                 parent_name: sireAgg.parent_name,
                 win_rate: sireAgg.win_rate,
+                winners: sireAgg.winners,
                 total_children: sireAgg.total_children,
               } : null,
             })}
@@ -307,14 +307,14 @@ export default async function HorseDetailPage({
   );
 }
 
-/* ── 자동 코멘트 (룰베이스) ─────────────────────────────── */
+/* ── 기록 요약 (룰베이스) ─────────────────────────────── */
 
 function AutoCommentBlock({ comment }: { comment: string }) {
   return (
     <div className="mt-4 rounded-md border border-border bg-muted px-4 py-3">
       <div className="flex items-start gap-2">
-        <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-small font-bold text-primary">
-          ai
+        <span className="mt-0.5 shrink-0 rounded-sm bg-primary/10 px-1.5 py-0.5 text-small font-bold text-primary">
+          기록 요약
         </span>
         <p className="text-sm leading-relaxed text-foreground">{comment}</p>
       </div>

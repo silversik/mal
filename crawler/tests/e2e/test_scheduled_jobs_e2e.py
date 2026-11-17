@@ -4,7 +4,7 @@
 (테스트 함수 순서 = 타임라인). 각 테스트는 바로 앞 테스트까지의 DB 상태에 의존하므로
 `-k` 로 일부만 고르면 실패할 수 있다 — 항상 파일 전체를 돌릴 것.
 
-타임라인 (D = 경주일 토요일, D1 = D+1, T = 실제 오늘, U = 다음 예정 경주일):
+타임라인 (D = 경주일 토요일, D1 = D+1, T = 실제 오늘, U = 다음 예정 경주일, H = U 다음 월요일 공휴일 경주일):
   D-1 14:00 races_live(비경기일 skip) · 09:00 race_entries · 12:00 backfill_races_from_entries
   D   05:00 race_plan · 07:30 horse_ratings(토) · 09:05 race_today_meta
       09:40 late_changes(당일 아침) · 13:00 races_live
@@ -14,8 +14,9 @@
       06:25 jockey_changes · 06:30 horses_backfill · 06:35 rank_changes · 07:00 horses_refresh
       07:30 yesterday_catchup · 09:00/10:00 yesterday_residual · 11:00 videos_bulk
       17:25 late_changes(내일 경주 없음 → skip)
-  T   12:00 race_entries(U) · 12:10 backfill_races_from_entries · 12:30 favorites ×2
-  U-1 17:25 late_changes(내일 U — 15:00 출전취소 · 16:00 기수변경 당일 반영, 경마지 18:00 동결 전)
+  T   12:00 race_entries(U + 공휴일 월 H) · 12:10 backfill_races_from_entries · 12:30 favorites ×2
+  H-1 17:25 late_changes(내일 공휴일 H — 15:00 출전취소 · 16:00 기수변경 당일 반영, 경마지 18:00 동결 전)
+      18:30 race_entries(출전취소 표시 유지)
 그 뒤 web/src/lib/*.ts 의 실제 SQL 로 화면 쿼리가 시드된 경주/마필을 돌려주는지 확인.
 """
 # web/src/lib 의 SQL 을 글자 그대로 복사해 둔 줄이 길다.
@@ -89,9 +90,11 @@ def test_02_race_entries(e2e):
     n = e2e.run("mal.sync_race_entries", D - timedelta(days=1), 9, 0)
     assert n == 12
     reqs = e2e.web.kra_calls("API26_2")
-    # D-1(금)~D+9 의 금/토/일 × 3 경마장
+    # 출전표 공표 구간 D-1(금)~D+3 은 요일 무관 매일 + 그 뒤 D+9 까지 금/토/일 × 3 경마장
     days = [D - timedelta(days=1) + timedelta(days=i) for i in range(11)]
-    race_days = {x.strftime("%Y%m%d") for x in days if x.weekday() in (4, 5, 6)}
+    race_days = {x.strftime("%Y%m%d") for i, x in enumerate(days)
+                 if i <= 4 or x.weekday() in (4, 5, 6)}
+    assert (D + timedelta(days=2)).strftime("%Y%m%d") in race_days  # 월요일도 조회
     assert {(r.params["rc_date"], r.params["meet"]) for r in reqs} == {
         (d, m) for d in race_days for m in ("1", "2", "3")
     }
@@ -463,23 +466,37 @@ def test_28_videos_bulk_walks_playlist_until_cutoff(e2e):
 
 def test_29_race_entries_upcoming_week(e2e):
     w = e2e.world
-    # 출전표는 경주일 3일 전부터 공표 — 실제 오늘이 일·월이면 U(다음 금)가 4~5일 뒤라
-    # 아직 비어 있으므로, 공표 이후 시점(max(오늘, U-3))에 수집한다.
-    when = max(w.real_today, w.U - timedelta(days=3))
+    # 출전표는 경주일 3일 전부터 공표 — U(다음 금/토/일)와 공휴일 H(U 다음 월요일, U+1~3)
+    # 둘 다 공표된 시점(max(오늘, H-3) ≤ U)에 수집한다.
+    when = max(w.real_today, w.H - timedelta(days=3))
+    assert when <= w.U and w.H.weekday() == 0
     n = e2e.run("mal.sync_race_entries", when, 12, 0)
-    assert n == 3
+    assert n == 6  # U 3두 + 공휴일 H 3두
     rows = e2e.q("SELECT horse_no, chul_no FROM race_entries WHERE race_date=:u ORDER BY chul_no",
                  u=w.U)
     assert [r["horse_no"] for r in rows] == ["0041001", "0041004", "0041002"]
+    # 공휴일(월) 경주일 — 금/토/일 하드코딩이면 조회조차 안 되던 날
+    reqs = e2e.web.kra_calls("API26_2")
+    assert {r.params["meet"] for r in reqs if r.params["rc_date"] == w.H.strftime("%Y%m%d")} == {
+        "1", "2", "3"}
+    hol = e2e.q("SELECT meet, race_no, horse_no FROM race_entries WHERE race_date=:h "
+                "ORDER BY chul_no", h=w.H)
+    assert [(r["meet"], r["race_no"], r["horse_no"]) for r in hol] == [
+        ("부경", 1, "0041010"), ("부경", 1, "0041011"), ("부경", 1, "0041012")]
+    sk = e2e.q("SELECT meet, race_no, entry_count FROM races WHERE race_date=:h", h=w.H)
+    assert [(r["meet"], r["race_no"], r["entry_count"]) for r in sk] == [("부경", 1, 3)]
 
 
 def test_30_backfill_races_from_entries_upcoming(e2e):
     w = e2e.world
     n = e2e.run("mal.backfill_races_from_entries", w.real_today, 12, 10)
-    assert n == 5  # D 4경주(기존 값 보존) + U 1경주
+    assert n == 6  # D 4경주(기존 값 보존) + U 1경주 + 공휴일 H 1경주
     r = e2e.one("SELECT * FROM races WHERE race_date=:u", u=w.U)
     assert (r["meet"], r["race_no"], r["distance"], r["start_time"], r["entry_count"]) == (
         "서울", 1, 1200, "11:30", 3)
+    h = e2e.one("SELECT * FROM races WHERE race_date=:h", h=w.H)
+    assert (h["meet"], h["race_no"], h["distance"], h["grade"], h["entry_count"]) == (
+        "부경", 1, 1400, "혼4등급", 3)
 
 
 def test_31_favorite_notifications(e2e):
@@ -501,40 +518,41 @@ def test_31_favorite_notifications(e2e):
 
 
 def test_32_late_changes_preday_before_freeze(e2e):
-    """U-1 17:25 — 15:00 출전취소·16:00 기수변경이 경마지 18:00 동결 전 같은 날 반영된다."""
+    """H-1 17:25 — 15:00 출전취소·16:00 기수변경이 경마지 18:00 동결 전 같은 날 반영된다."""
     from src.racing_form import queries
 
     w = e2e.world
-    eve = w.U - timedelta(days=1)
+    eve = w.H - timedelta(days=1)
     n = e2e.run("mal.sync_late_changes", eve, 17, 25)
-    assert n == 2 + 2  # 기수변경 (D 1 + U 1) + U 서울 출전표 2두
+    assert n == 2 + 2  # 기수변경 (D 1 + H 1) + H 부경 출전표 2두
     assert len(e2e.web.kra_calls("API10_1")) == 1
     reqs = e2e.web.kra_calls("API26_2")
     assert [(r.params["rc_date"], r.params["meet"]) for r in reqs] == [
-        (w.U.strftime("%Y%m%d"), "1")]  # U 경마장(서울)만 — 쿼터 절약
-    jc = e2e.one("SELECT * FROM jockey_changes WHERE race_date=:u", u=w.U)
-    assert (jc["meet"], jc["race_no"], jc["chul_no"], jc["horse_no"]) == ("서울", 1, 3, "0041002")
+        (w.H.strftime("%Y%m%d"), "3")]  # 내일 경마장(부경)만 — 쿼터 절약
+    jc = e2e.one("SELECT * FROM jockey_changes WHERE race_date=:h", h=w.H)
+    assert (jc["meet"], jc["race_no"], jc["chul_no"], jc["horse_no"]) == ("부경", 1, 3, "0041012")
     assert (jc["jk_name_before"], jc["jk_name_after"], jc["reason"]) == (
-        "박경마", "한교체", "기수사정")
+        "강광안", "한교체", "기수사정")
     rows = {r["horse_no"]: r for r in e2e.q(
-        "SELECT horse_no, chul_no, scratched_at FROM race_entries WHERE race_date=:u", u=w.U)}
-    assert set(rows) == {"0041001", "0041004", "0041002"}  # 행은 남는다 (삭제 안 함)
-    assert rows["0041004"]["scratched_at"] is not None
-    assert rows["0041001"]["scratched_at"] is None and rows["0041002"]["scratched_at"] is None
+        "SELECT horse_no, chul_no, scratched_at FROM race_entries WHERE race_date=:h", h=w.H)}
+    assert set(rows) == {"0041010", "0041011", "0041012"}  # 행은 남는다 (삭제 안 함)
+    assert rows["0041011"]["scratched_at"] is not None
+    assert rows["0041010"]["scratched_at"] is None and rows["0041012"]["scratched_at"] is None
     # 경마지 Q1 은 출전취소 행을 뺀다 — stale 추측 불필요
     with e2e.engine.connect() as c:
-        q1 = c.execute(queries._Q1_ENTRIES, {"d": w.U, "meet": "서울"}).mappings().all()
+        q1 = c.execute(queries._Q1_ENTRIES, {"d": w.H, "meet": "부경"}).mappings().all()
     assert [(r["horse_no"], r["jockey_name"], r["jc_after"]) for r in q1] == [
-        ("0041001", "김서울", None), ("0041002", "박경마", "한교체")]
+        ("0041010", "최부경", None), ("0041012", "강광안", "한교체")]
 
 
 def test_33_race_entries_keeps_scratch_mark(e2e):
     """3시간 출전표 sync 가 다시 돌아도 출전취소 표시는 유지 (응답에 계속 없음)."""
     w = e2e.world
-    n = e2e.run("mal.sync_race_entries", w.U - timedelta(days=1), 18, 30)
-    assert n == 2
-    row = e2e.one("SELECT scratched_at FROM race_entries WHERE race_date=:u "
-                  "AND horse_no='0041004'", u=w.U)
+    eve = w.H - timedelta(days=1)
+    n = e2e.run("mal.sync_race_entries", eve, 18, 30)
+    assert n == 2 + (3 if eve <= w.U else 0)  # H 2두 (+ U 가 일요일이면 U 3두)
+    row = e2e.one("SELECT scratched_at FROM race_entries WHERE race_date=:h "
+                  "AND horse_no='0041011'", h=w.H)
     assert row["scratched_at"] is not None
 
 
@@ -612,6 +630,39 @@ def test_40_web_races_by_date_and_next_race_day(e2e):
     assert len(top) == 12
     assert (top[0]["meet"], top[0]["race_no"], top[0]["rank"], top[0]["horse_name"]) == (
         "부경", 1, 1, "신인등장")
+
+
+def test_40b_web_holiday_race_day(e2e):
+    """공휴일(월) 경주일 H 가 /races 달력에 선택 가능하고 경주 목록이 나온다."""
+    w = e2e.world
+    # races.ts getAllRaceDates (RaceDatePicker raceDates)
+    dates = [r["race_date"] for r in e2e.web_query(
+        """SELECT DISTINCT race_date FROM (
+       SELECT to_char(race_date, 'YYYY-MM-DD') AS race_date
+         FROM races
+        WHERE race_date BETWEEN $1::date - ($2 * INTERVAL '1 month') AND $1::date + ($2 * INTERVAL '1 month')
+       UNION
+       SELECT to_char(to_date(raw->>'pgDate','YYYYMMDD'), 'YYYY-MM-DD') AS race_date
+         FROM race_plans
+        WHERE raw->>'pgDate' ~ '^[0-9]{8}$'
+          AND to_date(raw->>'pgDate','YYYYMMDD')
+              BETWEEN $1::date - ($2 * INTERVAL '1 month') AND $1::date + ($2 * INTERVAL '1 month')
+     ) d
+      ORDER BY race_date""",
+        w.real_today.isoformat(), 3,
+    )]
+    assert w.H.isoformat() in dates
+    assert dates.index(w.H.isoformat()) == dates.index(w.U.isoformat()) + 1  # U 다음 경주일
+    # races.ts getRacesByDate(H)
+    rows = e2e.web_query(
+        f"""SELECT {RACE_COLUMNS}
+       FROM races
+      WHERE race_date = $1::date
+      ORDER BY meet, race_no""",
+        w.H.isoformat(),
+    )
+    assert [(r["meet"], r["race_no"], r["distance"], r["has_results"]) for r in rows] == [
+        ("부경", 1, 1400, False)]
 
 
 def test_41_web_race_detail_post_phase(e2e):
