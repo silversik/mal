@@ -166,7 +166,7 @@ def healthy_data(now: datetime = NOW) -> dict[str, Any]:
             {"station_id": s, "latest": datetime.combine(
                 today - timedelta(days=1), datetime.min.time(), KST,
             ) + timedelta(hours=23)}
-            for s in (119, 184, 159)
+            for s in (119, 184, 159, 281)
         ],
         "videos_latest": [{
             "latest_race_date": last, "latest_matched_pub": utc_now - timedelta(days=4),
@@ -547,14 +547,14 @@ def _obs(d: date, hour: int = 23) -> datetime:
 def test_weather_freshness(now: datetime, days_back: int, expected: Status) -> None:
     data = healthy_data(now)
     d = now.date() - timedelta(days=days_back)
-    data["weather_latest"] = _weather({119: _obs(d), 184: _obs(d), 159: _obs(d)})
+    data["weather_latest"] = _weather({119: _obs(d), 184: _obs(d), 159: _obs(d), 281: _obs(d)})
     assert _by_name(_collect(data, now=now), "날씨").status == expected
 
 
 def test_weather_missing_station_fails() -> None:
     data = healthy_data()
     y = TODAY - timedelta(days=1)
-    data["weather_latest"] = _weather({119: _obs(y), 184: _obs(y)})
+    data["weather_latest"] = _weather({119: _obs(y), 184: _obs(y), 281: _obs(y)})
     c = _by_name(_collect(data), "날씨")
     assert c.status == Status.FAIL
     assert "159:없음" in c.detail

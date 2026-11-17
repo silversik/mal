@@ -286,7 +286,9 @@ export type ParentChildAggregate = {
   total_win: number;
   total_place: number;
   total_show: number;
-  /** 자식 중 최소 1승 한 비율. */
+  /** 1승 이상 경험한 자손 수 (first_place_count > 0). */
+  winners: number;
+  /** 자손 중 1승 이상 경험한 자손 비율 (winners / total_children) — 경주 승률 아님. */
   win_rate: number;
 };
 
@@ -346,6 +348,7 @@ export async function getParentChildAggregate(
     total_win: Number(r.total_win),
     total_place: Number(r.total_place),
     total_show: Number(r.total_show),
+    winners: Number(r.winners),
     win_rate: totalChildren > 0 ? Number(r.winners) / totalChildren : 0,
   };
 }
@@ -365,11 +368,24 @@ export type HorseCompareSummary = {
   recent_finishes: (number | null)[];
 };
 
+/**
+ * @param asOf 지정 시 해당 경주 **이전** 결과만 집계 — `(race_date, race_no) < (asOf)`.
+ *   과거 경주 카드가 그 이후 성적(look-ahead)을 보여주지 않게 한다. 통산·1착도
+ *   `horses` 마스터(현재 시점 누계) 대신 race_results 에서 계산.
+ *   생략 시 현재 시점 통산 (/compare 등).
+ */
 export async function getHorseCompareSummaries(
   horseNos: string[],
+  asOf?: { raceDate: string; raceNo: number },
 ): Promise<HorseCompareSummary[]> {
   if (horseNos.length === 0) return [];
   const placeholders = horseNos.map((_, i) => `$${i + 1}`).join(", ");
+  const asOfFilter = asOf
+    ? `AND (rr.race_date, rr.race_no) < ($${horseNos.length + 1}::date, $${horseNos.length + 2}::int)`
+    : "";
+  const params: unknown[] = asOf
+    ? [...horseNos, asOf.raceDate, asOf.raceNo]
+    : horseNos;
 
   // 한 번 조회로: 마필 마스터 + race_results 집계.
   const rows = await query<{
@@ -382,20 +398,28 @@ export async function getHorseCompareSummaries(
   }>(
     `WITH stats AS (
        SELECT rr.horse_no,
+              COUNT(*)::int AS total_race_count,
+              COUNT(*) FILTER (WHERE rr.rank = 1)::int AS first_place_count,
               COUNT(*) FILTER (WHERE rr.rank = 2)::int AS second_place_count,
               COUNT(*) FILTER (WHERE rr.rank = 3)::int AS third_place_count
          FROM race_results rr
         WHERE rr.horse_no IN (${placeholders})
+          ${asOfFilter}
         GROUP BY rr.horse_no
      )
      SELECT h.horse_no, h.horse_name,
-            h.total_race_count, h.first_place_count,
+            ${
+              asOf
+                ? `COALESCE(s.total_race_count, 0) AS total_race_count,
+            COALESCE(s.first_place_count, 0) AS first_place_count,`
+                : `h.total_race_count, h.first_place_count,`
+            }
             COALESCE(s.second_place_count, 0) AS second_place_count,
             COALESCE(s.third_place_count, 0) AS third_place_count
        FROM horses h
        LEFT JOIN stats s ON s.horse_no = h.horse_no
       WHERE h.horse_no IN (${placeholders})`,
-    horseNos,
+    params,
   );
 
   // 최근 5전 finishes 별도 조회 (마필별 5 row × N 마필 — 작아서 OK).
@@ -405,9 +429,10 @@ export async function getHorseCompareSummaries(
               ROW_NUMBER() OVER (PARTITION BY rr.horse_no ORDER BY rr.race_date DESC, rr.race_no DESC) AS rn
          FROM race_results rr
         WHERE rr.horse_no IN (${placeholders})
+          ${asOfFilter}
      ) ord
      WHERE rn <= 5`,
-    horseNos,
+    params,
   );
   const finishesByHorse = new Map<string, (number | null)[]>();
   for (const f of finishesRows) {
@@ -606,6 +631,7 @@ export async function getHorseFormBreakdown(
               WHEN '서울' THEN 119
               WHEN '제주' THEN 184
               WHEN '부경' THEN 159
+              WHEN '영천' THEN 281
             END
         AND w.obs_time = date_trunc('hour',
               (rr.race_date::text || ' ' || lpad(r.start_time, 5, '0') || ':00')::timestamp

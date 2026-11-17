@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "서비스 소개",
@@ -20,7 +21,7 @@ export default function AboutPage() {
         <p className="text-sm leading-relaxed text-foreground/90">
           mal.kr은 한국마사회(KRA)가 공공데이터포털(data.go.kr)을 통해 제공하는 경마 공공데이터를
           기반으로 마필·기수·조교사·마주의 성적과 혈통 정보를 체계적으로 아카이빙하고 분석하는
-          서비스입니다. 서울·부산경남·제주 세 경마장의 경주 결과를 매일 수집하여 누구나 무료로
+          서비스입니다. 서울·부산경남·제주·영천 네 경마장의 경주 결과를 매일 수집하여 누구나 무료로
           조회할 수 있도록 제공합니다.
         </p>
         <p className="text-sm leading-relaxed text-foreground/90">
@@ -79,9 +80,9 @@ export default function AboutPage() {
         <h2 className="text-base font-semibold">운영</h2>
         <p className="text-sm leading-relaxed text-foreground/90">
           mal.kr은 개인 개발자에 의해 운영됩니다. 서비스에 관한 문의는{" "}
-          <a href="/contact" className="text-primary underline underline-offset-2 hover:opacity-80">
+          <Link href="/contact" className="text-primary underline underline-offset-2 hover:opacity-80">
             문의 페이지
-          </a>
+          </Link>
           를 통해 주시기 바랍니다.
         </p>
       </section>

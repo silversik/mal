@@ -16,13 +16,14 @@ from datetime import date, datetime
 from typing import Any
 
 from ..config import settings
+from ..meets import MEET_NAMES
 from .kra_base import KraClient
 
 ENDPOINT = "API179_1"
 DEFAULT_OPERATION = "salesAndDividendRate_1"
 
 # 응답 meet (1/2/3) → 다른 테이블과 일치시키기 위한 한글 매핑.
-_MEET_NAMES = {1: "서울", 2: "제주", 3: "부경", "1": "서울", "2": "제주", "3": "부경"}
+_MEET_NAMES: dict[int | str, str] = {**MEET_NAMES, **{int(k): v for k, v in MEET_NAMES.items()}}
 
 
 class RaceSalesClient(KraClient):

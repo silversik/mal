@@ -43,7 +43,7 @@ src/
 | job key | 스케줄 | 하는 일 | 쓰는 테이블 |
 |---|---|---|---|
 | `mal.sync_videos` | 3시간마다 | KRBC YouTube 최신 업로드 20건 | `kra_videos`, `sync_meta` |
-| `mal.sync_race_entries` | 3시간마다 | 향후 10일 출전표 (API26_2, `KRA_CHULMA_OPERATION` 필수) | `race_entries`, `races` |
+| `mal.sync_race_entries` | 3시간마다 | 향후 10일 출전표 (API26_2, `KRA_CHULMA_OPERATION` 필수) — 오늘~+4일 매일(공휴일 경주) + 이후 금/토/일. 한 날짜 3경마장 모두 실패면 잡 실패 | `race_entries`, `races` |
 | `mal.backfill_races_from_entries` | 3시간마다 | `race_entries.raw` → races 빈 메타(거리·등급·발주시각) 백필 | `races` |
 | `mal.build_favorite_notifications` | 1시간마다 | 즐겨찾기 마필 출주 확정 → 인앱 알림 (dedup_key) | `notifications` |
 | `mal.chunked_dividends_backfill` | 매일 02:30 | 결과는 있는데 combo 배당 빠진 (date, meet) gap 청크 백필 (~15 call 예산, 3회 실패 skip) | `race_dividends`, `race_combo_dividends`, `sync_meta` |
@@ -55,6 +55,7 @@ src/
 | `mal.sync_trainers` | 매일 06:15 | 조교사 마스터 | `trainers` |
 | `mal.sync_owners` | 매일 06:20 | 마주 마스터 | `owners` |
 | `mal.sync_jockey_changes` | 매일 06:25 | 기수변경 이벤트 (KRA 기본 ~1개월 윈도우) | `jockey_changes` |
+| `mal.sync_late_changes` | 매일 17:25 · 09:40 | 늦은 기수변경 + 출전표 재수집(출전취소 표시) — 17:25 내일·09:40 오늘 경주, 경주 없으면 KRA 호출 없이 skip | `jockey_changes`, `race_entries.scratched_at` |
 | `mal.sync_horses_backfill` | 매일 06:30 | `raw` NULL 마필 API42_1 재조회 (not-found 원장) | `horses`, `sync_meta` |
 | `mal.sync_horse_rank_changes` | 매일 06:35 | 경주마 등급변동 이력 전체 | `horse_rank_changes` |
 | `mal.sync_horses_refresh` | 매일 07:00 | `updated_at` 30일 초과 마필 300건 재조회 | `horses` |

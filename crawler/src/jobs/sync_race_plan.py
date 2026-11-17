@@ -16,6 +16,7 @@ from ..clients.race_annual_plan import (
 )
 from ..db import session_scope
 from ..logging import get_logger
+from ..meets import MEET_CODES
 from ..models import RacePlan
 
 log = get_logger(__name__)
@@ -99,6 +100,11 @@ def upsert_race_plans(items: list[dict[str, Any]]) -> int:
     return len(rows)
 
 
+# 영천(4)은 2026-09 개장 · 일요일 6경주 — 연간 대상경주 계획에 없을 수 있음.
+# 올해 NODATA 실패 규칙(서울·제주·부경의 수집 사고 감지용)에서 제외.
+SOFT_NO_DATA_MEETS: frozenset[int] = frozenset({4})
+
+
 def sync_year(
     year: int,
     *,
@@ -106,23 +112,25 @@ def sync_year(
     allow_no_data: bool = False,
     current_year: int | None = None,
 ) -> int:
-    """Fetch year plan for given meet (None = all 3).
+    """Fetch year plan for given meet (None = 전체 MEET_CODES).
 
     allow_no_data=True 면 KRA NODATA 응답을 0건으로 취급 (내년도 미공개 대비).
+    SOFT_NO_DATA_MEETS(영천)는 대상경주가 없을 수 있어 NODATA 를 항상 0건으로 본다.
     그 외 에러(키·한도·네트워크)는 그대로 raise.
     current_year(기본 KST 올해) — 날짜 없는 item 은 올해 조회일 때만 저장.
     """
     if current_year is None:
         current_year = kst_today().year
     is_current = year == current_year
-    meets = [meet] if meet is not None else [1, 2, 3]
+    meets = [meet] if meet is not None else list(MEET_CODES)
     total = 0
     with RaceAnnualPlanClient() as client:
         for m in meets:
             try:
                 items = client.list_by_year(year, meet=m)
             except KraApiError as exc:
-                if not (allow_no_data and is_kra_no_data(exc)):
+                soft = allow_no_data or m in SOFT_NO_DATA_MEETS
+                if not (soft and is_kra_no_data(exc)):
                     raise
                 if is_current:
                     log.warning(

@@ -24,6 +24,7 @@ from ..clients.race_dividend import (
 )
 from ..db import session_scope
 from ..logging import get_logger
+from ..meets import MEET_CODES
 from ..models import RaceComboDividend, RaceDividend
 
 log = get_logger(__name__)
@@ -87,7 +88,7 @@ def sync_date(rc_date: date, meet: int) -> int:
 
 
 def sync_date_all_meets(
-    rc_date: date, meets: Iterable[int] = (1, 2, 3)
+    rc_date: date, meets: Iterable[int] = MEET_CODES
 ) -> int:
     """meets 로 호출 대상 경마장 한정 (live 잡은 오늘 경주 있는 곳만 넘김)."""
     total = 0

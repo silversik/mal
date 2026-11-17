@@ -143,6 +143,7 @@ def select_active_entries(
 
     1. horse_no 가 비었거나 meet 가 서울·부경·제주가 아니면 제외. 출전번호(chul_no)가 없는 행도
        제외하고 경고 `missing_chul_no:<race_no>` (화면·정렬의 기준값이라 없으면 실을 수 없다).
+    0. 출전취소(race_entries.scratched_at)는 Q1 SQL 이 이미 뺀다 — 아래 stale 은 그 보조 안전망.
     2. stale: updated_at < 배치 시각 − batch_tolerance_min 이면 제외. 단 한 경주에서 제외 비율이
        max_drop_pct 를 넘으면 그 경주는 빼지 않고 경고 `stale_kept:<race_no>`.
     3. 같은 날 같은 말이 두 경주에 있으면 updated_at 최신 행 1개만 (동률이면 race_no 큰 쪽).

@@ -6,7 +6,7 @@ data.go.kr 계열이라 인증/페이지네이션 패턴은 동일하다.
 - 엔드포인트: https://apis.data.go.kr/1360000/AsosHourlyInfoService/getWthrDataList
 - 시간자료(dateCd=HR) 1 row = (관측소 × 시각) 1시간 데이터.
 - 경마 발주시각 기준 매칭이 필요해서 일자료(DAY) 대신 시간자료(HR).
-- mal.kr 은 경마장과 가까운 3개 관측소만 사용 (MEET_TO_STATION).
+- mal.kr 은 경마장과 가까운 4개 관측소만 사용 (MEET_TO_STATION).
 """
 from __future__ import annotations
 
@@ -35,14 +35,15 @@ DEFAULT_TIMEOUT = httpx.Timeout(20.0, connect=5.0)
 # KMA 가 KST 로 응답 — 명시적 timezone 객체.
 KST = timezone(timedelta(hours=9))
 
-# 경마장 한글 라벨 → ASOS 관측소 ID. races.meet 는 "서울"/"제주"/"부경" 한글 저장.
+# 경마장 한글 라벨 → ASOS 관측소 ID. races.meet 는 "서울"/"제주"/"부경"/"영천" 한글 저장.
 # 서울경마공원(과천)은 ASOS 관측소가 없어 수원(119)이 가장 근접.
 MEET_TO_STATION: dict[str, int] = {
     "서울": 119,  # 수원
     "제주": 184,  # 제주
     "부경": 159,  # 부산
+    "영천": 281,  # 영천 (영천경마공원 · 2026-09 개장)
 }
-ALL_STATIONS: tuple[int, ...] = (119, 184, 159)
+ALL_STATIONS: tuple[int, ...] = (119, 184, 159, 281)
 
 
 class KmaApiError(RuntimeError):

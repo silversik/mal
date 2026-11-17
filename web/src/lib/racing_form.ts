@@ -102,7 +102,8 @@ SELECT to_char(c.race_date, 'YYYY-MM-DD') AS race_date,
                          FROM race_entries e
                         WHERE e.race_date = r.race_date
                           AND e.meet = r.meet
-                          AND e.race_no = r.race_no)
+                          AND e.race_no = r.race_no
+                          AND e.scratched_at IS NULL)
        ) c
  GROUP BY c.race_date, c.meet
  ORDER BY c.race_date, array_position($3::text[], c.meet::text)`;
@@ -467,7 +468,7 @@ export async function getEditionTallies(editionIds: number[]): Promise<EditionTa
 /**
  * 지금 출전표 기준 실제 기수 = btrim(COALESCE(기수변경 after, 출전표 기수)) — 빈 문자열은 NULL
  * 취급(after 가 비면 출전표 기수). jockey_changes 는 meet 없이 (race_date, race_no, horse_no)
- * 최신 1건 (계약 Q1 과 같은 LATERAL). $1 race_date · $2 meet(한글 라벨).
+ * 최신 1건 (계약 Q1 과 같은 LATERAL). 출전취소(scratched_at) 행은 제외. $1 race_date · $2 meet(한글 라벨).
  */
 export const CURRENT_JOCKEYS_SQL = `
 SELECT e.race_no,
@@ -487,6 +488,7 @@ SELECT e.race_no,
        ) jc ON TRUE
  WHERE e.race_date = $1::date
    AND e.meet = $2
+   AND e.scratched_at IS NULL
  ORDER BY e.race_no, e.chul_no NULLS LAST, e.horse_no`;
 
 export async function getCurrentJockeys(date: string, meet: string): Promise<CurrentJockeyRow[]> {

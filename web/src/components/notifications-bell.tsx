@@ -14,7 +14,7 @@ export async function NotificationsBell() {
     <Link
       href="/notifications"
       aria-label={unread > 0 ? `읽지 않은 알림 ${unread}개` : "알림"}
-      className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-primary"
+      className="relative inline-flex h-11 w-11 items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-accent"
       title="알림"
     >
       <svg

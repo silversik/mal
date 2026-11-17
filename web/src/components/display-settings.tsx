@@ -70,7 +70,12 @@ function useScale(): [Scale, (s: Scale) => void] {
   return [scale, applyScale];
 }
 
-export function DisplaySettings() {
+/**
+ * 화면 설정(테마·글씨 크기) 팝오버.
+ * iconOnly: 데스크톱 헤더용 — 44×44 아이콘 버튼(글자 없음, aria-label·title 로 이름 제공).
+ * 기본(글자 포함)은 모바일 "더보기" 패널처럼 다른 항목이 글자로 된 곳에서 쓴다.
+ */
+export function DisplaySettings({ iconOnly = false }: { iconOnly?: boolean } = {}) {
   const theme = React.useSyncExternalStore(subscribe, readTheme, () => "auto" as Theme);
   const [scale, pickScale] = useScale();
 
@@ -89,11 +94,14 @@ export function DisplaySettings() {
   return (
     <Popover>
       <PopoverTrigger
-        className="inline-flex min-h-[max(44px,2.75rem)] items-center gap-1.5 rounded-md border border-border px-3 text-sm font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        className={`inline-flex h-11 items-center justify-center gap-1.5 rounded-md border border-border text-sm font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+          iconOnly ? "w-11" : "px-3"
+        }`}
         aria-label="화면 설정 — 테마와 글씨 크기"
+        title="화면 설정"
       >
-        <EyeIcon />
-        화면 설정
+        <EyeIcon size={iconOnly ? 20 : 16} />
+        {!iconOnly && "화면 설정"}
       </PopoverTrigger>
       <PopoverContent align="end" className="gap-4">
         <SettingGroup
@@ -158,11 +166,11 @@ function SettingGroup<T extends string>({
   );
 }
 
-function EyeIcon() {
+function EyeIcon({ size = 16 }: { size?: number }) {
   return (
     <svg
-      width="16"
-      height="16"
+      width={size}
+      height={size}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"

@@ -6,7 +6,9 @@
  * 자신의 URL 을 canonical 로 쓰고, sitemap 도 같은 builder 로 loc 를 만든다.
  */
 
-export const RACE_MEETS = ["서울", "제주", "부경"] as const;
+import { RACE_VENUES } from "./meets";
+
+export const RACE_MEETS = RACE_VENUES;
 
 type RawParam = string | string[] | undefined;
 

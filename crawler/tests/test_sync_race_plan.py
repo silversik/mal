@@ -139,19 +139,19 @@ def _install(monkeypatch, by_year: dict[int, Any]) -> _FakeClient:
 def test_next_year_no_data_is_ok(monkeypatch, upserted):
     client = _install(monkeypatch, {2026: [_item(2026, "코리아컵")], 2027: _no_data_error()})
     n = mod.sync_scheduled_years(date(2026, 12, 1))
-    assert n == 3  # 올해 3개 meet × 1건, 내년도 0건
+    assert n == 4  # 올해 4개 meet × 1건, 내년도 0건
     assert {y for y, _ in client.calls} == {2026, 2027}
     assert all(r["year"] == 2026 for r in upserted)
 
 
 def test_next_year_empty_is_ok(monkeypatch, upserted):
     _install(monkeypatch, {2026: [_item(2026, "코리아컵")], 2027: []})
-    assert mod.sync_scheduled_years(date(2026, 11, 15)) == 3
+    assert mod.sync_scheduled_years(date(2026, 11, 15)) == 4
 
 
 def test_next_year_published_is_upserted(monkeypatch, upserted):
     _install(monkeypatch, {2026: [_item(2026, "코리아컵")], 2027: [_item(2027, "그랑프리")]})
-    assert mod.sync_scheduled_years(date(2026, 12, 10)) == 6
+    assert mod.sync_scheduled_years(date(2026, 12, 10)) == 8
     assert {r["year"] for r in upserted} == {2026, 2027}
 
 
@@ -172,7 +172,7 @@ def test_next_year_other_api_error_still_fails(monkeypatch, upserted):
 
 def test_real_shaped_item_maps_to_requested_year(monkeypatch, upserted):
     _install(monkeypatch, {2026: [_item(2026, "그랑프리")]})
-    assert mod.sync_scheduled_years(date(2026, 6, 1)) == 3
+    assert mod.sync_scheduled_years(date(2026, 6, 1)) == 4
     row = upserted[0]
     assert row["year"] == 2026
     assert row["meet"] == "부산경남"
@@ -184,7 +184,7 @@ def test_next_year_request_returning_current_plan_upserts_nothing(monkeypatch, u
     # KRA 가 rc_year=2027 을 무시하고 2026 계획을 돌려주는 경우 → 2027 로 저장하면 중복
     plan_2026 = [_item(2026, "그랑프리"), _item(2026, "코리아컵", mmdd="0907", meet="서울")]
     _install(monkeypatch, {2026: plan_2026, 2027: plan_2026})
-    assert mod.sync_scheduled_years(date(2026, 11, 6)) == 6  # 올해분(3 meet × 2건)만
+    assert mod.sync_scheduled_years(date(2026, 11, 6)) == 8  # 올해분(4 meet × 2건)만
     assert {r["year"] for r in upserted} == {2026}
 
 
@@ -226,5 +226,34 @@ def test_current_year_no_data_strict_outside_january(monkeypatch, upserted, toda
 
 def test_june_does_not_touch_next_year(monkeypatch, upserted):
     client = _install(monkeypatch, {2026: [_item(2026, "코리아컵")]})
-    assert mod.sync_scheduled_years(date(2026, 6, 1)) == 3
+    assert mod.sync_scheduled_years(date(2026, 6, 1)) == 4
     assert {y for y, _ in client.calls} == {2026}
+
+
+class _NoDataForMeet(_FakeClient):
+    """특정 meet 만 NODATA — 나머지는 by_year 그대로."""
+
+    def __init__(self, by_year: dict[int, Any], nodata_meet: int) -> None:
+        super().__init__(by_year)
+        self.nodata_meet = nodata_meet
+
+    def list_by_year(self, year: int, *, meet: int | None = None) -> list[dict[str, Any]]:
+        if meet == self.nodata_meet:
+            self.calls.append((year, meet))
+            raise _no_data_error()
+        return super().list_by_year(year, meet=meet)
+
+
+def test_yeongcheon_current_year_no_data_is_soft(monkeypatch, upserted):
+    # 영천(4)은 대상경주 계획이 없을 수 있음 — 올해 NODATA 여도 잡 실패 아님
+    client = _NoDataForMeet({2026: [_item(2026, "코리아컵")]}, nodata_meet=4)
+    monkeypatch.setattr(mod, "RaceAnnualPlanClient", client)
+    assert mod.sync_scheduled_years(date(2026, 6, 1)) == 3
+    assert (2026, 4) in client.calls
+
+
+def test_other_meet_current_year_no_data_still_fails(monkeypatch, upserted):
+    client = _NoDataForMeet({2026: [_item(2026, "코리아컵")]}, nodata_meet=2)
+    monkeypatch.setattr(mod, "RaceAnnualPlanClient", client)
+    with pytest.raises(KraApiError):
+        mod.sync_scheduled_years(date(2026, 6, 1))

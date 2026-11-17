@@ -170,6 +170,14 @@ JOB_CATALOG: dict[str, dict] = {
         # 매일 06:25
         "expected_interval_sec": _expected_interval(_DAY),
     },
+    "mal.sync_late_changes": {
+        "category": "kra_openapi",
+        "description": (
+            "늦은 기수변경·출전취소 반영 (경주 전날 17:25 · 당일 09:40, 경주일만 KRA 호출)"
+        ),
+        # OrTrigger 17:25 · 09:40 — 비경기일은 0건 skip 이지만 run 자체는 매일 기록
+        "expected_interval_sec": _expected_interval(_DAY),
+    },
     "mal.sync_horse_rank_changes": {
         "category": "kra_openapi",
         "description": "경주마 등급변동 (raceHorseRatingChangeInfo_2, 15058076)",

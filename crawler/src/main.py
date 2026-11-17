@@ -94,7 +94,7 @@ def cmd_backfill_horse_raw(
 @app.command("sync-race-date")
 def cmd_sync_race_date(
     rc_date: str = typer.Argument(..., help="경주 일자 (YYYY-MM-DD 또는 YYYYMMDD)"),
-    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 3곳 모두)"),
+    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 4=영천 (생략 시 전체)"),
 ) -> None:
     """Fetch race results for a given date and upsert into `race_results`."""
     for fmt in ("%Y-%m-%d", "%Y%m%d"):
@@ -113,7 +113,7 @@ def cmd_sync_race_date(
 
 @app.command("sync-jockeys")
 def cmd_sync_jockeys(
-    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 전체)"),
+    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 4=영천 (생략 시 전체)"),
 ) -> None:
     """Fetch all active jockeys and upsert into `jockeys`."""
     n = sync_all_jockeys(meet=meet)
@@ -229,7 +229,7 @@ def cmd_periodic_race_plan() -> None:
 @app.command("sync-race-plan")
 def cmd_sync_race_plan(
     year: int = typer.Argument(..., help="연도 (예: 2027)"),
-    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 3곳 모두)"),
+    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 4=영천 (생략 시 전체)"),
 ) -> None:
     """[ad-hoc] 특정 연도 대상경주 계획 수동 조회. KRA 미공개(NODATA)는 0건으로 처리."""
     n = sync_race_plan_year(year, meet=meet, allow_no_data=True)
@@ -267,7 +267,7 @@ def cmd_periodic_videos_bulk() -> None:
 @app.command("sync-dividend-date")
 def cmd_sync_dividend_date(
     rc_date: str = typer.Argument(..., help="경주 일자 (YYYY-MM-DD 또는 YYYYMMDD)"),
-    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 3곳 모두)"),
+    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 4=영천 (생략 시 전체)"),
 ) -> None:
     """Ad-hoc: 특정 날짜 확정배당율을 fetch & upsert."""
     from .jobs.sync_race_dividends import sync_date as sync_div
@@ -306,7 +306,7 @@ def cmd_periodic_chunked_dividends() -> None:
 
 @app.command("sync-trainers")
 def cmd_sync_trainers(
-    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 전체)"),
+    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 4=영천 (생략 시 전체)"),
 ) -> None:
     """Fetch all active trainers and upsert into `trainers`."""
     from .jobs.sync_trainers import sync_all_trainers
@@ -323,7 +323,7 @@ def cmd_periodic_trainers() -> None:
 
 @app.command("sync-owners")
 def cmd_sync_owners(
-    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 전체)"),
+    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 4=영천 (생략 시 전체)"),
 ) -> None:
     """Fetch all active owners and upsert into `owners`."""
     from .jobs.sync_owners import sync_all_owners
@@ -341,7 +341,7 @@ def cmd_periodic_owners() -> None:
 @app.command("sync-race-sales-date")
 def cmd_sync_race_sales_date(
     rc_date: str = typer.Argument(..., help="경주 일자 (YYYY-MM-DD 또는 YYYYMMDD)"),
-    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 (생략 시 3곳 모두)"),
+    meet: int | None = typer.Option(None, help="1=서울 2=제주 3=부경 4=영천 (생략 시 전체)"),
 ) -> None:
     """Ad-hoc: 특정 날짜 풀별 매출액을 fetch & upsert."""
     from .jobs.sync_race_sales import sync_date as sync_sales
@@ -445,7 +445,7 @@ def cmd_periodic_settle_racing_form() -> None:
 def cmd_sync_weather(
     days: int = typer.Option(7, help="직전 N일 ASOS 일자료 재수집 (cron 과 동일)"),
 ) -> None:
-    """[manual] sync_weather — 3개 관측소 직전 N일치 갱신."""
+    """[manual] sync_weather — 4개 관측소 직전 N일치 갱신."""
     n = sync_weather_recent(days=days)
     typer.echo(f"upserted {n} weather_observation rows")
 

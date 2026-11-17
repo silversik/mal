@@ -12,6 +12,7 @@ import {
 
 import { RaceDatePicker } from "@/components/race-date-picker";
 import { VenueIcon } from "@/components/venue-icon";
+import { RACE_VENUES } from "@/lib/meets";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -138,19 +139,9 @@ export async function generateMetadata(
   };
 }
 
-const MEET_ORDER = ["서울", "제주", "부경"] as const;
+const MEET_ORDER = RACE_VENUES;
 
 /* ── date helpers ────────────────────────────────────────── */
-
-function offsetDate(dateStr: string, days: number): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const dt = new Date(y, m - 1, d + days);
-  return [
-    dt.getFullYear(),
-    String(dt.getMonth() + 1).padStart(2, "0"),
-    String(dt.getDate()).padStart(2, "0"),
-  ].join("-");
-}
 
 /**
  * 정렬된 YYYY-MM-DD 리스트(`raceDates`)에서 기준일의 바로 이전/다음
@@ -322,7 +313,11 @@ export default async function RacesPage({
   const entriesPhase = entriesResult.phase;
   const [compareSummaries, recentFinishesMap] = entries.length > 0 && selectedRace
     ? await Promise.all([
-        getHorseCompareSummaries(entries.map((e) => e.horse_no)),
+        // as-of: 이 경주 이전 결과만 — 과거 카드에 이후 성적이 새지 않게.
+        getHorseCompareSummaries(entries.map((e) => e.horse_no), {
+          raceDate: currentDate,
+          raceNo: selectedRace.race_no,
+        }),
         getRecentFinishesBulk(
           entries.map((e) => e.horse_no),
           currentDate,

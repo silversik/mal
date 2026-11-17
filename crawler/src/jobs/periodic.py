@@ -18,6 +18,7 @@ from sqlalchemy import text
 
 from ..config import settings
 from ..logging import get_logger
+from ..meets import MEET_CODE_BY_NAME
 from ..monitoring import track_job
 from .backfill_races_from_entries import backfill_races_metadata_from_entries
 from .chunked_backfill_dividends import run_chunk as run_chunked_dividends_chunk
@@ -30,6 +31,7 @@ from .sync_jockey_changes import sync_recent as sync_jockey_changes_recent
 from .sync_jockeys import sync_all_jockeys
 from .sync_owners import sync_all_owners
 from .sync_race_dividends import sync_date_all_meets as sync_dividends_all_meets
+from .sync_race_entries import sync_dates as sync_race_entries_dates
 from .sync_race_entries import sync_upcoming as sync_upcoming_race_entries
 from .sync_race_plan import sync_scheduled_years as sync_race_plan_years
 from .sync_race_sales import sync_date_all_meets as sync_race_sales_all_meets
@@ -82,7 +84,7 @@ def run_sync_races_today() -> int:
 
 
 # races.meet 는 한글명 저장 — API meet 코드로 역매핑 ("부산경남" 표기도 허용)
-_MEET_CODE = {"서울": 1, "제주": 2, "부경": 3, "부산경남": 3}
+_MEET_CODE = MEET_CODE_BY_NAME
 
 
 def _dividend_meet_codes(race_meets: set[str], *, d: date, event: str) -> list[int]:
@@ -336,12 +338,16 @@ def run_sync_race_entries() -> int:
     # "오늘의 경주"·"다음 진행 예정 경기" 섹션이 빈 채로 노출된 사고가 있었음.
     # success/0 이라 모니터링이 캐치 못함 — 명시적 RuntimeError 로 전환해
     # 대시보드에 failed 로 기록되도록.
+    _require_chulma_op()
+    return sync_upcoming_race_entries(days_ahead=10)
+
+
+def _require_chulma_op() -> None:
     if not settings.kra_chulma_operation:
         raise RuntimeError(
             "KRA_CHULMA_OPERATION 미설정 — data.go.kr Swagger 의 API26_2 "
             "operationId (예: entrySheet_2) 를 .env 에 추가하세요."
         )
-    return sync_upcoming_race_entries(days_ahead=10)
 
 
 @track_job("mal.backfill_races_from_entries")
@@ -390,6 +396,34 @@ def run_sync_jockey_changes() -> int:
     어제/오늘 새 이벤트는 자동 누적. 별도 백필 불필요.
     """
     return sync_jockey_changes_recent()
+
+
+@track_job("mal.sync_late_changes")
+def run_sync_late_changes() -> int:
+    """늦은 기수변경·출전취소 반영 — 매일 17:25 · 09:40 KST, 경주가 있는 날만 KRA 호출.
+
+    06:25 기수변경(1일 1회)·3시간 주기 출전표만으로는 오후에 공표된 변경이 다음날에야
+    들어와, 경주 전날 18:00 에 동결되는 경마지에 빠진다.
+      * 17:25 (정오 이후 실행) → 내일 경주: 동결 35분 전 마지막 반영.
+      * 09:40 (정오 이전 실행) → 오늘 경주: 첫 발주 전 당일 아침 변경.
+    대상일 races(출전표 skeleton 이 채움)에 경마장이 없으면 KRA 호출 없이 0 — 요일이 아니라
+    데이터로 거르므로 공휴일 경주도 커버. 호출: 기수변경 1 + 출전표 경마장 수(≤3).
+    """
+    now = datetime.now(KST)
+    target = now.date() + timedelta(days=1 if now.hour >= 12 else 0)
+    race_meets = _race_meets_on(target)
+    if not race_meets:
+        log.info("late_changes_skip_no_races", date=str(target))
+        return 0
+    _require_chulma_op()
+    meets = _dividend_meet_codes(race_meets, d=target, event="late_changes_unknown_meet")
+    changes = sync_jockey_changes_recent()
+    entries = sync_race_entries_dates([target], meets=meets) if meets else 0
+    log.info(
+        "late_changes_done",
+        date=str(target), meets=meets, jockey_changes=changes, entries=entries,
+    )
+    return changes + entries
 
 
 @track_job("mal.sync_horse_rank_changes")
