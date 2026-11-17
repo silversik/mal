@@ -18,6 +18,7 @@ from sqlalchemy import text
 
 from ..config import settings
 from ..logging import get_logger
+from ..meets import MEET_CODE_BY_NAME
 from ..monitoring import track_job
 from .backfill_races_from_entries import backfill_races_metadata_from_entries
 from .chunked_backfill_dividends import run_chunk as run_chunked_dividends_chunk
@@ -82,7 +83,7 @@ def run_sync_races_today() -> int:
 
 
 # races.meet 는 한글명 저장 — API meet 코드로 역매핑 ("부산경남" 표기도 허용)
-_MEET_CODE = {"서울": 1, "제주": 2, "부경": 3, "부산경남": 3}
+_MEET_CODE = MEET_CODE_BY_NAME
 
 
 def _dividend_meet_codes(race_meets: set[str], *, d: date, event: str) -> list[int]:

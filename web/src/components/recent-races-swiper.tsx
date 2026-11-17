@@ -5,11 +5,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { RankBadge } from "@/components/rank-badge";
 import { VenueIcon } from "@/components/venue-icon";
+import { isRaceVenue, RACE_VENUES, type RaceVenue } from "@/lib/meets";
 import type { RaceInfo, TopFinisher } from "@/lib/races";
 import type { VideoItem } from "@/lib/video-helpers";
 
-const MEETS = ["서울", "제주", "부경"] as const;
-type Meet = (typeof MEETS)[number];
+const MEETS = RACE_VENUES;
+type Meet = RaceVenue;
+// 시즌 개최 경마장(영천 · 9~12월 일요일)은 비시즌에 빈 탭이 늘 비활성으로 남지 않게 숨긴다.
+const SEASONAL: ReadonlySet<Meet> = new Set<Meet>(["영천"]);
 
 const MAX_DOTS = 8;
 const SCROLL_DURATION_MS = 350;
@@ -63,16 +66,16 @@ export function RecentRacesSwiper({ races, finishers, videos }: Props) {
   }, [videos]);
 
   const byMeet = useMemo(() => {
-    const groups: Record<Meet, RaceInfo[]> = { 서울: [], 제주: [], 부경: [] };
+    const groups: Record<Meet, RaceInfo[]> = { 서울: [], 제주: [], 부경: [], 영천: [] };
     for (const r of races) {
-      if (r.meet === "서울" || r.meet === "제주" || r.meet === "부경") {
+      if (r.meet && isRaceVenue(r.meet)) {
         groups[r.meet].push(r);
       }
     }
     return groups;
   }, [races]);
 
-  // 데이터가 있는 첫 meet 을 기본 탭으로. 셋 다 비어있으면 서울.
+  // 데이터가 있는 첫 meet 을 기본 탭으로. 모두 비어있으면 서울.
   const initialMeet =
     MEETS.find((m) => byMeet[m].length > 0) ?? "서울";
   const [activeMeet, setActiveMeet] = useState<Meet>(initialMeet);
@@ -82,7 +85,7 @@ export function RecentRacesSwiper({ races, finishers, videos }: Props) {
       {/* ── 경마장 탭바 (한 줄) — 이전 디자인은 meet 별 row 가 3개 세로로 쌓여
             페이지를 길게 잡아먹었다. 한 줄 탭으로 압축하고 swiper 1개만 노출. */}
       <div className="mb-4 flex items-center gap-1 border-b border-border">
-        {MEETS.map((m) => {
+        {MEETS.filter((m) => !SEASONAL.has(m) || byMeet[m].length > 0).map((m) => {
           const count = byMeet[m].length;
           const active = m === activeMeet;
           const disabled = count === 0;

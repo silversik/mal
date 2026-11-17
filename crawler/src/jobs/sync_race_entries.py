@@ -22,6 +22,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from ..clients.race_chulma import RaceChulmaClient, api_item_to_race_entry_fields
 from ..db import session_scope
 from ..logging import get_logger
+from ..meets import MEET_CODES
 from ..models import Race, RaceEntry
 from ..redact import redact
 from ._failloud import UnitFailures, is_kra_no_data
@@ -29,7 +30,7 @@ from ._failloud import UnitFailures, is_kra_no_data
 log = get_logger(__name__)
 
 KST = ZoneInfo("Asia/Seoul")
-MEETS = (1, 2, 3)
+MEETS = MEET_CODES  # 서울·제주·부경·영천 — src/meets.py 단일 진실원
 #: 정기 경주 요일 (금/토/일) — 출전표 공표 전 구간의 조회 대상.
 WEEKEND_RACE_WEEKDAYS = (4, 5, 6)
 #: 출전표는 경주일 ~3일 전 공표 — 오늘~+N일은 요일 무관 매일 조회 (공휴일 경주 대응).

@@ -88,15 +88,15 @@ def test_01_races_live_skips_non_race_day(e2e):
 def test_02_race_entries(e2e):
     D = _d(e2e)
     n = e2e.run("mal.sync_race_entries", D - timedelta(days=1), 9, 0)
-    assert n == 12
+    assert n == 12 + 3  # D 서울·부경 4경주 + D+1(일) 영천 1경주 × 3두
     reqs = e2e.web.kra_calls("API26_2")
-    # 출전표 공표 구간 D-1(금)~D+3 은 요일 무관 매일 + 그 뒤 D+9 까지 금/토/일 × 3 경마장
+    # 출전표 공표 구간 D-1(금)~D+3 은 요일 무관 매일 + 그 뒤 D+9 까지 금/토/일 × 4 경마장 (영천 포함)
     days = [D - timedelta(days=1) + timedelta(days=i) for i in range(11)]
     race_days = {x.strftime("%Y%m%d") for i, x in enumerate(days)
                  if i <= 4 or x.weekday() in (4, 5, 6)}
     assert (D + timedelta(days=2)).strftime("%Y%m%d") in race_days  # 월요일도 조회
     assert {(r.params["rc_date"], r.params["meet"]) for r in reqs} == {
-        (d, m) for d in race_days for m in ("1", "2", "3")
+        (d, m) for d in race_days for m in ("1", "2", "3", "4")
     }
     row = e2e.one(
         "SELECT * FROM race_entries WHERE race_date=:d AND meet='서울' AND race_no=2 "
@@ -109,12 +109,16 @@ def test_02_race_entries(e2e):
                   "ORDER BY meet, race_no", d=D)
     assert [(r["meet"], r["race_no"], r["entry_count"]) for r in races] == [
         ("부경", 1, 3), ("부경", 2, 3), ("서울", 1, 3), ("서울", 2, 3)]
+    yc = e2e.q("SELECT meet, race_no, entry_count FROM races WHERE race_date=:d", d=_d1(e2e))
+    assert [(r["meet"], r["race_no"], r["entry_count"]) for r in yc] == [("영천", 1, 3)]
+    yc_entry = e2e.one("SELECT meet, horse_name FROM race_entries WHERE horse_no='0041013'")
+    assert yc_entry == {"meet": "영천", "horse_name": "영천의별"}  # meet "4" → 한글 정규화
 
 
 def test_03_backfill_races_from_entries(e2e):
     D = _d(e2e)
     n = e2e.run("mal.backfill_races_from_entries", D - timedelta(days=1), 12, 0)
-    assert n == 4
+    assert n == 4 + 1  # + D+1 영천 1R
     rows = {(r["meet"], r["race_no"]): r for r in e2e.q(
         "SELECT * FROM races WHERE race_date=:d", d=D)}
     s1, s2, b1 = rows[("서울", 1)], rows[("서울", 2)], rows[("부경", 1)]
@@ -135,7 +139,8 @@ def test_04_race_plan(e2e):
     assert n == len(expected)
     reqs = e2e.web.kra_calls("API40")
     assert {(r.params["rc_year"], r.params["meet"]) for r in reqs} == {
-        (str(y), m) for y in years for m in ("1", "2", "3")}
+        (str(y), m) for y in years for m in ("1", "2", "3", "4")}
+    # 영천은 대상경주 계획이 없어 NODATA — SOFT_NO_DATA_MEETS 라 잡 실패 아님
     rows = {r["race_name"]: r for r in e2e.q("SELECT * FROM race_plans")}
     assert not any(name.startswith("작년대상") for name in rows)  # 연도 불일치 item 제외
     stake = rows["부산일보배"]
@@ -186,7 +191,7 @@ def test_08_races_live_race_day(e2e):
     D = _d(e2e)
     n = e2e.run("mal.sync_races_live", D, 13, 0)
     assert n == 6 + 6  # 결과 (서울1R+부경1R) + 단·연 배당 row
-    assert _params(e2e.web.kra_calls("racedetailresult"), "meet") == ["1", "2", "3"]
+    assert _params(e2e.web.kra_calls("racedetailresult"), "meet") == ["1", "2", "3", "4"]
     # 배당(API301)은 결과는 있는데 배당이 빈 경마장만 — 제주 호출 없음 (쿼터 절약)
     assert _params(e2e.web.kra_calls("API301"), "meet") == ["1", "3"]
     rr = {r["horse_no"]: r for r in e2e.q("SELECT * FROM race_results WHERE race_date=:d", d=D)}
@@ -279,8 +284,10 @@ def test_14_videos_backfill_search(e2e):
     n = e2e.run("mal.sync_videos_backfill", D, 23, 0)
     assert n == 2  # head 에서 밀린 서울 1R + uploads 에 없는 부경 2R
     searches = [r.params["q"] for r in e2e.web.requests if r.path.endswith("/search")]
-    ds = D.strftime("%Y.%m.%d")
-    assert sorted(searches) == sorted([f"(부경) {ds} 2경주", f"(서울) {ds} 1경주"])
+    ds, ds1 = D.strftime("%Y.%m.%d"), _d1(e2e).strftime("%Y.%m.%d")
+    # 영천(D+1)은 races 의 race_date<=CURRENT_DATE(실제 DB 날짜)라 함께 검색되지만 영상 없음
+    assert sorted(searches) == sorted(
+        [f"(부경) {ds} 2경주", f"(서울) {ds} 1경주", f"(영천) {ds1} 1경주"])
     linked = e2e.q("SELECT meet, race_no FROM kra_videos WHERE race_date=:d "
                    "ORDER BY meet, race_no", d=D)
     assert [(r["meet"], r["race_no"]) for r in linked] == [
@@ -292,7 +299,7 @@ def test_14b_races_today_backstop(e2e):
     n = e2e.run("mal.sync_races_today", D, 23, 5)
     # 부경 2R 결과가 아직 없어 live 가 커버 못 한 날 → 직접 재수집 (멱등 upsert)
     assert n == 9
-    assert _params(e2e.web.kra_calls("racedetailresult"), "meet") == ["1", "2", "3"]
+    assert _params(e2e.web.kra_calls("racedetailresult"), "meet") == ["1", "2", "3", "4"]
     assert e2e.web.kra_calls("API42_1") == []  # 새 stub 없음 + 0041009 오늘 시도함
     cnt = e2e.one("SELECT COUNT(*) AS n FROM race_results WHERE race_date=:d", d=D)
     assert cnt["n"] == 9
@@ -317,9 +324,9 @@ def test_15_chunked_dividends_backfill_fills_gap(e2e):
 def test_16_weather(e2e):
     D, D1 = _d(e2e), _d1(e2e)
     n = e2e.run("mal.sync_weather", D1, 3, 0)
-    assert n == 3 * 7 * 24  # 수원·제주·부산 7일 × 24h
+    assert n == 4 * 7 * 24  # 수원·제주·부산·영천 7일 × 24h
     reqs = [r for r in e2e.web.requests if r.host == "apis.data.go.kr"]
-    assert _params(reqs, "stnIds") == ["119", "159", "184"]
+    assert _params(reqs, "stnIds") == ["119", "159", "184", "281"]
     # 전날까지만 요청 (KMA 시간자료 한도)
     assert {(r.params["startDt"], r.params["endDt"], r.params["endHh"]) for r in reqs} == {
         ((D - timedelta(days=6)).strftime("%Y%m%d"), D.strftime("%Y%m%d"), "23")}
@@ -443,7 +450,27 @@ def test_26_yesterday_residual_skips_when_complete(e2e):
     assert e2e.web.requests == []
 
 
-def test_26b_late_changes_skips_non_race_eve(e2e):
+def test_27_races_live_yeongcheon_sunday(e2e):
+    """일요일 영천 단독 개최 — 출전표(test_02)로 races 가 있으니 live 잡이 영천 결과·배당 수집."""
+    D1 = _d1(e2e)
+    n = e2e.run("mal.sync_races_live", D1, 13, 0)
+    assert n == 3 + 3  # 결과 3두 + 단·연 배당 3두
+    assert _params(e2e.web.kra_calls("racedetailresult"), "meet") == ["1", "2", "3", "4"]
+    assert _params(e2e.web.kra_calls("API301"), "meet") == ["4"]  # 배당은 영천만
+    rr = e2e.q("SELECT meet, race_no, horse_no, rank FROM race_results WHERE race_date=:d "
+               "ORDER BY rank", d=D1)
+    assert [(r["meet"], r["horse_no"], r["rank"]) for r in rr] == [
+        ("영천", "0041013", 1), ("영천", "0041015", 2), ("영천", "0041014", 3)]
+    div = e2e.one("SELECT COUNT(*) AS n FROM race_dividends WHERE race_date=:d AND meet='영천'",
+                  d=D1)
+    assert div["n"] == 3
+    combos = e2e.one("SELECT COUNT(*) AS n FROM race_combo_dividends "
+                     "WHERE race_date=:d AND meet='영천'", d=D1)
+    assert combos["n"] == 4
+    assert _params(e2e.web.kra_calls("API42_1"), "hr_no") == ["0041013", "0041014", "0041015"]
+
+
+def test_27b_late_changes_skips_non_race_eve(e2e):
     """경주 없는 날 전날 17:25 — 대상일 races 가 비어 KRA 호출 0."""
     n = e2e.run("mal.sync_late_changes", _d1(e2e), 17, 25)
     assert n == 0
@@ -478,7 +505,7 @@ def test_29_race_entries_upcoming_week(e2e):
     # 공휴일(월) 경주일 — 금/토/일 하드코딩이면 조회조차 안 되던 날
     reqs = e2e.web.kra_calls("API26_2")
     assert {r.params["meet"] for r in reqs if r.params["rc_date"] == w.H.strftime("%Y%m%d")} == {
-        "1", "2", "3"}
+        "1", "2", "3", "4"}
     hol = e2e.q("SELECT meet, race_no, horse_no FROM race_entries WHERE race_date=:h "
                 "ORDER BY chul_no", h=w.H)
     assert [(r["meet"], r["race_no"], r["horse_no"]) for r in hol] == [
@@ -490,7 +517,7 @@ def test_29_race_entries_upcoming_week(e2e):
 def test_30_backfill_races_from_entries_upcoming(e2e):
     w = e2e.world
     n = e2e.run("mal.backfill_races_from_entries", w.real_today, 12, 10)
-    assert n == 6  # D 4경주(기존 값 보존) + U 1경주 + 공휴일 H 1경주
+    assert n == 7  # D 4경주(기존 값 보존) + D+1 영천 1경주 + U 1경주 + 공휴일 H 1경주
     r = e2e.one("SELECT * FROM races WHERE race_date=:u", u=w.U)
     assert (r["meet"], r["race_no"], r["distance"], r["start_time"], r["entry_count"]) == (
         "서울", 1, 1200, "11:30", 3)
@@ -627,8 +654,11 @@ def test_40_web_races_by_date_and_next_race_day(e2e):
       ORDER BY r.race_date DESC, r.meet, r.race_no, r.rank""",
         4,
     )
-    assert len(top) == 12
+    assert len(top) == 12 + 3  # D 4경주 + D+1 영천 1경주
+    # 최신 경주일(D+1 일)의 영천이 맨 앞
     assert (top[0]["meet"], top[0]["race_no"], top[0]["rank"], top[0]["horse_name"]) == (
+        "영천", 1, 1, "영천의별")
+    assert (top[3]["meet"], top[3]["race_no"], top[3]["rank"], top[3]["horse_name"]) == (
         "부경", 1, 1, "신인등장")
 
 
@@ -899,6 +929,7 @@ def test_43_web_horse_detail(e2e):
               WHEN '서울' THEN 119
               WHEN '제주' THEN 184
               WHEN '부경' THEN 159
+              WHEN '영천' THEN 281
             END
         AND w.obs_time = date_trunc('hour',
               (rr.race_date::text || ' ' || lpad(r.start_time, 5, '0') || ':00')::timestamp
@@ -955,7 +986,7 @@ def test_44_web_rankings_plans_notifications(e2e):
         LIMIT 50""",
         w.D.year,
     )
-    assert len(ranking) == 12 and sum(r["win"] for r in ranking) == 4
+    assert len(ranking) == 15 and sum(r["win"] for r in ranking) == 5  # + 영천 3두·1승
     # race_plans.ts getUpcomingStakesFromPlans
     stakes = e2e.web_query(
         """SELECT id,

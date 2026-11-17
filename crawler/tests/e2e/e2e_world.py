@@ -14,11 +14,12 @@
   videos / search.
 - race.kra.co.kr/seoulMain.do: EUC-KR HTML, `a.raceDetail` 앵커 data-* 속성.
 
-세계 (FakeWorld) — 경주일 D(토) 하나에 2 경마장(서울·부경) × 2 경주 × 3 마필 + 다음 주
-예정일 U 의 출전표 + U 다음 월요일 공휴일 경주일 H(부경 단독)
+세계 (FakeWorld) — 경주일 D(토) 하나에 2 경마장(서울·부경) × 2 경주 × 3 마필 + 이튿날
+D+1(일) 영천(meet 4) 1경주 + 다음 주 예정일 U 의 출전표 + U 다음 월요일 공휴일 경주일 H(부경 단독)
 의 출전표. 결과·배당·매출은 시각(가짜 시계) 기준으로 "공표" 된다:
   서울1R 11:30 · 부경1R 12:30 · 서울2R 15:00 · 부경2R D+1 08:30 (KRA 공표 지연 → residual 잡)
   부경 복식(combo) 배당은 D+1 00:00 이후 (→ 야간 gap 백필 잡이 메움)
+  영천1R(D+1 일) 11:40 — 일요일 단독 개최 → D+1 live 잡이 수집
 """
 from __future__ import annotations
 
@@ -44,8 +45,8 @@ YT_CHANNEL = "UCe2eKRBCchannel000000"
 YT_UPLOADS = "UUe2eKRBCchannel000000"
 CHULMA_OP = "entrySheet_2"
 
-MEET_NAME = {1: "서울", 2: "제주", 3: "부경"}
-STATION_OF_MEET = {1: 119, 2: 184, 3: 159}
+MEET_NAME = {1: "서울", 2: "제주", 3: "부경", 4: "영천"}
+STATION_OF_MEET = {1: 119, 2: 184, 3: 159, 4: 281}
 
 # 마필 12두 — (마번, 마명, 성별, 모색 원문, 마주 idx)
 _HORSE_ROWS = [
@@ -100,8 +101,16 @@ class Horse:
         return int(self.no[-2:])
 
 
+# 영천 전용 마필 3두 — HORSES(레이팅 응답 대상)에는 넣지 않아 기존 카운트 유지
+_YC_HORSE_ROWS = [
+    ("0041013", "영천의별", "수", "갈", 0),
+    ("0041014", "금호강", "암", "밤", 1),
+    ("0041015", "보현산", "거", "회", 2),
+]
+
 HORSES = [Horse(*r) for r in _HORSE_ROWS]
-HORSE_BY_NO = {h.no: h for h in HORSES}
+YC_HORSES = [Horse(*r) for r in _YC_HORSE_ROWS]
+HORSE_BY_NO = {h.no: h for h in HORSES + YC_HORSES}
 
 
 @dataclass(frozen=True)
@@ -115,6 +124,7 @@ class RaceDef:
     horses: tuple[str, str, str]  # chulNo 1..3 순서
     ranks: tuple[int, int, int]  # chulNo 1..3 의 확정착순
     rc_times: tuple[str, str, str]
+    day_offset: int = 0  # 경주일 = D + day_offset (영천은 일요일 D+1)
 
 
 @dataclass
@@ -189,6 +199,10 @@ class FakeWorld:
             RaceDef(3, 2, 1600, "혼3등급", "부산일보배", "15:30",
                     ("0041010", "0041011", "0041012"), (1, 2, 3),
                     ("1:38.0", "1:38.4", "1:39.1")),
+            # 영천(4) — 일요일 D+1 단독 개최
+            RaceDef(4, 1, 1200, "혼6등급", "일반", "11:00",
+                    ("0041013", "0041014", "0041015"), (1, 3, 2),
+                    ("1:14.0", "1:15.1", "1:14.6"), day_offset=1),
         ]
         # 결과/배당/매출 공표 시각
         self.publish_at: dict[tuple[int, int], datetime] = {
@@ -196,6 +210,7 @@ class FakeWorld:
             (3, 1): self._kst(D, 12, 30),
             (1, 2): self._kst(D, 15, 0),
             (3, 2): self._kst(D + timedelta(days=1), 8, 30),
+            (4, 1): self._kst(D + timedelta(days=1), 11, 40),
         }
         self.busan_combo_at = self._kst(D + timedelta(days=1), 0, 0)
         # 신규 마필 0041009 는 D+1 06:00 에야 KRA 마필정보(API42_1)에 올라온다.
@@ -249,10 +264,11 @@ class FakeWorld:
     def published(self, meet: int, no: int, now: datetime) -> bool:
         return now >= self.publish_at[(meet, no)]
 
+    def race_date(self, r: RaceDef) -> date:
+        return self.D + timedelta(days=r.day_offset)
+
     def races_on(self, meet: int, d: date) -> list[RaceDef]:
-        if d != self.D:
-            return []
-        return [r for r in self.races if r.meet == meet]
+        return [r for r in self.races if r.meet == meet and self.race_date(r) == d]
 
     # ---------------------------------------------------------------- KRA items
 
@@ -329,8 +345,8 @@ class FakeWorld:
     def entry_items(self, meet: int, d: date, now: datetime) -> list[dict[str, Any]]:
         if now.date() < d - timedelta(days=3):
             return []  # 출전표는 경주일 ~3일 전에야 공표
-        if d == self.D:
-            races = [r for r in self.races if r.meet == meet]
+        if self.races_on(meet, d):
+            races = self.races_on(meet, d)
         elif d == self.U and meet == self.upcoming.meet:
             races = [self.upcoming]
         elif d == self.H and meet == self.holiday.meet:
@@ -482,7 +498,7 @@ class FakeWorld:
             if t.date() == self.D and stn == 159 and t.hour == 15:
                 rn = "3.0"  # 부경 2R(15:30) → 강한 비
             out.append({"tm": t.strftime("%Y-%m-%d %H:%M"), "stnId": str(stn),
-                        "stnNm": {119: "수원", 184: "제주", 159: "부산"}[stn],
+                        "stnNm": {119: "수원", 184: "제주", 159: "부산", 281: "영천"}[stn],
                         "ta": f"{10 + t.hour / 10:.1f}", "rn": rn, "ws": "2.1",
                         "wd": "270", "hm": "61.0"})
             t += timedelta(hours=1)
@@ -776,7 +792,7 @@ class FakeWeb:
     def _kra_html(self, request: httpx.Request) -> httpx.Response:
         today = self.clock.today
         anchors = []
-        for r in self.w.races_on(1, today) + self.w.races_on(3, today):
+        for r in [r for m in MEET_NAME for r in self.w.races_on(m, today)]:
             a = (f'<a href="#none" class="raceDetail on" data-meet="{r.meet}" '
                  f'data-rcDate="{ymd(today)}" data-rcNo="{r.no}" data-stTime="{r.st_time}" '
                  f'data-rcDist="{r.distance}" data-rcName="{r.rc_name}">{r.no}R</a>')

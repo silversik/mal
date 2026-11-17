@@ -904,8 +904,8 @@ e2e DB 준비는 [crawler/tests/e2e/README.md](../../crawler/tests/e2e/README.md
 
 ### 11.3 범위 밖 — 별도 작업
 
-- 영천(meet 4) 출전표·결과 수집 + 웹의 3경마장 하드코딩 (`crawler/src/jobs/sync_race_entries.py` `MEETS`,
-  `crawler/src/jobs/sync_races.py:119`, `crawler/src/clients/race_today_html.py:57-59`, `web/src/lib/race-seo.ts:9`).
+- 영천(meet 4) 경마지 — 수집(출전표·결과·배당·매출·날씨 281)과 `/races`·홈·SEO 노출은 완료
+  (`crawler/src/meets.py`, `web/src/lib/meets.ts`). 경마지(`FORM_MEETS`·`parse.VALID_MEETS`)는 아직 영천 제외.
 - ~~공휴일 경주일 출전표 수집 (예: 2026-10-05 17경주 누락)~~ — 2026-11 해결: 오늘~+4일은 요일 무관 매일 조회.
 - 기수변경 수집 주기(06:25 1회) 확대 · 출전취소/특이사항 API(15056779·15160316) 도입 · 출전취소마 잔존.
 - interval 잡의 첫 실행 지연·다운타임 중 놓친 cron 미재생 (경마지 잡은 기동 직후 1회로 자체 보완).

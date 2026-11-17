@@ -131,7 +131,7 @@ def test_holiday_entries_are_upserted(env: dict[str, Any]) -> None:
     assert {(r["race_date"], r["meet"]) for r in env["entries"]} == {
         (date(2026, 10, 3), "서울"), (HOLIDAY, "서울"), (HOLIDAY, "부경")}
     assert {(r["race_date"], r["race_no"]) for r in env["skeleton"]} >= {(HOLIDAY, 1), (HOLIDAY, 2)}
-    assert {(HOLIDAY, m) for m in (1, 2, 3)} <= set(FakeClient.calls)
+    assert {(HOLIDAY, m) for m in mod.MEETS} <= set(FakeClient.calls)
 
 
 def test_all_nodata_is_zero_not_failure(env: dict[str, Any]) -> None:
@@ -141,7 +141,7 @@ def test_all_nodata_is_zero_not_failure(env: dict[str, Any]) -> None:
 def test_unknown_date_fails_loudly_after_other_dates(env: dict[str, Any]) -> None:
     boom = RuntimeError("HTTP 500")
     FakeClient.responses = {
-        (HOLIDAY, 1): boom, (HOLIDAY, 2): boom, (HOLIDAY, 3): boom,
+        **{(HOLIDAY, m): boom for m in mod.MEETS},  # 영천(4) 포함 전 경마장 실패
         (date(2026, 10, 9), 1): [_item(date(2026, 10, 9), 1, 1, "0001")],
     }
     with pytest.raises(RuntimeError, match="경주일 확인 불가.*2026-10-05"):
@@ -160,7 +160,7 @@ def test_single_meet_failure_is_only_a_warning(env: dict[str, Any]) -> None:
 
 def test_unknown_date_error_is_redacted(env: dict[str, Any]) -> None:
     boom = RuntimeError("GET https://apis.data.go.kr/x?serviceKey=SECRETKEY123 500")
-    FakeClient.responses = {(HOLIDAY, m): boom for m in (1, 2, 3)}
+    FakeClient.responses = {(HOLIDAY, m): boom for m in mod.MEETS}
     with pytest.raises(RuntimeError) as ei:
         mod.sync_upcoming(days_ahead=10)
     assert "SECRETKEY123" not in str(ei.value)

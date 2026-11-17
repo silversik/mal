@@ -15,10 +15,12 @@ from typing import Any
 
 import httpx
 
+from ..meets import MEET_NAMES
+
 URL = "https://race.kra.co.kr/seoulMain.do"
 
-# data-meet 코드는 OpenAPI 와 동일 — 1=서울, 2=제주, 3=부경(부산경남).
-_MEET_NAMES = {"1": "서울", "2": "제주", "3": "부경"}
+# data-meet 코드는 OpenAPI 와 동일 — 1=서울, 2=제주, 3=부경(부산경남), 4=영천.
+_MEET_NAMES = MEET_NAMES
 
 # raceDetail 앵커는 한 경주에 대해 페이지 안에서 여러 번 반복될 수 있다 (예: 발매중/배당
 # 카드 등). data-* 속성이 동일하면 같은 경주이므로 (race_date, meet, race_no) 기준으로 dedup.

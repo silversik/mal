@@ -12,6 +12,7 @@ import {
 
 import { RaceDatePicker } from "@/components/race-date-picker";
 import { VenueIcon } from "@/components/venue-icon";
+import { RACE_VENUES } from "@/lib/meets";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -138,7 +139,7 @@ export async function generateMetadata(
   };
 }
 
-const MEET_ORDER = ["서울", "제주", "부경"] as const;
+const MEET_ORDER = RACE_VENUES;
 
 /* ── date helpers ────────────────────────────────────────── */
 

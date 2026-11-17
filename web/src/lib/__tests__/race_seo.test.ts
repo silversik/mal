@@ -39,6 +39,15 @@ describe("buildRaceCanonical — 페이지 자기 URL 정규화", () => {
     const p = normalizeRaceParams({ date: " 2026-11-01 ", venue: "서울", race: "03" });
     expect(buildRaceCanonical(p)).toBe(`/races?date=2026-11-01&venue=${SEOUL}&race=3`);
   });
+  it("영천(일요일 개최)도 경주 상세 canonical 유지", () => {
+    const p = normalizeRaceParams({ date: "2026-11-15", venue: "영천", race: "6" });
+    expect(p.venue).toBe("영천");
+    expect(buildRaceCanonical(p)).toBe(
+      `/races?date=2026-11-15&venue=${encodeURIComponent("영천")}&race=6`,
+    );
+    // sitemap loc(raceDetailPath)와 canonical 이 같은 URL
+    expect(raceDetailPath("2026-11-15", "영천", 6)).toBe(buildRaceCanonical(p));
+  });
   it("앱 내부 링크 형식과 동일", () => {
     expect(raceDetailPath("2026-11-01", "부경", 7)).toBe(
       `/races?date=2026-11-01&venue=${encodeURIComponent("부경")}&race=7`,
@@ -95,6 +104,12 @@ describe("buildRaceTitle / buildRaceDescription", () => {
     expect(buildRaceTitle("2026-11-01", "부경", 2, null)).toBe("2026-11-01 부경 2R 경주 결과");
     expect(buildRaceDescription("2026-11-01", "부경", 2, null)).toContain(
       "2026년 11월 1일 부경 제2경주",
+    );
+  });
+  it("영천 제목·설명", () => {
+    expect(buildRaceTitle("2026-11-15", "영천", 1, base)).toBe("2026-11-15 영천 1R 경주 결과");
+    expect(buildRaceDescription("2026-11-15", "영천", 1, base)).toContain(
+      "2026년 11월 15일 영천 제1경주",
     );
   });
   it("설명에 거리·등급·주로", () => {

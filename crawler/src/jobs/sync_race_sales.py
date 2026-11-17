@@ -13,6 +13,7 @@ from ..clients.race_sales import (
 )
 from ..db import session_scope
 from ..logging import get_logger
+from ..meets import MEET_CODES
 from ..models import RacePoolSales
 from ._failloud import UnitFailures
 
@@ -82,7 +83,7 @@ def sync_date_all_meets(rc_date: date) -> int:
     """전 경마장 합산 — 매일 결과 확정 후 cron 호출."""
     total = 0
     fails = UnitFailures("race_sales")
-    for meet in (1, 2, 3):
+    for meet in MEET_CODES:
         try:
             total += sync_date(rc_date, meet=meet)
         except Exception as e:  # noqa: BLE001

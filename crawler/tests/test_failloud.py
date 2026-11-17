@@ -115,7 +115,7 @@ def test_entries_partial_fail_returns_rows(entries):
     entries(lambda d, m: BOOM if m == 1 else [{"x": 1}, {"x": 2}])
     n = sync_race_entries.sync_upcoming(days_ahead=10)
     dates = sync_race_entries._upcoming_race_dates(date.today(), 10)
-    assert n == 2 * 2 * len(dates)  # meet 2·3 × 2건 × 일자 수
+    assert n == 3 * 2 * len(dates)  # meet 2·3·4 × 2건 × 일자 수
 
 
 def test_entries_all_empty_is_ok(entries):
@@ -152,15 +152,15 @@ def meet_job(request, monkeypatch):
 def test_meets_all_fail_raises(meet_job):
     mod, install, name = meet_job
     fake = install(lambda d, m: BOOM)
-    with pytest.raises(RuntimeError, match=f"{name}: 시도한 3개"):
+    with pytest.raises(RuntimeError, match=f"{name}: 시도한 4개"):
         mod.sync_date_all_meets(date(2026, 11, 1))
-    assert [m for _, m in fake.calls] == [1, 2, 3]
+    assert [m for _, m in fake.calls] == [1, 2, 3, 4]
 
 
 def test_meets_partial_fail_returns_rows(meet_job):
     mod, install, _ = meet_job
     install(lambda d, m: BOOM if m == 2 else [{"i": 1}])
-    assert mod.sync_date_all_meets(date(2026, 11, 1)) == 2
+    assert mod.sync_date_all_meets(date(2026, 11, 1)) == 3
 
 
 def test_meets_all_empty_is_ok(meet_job):
@@ -187,7 +187,7 @@ def test_backfill_partial_days_ok(meet_job):
     mod, install, _ = meet_job
     today = date.today()
     install(lambda d, m: BOOM if d == today else [{"i": 1}])
-    assert mod.backfill_recent_days(days=3) == 2 * 3  # 이틀 × 3 meet
+    assert mod.backfill_recent_days(days=3) == 2 * 4  # 이틀 × 4 meet
 
 
 # ------------------------------------------------------------ weather
