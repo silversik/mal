@@ -48,7 +48,7 @@ function ParentLine({ agg }: { agg: ParentChildAggregate }) {
             label="1-2-3"
             value={`${agg.total_win}-${agg.total_place}-${agg.total_show}`}
           />
-          <Cell label="우승률" value={`${(agg.win_rate * 100).toFixed(0)}%`} />
+          <Cell label="우승 자손" value={`${agg.winners}/${agg.total_children}`} />
         </div>
       </CardContent>
     </Card>
