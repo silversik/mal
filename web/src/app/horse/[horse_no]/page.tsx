@@ -60,9 +60,8 @@ import {
 import {
   getHorseRankChanges,
 } from "@/lib/horse_rank_changes";
-import { RatingSparkline } from "@/components/rating-sparkline";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
-import { getVideosForRaces, raceKey } from "@/lib/videos";
+import { getVideosForRaces } from "@/lib/videos";
 import { Suspense } from "react";
 import { CommentSection } from "@/components/comment-section";
 
