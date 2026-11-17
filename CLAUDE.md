@@ -54,7 +54,7 @@ uv run python -m src.scheduler_main
   - `src/healthcheck.py` — 읽기 전용 운영 점검 (`healthcheck` CLI). prod: `docker exec mal-crawler python -m src.main healthcheck`.
   - `src/monitoring.py` — `JOB_CATALOG` + `@track_job` 데코레이터. run 시작/종료를 통합 **crawler-dashboard** 에 HTTP 리포트, 실패 시 Telegram 알림(`crawler_core` 가 처리). 대시보드 down 이어도 잡은 계속.
   - systemd 타이머(`crawler/systemd/`)는 제거됨 — 스케줄은 `scheduler_main.py` 내장 APScheduler 가 유일. 새 잡 = `monitoring.JOB_CATALOG` + `scheduler_main` `add_job` + `TRIGGER_JOBS`.
-- **`db/migrations/`** — `NNN_*.sql` 번호 순(현재 `035`까지). `db/run-migrations.sh` 가 `_migrations_applied` 체크 후 미적용분만 실행. 새 마이그레이션은 마지막 번호+1.
+- **`db/migrations/`** — `NNN_*.sql` 번호 순(현재 `037`까지). `db/run-migrations.sh` 가 `_migrations_applied` 체크 후 미적용분만 실행. 새 마이그레이션은 마지막 번호+1.
 - **`db/backup-mal.sh` · `db/restore-rehearsal.sh`** — `mal` 스키마 pg_dump 백업(+스키마 밖 트리거 함수 sidecar) · 임시 DB 복원 리허설. 서버 cron 설정은 `docs/spec/backup.md`.
 - **`docker/`** — **로컬 개발 전용** (Postgres 16 단독). prod 는 루트 `docker-compose.yml`(mal-web :4000 / mal-crawler) 을 `/srv/stack/docker-compose.yml` 이 include 로 통합.
 - **`docs/`** — `api/`(외부 API 4종) · `spec/`(아키텍처·배포) · `feature/`(기능 정의서) · `tasks/`(`NNNN-*` 페이즈 히스토리).
@@ -77,7 +77,7 @@ Next.js web (mal-web, PORT 4000 → nginx → mal.kr)  ·  로컬 dev :3000
    - 조회/분석 페이지 · sitemap.xml index→chunk 분할 (Search Console fetch 안정화)
 ```
 
-운영 중 기능: 즐겨찾기 마필 + 다음 출주 인앱 알림(`build_favorite_notifications`) · 문의 게시판(텔레그램 알림) · 엔티티 댓글 · 날씨 폼 · 말 폼 브레이크다운. (**모의배팅은 2026-06 전면 제거** — `0004-remove-mock-betting`.)
+운영 중 기능: 즐겨찾기 마필 + 다음 출주 인앱 알림(`build_favorite_notifications`) · 늦은 기수변경·출전취소 반영(`sync_late_changes` 17:25 내일·09:40 오늘 경주 — 출전표 재수집에서 빠진 말은 `race_entries.scratched_at`, 삭제 안 함) · 문의 게시판(텔레그램 알림) · 엔티티 댓글 · 날씨 폼 · 말 폼 브레이크다운. (**모의배팅은 2026-06 전면 제거** — `0004-remove-mock-betting`.)
 
 ## 배포 — Jenkins 단일 잡
 

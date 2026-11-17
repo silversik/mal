@@ -26,8 +26,8 @@ payload 에는 **float 가 없다** — 부담·기록은 0.1 단위 정수(`*_t
 
 | Q | 쓰임 | 소스·조건 |
 |---|---|---|
-| Q0 달력 | 발행 대상 (D, meet) | `races r` (race_date 범위, meet ∈ 서울·부경·제주) 중 `EXISTS race_entries e (같은 race_date·meet·race_no)`. 경주 수, 첫 발주 = `NULLIF(btrim(r.start_time),'')` 중 **(시, 분)으로 가장 이른 값**을 'HH:MM' 으로 (해석 안 되는 값은 무시). `start_time` 은 `'9:30'` 처럼 앞자리 0 이 없을 수 있어 문자열 MIN 을 쓰지 않는다 (`queries.first_post_of` — 웹 달력도 같게) |
-| Q1 출전명단 | 활성 출전마 | `race_entries` (D, meet) 전 행 + `MAX(updated_at) OVER (PARTITION BY race_date, meet)` = 배치 시각. 실제 기수: `LEFT JOIN LATERAL (SELECT … FROM jockey_changes jc WHERE jc.race_date=e.race_date AND jc.race_no=e.race_no AND jc.horse_no=e.horse_no ORDER BY jc.updated_at DESC, jc.id DESC LIMIT 1)` (meet 미사용) |
+| Q0 달력 | 발행 대상 (D, meet) | `races r` (race_date 범위, meet ∈ 서울·부경·제주) 중 `EXISTS race_entries e (같은 race_date·meet·race_no, scratched_at IS NULL)`. 경주 수, 첫 발주 = `NULLIF(btrim(r.start_time),'')` 중 **(시, 분)으로 가장 이른 값**을 'HH:MM' 으로 (해석 안 되는 값은 무시). `start_time` 은 `'9:30'` 처럼 앞자리 0 이 없을 수 있어 문자열 MIN 을 쓰지 않는다 (`queries.first_post_of` — 웹 달력도 같게) |
+| Q1 출전명단 | 활성 출전마 | `race_entries` (D, meet) 중 `scratched_at IS NULL`(출전취소 아님) 행 + `MAX(updated_at) OVER (PARTITION BY race_date, meet)` = 배치 시각. 실제 기수: `LEFT JOIN LATERAL (SELECT … FROM jockey_changes jc WHERE jc.race_date=e.race_date AND jc.race_no=e.race_no AND jc.horse_no=e.horse_no ORDER BY jc.updated_at DESC, jc.id DESC LIMIT 1)` (meet 미사용) |
 | Q2 이력 | 말별 과거 성적 | `race_results rr WHERE rr.horse_no = ANY(:horse_nos) AND rr.race_date < :h` + `LEFT JOIN races ra USING (race_date, meet, race_no)` 로 거리 |
 | Q3 기수·조교사 | 최근 90일 같은 경마장 | `race_results` 를 **이름 하나(btrim)로** 묶음, meet = 호의 meet(`부경` 은 `부산경남` 도 같은 경마장), `race_date ∈ [H−90, H)`. 출주는 §1.1 (`rank ≥ 1` 또는 `round(record_time*10) > 0`), 창 안 출주가 0 인 이름은 돌려주지 않는다. 동명이인 판정은 같은 meet·`race_date < H` 전체에서 `COUNT(DISTINCT NULLIF(ltrim(btrim(rr.raw->>'jkNo'),'0'),''))` ≥ 2 (조교사는 `raw->>'trNo'` 로 같은 값을 세지만 r1 은 쓰지 않는다) |
 | Q4 등급변동 | 소식 class_change | `horse_rank_changes` (horse_no = ANY, st_date ≤ D), 말별 st_date 최신 1건 |
@@ -53,6 +53,7 @@ payload 에는 **float 가 없다** — 부담·기록은 0.1 단위 정수(`*_t
 
 ### 1.2 활성 출전마 (Q1 → `select_active_entries`)
 1. `horse_no` 가 비었거나 meet 가 서울·부경·제주가 아니면 제외. `chul_no`(출전번호)가 없는 행도 제외하고 경고 `missing_chul_no:<race_no>` (출전번호가 정렬·마지막 동점·화면의 기준값이라 없으면 실을 수 없다).
+0. 출전취소: 크롤러가 출전표 재수집에서 빠진 말에 `race_entries.scratched_at` 을 찍는다(037). Q1 이 SQL 에서 빼므로 아래 단계엔 오지 않는다 — 2 의 stale 은 그 보조 안전망.
 2. stale: `updated_at < batch_at − stale.batch_tolerance_min(30분)` 이면 제외. 단 한 경주에서 제외 비율이 `stale.max_drop_pct(50%)` 를 넘으면 그 경주는 제외하지 않고 경고 `stale_kept:<race_no>`.
 3. 같은 날 같은 말이 두 경주에 있으면 `updated_at` 최신 행 1개만 (동률이면 race_no 큰 쪽).
 4. 경주별 활성 N < `field.min_active(5)` 이면 그 경주 `status = "small_field"` → 모든 기준·주목마 예상 안 함.

@@ -6,13 +6,17 @@
 
 타임라인 (D = 경주일 토요일, D1 = D+1, T = 실제 오늘, U = 다음 예정 경주일, H = U 다음 월요일 공휴일 경주일):
   D-1 14:00 races_live(비경기일 skip) · 09:00 race_entries · 12:00 backfill_races_from_entries
-  D   05:00 race_plan · 07:30 horse_ratings(토) · 09:05 race_today_meta · 13:00 races_live
+  D   05:00 race_plan · 07:30 horse_ratings(토) · 09:05 race_today_meta
+      09:40 late_changes(당일 아침) · 13:00 races_live
       21:00 videos · 22:30 races_live(마지막 tick) · 22:50 sales
       23:00 videos_backfill · 23:05 races_today(backstop)
   D1  02:30 chunked_dividends · 03:00 weather · 06:00 jockeys · 06:15 trainers · 06:20 owners
       06:25 jockey_changes · 06:30 horses_backfill · 06:35 rank_changes · 07:00 horses_refresh
       07:30 yesterday_catchup · 09:00/10:00 yesterday_residual · 11:00 videos_bulk
+      17:25 late_changes(내일 경주 없음 → skip)
   T   12:00 race_entries(U + 공휴일 월 H) · 12:10 backfill_races_from_entries · 12:30 favorites ×2
+  H-1 17:25 late_changes(내일 공휴일 H — 15:00 출전취소 · 16:00 기수변경 당일 반영, 경마지 18:00 동결 전)
+      18:30 race_entries(출전취소 표시 유지)
 그 뒤 web/src/lib/*.ts 의 실제 SQL 로 화면 쿼리가 시드된 경주/마필을 돌려주는지 확인.
 """
 # web/src/lib 의 SQL 을 글자 그대로 복사해 둔 줄이 길다.
@@ -32,6 +36,7 @@ EXPECTED_SCHEDULED = {
     "mal.sync_videos", "mal.sync_race_entries",
     "mal.backfill_races_from_entries", "mal.chunked_dividends_backfill", "mal.sync_race_plan",
     "mal.sync_jockeys", "mal.sync_trainers", "mal.sync_owners", "mal.sync_jockey_changes",
+    "mal.sync_late_changes",
     "mal.sync_horse_rank_changes", "mal.sync_horses_backfill", "mal.sync_horses_refresh",
     "mal.sync_horse_ratings", "mal.sync_yesterday_catchup", "mal.sync_races_today",
     "mal.sync_races_live", "mal.sync_yesterday_residual",
@@ -67,6 +72,8 @@ def test_00_scheduler_registers_every_job_and_trigger_map(e2e):
     # 컨테이너 기동 시 JOB_CATALOG 전부 대시보드 등록
     assert set(e2e.registered) == set(JOB_CATALOG)
     assert "day_of_week='sat'" in str(e2e.triggers["mal.sync_horse_ratings"])
+    late = str(e2e.triggers["mal.sync_late_changes"])
+    assert "hour='17', minute='25'" in late and "hour='9', minute='40'" in late, late
 
 
 # ====================================================================== D - 1
@@ -159,6 +166,20 @@ def test_07_race_today_meta_html(e2e):
         "SELECT * FROM races WHERE race_date=:d", d=D)}
     assert rows == {("서울", 1): "11:00", ("서울", 2): "14:30",
                     ("부경", 1): "12:00", ("부경", 2): "15:30"}
+
+
+def test_07b_late_changes_race_day_morning(e2e):
+    """경주일 09:40 — 오늘 경마장(서울·부경)만 출전표 재수집 + 기수변경 1회. 출전취소 없음."""
+    D = _d(e2e)
+    n = e2e.run("mal.sync_late_changes", D, 9, 40)
+    assert n == 1 + 12  # 기수변경 1 (부분 row 제외 + dedupe) + 출전표 12
+    assert len(e2e.web.kra_calls("API10_1")) == 1
+    reqs = e2e.web.kra_calls("API26_2")
+    assert sorted((r.params["rc_date"], r.params["meet"]) for r in reqs) == [
+        (D.strftime("%Y%m%d"), "1"), (D.strftime("%Y%m%d"), "3")]
+    assert {r.host for r in e2e.web.requests} == {"apis.data.go.kr"}
+    sc = e2e.one("SELECT COUNT(*) AS n FROM race_entries WHERE scratched_at IS NOT NULL")
+    assert sc["n"] == 0
 
 
 def test_08_races_live_race_day(e2e):
@@ -422,6 +443,13 @@ def test_26_yesterday_residual_skips_when_complete(e2e):
     assert e2e.web.requests == []
 
 
+def test_26b_late_changes_skips_non_race_eve(e2e):
+    """경주 없는 날 전날 17:25 — 대상일 races 가 비어 KRA 호출 0."""
+    n = e2e.run("mal.sync_late_changes", _d1(e2e), 17, 25)
+    assert n == 0
+    assert e2e.web.requests == []
+
+
 def test_28_videos_bulk_walks_playlist_until_cutoff(e2e):
     D = _d(e2e)
     n = e2e.run("mal.sync_videos_bulk", _d1(e2e), 11, 0)
@@ -487,6 +515,45 @@ def test_31_favorite_notifications(e2e):
     assert note["href"] == f"/races?date={w.U.isoformat()}&venue=서울&race=1"
     # 재실행은 dedup_key 로 0건
     assert e2e.run("mal.build_favorite_notifications", w.real_today, 13, 30) == 0
+
+
+def test_32_late_changes_preday_before_freeze(e2e):
+    """H-1 17:25 — 15:00 출전취소·16:00 기수변경이 경마지 18:00 동결 전 같은 날 반영된다."""
+    from src.racing_form import queries
+
+    w = e2e.world
+    eve = w.H - timedelta(days=1)
+    n = e2e.run("mal.sync_late_changes", eve, 17, 25)
+    assert n == 2 + 2  # 기수변경 (D 1 + H 1) + H 부경 출전표 2두
+    assert len(e2e.web.kra_calls("API10_1")) == 1
+    reqs = e2e.web.kra_calls("API26_2")
+    assert [(r.params["rc_date"], r.params["meet"]) for r in reqs] == [
+        (w.H.strftime("%Y%m%d"), "3")]  # 내일 경마장(부경)만 — 쿼터 절약
+    jc = e2e.one("SELECT * FROM jockey_changes WHERE race_date=:h", h=w.H)
+    assert (jc["meet"], jc["race_no"], jc["chul_no"], jc["horse_no"]) == ("부경", 1, 3, "0041012")
+    assert (jc["jk_name_before"], jc["jk_name_after"], jc["reason"]) == (
+        "강광안", "한교체", "기수사정")
+    rows = {r["horse_no"]: r for r in e2e.q(
+        "SELECT horse_no, chul_no, scratched_at FROM race_entries WHERE race_date=:h", h=w.H)}
+    assert set(rows) == {"0041010", "0041011", "0041012"}  # 행은 남는다 (삭제 안 함)
+    assert rows["0041011"]["scratched_at"] is not None
+    assert rows["0041010"]["scratched_at"] is None and rows["0041012"]["scratched_at"] is None
+    # 경마지 Q1 은 출전취소 행을 뺀다 — stale 추측 불필요
+    with e2e.engine.connect() as c:
+        q1 = c.execute(queries._Q1_ENTRIES, {"d": w.H, "meet": "부경"}).mappings().all()
+    assert [(r["horse_no"], r["jockey_name"], r["jc_after"]) for r in q1] == [
+        ("0041010", "최부경", None), ("0041012", "강광안", "한교체")]
+
+
+def test_33_race_entries_keeps_scratch_mark(e2e):
+    """3시간 출전표 sync 가 다시 돌아도 출전취소 표시는 유지 (응답에 계속 없음)."""
+    w = e2e.world
+    eve = w.H - timedelta(days=1)
+    n = e2e.run("mal.sync_race_entries", eve, 18, 30)
+    assert n == 2 + (3 if eve <= w.U else 0)  # H 2두 (+ U 가 일요일이면 U 3두)
+    row = e2e.one("SELECT scratched_at FROM race_entries WHERE race_date=:h "
+                  "AND horse_no='0041011'", h=w.H)
+    assert row["scratched_at"] is not None
 
 
 # ============================================================ web read checks

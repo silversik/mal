@@ -93,13 +93,15 @@ _Q0_CALENDAR = text(
                FROM race_entries e
               WHERE e.race_date = r.race_date
                 AND e.meet = r.meet
-                AND e.race_no = r.race_no)
+                AND e.race_no = r.race_no
+                AND e.scratched_at IS NULL)
      GROUP BY r.race_date, r.meet
      ORDER BY r.race_date, r.meet
     """
 )
 
-# Q1 출전명단 — (D, meet) 전 행 + 배치 시각 + jockey_changes 최신 1건 (meet 미사용, 계약 §1)
+# Q1 출전명단 — (D, meet) 출전취소(scratched_at) 아닌 행
+#   + 배치 시각 + jockey_changes 최신 1건 (meet 미사용, 계약 §1)
 _Q1_ENTRIES = text(
     """
     SELECT e.race_date,
@@ -134,6 +136,7 @@ _Q1_ENTRIES = text(
            ) jc ON TRUE
      WHERE e.race_date = :d
        AND e.meet = :meet
+       AND e.scratched_at IS NULL
      ORDER BY e.race_no, e.chul_no NULLS LAST, e.horse_no
     """
 )

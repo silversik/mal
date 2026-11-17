@@ -114,6 +114,9 @@ def env(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     monkeypatch.setattr(mod, "upsert_race_entries", fake_upsert)
     monkeypatch.setattr(mod, "upsert_races_skeleton",
                         lambda rows: state["skeleton"].extend(rows) or len(rows))
+    # 출전취소 표시는 DB 를 읽는다 — 여기선 경주일 선택만 보므로 막아 둔다
+    # (판정 로직은 test_race_entries_scratch.py, DB 경로는 e2e).
+    monkeypatch.setattr(mod, "mark_scratches", lambda d, meet, rows: 0)
     return state
 
 
