@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "서비스 소개",
@@ -79,9 +80,9 @@ export default function AboutPage() {
         <h2 className="text-base font-semibold">운영</h2>
         <p className="text-sm leading-relaxed text-foreground/90">
           mal.kr은 개인 개발자에 의해 운영됩니다. 서비스에 관한 문의는{" "}
-          <a href="/contact" className="text-primary underline underline-offset-2 hover:opacity-80">
+          <Link href="/contact" className="text-primary underline underline-offset-2 hover:opacity-80">
             문의 페이지
-          </a>
+          </Link>
           를 통해 주시기 바랍니다.
         </p>
       </section>

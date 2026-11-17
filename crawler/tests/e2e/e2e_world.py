@@ -15,8 +15,8 @@
 - race.kra.co.kr/seoulMain.do: EUC-KR HTML, `a.raceDetail` 앵커 data-* 속성.
 
 세계 (FakeWorld) — 경주일 D(토) 하나에 2 경마장(서울·부경) × 2 경주 × 3 마필 + 이튿날
-D+1(일) 영천(meet 4) 1경주 + 다음 주 예정일 U 의 출전표.
-결과·배당·매출은 시각(가짜 시계) 기준으로 "공표" 된다:
+D+1(일) 영천(meet 4) 1경주 + 다음 주 예정일 U 의 출전표 + U 다음 월요일 공휴일 경주일 H(부경 단독)
+의 출전표. 결과·배당·매출은 시각(가짜 시계) 기준으로 "공표" 된다:
   서울1R 11:30 · 부경1R 12:30 · 서울2R 15:00 · 부경2R D+1 08:30 (KRA 공표 지연 → residual 잡)
   부경 복식(combo) 배당은 D+1 00:00 이후 (→ 야간 gap 백필 잡이 메움)
   영천1R(D+1 일) 11:40 — 일요일 단독 개최 → D+1 live 잡이 수집
@@ -156,8 +156,9 @@ class Req:
         return None
 
 
-def pick_dates(today_kst: date) -> tuple[date, date]:
-    """D = 오늘-2 이전의 가장 최근 토요일, U = 내일 이후 첫 금/토/일.
+def pick_dates(today_kst: date) -> tuple[date, date, date]:
+    """D = 오늘-2 이전의 가장 최근 토요일, U = 내일 이후 첫 금/토/일,
+    H = U 다음의 첫 월요일 (공휴일 경주일 — 2026-10-05 월 대체공휴일 출전표 미수집 사고).
 
     DB 쪽 시각 비교(NOW()/CURRENT_DATE — 가짜 시계로 못 바꿈)가 끼는 쿼리
     (videos_backfill 의 race_date<=CURRENT_DATE, 즐겨찾기 알림의 race_date>=오늘,
@@ -169,7 +170,10 @@ def pick_dates(today_kst: date) -> tuple[date, date]:
     u = today_kst + timedelta(days=1)
     while u.weekday() not in (4, 5, 6):
         u += timedelta(days=1)
-    return d, u
+    h = u + timedelta(days=1)
+    while h.weekday() != 0:
+        h += timedelta(days=1)
+    return d, u, h
 
 
 def ymd(d: date) -> str:
@@ -180,7 +184,7 @@ class FakeWorld:
     def __init__(self, real_now: datetime) -> None:
         self.real_now = real_now
         self.real_today = today_kst = real_now.date()
-        self.D, self.U = pick_dates(today_kst)
+        self.D, self.U, self.H = pick_dates(today_kst)
         D = self.D
         self.races: list[RaceDef] = [
             RaceDef(1, 1, 1200, "국6등급", "일반", "11:00",
@@ -217,8 +221,19 @@ class FakeWorld:
         self.upcoming = RaceDef(1, 1, 1200, "국5등급", "일반", "11:30",
                                 ("0041001", "0041004", "0041002"), (0, 0, 0),
                                 ("", "", ""))
+        # 공휴일(월) 경주 — 부경 단독 개최. 즐겨찾기(0041001·0041009) 아닌 마필.
+        self.holiday = RaceDef(3, 1, 1400, "혼4등급", "일반", "13:00",
+                               ("0041010", "0041011", "0041012"), (0, 0, 0),
+                               ("", "", ""))
         # 기수변경: 서울 2R chulNo 2 (0041005) — 한교체 → 이과천
         self.jockey_change = {"meet": 1, "rc_no": 2, "chul_no": 2}
+        # 공휴일 H 의 늦은 변경 (경마지 18:00 동결 전 17:25 sync_late_changes 가 당일 반영).
+        # H-1 은 U 쪽 출전표 수집(최대 U 12:00) 이후라 타임라인이 거꾸로 가지 않는다.
+        #   H-1 15:00 출전취소 — 0041011 (chulNo 2) 이 출전표에서 빠진다
+        #   H-1 16:00 기수변경 — H 부경 1R chulNo 3 (0041012) 강광안 → 한교체
+        self.scratch_at = self._kst(self.H - timedelta(days=1), 15, 0)
+        self.scratched = {"0041011"}
+        self.late_jockey_change_at = self._kst(self.H - timedelta(days=1), 16, 0)
         self.plans = self._build_plans()
         self.videos = self._build_videos()
 
@@ -334,11 +349,16 @@ class FakeWorld:
             races = self.races_on(meet, d)
         elif d == self.U and meet == self.upcoming.meet:
             races = [self.upcoming]
+        elif d == self.H and meet == self.holiday.meet:
+            races = [self.holiday]
         else:
             return []
+        gone = self.scratched if d == self.H and now >= self.scratch_at else set()
         out = []
         for r in races:
             for i, hno in enumerate(r.horses):
+                if hno in gone:
+                    continue  # 출전취소 — 출전번호는 그대로 두고 행만 빠진다
                 h = HORSE_BY_NO[hno]
                 jk_no, jk_name = self.jockey_for(r, i + 1, at_entry=True)
                 _, tr_name = self.trainer_for(h)
@@ -421,7 +441,7 @@ class FakeWorld:
         ]
         return rows + [dict(rows[0])]  # 중복 owNo (dedupe 경로)
 
-    def jockey_change_items(self) -> list[dict[str, Any]]:
+    def jockey_change_items(self, now: datetime) -> list[dict[str, Any]]:
         jc = self.jockey_change
         r = self.race(jc["meet"], jc["rc_no"])
         h = HORSE_BY_NO[r.horses[jc["chul_no"] - 1]]
@@ -432,7 +452,18 @@ class FakeWorld:
               "jkBef": bef[0], "jkBefName": bef[1], "jkAft": aft_no, "jkAftName": aft_name,
               "befBudam": "55.0", "aftBudam": "54.0", "reason": "기수부상"}
         partial = {"rcDate": "-", "meet": "", "rcNo": "-", "chulNo": "-", "hrNo": "-"}
-        return [ev, partial, dict(ev)]
+        out = [ev, partial, dict(ev)]
+        if now >= self.late_jockey_change_at:
+            u = self.holiday
+            h = HORSE_BY_NO[u.horses[2]]
+            bef_no, bef_name = self.jockey_for(u, 3)
+            aft = JOCKEYS[6]
+            out.append({"rcDate": ymd(self.H), "meet": "부경", "rcNo": str(u.no),
+                        "chulNo": "3", "hrNo": h.no, "hrName": h.name,
+                        "jkBef": bef_no, "jkBefName": bef_name, "jkAft": aft[0],
+                        "jkAftName": aft[1], "befBudam": "54.0", "aftBudam": "54.0",
+                        "reason": "기수사정"})
+        return out
 
     def rank_change_items(self) -> list[dict[str, Any]]:
         D = self.D
@@ -566,7 +597,7 @@ class FakeWeb:
             ("currentjockeyInfo", "getcurrentjockeyinfo"): lambda p: self.w.jockey_items(),
             ("API308", "trainerInfo"): self._trainers_xml,
             ("API309", "horseOwnerInfo"): lambda p: self.w.owner_items(),
-            ("API10_1", "jockeyChangeInfo_1"): lambda p: self.w.jockey_change_items(),
+            ("API10_1", "jockeyChangeInfo_1"): lambda p: self.w.jockey_change_items(self.clock.now),
             ("raceHorseRatingChangeInfo_2", "raceHorseRatingChangeInfo_2"):
                 lambda p: self.w.rank_change_items(),
             ("API77", "raceHorseRating"): lambda p: self.w.rating_items(),

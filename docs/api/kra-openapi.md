@@ -19,11 +19,11 @@
 | 15057323 | API77 | raceHorseRating | 경주마 레이팅 (rating1~4 미공개) | `horse_ratings` 시계열 | `mal.sync_horse_ratings` |
 | 15058076 | raceHorseRatingChangeInfo_2 | (동일) | 마필 등급변동 이력 | `horse_rank_changes` | `mal.sync_horse_rank_changes` |
 | 15086329 | currentjockeyInfo | getcurrentjockeyinfo | 현직 기수 마스터 | `jockeys` | `mal.sync_jockeys` |
-| 15057181 | API10_1 | jockeyChangeInfo_1 | 기수변경 이벤트 | `jockey_changes` | `mal.sync_jockey_changes` |
+| 15057181 | API10_1 | jockeyChangeInfo_1 | 기수변경 이벤트 | `jockey_changes` | `mal.sync_jockey_changes`, `mal.sync_late_changes` |
 | 15130588 | API308 | trainerInfo | 조교사정보(영문 포함) | `trainers` | `mal.sync_trainers` |
 | 15130589 | API309 | horseOwnerInfo | 마주정보(영문 포함) | `owners` | `mal.sync_owners` |
 | 15059482 | API40 | raceAnnualPlan | 연간 대상경주 계획 | `race_plans` | `mal.sync_race_plan` |
-| 15058677 | API26_2 | (env: `KRA_CHULMA_OPERATION`, 예: `entrySheet_2`) | 출전표 상세 | `race_entries` | `mal.sync_race_entries` |
+| 15058677 | API26_2 | (env: `KRA_CHULMA_OPERATION`, 예: `entrySheet_2`) | 출전표 상세 (재수집에서 빠진 말 → `scratched_at`) | `race_entries` | `mal.sync_race_entries`, `mal.sync_late_changes` |
 | 15063951 | API187 | HorseRaceInfo | 경주 메타 (rcName·distance·grade·trkType·stTime) | `races` | (2026-05~ 빈 응답 → 2026-11 수집 중단) |
 | 15089492 | racedetailresult | getracedetailresult | 경주별 상세 성적 (마필 단위 row) | `race_results` | `mal.sync_races_today`, `mal.sync_races_live`, `mal.sync_yesterday_catchup` |
 | 15119558 | API301 | Dividend_rate_total | 확정배당율 (단/연 + 복식 풀 전체) | `race_dividends`, `race_combo_dividends` | `mal.sync_races_live`, `mal.sync_yesterday_catchup`, `mal.chunked_dividends_backfill` |
@@ -31,6 +31,13 @@
 | 15057847 | API6_1 | raceDetailSectionRecord_1 | 펄롱별 구간기록 + 1등마 통과순위 (경주 단위 1 row) | `race_corners` | (2026-11 수집 중단 — 테이블은 이력 보존) |
 
 > ⚠ **15119558 은 한 활용신청으로 API301 과 API179_1 둘 다 활성화**.
+
+### 미연동 (활용신청 대기)
+
+| publicDataPk | 데이터 | 상태 |
+|---|---|---|
+| 15056779 | 출전취소 정보 | 소유자 별도 활용신청 필요. 승인 전까지는 출전표(API26_2) 재수집에서 빠진 말을 `race_entries.scratched_at` 으로 표시 (037). 승인 뒤 연동하면 공식 출전취소가 이 추정보다 우선. |
+| 15160316 | 특이사항 | 소유자 별도 활용신청 필요. 응답 스키마 실측 후 클라이언트·테이블 설계. |
 
 ## 새 endpoint 추가 절차
 

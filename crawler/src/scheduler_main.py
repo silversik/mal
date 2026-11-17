@@ -14,6 +14,7 @@ Dockerfile CMD 에서 기동.
 from __future__ import annotations
 
 from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.triggers.combining import OrTrigger
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from crawler_core import client as dash
@@ -28,6 +29,7 @@ from .jobs.periodic import (
     run_sync_horses_refresh,
     run_sync_jockey_changes,
     run_sync_jockeys,
+    run_sync_late_changes,
     run_sync_owners,
     run_sync_race_entries,
     run_sync_race_plan,
@@ -122,6 +124,14 @@ def main() -> None:
         run_sync_jockey_changes,
         CronTrigger(hour=6, minute=25),
         id="mal.sync_jockey_changes",
+        **common,
+    )
+    # 늦은 기수변경·출전취소 — 17:25(내일 경주, 경마지 18:00 동결 전) · 09:40(오늘 경주,
+    # 첫 발주 전). 대상일 races 가 비면 KRA 호출 없이 skip. 호출 ≤4/회 (기수변경 1 + 출전표 ≤3).
+    sched.add_job(
+        run_sync_late_changes,
+        OrTrigger([CronTrigger(hour=17, minute=25), CronTrigger(hour=9, minute=40)]),
+        id="mal.sync_late_changes",
         **common,
     )
     # 마필 등급변동 이력 — 매일 06:35 KST. 누적 ~5000 row 전체 fetch + UPSERT.
@@ -244,6 +254,7 @@ def main() -> None:
         "mal.sync_trainers": run_sync_trainers,
         "mal.sync_owners": run_sync_owners,
         "mal.sync_jockey_changes": run_sync_jockey_changes,
+        "mal.sync_late_changes": run_sync_late_changes,
         "mal.sync_horse_rank_changes": run_sync_horse_rank_changes,
         "mal.sync_horses_backfill": run_sync_horses_backfill,
         "mal.sync_horses_refresh": run_sync_horses_refresh,

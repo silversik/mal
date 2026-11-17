@@ -270,6 +270,8 @@ class RaceEntry(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # 출전표 재수집에서 빠진 시각 (NULL = 출전). 037 마이그레이션.
+    scratched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class RaceDividend(Base):
