@@ -28,6 +28,8 @@ const PRIMARY_ITEMS: NavItem[] = [
         <line x1="4" y1="22" x2="4" y2="15" />
       </svg>
     ),
+    // 경마지(/form)는 '경기' 탭 아래 서브탭 — 하단 5칸은 그대로 둔다.
+    activePaths: ["/races", "/form"],
   },
   {
     href: "/database",

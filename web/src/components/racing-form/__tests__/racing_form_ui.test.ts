@@ -105,7 +105,9 @@ describe("책임 고지 — 계획 §8.3 문구", () => {
     const h = renderToStaticMarkup(createElement(ResponsibleGamblingNotice, { variant: "full" }));
     expect(h).toContain("만 19세");
     expect(h).toContain("만 21세");
-    expect(h).toContain("국번 없이 · 24시간 무료");
+    expect(h).toContain("국번 없이 · 무료");
+    // 운영 시간은 확인된 값만 싣는다 — 확인 전에는 "24시간" 을 쓰지 않는다
+    expect(h).not.toContain("24시간");
     // 링크는 tel:1336 하나뿐
     expect(h.match(/<a /g)?.length).toBe(1);
     expect(h).toContain('href="tel:1336"');

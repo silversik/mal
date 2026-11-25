@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { RacesSubnav } from "@/components/races-subnav";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -99,13 +100,8 @@ export default async function RaceSchedulePage({
 
   return (
     <main className="theme-v2 mx-auto w-full max-w-[1080px] px-4 md:px-6 py-6 md:py-8">
-      <Link
-        href="/races"
-        className="group mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-primary"
-      >
-        <span className="transition group-hover:-translate-x-0.5">&larr;</span>
-        경기 일람으로
-      </Link>
+      {/* 서브탭: 경기 일람 | 경마지 | 대상경주 일정 (예전 "← 경기 일람으로" 링크를 대신한다) */}
+      <RacesSubnav className="mb-4" />
       <h1 className="mb-2 text-2xl font-bold tracking-tight">대상경주 일정</h1>
       <p className="mb-6 text-sm text-muted-foreground">
         KRA 가 연초에 고시하는 특별·대상(G1/G2/G3/L) 경주 연간 계획.

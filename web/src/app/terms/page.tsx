@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 const EFFECTIVE_DATE = "2024년 1월 1일";
-const UPDATED_DATE = "2026년 5월 1일";
+const UPDATED_DATE = "2026년 11월 26일";
 
 export default function TermsPage() {
   return (
@@ -39,6 +39,7 @@ export default function TermsPage() {
           <li>경주 결과, 배당 정보, 혈통 정보 아카이빙</li>
           <li>랭킹, 코스 레코드, 마필 비교 등 분석 도구</li>
           <li>경마 관련 영상 피드</li>
+          <li>경마지 — 공개한 기준으로 정리한 경주별 참고 예상과 그 적중 기록</li>
         </ul>
       </section>
 
@@ -85,6 +86,11 @@ export default function TermsPage() {
           서비스는 천재지변, 통신 장애, 제3자의 귀책 사유 등 불가항력으로 인한 서비스 장애에
           대해 책임을 지지 않습니다. 이용자가 서비스를 통해 얻은 정보를 이용하여 발생한 손해에
           대해 운영자는 책임을 지지 않습니다.
+        </p>
+        <p className="text-sm leading-relaxed text-foreground/90">
+          경마지의 예상은 과거 기록을 공개한 기준으로 기계적으로 정리한 참고 자료로, 적중이나 수익을
+          보장하지 않으며 마권 구매를 권유하는 것이 아닙니다. 서비스는 마권을 판매·구매 대행하지 않고
+          적중에 대한 보상을 하지 않습니다. 마권 구매 여부와 그 결과에 대한 책임은 이용자에게 있습니다.
         </p>
       </section>
 

@@ -56,6 +56,7 @@ import {
   parseHhmm,
   parseRaceSlice,
   parseRaceV1,
+  pickHomeEditions,
   pickOutcome,
   publishStampKo,
   publishedJockeys,
@@ -962,9 +963,9 @@ describe("크롤러 정본과 같은 값", () => {
 // 메타데이터 · 기능 스위치
 // ---------------------------------------------------------------------------
 
-describe("formMetadata — canonical 직접 지정, PR-3 전 noindex", () => {
-  it("PR-1 스위치", () => {
-    expect(FORM_INDEXABLE).toBe(false);
+describe("formMetadata — canonical 직접 지정, 색인은 index:true 인 페이지만", () => {
+  it("스위치 — 색인 켬(사이트 연결), 출전표에서 빠짐 표시는 끔", () => {
+    expect(FORM_INDEXABLE).toBe(true);
     expect(SHOW_SCRATCH_HINT).toBe(false);
   });
 
@@ -981,7 +982,7 @@ describe("formMetadata — canonical 직접 지정, PR-3 전 noindex", () => {
     expect(m.openGraph && "images" in m.openGraph).toBe(false);
   });
 
-  it("index:true 여도 FORM_INDEXABLE=false 면 noindex, '· mal.kr' 은 떼어 냄, 부모 OG 이미지 이어 붙임", () => {
+  it("index:true 면 robots 를 두지 않아 색인, '· mal.kr' 은 떼어 냄, 부모 OG 이미지 이어 붙임", () => {
     const m = formMetadata({
       title: "경마지 기록 · mal.kr",
       description: "d",
@@ -989,9 +990,34 @@ describe("formMetadata — canonical 직접 지정, PR-3 전 noindex", () => {
       index: true,
       ogImages: ["/opengraph-image"],
     });
-    expect(m.robots).toEqual({ index: false, follow: true });
+    expect(m.robots).toBeUndefined();
     expect(m.title).toBe("경마지 기록");
     expect(m.openGraph).toMatchObject({ images: ["/opengraph-image"] });
     expect(m.twitter).toMatchObject({ card: "summary_large_image", images: ["/opengraph-image"] });
+  });
+});
+
+describe("pickHomeEditions — 홈 카드에 실을 호", () => {
+  const ed = (id: number, race_date: string, meet: string) =>
+    ({ id, race_date, meet }) as unknown as Parameters<typeof pickHomeEditions>[0][number];
+  const all = [ed(1, "2026-11-22", "서울"), ed(2, "2026-11-27", "제주"), ed(3, "2026-11-27", "부경"), ed(4, "2026-11-28", "서울")];
+
+  it("오늘 이후 가장 가까운 경주일의 호 전부 (입력 순서 유지)", () => {
+    expect(pickHomeEditions(all, [], "2026-11-26").map((e) => e.id)).toEqual([2, 3]);
+    expect(pickHomeEditions(all, [], "2026-11-27").map((e) => e.id)).toEqual([2, 3]); // 경주 당일 포함
+    expect(pickHomeEditions(all, [], "2026-11-28").map((e) => e.id)).toEqual([4]);
+  });
+
+  it("앞으로 발행본이 없으면 가장 최근 경주일, 하나도 없으면 []", () => {
+    expect(pickHomeEditions(all, [], "2026-11-30").map((e) => e.id)).toEqual([4]);
+    expect(pickHomeEditions([], [], "2026-11-26")).toEqual([]);
+  });
+
+  it("철회된 호는 싣지 않는다 — 그날 호가 모두 철회면 다음 후보 날짜로", () => {
+    const w = (edition_id: number) => ({ kind: "withdrawn" as const, edition_id });
+    expect(pickHomeEditions(all, [w(2)], "2026-11-26").map((e) => e.id)).toEqual([3]);
+    expect(pickHomeEditions(all, [w(2), w(3)], "2026-11-26").map((e) => e.id)).toEqual([4]);
+    // 정정(erratum)은 철회가 아니다
+    expect(pickHomeEditions(all, [{ kind: "erratum", edition_id: 2 }], "2026-11-26").map((e) => e.id)).toEqual([2, 3]);
   });
 });

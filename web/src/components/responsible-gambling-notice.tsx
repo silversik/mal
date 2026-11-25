@@ -5,8 +5,16 @@ import { cn } from "@/lib/utils";
  *  - compact: 1면 머리·경주면 하단 한 줄. full: 1면·허브·기록 하단.
  *  - 토큰 색만, 기호(◎○△)에 기대지 않는 문장. "공식" 은 부정문에서만 쓴다.
  *  - 구매처·배당·영상 링크를 두지 않는다. ☎1336 만 tel: 링크 (터치 44px).
- *  - 문구는 계획 §8.3 그대로 — 최종 문구는 G1 법률 검토 후 이 파일에서만 바꾼다.
+ *  - 문구는 계획 §8.3 기준 — 최종 문구는 G1 법률 검토 후 이 파일에서만 바꾼다.
+ *  - 상담 전화 운영 시간은 적지 않는다 (2026-11: "24시간" 을 1차 출처로 확인하지 못해 뺐다 —
+ *    한국도박문제예방치유원 안내에 맞춰 확인한 뒤에만 다시 넣는다).
+ *  - 사이트 푸터 한 줄(site-footer)도 HELPLINE_* 상수를 같이 쓴다.
  */
+
+/** 도박 문제 상담 전화 (한국도박문제예방치유원 헬프라인). */
+export const HELPLINE_TEL = "1336";
+export const HELPLINE_LABEL = "☎1336";
+export const HELPLINE_ARIA = "도박 문제 상담 전화 1336 (국번 없이, 무료)";
 
 /** compact 한 줄 — 끝의 "☎1336" 은 tel: 링크로 붙는다. */
 export const NOTICE_COMPACT_TEXT =
@@ -28,19 +36,19 @@ export const NOTICE_FULL_ITEMS: readonly FullItem[] = [
   },
   {
     text: "경마에 지나치게 몰입하지 않도록 주의하세요. 도박 문제 상담",
-    helpline: { after: "(국번 없이 · 24시간 무료)" },
+    helpline: { after: "(국번 없이 · 무료)" },
   },
   { text: "출전·기수 변경·경주 결과는 한국마사회 발표가 우선합니다." },
 ];
 
-function HelplineLink() {
+export function HelplineLink() {
   return (
     <a
-      href="tel:1336"
-      aria-label="도박 문제 상담 전화 1336 (국번 없이, 24시간 무료)"
+      href={`tel:${HELPLINE_TEL}`}
+      aria-label={HELPLINE_ARIA}
       className="inline-flex min-h-[max(44px,2.75rem)] items-center rounded-md px-1 font-mono font-bold tabular-nums text-foreground underline underline-offset-4 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
     >
-      ☎1336
+      {HELPLINE_LABEL}
     </a>
   );
 }

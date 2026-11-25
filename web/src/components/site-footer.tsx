@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { HelplineLink } from "@/components/responsible-gambling-notice";
+
 const LINKS = [
   { href: "/about", label: "서비스 소개" },
   { href: "/privacy", label: "개인정보처리방침" },
@@ -11,6 +13,10 @@ export function SiteFooter() {
   const year = new Date().getFullYear();
   return (
     <footer className="border-t border-border bg-background py-6 text-small text-muted-foreground">
+      {/* 사이트 공통 한 줄 — 경마지(/form) 연결과 함께 (docs/feature/racing-form.md 11.2-6). */}
+      <p className="mx-auto mb-3 w-full max-w-[1080px] px-4 md:px-6">
+        경마에 지나치게 몰입하지 않도록 주의하세요 · 도박 문제 상담 <HelplineLink />
+      </p>
       <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between md:px-6">
         <nav className="flex flex-wrap gap-x-4 gap-y-1" aria-label="푸터 내비게이션">
           {LINKS.map((l) => (

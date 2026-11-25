@@ -11,6 +11,7 @@ import {
 } from "@/lib/race-seo";
 
 import { RaceDatePicker } from "@/components/race-date-picker";
+import { RacesSubnav } from "@/components/races-subnav";
 import { VenueIcon } from "@/components/venue-icon";
 import { RACE_VENUES } from "@/lib/meets";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +62,8 @@ import {
   type HorseCompareSummary,
 } from "@/lib/horses";
 import { getRaceCorner } from "@/lib/race_corners";
+import { getEditionMeetsSafe } from "@/lib/racing_form";
+import { formRacePath, slugFromMeet } from "@/lib/racing_form-shared";
 import { CommentSection } from "@/components/comment-section";
 
 // 같은 키가 반복되면(?date=a&date=b) Next 는 배열을 넘긴다 — 반드시 정규화 후 사용.
@@ -292,6 +295,7 @@ export default async function RacesPage({
     comboDividends,
     poolSales,
     raceCorner,
+    formMeets,
   ] = selectedRace
     ? await Promise.all([
         getRaceEntries(currentDate, selectedRace.meet, selectedRace.race_no),
@@ -300,6 +304,8 @@ export default async function RacesPage({
         getRaceComboDividends(currentDate, selectedRace.meet, selectedRace.race_no),
         getRacePoolSales(currentDate, selectedRace.meet, selectedRace.race_no),
         getRaceCorner(currentDate, selectedRace.meet, selectedRace.race_no),
+        // 그날 경마지 발행본이 있는 경마장 — 실패해도 [] (경기 일람은 그대로 뜬다).
+        getEditionMeetsSafe(currentDate),
       ])
     : [
         { phase: "post" as const, entries: [] },
@@ -308,8 +314,16 @@ export default async function RacesPage({
         [] as RaceComboDividend[],
         [] as RacePoolSales[],
         null,
+        [],
       ];
   const entries = entriesResult.entries;
+  // 이 경주의 경마지 경주면 — 그날 그 경마장 호가 발행됐을 때만 링크.
+  // (races.meet 표기가 '부산경남' 이어도 같은 slug 로 맞춘다. 영천은 slug 가 없어 링크 없음.)
+  const formSlug = selectedRace ? slugFromMeet(selectedRace.meet) : null;
+  const formHref =
+    selectedRace && formSlug && formMeets.some((m) => slugFromMeet(m) === formSlug)
+      ? formRacePath(currentDate, selectedRace.meet, selectedRace.race_no)
+      : null;
   const entriesPhase = entriesResult.phase;
   const [compareSummaries, recentFinishesMap] = entries.length > 0 && selectedRace
     ? await Promise.all([
@@ -343,15 +357,9 @@ export default async function RacesPage({
 
   return (
     <main className="theme-v2 mx-auto w-full max-w-[1080px] px-4 md:px-6 py-6 md:py-8">
-      <div className="mb-4 flex items-baseline justify-between gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">경기 일람</h1>
-        <Link
-          href="/races/schedule"
-          className="inline-flex min-h-11 items-center text-base text-muted-foreground transition hover:text-foreground"
-        >
-          대상경주 일정 →
-        </Link>
-      </div>
+      {/* 서브탭: 경기 일람 | 경마지 | 대상경주 일정 (예전 "대상경주 일정 →" 링크를 대신한다) */}
+      <RacesSubnav className="mb-4" />
+      <h1 className="mb-4 text-2xl font-bold tracking-tight">경기 일람</h1>
 
       {/* ── 날짜 네비게이션: 이전/다음(경기 있는 날로 점프) + 데이트피커 + 오늘 ── */}
       <div className="mb-6 flex flex-wrap items-center gap-2">
@@ -493,6 +501,14 @@ export default async function RacesPage({
                   <RaceChip label="출전" value={`${selectedRace.entry_count}두`} />
                 )}
               </div>
+              {formHref && (
+                <Link
+                  href={formHref}
+                  className="inline-flex min-h-[max(44px,2.75rem)] items-center self-start text-base font-semibold text-foreground underline-offset-4 transition-colors hover:underline"
+                >
+                  이 경주 경마지 예상 보기 ›
+                </Link>
+              )}
             </div>
 
             <div className="flex flex-col items-start gap-2 md:items-end">
