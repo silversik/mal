@@ -10,7 +10,7 @@
 | 용어 | 뜻 |
 |---|---|
 | D | 경주일 (KST 날짜) |
-| meet | 경마장 한글 라벨 `서울` · `부경` · `제주` (DB 저장값). URL slug 는 `seoul` · `busan` · `jeju` |
+| meet | 경마장 한글 라벨 `서울` · `부경` · `제주` (`racing_form_*` 저장값 = 정규화 라벨). URL slug 는 `seoul` · `busan` · `jeju`. **원천 테이블의 저장 라벨은 한 가지가 아니다** — §1 "저장 라벨" |
 | H | 과거 성적 기준일 = D−1. 이력은 **`race_results.race_date < H`** 만 |
 | 호(edition) | (D, meet) 한 벌. D−1 18:00 발행 = 동결 |
 | 기준(rule) | `rating` 레이팅 · `form` 최근 성적 · `course` 거리 적성 · `jockey` 기수 (+ 과거 시험 전용 예비 `trainer`) |
@@ -26,23 +26,24 @@ payload 에는 **float 가 없다** — 부담·기록은 0.1 단위 정수(`*_t
 
 | Q | 쓰임 | 소스·조건 |
 |---|---|---|
-| Q0 달력 | 발행 대상 (D, meet) | `races r` (race_date 범위, meet ∈ 서울·부경·제주) 중 `EXISTS race_entries e (같은 race_date·meet·race_no, scratched_at IS NULL)`. 경주 수, 첫 발주 = `NULLIF(btrim(r.start_time),'')` 중 **(시, 분)으로 가장 이른 값**을 'HH:MM' 으로 (해석 안 되는 값은 무시). `start_time` 은 `'9:30'` 처럼 앞자리 0 이 없을 수 있어 문자열 MIN 을 쓰지 않는다 (`queries.first_post_of` — 웹 달력도 같게) |
-| Q1 출전명단 | 활성 출전마 | `race_entries` (D, meet) 중 `scratched_at IS NULL`(출전취소 아님) 행 + `MAX(updated_at) OVER (PARTITION BY race_date, meet)` = 배치 시각. 실제 기수: `LEFT JOIN LATERAL (SELECT … FROM jockey_changes jc WHERE jc.race_date=e.race_date AND jc.race_no=e.race_no AND jc.horse_no=e.horse_no ORDER BY jc.updated_at DESC, jc.id DESC LIMIT 1)` (meet 미사용) |
-| Q2 이력 | 말별 과거 성적 | `race_results rr WHERE rr.horse_no = ANY(:horse_nos) AND rr.race_date < :h` + `LEFT JOIN races ra USING (race_date, meet, race_no)` 로 거리 |
+| Q0 달력 | 발행 대상 (D, meet) | `races r` (race_date 범위, 정규화 meet ∈ 서울·부경·제주) 중 `EXISTS race_entries e (같은 race_date·정규화 meet·race_no, scratched_at IS NULL)`. 같은 경주가 두 라벨의 races 행으로 있으면 한 번만 센다 (발주 시각 있는 행 → 정규 라벨 순). 돌려주는 meet 은 정규화 라벨. 경주 수, 첫 발주 = `NULLIF(btrim(r.start_time),'')` 중 **(시, 분)으로 가장 이른 값**을 'HH:MM' 으로 (해석 안 되는 값은 무시). `start_time` 은 `'9:30'` 처럼 앞자리 0 이 없을 수 있어 문자열 MIN 을 쓰지 않는다 (`queries.first_post_of` — 웹 달력도 같게) |
+| Q1 출전명단 | 활성 출전마 | `race_entries` (D, meet 별칭) 중 `scratched_at IS NULL`(출전취소 아님) 행 + 그 행들의 `MAX(updated_at)` = 배치 시각. 같은 (race_no, horse_no) 가 두 라벨로 겹치면 최신 수집 행 하나(같으면 정규 라벨). 돌려주는 meet 은 정규화 라벨. 실제 기수: `LEFT JOIN LATERAL (SELECT … FROM jockey_changes jc WHERE jc.race_date=e.race_date AND jc.race_no=e.race_no AND jc.horse_no=e.horse_no ORDER BY jc.updated_at DESC, jc.id DESC LIMIT 1)` (meet 미사용) |
+| Q2 이력 | 말별 과거 성적 | `race_results rr WHERE rr.horse_no = ANY(:horse_nos) AND rr.race_date < :h` + 거리는 `races` 의 같은 (race_date, 정규화 meet, race_no) 행 하나 (거리가 있는 행 → 결과와 같은 라벨 순). meet 은 저장값 그대로 돌려준다 (features 가 정규화) |
 | Q3 기수·조교사 | 최근 90일 같은 경마장 | `race_results` 를 **이름 하나(btrim)로** 묶음, meet = 호의 meet(`부경` 은 `부산경남` 도 같은 경마장), `race_date ∈ [H−90, H)`. 출주는 §1.1 (`rank ≥ 1` 또는 `round(record_time*10) > 0`), 창 안 출주가 0 인 이름은 돌려주지 않는다. 동명이인 판정은 같은 meet·`race_date < H` 전체에서 `COUNT(DISTINCT NULLIF(ltrim(btrim(rr.raw->>'jkNo'),'0'),''))` ≥ 2 (조교사는 `raw->>'trNo'` 로 같은 값을 세지만 r1 은 쓰지 않는다) |
 | Q4 등급변동 | 소식 class_change | `horse_rank_changes` (horse_no = ANY, st_date ≤ D), 말별 st_date 최신 1건 |
 | Q5 마스터 | 소식 debut/no_record, live 가드 | `horses.total_race_count` (horse_no = ANY) |
-| Q6 경주 메타 | 거리·등급·발주·대상경주 | `races` (D, meet): race_no, race_name, distance, grade, track_type, start_time, `raw->>'rcDist'`. 대상경주는 `race_plans` (race_date = D, race_no, meet ∈ {meet, '부경'이면 '부산경남'}) 도 본다 |
+| Q6 경주 메타 | 거리·등급·발주·대상경주 | `races` (D, meet 별칭): race_no, race_name, distance, grade, track_type, start_time, `raw->>'rcDist'`. 같은 경주가 두 라벨 행으로 있으면 필드마다 NULL 아닌 첫 값 (정규 라벨 행 먼저). 대상경주는 `race_plans` (race_date = D, race_no, meet 별칭) 도 본다 |
 | results_through | 도장 "성적 반영 ~까지" | `SELECT MAX(race_date) FROM race_results WHERE race_date < :h` |
-| D 결과 존재 | live 발행 차단 | `EXISTS (SELECT 1 FROM race_results WHERE race_date = :d AND meet = :meet)` |
-| 미해결 이력 | live 경고 `unresolved_history` | `races` 중 `race_date ∈ [H−14, H)` 이고 같은 (race_date, meet, race_no) 의 `race_results` 가 없는 경주 → (race_date, meet) 중복 없이 (경주 단위 — `periodic._has_unresolved_races_on` 과 같은 판정) |
-| 정산 입력 | 결과·배당 | `race_results` (D, meet), `race_dividends` (D, meet, `win_rate`; **`horse_no` 컬럼에 출전번호(chulNo)가 들어 있다** → 정수로 바꿔 결과의 `raw->>'chulNo'` 와 매핑) |
+| D 결과 존재 | live 발행 차단 | `EXISTS (SELECT 1 FROM race_results WHERE race_date = :d AND meet = ANY(:별칭))` (저장 직전 재확인 `store.insert_edition` 도 같다) |
+| 미해결 이력 | live 경고 `unresolved_history` | `races` 중 `race_date ∈ [H−14, H)` 이고 같은 (race_date, 정규화 meet, race_no) 의 `race_results` 가 없는 경주 → (race_date, 정규화 meet) 중복 없이 (경주 단위 — `periodic._has_unresolved_races_on` 과 같은 판정) |
+| 정산 입력 | 결과·배당 | `race_results` (D, meet 별칭), `race_dividends` (D, meet 별칭 — 같은 말·출전번호가 두 라벨로 겹치면 정규 라벨 행, `win_rate`; **`horse_no` 컬럼에 출전번호(chulNo)가 들어 있다** → 정수로 바꿔 결과의 `raw->>'chulNo'` 와 매핑) |
 
 공통 규칙
 - 당일 입력(출전표·기수변경·등급변동·마스터)은 **발행 시점 DB 상태 그대로** 읽는다. `fetched_at` 필터는 쓰지 않는다.
 - 숫자 raw 값은 숫자·문자 혼재(`54.0` / `"54.0"`)라 SQL 에서는 `raw->>'key'` 텍스트로 꺼내 Python `parse.py` 가 파싱.
 - 이름은 항상 `btrim` (SQL) / `strip()` (Python). 빈 문자열은 NULL 취급.
 - meet 정규화: `부산경남` → `부경`. 그 밖의 값(`알수없음` 등)은 제외.
+- **저장 라벨** (2026-11-26 운영 감사 ⑫): 원천 테이블의 부경은 `부경` 과 `부산경남` 이 섞여 있다 — `race_entries`·`race_plans` 는 전부 `부산경남`, `race_results`·`race_dividends` 는 2026-08-16 부터 `부산경남`(그 전은 `부경`), `races` 는 같은 경주가 두 라벨로 따로 있을 수 있다 (KRA 응답의 meet 이 코드가 아니라 한글이면 그대로 저장된다). 그래서 provider 의 meet 인자는 정규화 라벨이고, (D, meet) 로 찾는 조회는 모두 별칭 집합(`queries.MEET_ALIASES` — 웹은 `FORM_MEET_STORED_LABELS`)으로 읽으며, 테이블 사이 조인은 정규화한 라벨로 비교한다 (`queries.norm_meet_sql`). 정확히 `'부경'` 으로만 찾으면 부경 호는 `no_entries` 로 발행되지 않는다.
 
 ### 1.1 출주 분류 (모든 이력 집계 공통)
 | race_results 행 | 분류 |

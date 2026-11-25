@@ -29,6 +29,7 @@ from sqlalchemy import text
 from . import definitions, payload
 from .build import BuildResult, NotPublishable
 from .definitions import RuleSetDef
+from .queries import meet_aliases
 from .settle import PENDING, Outcome
 
 #: 발행·missed 판정이 함께 쓰는 advisory lock 키 (pg_advisory_xact_lock(hashtext(키)))
@@ -240,8 +241,10 @@ _LAUNCH_AT = text("SELECT MIN(registered_at) FROM racing_form_rule_sets")
 _EDITION_EXISTS = text(
     "SELECT EXISTS (SELECT 1 FROM racing_form_editions WHERE race_date = :d AND meet = :meet)"
 )
+# 원천 테이블의 부경은 '부경'·'부산경남' 이 섞여 있다 → 별칭으로 읽는다 (queries 머리말)
 _RESULTS_EXIST = text(
-    "SELECT EXISTS (SELECT 1 FROM race_results WHERE race_date = :d AND meet = :meet)"
+    "SELECT EXISTS (SELECT 1 FROM race_results"
+    " WHERE race_date = :d AND meet = ANY(CAST(:meets AS text[])))"
 )
 _NEXT_ISSUE_NO = text(
     "SELECT COALESCE(MAX(issue_no), 0) + 1 FROM racing_form_editions WHERE meet = :meet"
@@ -546,7 +549,7 @@ class SqlRepo:
             conn.execute(_ADVISORY_LOCK, {"k": PUBLISH_LOCK_KEY})
             if conn.execute(_EDITION_EXISTS, {"d": d, "meet": meet}).scalar():
                 return 0
-            if conn.execute(_RESULTS_EXIST, {"d": d, "meet": meet}).scalar():
+            if conn.execute(_RESULTS_EXIST, {"d": d, "meets": meet_aliases(meet)}).scalar():
                 raise NotPublishable(
                     "results_present", f"{d.isoformat()} {meet} 결과가 이미 있음 (저장 직전 재확인)"
                 )

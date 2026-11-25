@@ -719,7 +719,7 @@ def test_32_late_changes_preday_before_freeze(e2e):
     assert rows["0041010"]["scratched_at"] is None and rows["0041012"]["scratched_at"] is None
     # 경마지 Q1 은 출전취소 행을 뺀다 — stale 추측 불필요
     with e2e.engine.connect() as c:
-        q1 = c.execute(queries._Q1_ENTRIES, {"d": w.H, "meet": "부경"}).mappings().all()
+        q1 = c.execute(queries._Q1_ENTRIES, {"d": w.H, "meets": ["부경", "부산경남"]}).mappings().all()
     assert [(r["horse_no"], r["jockey_name"], r["jc_after"]) for r in q1] == [
         ("0041010", "최부경", None), ("0041012", "강광안", "한교체")]
 

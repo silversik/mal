@@ -46,7 +46,7 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 from ..redact import redact
 from . import build, definitions, parse, payload, queries, rules, schedule, settle
 from .definitions import CONSENSUS_KEY, RULE_LABELS, RuleSetDef
-from .queries import SqlProvider, first_post_of, meet_aliases
+from .queries import SqlProvider, first_post_of, meet_aliases, norm_meet_sql
 from .settle import Outcome
 from .types import (
     CalendarRow,
@@ -110,6 +110,8 @@ class HoldoutIncomplete(BacktestError):
 #: 출주 판정 (§1.1) — Python features.classify_start 와 같다 (기록은 round(초×10) > 0)
 _STARTED = "COALESCE(rr.rank >= 1 OR round(rr.record_time * 10) > 0, FALSE)"
 
+# 라벨은 정규화해 묶는다 — 결과 '부산경남' ↔ races '부경' 처럼 저장 라벨이 섞여 있다
+# (queries 머리말)
 _Q1B_CALENDAR = text(
     f"""
     SELECT s.race_date,
@@ -119,15 +121,17 @@ _Q1B_CALENDAR = text(
                SELECT array_remove(array_agg(NULLIF(btrim(r.start_time), '')), NULL)
                  FROM races r
                 WHERE r.race_date = s.race_date
-                  AND r.meet = s.meet
+                  AND {norm_meet_sql("r.meet")} = s.meet
            ), ARRAY[]::text[]) AS start_times
       FROM (
-            SELECT rr.race_date, rr.meet, COUNT(DISTINCT rr.race_no)::int AS race_count
+            SELECT rr.race_date,
+                   {norm_meet_sql("rr.meet")} AS meet,
+                   COUNT(DISTINCT rr.race_no)::int AS race_count
               FROM race_results rr
              WHERE rr.race_date BETWEEN :d_from AND :d_to
                AND rr.meet = ANY(CAST(:meets AS text[]))
                AND {_STARTED}
-             GROUP BY rr.race_date, rr.meet
+             GROUP BY rr.race_date, {norm_meet_sql("rr.meet")}
            ) s
      ORDER BY s.race_date, s.meet
     """

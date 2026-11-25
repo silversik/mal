@@ -765,12 +765,25 @@ def item_06(db: Rows, ctx: Ctx) -> _Out:
     warn = False
     out = _Out(INFO, "")
     parts = []
+    # 저장 라벨이 섞여 있으면('부경' 2026-08-14 까지 · '부산경남' 그 뒤) 같은 경마장으로 합쳐서 본다
+    # — 라벨별로 따로 보면 "holdout 보다 짧음"·"dev 불가" 가 잘못 뜬다. 원본 행은 data 에 남긴다.
+    merged: dict[str, dict[str, Any]] = {}
     for r in rows:
-        meet = parse.normalize_meet(r["meet"])
-        label = str(r["meet"])
-        parts.append(f"{label} {r['first_date']}~{r['last_date']} ({int(r['days']):,}일)")
+        key = parse.normalize_meet(r["meet"]) or str(r["meet"])
+        m = merged.setdefault(key, {"first": None, "last": None, "days": 0, "stored": []})
+        if r["first_date"] is not None:
+            m["first"] = r["first_date"] if m["first"] is None else min(m["first"], r["first_date"])
+        if r["last_date"] is not None:
+            m["last"] = r["last_date"] if m["last"] is None else max(m["last"], r["last_date"])
+        m["days"] += int(r["days"])
+        m["stored"].append(str(r["meet"]))
+    for label, m in merged.items():
+        meet = parse.normalize_meet(label)
+        stored = "" if m["stored"] == [label] else f" [저장 라벨 {'·'.join(m['stored'])}]"
+        parts.append(f"{label} {m['first']}~{m['last']} ({m['days']:,}일){stored}")
         if meet is None:
             continue
+        r = {"first_date": m["first"], "last_date": m["last"]}
         first = r["first_date"]
         if first is not None and first > need_from:
             warn = True

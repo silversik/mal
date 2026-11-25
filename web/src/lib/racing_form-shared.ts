@@ -891,6 +891,24 @@ export const FORM_MEETS: readonly { meet: FormMeet; slug: FormMeetSlug }[] = [
 /** DB 값(한글) — MEET_ORDER 순. SQL 파라미터로 넘긴다. */
 export const FORM_MEET_LABELS: readonly FormMeet[] = FORM_MEETS.map((m) => m.meet);
 
+/**
+ * 원천 테이블(races·race_entries 등)에 저장된 라벨 — 경마지 라벨 하나에 여럿일 수 있다.
+ * 운영 DB 의 부경은 '부경' 과 '부산경남' 이 섞여 있다 (race_entries 는 전부 '부산경남', races 는
+ * 같은 경주가 두 라벨로 따로 있을 수 있다). racing_form_* 테이블은 늘 경마지 라벨이다.
+ * crawler `queries.MEET_ALIASES` 와 같아야 한다.
+ */
+export const FORM_MEET_STORED_LABELS: Readonly<Record<FormMeet, readonly string[]>> = {
+  서울: ["서울"],
+  제주: ["제주"],
+  부경: ["부경", "부산경남"],
+};
+
+/** 경마지 라벨과 다른 저장 라벨(별칭) → 경마지 라벨. SQL 에는 배열 두 개로 넘긴다. */
+export const FORM_MEET_ALIAS_PAIRS: readonly { stored: string; meet: FormMeet }[] = FORM_MEETS.flatMap(
+  ({ meet }) =>
+    FORM_MEET_STORED_LABELS[meet].filter((stored) => stored !== meet).map((stored) => ({ stored, meet })),
+);
+
 export function isFormMeet(v: unknown): v is FormMeet {
   return FORM_MEETS.some((m) => m.meet === v);
 }
