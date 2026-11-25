@@ -210,7 +210,7 @@ r1은 아직 prod에 등록되지 않았으므로, **PR-2 머지 전까지는 �
 - e2e test_47(replay 결정성)은 아직 구현하지 않았다.
 - **PR-3 (G2, 첫 호를 확인한 뒤)**: 데스크톱·모바일 메뉴의 '경마지', `/races` 서브탭과 경주 머리 링크, 홈 카드, sitemap, 푸터 1336 한 줄, about·약관 문구, `FORM_INDEXABLE=true`. **코드 준비 완료 (2026-11-26)** — 브랜치 `claude/zen-pascal-0wufg3`, PR-2 를 포함해 쌓은 draft 라 **PR-2 가 main 에 들어간 뒤에** merge commit 으로 머지한다. 검증: web `tsc`·lint·vitest 210 passed, DB 없는 `next build` 성공(`/`·`/form/**`·`/races`·sitemap 모두 ƒ), 시드 DB 로 375px·1280px 화면 확인(가로 넘침 0).
 - **r1 을 고쳐야 할 때의 브랜치**: PR-2 브랜치(`claude/quirky-mendel-pp3kwg`)에 커밋해야 하는데, 그 세션은 정리됐다. 새 세션이 그 브랜치에 push 하려면 소유자의 명시적 허락이 필요하다.
-- `docs/spec/backup.md`에 경마지 함수 3개·트리거 12개 복원 확인 절차를 추가한다.
+- ~~`docs/spec/backup.md`에 경마지 함수 3개·트리거 12개 복원 확인 절차를 추가한다.~~ — 2026-11-26 추가 (PR-3 브랜치).
 - 2단계: data.go.kr 출전취소(15056779)·특이사항(15160316) API 승인 뒤 연동(발행 후 소식·무효 판정 확정).
 
 ## 8. 핵심 파일
