@@ -20,7 +20,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-# 기준 키 (표시·집계 순서 고정)
+# 기준 키 (표시·집계 순서 고정 — 발행 기준은 버전마다 이 중 일부, 순서는 이 순서를 따른다)
 RULE_KEYS: tuple[str, ...] = ("rating", "form", "course", "jockey", "trainer")
 CONSENSUS_KEY = "consensus"
 
@@ -56,7 +56,12 @@ class RuleSetDef:
 
 
 # ---------------------------------------------------------------------------
-# r1 — 1단계 기준 (레이팅·최근 성적·거리 적성·기수, 예비 조교사)
+# r1 — 1단계 기준 (레이팅·최근 성적·기수·조교사, 예비 거리 적성)
+#
+# 2026-11-26 사전 등록 결과(docs/feature/racing-form.md 5.7): dev 과거 시험에서 거리 적성(course)은
+# 과거 경주의 거리 데이터가 DB 에 없어 예상이 0건이었다 → 게이트 미달 → 사전 등록한 대로 예비 기준
+# 조교사(trainer)로 대체했다. course 는 과거 시험에서만 함께 평가하는 예비 기준(r2 후보)으로 남긴다.
+# r1 이 prod 에 등록되기 전의 수정이다 (등록 뒤에는 새 버전을 추가한다).
 # ---------------------------------------------------------------------------
 
 _R1_PARAMS: dict[str, Any] = {
@@ -217,14 +222,14 @@ _R1_E2E_PARAMS["guards"]["max_all_nopick_races_pct"] = 100
 RULE_SETS: dict[str, RuleSetDef] = {
     "r1": RuleSetDef(
         version="r1",
-        rules=("rating", "form", "course", "jockey"),
-        backtest_extra_rules=("trainer",),
+        rules=("rating", "form", "jockey", "trainer"),
+        backtest_extra_rules=("course",),
         params=_R1_PARAMS,
     ),
     "r1-e2e": RuleSetDef(
         version="r1-e2e",
-        rules=("rating", "form", "course", "jockey"),
-        backtest_extra_rules=("trainer",),
+        rules=("rating", "form", "jockey", "trainer"),
+        backtest_extra_rules=("course",),
         params=_R1_E2E_PARAMS,
     ),
 }

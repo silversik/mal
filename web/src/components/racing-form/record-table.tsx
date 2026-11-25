@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import {
   CONSENSUS_KEY,
+  RESERVE_RULES,
   recordRows,
   recordStat,
   type Mark,
@@ -221,7 +222,7 @@ export function RecordTable({
       {rows.map((row) => (
         <RuleCard key={row.key} row={row} record={record} idPrefix={idPrefix} />
       ))}
-      {extraRuleNote && rows.some((r) => r.key === "trainer") ? (
+      {extraRuleNote && rows.some((r) => RESERVE_RULES.some((k) => k === r.key)) ? (
         <p className="text-sm text-muted-foreground">{extraRuleNote}</p>
       ) : null}
     </div>

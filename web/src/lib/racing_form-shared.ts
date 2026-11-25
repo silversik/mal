@@ -986,8 +986,18 @@ export function normalizeFormRaceNo(v: unknown): number | null {
 // 5. 기준·기호 라벨
 // ============================================================================
 
-/** 기준 고정 순서 — crawler definitions.RULE_KEYS 와 같다 (trainer 는 과거 시험 전용 예비). */
+/** 기준 고정 순서 — crawler definitions.RULE_KEYS 와 같다 (발행 기준은 이 중 일부, 순서는 이 순서). */
 export const RULE_ORDER: readonly RuleKey[] = ["rating", "form", "course", "jockey", "trainer"];
+
+/**
+ * r1 발행 기준 4개 (화면 순서) — crawler definitions.RULE_SETS.r1.rules 와 같다 (vitest 대조).
+ * 거리 적성(course)은 과거 경주의 거리 데이터가 없어 과거 시험을 할 수 없었고, 사전 등록한 대로
+ * 예비 기준이던 조교사로 대체했다 (docs/feature/racing-form.md 5.7).
+ */
+export const PUBLISHED_RULES: readonly RuleKey[] = ["rating", "form", "jockey", "trainer"];
+
+/** 과거 시험에서만 함께 본 예비 기준 (발행에는 쓰지 않는다) — r1.backtest_extra_rules. */
+export const RESERVE_RULES: readonly RuleKey[] = ["course"];
 
 /** 기준 라벨 — crawler definitions.RULE_LABELS · payload.rules[].label 과 같아야 한다 (vitest 대조). */
 export const RULE_LABEL: Readonly<Record<RuleKey, string>> = {
@@ -1821,13 +1831,13 @@ function markRow(c: RuleRecordCell): RecordMarkRow {
 
 /**
  * 기록 → 화면 행. 고정 순서(RULE_ORDER, 주목마는 끝), '최고 기준' 강조 없음.
- * r1 발행 기준 4개는 표시가 없어도 0 으로 채우고, trainer 는 데이터가 있을 때만 싣는다.
+ * r1 발행 기준 4개는 표시가 없어도 0 으로 채우고, 예비 기준(RESERVE_RULES)은 데이터가 있을 때만 싣는다.
  */
 export function recordRows(record: RuleRecord): RecordRuleRow[] {
   const keys: RecordKey[] = [
     ...RULE_ORDER.filter(
       (k) =>
-        k !== "trainer" ||
+        !RESERVE_RULES.includes(k) ||
         record.cells.some((c) => c.rule_key === k) ||
         record.rules.some((r) => r.rule_key === k),
     ),

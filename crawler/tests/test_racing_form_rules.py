@@ -389,7 +389,7 @@ def test_consensus_a2_insufficient() -> None:
         [
             rr_pick("rating", 1, 2, 3),
             rr_pick("form", 1, 2, 3),
-            rr_none("course"),
+            rr_none("trainer"),
             rr_none("jockey"),
         ],
         R1,
@@ -403,7 +403,7 @@ def test_consensus_a3_all_three_pick() -> None:
         [
             rr_pick("rating", 1, 2, 3),
             rr_pick("form", 1, 4, 2),
-            rr_none("course"),
+            rr_none("trainer"),
             rr_pick("jockey", 1, 3, 5),
         ],
         R1,
@@ -421,7 +421,7 @@ def test_consensus_a4_v3_sort_and_max_two() -> None:
         [
             rr_pick("rating", 3, 1, 2),
             rr_pick("form", 1, 3, 5),
-            rr_pick("course", 1, 2, 3),
+            rr_pick("trainer", 1, 2, 3),
             rr_pick("jockey", 2, 1, 4),
         ],
         R1,
@@ -430,10 +430,10 @@ def test_consensus_a4_v3_sort_and_max_two() -> None:
     # 1: v4 · 2: v3 (◎1 ○1) · 3: v3 (◎1 ○1) → 번호순으로 2 → 최대 2두라 3은 빠짐
     assert [(p.mark, p.chul_no, p.votes) for p in c.picks] == [(1, 1, 4), (2, 2, 3)]
     one, two = c.picks
-    assert one.reasons == ("form-1", "course-1") and one.reasons_more == 2
-    assert dict(one.marks) == {"rating": 2, "form": 1, "course": 1, "jockey": 2}
-    assert [k for k, _ in one.marks] == ["rating", "form", "course", "jockey"]
-    assert two.reasons == ("jockey-2", "course-2") and two.reasons_more == 1
+    assert one.reasons == ("form-1", "trainer-1") and one.reasons_more == 2
+    assert dict(one.marks) == {"rating": 2, "form": 1, "trainer": 1, "jockey": 2}
+    assert [k for k, _ in one.marks] == ["rating", "form", "jockey", "trainer"]
+    assert two.reasons == ("jockey-2", "trainer-2") and two.reasons_more == 1
 
 
 def test_consensus_mark_counts_break_vote_ties() -> None:
@@ -441,7 +441,7 @@ def test_consensus_mark_counts_break_vote_ties() -> None:
         [
             rr_pick("rating", 1, 2, 3),
             rr_pick("form", 2, 1, 3),
-            rr_pick("course", 3, 2, 1),
+            rr_pick("trainer", 3, 2, 1),
             rr_pick("jockey", 4, 5, 6),
         ],
         R1,
@@ -455,7 +455,7 @@ def test_consensus_split_small_field_and_unpublished_rules_ignored() -> None:
     split = rules.consensus(
         [
             rr_pick("rating", 1, 2, 3),
-            rr_pick("course", 4, 5, 6),
+            rr_pick("trainer", 4, 5, 6),
             rr_pick("jockey", 7, 8, 1),
             rr_none("form"),
         ],
@@ -465,14 +465,14 @@ def test_consensus_split_small_field_and_unpublished_rules_ignored() -> None:
     assert (split.status, split.active_rules, split.picks) == ("split", 3, ())
     small = rules.consensus([rr_none(k) for k in R1.rules], R1, small_field=True)
     assert (small.status, small.active_rules) == ("small_field", 0)
-    # 예비 기준(trainer)은 A·v 에 들어가지 않는다
+    # 예비 기준(course)은 A·v 에 들어가지 않는다
     c = rules.consensus(
         [
             rr_pick("rating", 1, 2, 3),
             rr_pick("form", 1, 2, 3),
-            rr_none("course"),
+            rr_none("trainer"),
             rr_none("jockey"),
-            rr_pick("trainer", 1, 2, 3),
+            rr_pick("course", 1, 2, 3),
         ],
         R1,
         small_field=False,

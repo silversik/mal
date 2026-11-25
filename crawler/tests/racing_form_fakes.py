@@ -700,6 +700,10 @@ def payload_scenario() -> FakeProvider:
         "정마루": (35, 5, 12),
     }.items():
         p.set_jockey_stat(name, meet, *st)
+    # 조교사 집계 (r1 발행 기준) — 박조교 20% · 정조교 18% · 최조교 10%
+    p.set_trainer_stat("박조교", meet, 40, 8, 15)
+    p.set_trainer_stat("최조교", meet, 30, 3, 9)
+    p.set_trainer_stat("정조교", meet, 22, 4, 8)
 
     # ---------------- 2R 대상경주 1400m (L)
     p.add_race(

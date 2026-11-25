@@ -16,6 +16,8 @@ import {
   MARK_TEXT,
   MISSED_HEAD,
   RULE_LABEL,
+  PUBLISHED_RULES,
+  RESERVE_RULES,
   RULE_ORDER,
   SHOW_SCRATCH_HINT,
   consensusLine,
@@ -248,8 +250,8 @@ describe("payload v1 파싱 — payload_v1.golden.json", () => {
     expect(r1.consensus.picks[0]).toMatchObject({ mark: 1, horse_no: "0041003", chul_no: 3, votes: 4 });
     const rating = r1.rules[0];
     expect(rating.status === "picked" && rating.picks.map((k) => k.mark)).toEqual([1, 2, 3]);
-    const course2 = p.races[1].rules[2];
-    expect(course2).toMatchObject({ key: "course", status: "no_pick", reason_code: "course_no_pick_eligible" });
+    const trainer2 = p.races[1].rules[3];
+    expect(trainer2).toMatchObject({ key: "trainer", status: "no_pick", reason_code: "trainer_no_pick" });
     const u1 = r1.runners[0];
     expect(u1.badges.find((b) => b.kind === "rating_change")?.delta).toBe(10);
     expect("delta" in u1.badges[0]).toBe(false);
@@ -801,8 +803,8 @@ describe("recordRows — 분수 상시, n<30 % 숨김, n<100 안내, 무작위 �
         ],
       }),
     );
-    expect(rows.map((r) => r.key)).toEqual(["rating", "form", "course", "jockey", "consensus"]);
-    expect(rows.map((r) => r.label)).toEqual(["레이팅", "최근 성적", "거리 적성", "기수", "주목마"]);
+    expect(rows.map((r) => r.key)).toEqual(["rating", "form", "jockey", "trainer", "consensus"]);
+    expect(rows.map((r) => r.label)).toEqual(["레이팅", "최근 성적", "기수", "조교사", "주목마"]);
     expect(rows[0].participation.text).toBe("35/40 (88%)");
     expect(rows[0].anyWin?.text).toBe("12/33 (36%)");
     expect(rows[0].marks.map((m) => m.mark)).toEqual([1, 2, 3]);
@@ -811,9 +813,9 @@ describe("recordRows — 분수 상시, n<30 % 숨김, n<100 안내, 무작위 �
     expect(rows[4].marks.map((m) => m.mark)).toEqual([1]);
     expect(rows[4].anyWin).toBeNull();
     expect(rows[4].participation.text).toBe("6/40 (15%)");
-    // 예비 trainer 는 데이터가 있을 때만
-    const withTrainer = recordRows(record([cell({ rule_key: "trainer", mark: 1, n: 1 })]));
-    expect(withTrainer.map((r) => r.key)).toEqual(["rating", "form", "course", "jockey", "trainer", "consensus"]);
+    // 예비 기준(course — 과거 시험 전용)은 데이터가 있을 때만
+    const withCourse = recordRows(record([cell({ rule_key: "course", mark: 1, n: 1 })]));
+    expect(withCourse.map((r) => r.key)).toEqual(["rating", "form", "course", "jockey", "trainer", "consensus"]);
   });
 });
 
@@ -850,8 +852,8 @@ describe("settlementLine — 결산 한 줄 (계획 4.8)", () => {
     rules: [
       { rule_key: "rating", picks: 12, settled: 12, voids: 0, n: 12, wins: 3, top3: 6 },
       { rule_key: "form", picks: 11, settled: 11, voids: 0, n: 11, wins: 2, top3: 5 },
-      { rule_key: "course", picks: 7, settled: 7, voids: 0, n: 7, wins: 1, top3: 3 },
       { rule_key: "jockey", picks: 12, settled: 12, voids: 0, n: 12, wins: 2, top3: 7 },
+      { rule_key: "trainer", picks: 7, settled: 7, voids: 0, n: 7, wins: 1, top3: 3 },
       { rule_key: "consensus", picks: 9, settled: 9, voids: 0, n: 9, wins: 3, top3: 6 },
     ],
     ...p,
@@ -861,9 +863,9 @@ describe("settlementLine — 결산 한 줄 (계획 4.8)", () => {
   it("경주일 저녁 — 계획 예시 문장과 같다", () => {
     const line = settlementLine({ ...base, tally: tally(), now: "2026-11-14T18:00:00+09:00" });
     expect(line?.text).toBe(
-      "오늘 서울 12경주 — 주목마 9경주 중 1착 3/9 · 3착 이내 6/9 · 무효 0 / ◎ 1착: 레이팅 3/12 · 최근 성적 2/11 · 거리 적성 1/7 · 기수 2/12 (잠정 — 내일 오후 1시 확정)",
+      "오늘 서울 12경주 — 주목마 9경주 중 1착 3/9 · 3착 이내 6/9 · 무효 0 / ◎ 1착: 레이팅 3/12 · 최근 성적 2/11 · 기수 2/12 · 조교사 1/7 (잠정 — 내일 오후 1시 확정)",
     );
-    expect(line?.marks).toBe("1착: 레이팅 3/12 · 최근 성적 2/11 · 거리 적성 1/7 · 기수 2/12");
+    expect(line?.marks).toBe("1착: 레이팅 3/12 · 최근 성적 2/11 · 기수 2/12 · 조교사 1/7");
     expect(findForbidden(line!.marks!)).toEqual([]);
   });
 
@@ -873,7 +875,7 @@ describe("settlementLine — 결산 한 줄 (계획 4.8)", () => {
     );
     const fin = settlementLine({ ...base, tally: tally({ races_final: 12 }), now: "2026-11-15T13:10:00+09:00" });
     expect(fin?.provisional).toBeNull();
-    expect(fin?.text.endsWith("기수 2/12")).toBe(true);
+    expect(fin?.text.endsWith("조교사 1/7")).toBe(true);
     const partial = settlementLine({ ...base, tally: tally({ races_settled: 11, races_final: 11 }), now: "2026-11-15T13:10:00+09:00" });
     expect(partial?.provisional).toBe("잠정");
     expect(settlementLine({ ...base, tally: tally({ races_settled: 0 }), now: "2026-11-14T12:00:00+09:00" })).toBeNull();
@@ -914,9 +916,18 @@ describe("크롤러 정본과 같은 값", () => {
 
   it("RULE_LABEL = payload.rules 라벨 = definitions.RULE_LABELS, 순서 = RULE_ORDER", () => {
     for (const r of GOLDEN.rules) expect(RULE_LABEL[r.key]).toBe(r.label);
-    expect(GOLDEN.rules.map((r) => r.label)).toEqual(["레이팅", "최근 성적", "거리 적성", "기수"]);
+    expect(GOLDEN.rules.map((r) => r.label)).toEqual(["레이팅", "최근 성적", "기수", "조교사"]);
     const keys = GOLDEN.rules.map((r) => r.key);
     expect(RULE_ORDER.filter((k) => keys.includes(k))).toEqual(keys);
+    // 발행 기준·예비 기준 = definitions.py r1 (rules · backtest_extra_rules)
+    expect([...PUBLISHED_RULES]).toEqual(keys);
+    const r1 = /"r1": RuleSetDef\(\s*version="r1",\s*rules=\(([^)]*)\),\s*backtest_extra_rules=\(([^)]*)\)/.exec(
+      DEFINITIONS_PY,
+    );
+    expect(r1).not.toBeNull();
+    const names = (s: string) => [...s.matchAll(/"(\w+)"/g)].map((m) => m[1]);
+    expect(names(r1![1])).toEqual([...PUBLISHED_RULES]);
+    expect(names(r1![2])).toEqual([...RESERVE_RULES]);
 
     const block = /RULE_LABELS: dict\[str, str\] = \{([\s\S]*?)\n\}/.exec(DEFINITIONS_PY);
     expect(block).not.toBeNull();
