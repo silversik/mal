@@ -44,6 +44,8 @@ def upsert_race_results(items: list[dict[str, Any]]) -> int:
             "weight": stmt.excluded.weight,
             "jockey_name": stmt.excluded.jockey_name,
             "trainer_name": stmt.excluded.trainer_name,
+            "jk_no": stmt.excluded.jk_no,
+            "tr_no": stmt.excluded.tr_no,
             "raw": stmt.excluded.raw,
         },
     )

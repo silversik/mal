@@ -13,7 +13,7 @@ import { getRankingWithFallback, type RankingEntity } from "@/lib/rankings";
 import { buildRankingsHref, type YearFallbackResult } from "@/lib/rankings-shared";
 
 export const metadata: Metadata = {
-  title: "분석 · mal.kr",
+  title: "분석",
   description: "랭킹 · 코스 레코드 · 마필 비교 등 mal.kr 의 데이터 분석 도구.",
   alternates: { canonical: "/analysis" },
 };

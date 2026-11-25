@@ -100,6 +100,14 @@ def _clean(value: Any) -> Any:
     return value
 
 
+def _clean_id(value: Any) -> str | None:
+    """번호(jkNo·trNo) → strip 한 문자열. 숫자로 와도 문자열, 빈 값·'-' → None."""
+    if value is None:
+        return None
+    s = str(value).strip()
+    return None if s in ("", "-") else s
+
+
 def api_item_to_race_result_fields(item: dict[str, Any]) -> dict[str, Any]:
     """Map a getracedetailresult item into `race_results` columns."""
     meet_raw = str(item.get("meet") or "").strip()
@@ -114,5 +122,8 @@ def api_item_to_race_result_fields(item: dict[str, Any]) -> dict[str, Any]:
         "weight": _parse_number(item.get("wgHr")),
         "jockey_name": _clean(item.get("jkName")),
         "trainer_name": _clean(item.get("trName")),
+        # 번호는 raw 그대로(strip 만) — jockeys/trainers 클라이언트와 같은 형식.
+        "jk_no": _clean_id(item.get("jkNo")),
+        "tr_no": _clean_id(item.get("trNo")),
         "raw": item,
     }

@@ -15,7 +15,7 @@ import { getAllTrainers, getTrainerCount } from "@/lib/trainers";
 import { getAllOwners, getOwnerCount } from "@/lib/owners";
 
 export const metadata: Metadata = {
-  title: "데이터베이스 · mal.kr",
+  title: "데이터베이스",
   description: "한국마사회 공공데이터 기반 마필 · 기수 · 조교사 · 마주 데이터베이스.",
   alternates: { canonical: "/database" },
 };
