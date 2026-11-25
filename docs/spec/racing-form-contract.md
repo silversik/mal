@@ -13,7 +13,7 @@
 | meet | 경마장 한글 라벨 `서울` · `부경` · `제주` (`racing_form_*` 저장값 = 정규화 라벨). URL slug 는 `seoul` · `busan` · `jeju`. **원천 테이블의 저장 라벨은 한 가지가 아니다** — §1 "저장 라벨" |
 | H | 과거 성적 기준일 = D−1. 이력은 **`race_results.race_date < H`** 만 |
 | 호(edition) | (D, meet) 한 벌. D−1 18:00 발행 = 동결 |
-| 기준(rule) | `rating` 레이팅 · `form` 최근 성적 · `course` 거리 적성 · `jockey` 기수 (+ 과거 시험 전용 예비 `trainer`) |
+| 기준(rule) | r1 발행: `rating` 레이팅 · `form` 최근 성적 · `jockey` 기수 · `trainer` 조교사 (+ 과거 시험 전용 예비 `course` 거리 적성). 표시·집계 순서는 `RULE_KEYS`(rating·form·course·jockey·trainer) 중 그 버전에 있는 것 |
 | mark | 기호 slot. 1=◎ 2=○ 3=△. 화면은 PickMark 가 그린다 |
 | A | 그 경주에서 **예상을 낸** 발행 기준 수 |
 | v | 한 말에 mark 1~3 중 하나라도 준 발행 기준 수 |
@@ -77,14 +77,14 @@ payload 에는 **float 가 없다** — 부담·기록은 0.1 단위 정수(`*_t
 |---|---|---|---|---|---|
 | `rating` | rating > 0 | 자격 수 < max(3, ⌈N/2⌉) → `rating_no_pick` | – | rating↓ → 번호↑ | `rating_reason` (동점자 있으면 `rating_reason_tie`); rank = 1 + (나보다 rating 높은 말 수) |
 | `form` | [H−365, H) 출주 2회 이상 (최근 3전 사용) | 자격 수 < max(3, ⌈N/2⌉) → `form_no_pick_eligible`; 자격 말 중 최근 3전 3착 이내가 아무도 없음 → `form_no_pick_top3` | 최근 3전 3착 이내 ≥ 1 | 3착 이내 수↓ → 1착 수↓ → 직전 착순↑(없으면 99) → 평균 착순↑(착순 있는 경주만, 교차곱) → 번호↑ | `form_reason`: k=사용한 경주 수, seq = 오래된→최근 `rank_token` 을 `→` 로 연결 |
-| `course` | 같은 meet·같은 거리(오늘 경주 거리) 통산 출주 3회 이상 (< H) | 오늘 거리 None → `course_no_pick_distance`; 자격 수 < 3 → `course_no_pick_eligible`; 자격 말 중 3착 이내 0 → `course_no_pick_top3` | 그 조건 3착 이내 ≥ 1 | 3착 이내율↓ → 3착 이내 수↓ → 1착 수↓ → 번호↑ | `course_reason` |
+| `course` (r1 예비, 과거 시험 전용) | 같은 meet·같은 거리(오늘 경주 거리) 통산 출주 3회 이상 (< H) | 오늘 거리 None → `course_no_pick_distance`; 자격 수 < 3 → `course_no_pick_eligible`; 자격 말 중 3착 이내 0 → `course_no_pick_top3` | 그 조건 3착 이내 ≥ 1 | 3착 이내율↓ → 3착 이내 수↓ → 1착 수↓ → 번호↑ | `course_reason` |
 | `jockey` | 실제 기수의 같은 meet [H−90, H) 기승(출주) 20회 이상, 동명이인 아님 | 자격 수 < 3 → `jockey_no_pick` | – | 승률↓ → 3착 이내율↓ → 기승 수↓ → 번호↑ | `jockey_reason` |
-| `trainer` (예비, 과거 시험 전용) | 출전표 trainer_name 의 같은 meet [H−90, H) 출주 20회 이상 | 자격 수 < 3 → `trainer_no_pick` | – | 승률↓ → 3착 이내율↓ → 출주 수↓ → 번호↑ | `trainer_reason` |
+| `trainer` | 출전표 trainer_name 의 같은 meet [H−90, H) 출주 20회 이상 (동명이인 검사 없음) | 자격 수 < 3 → `trainer_no_pick` | – | 승률↓ → 3착 이내율↓ → 출주 수↓ → 번호↑ | `trainer_reason` |
 
 경주 단위 `small_field` 이면 모든 기준이 `status:"no_pick", reason_code:"small_field"`, 문구 `no_pick_small_field` (n=N, m=min_active).
 
 ### 2.1 주목마
-- A = status "picked" 인 **발행 기준**(defn.rules) 수. trainer 등 예비는 넣지 않는다.
+- A = status "picked" 인 **발행 기준**(defn.rules) 수. 예비 기준(r1 은 course)은 넣지 않는다.
 - 경주가 small_field → `consensus.status = "small_field"`. A < 3 → `"insufficient"`.
 - 후보 = v ≥ 3 인 말. 정렬 v↓ → mark1 개수↓ → mark2 개수↓ → 번호↑. 상위 2두 → mark 1·2. 후보 0 → `"split"`. 있으면 `"picked"`.
 - reasons = 그 말을 고른 기준들의 근거를 (받은 mark↑ → 기준 고정 순서) 로 정렬해 앞 2개, `reasons_more` = 나머지 수.

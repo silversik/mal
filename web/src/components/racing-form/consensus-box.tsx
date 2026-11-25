@@ -29,7 +29,7 @@ export function FocusLabel({ className }: { className?: string }) {
   );
 }
 
-/** 받은 기호 — 기준 고정 순서로 "PickMark 레이팅 · PickMark 거리 적성". */
+/** 받은 기호 — 기준 고정 순서로 "PickMark 레이팅 · PickMark 조교사". */
 export function MarksReceived({ marks, className }: { marks: MarkMap; className?: string }) {
   const got = RULE_ORDER.flatMap((k) => {
     const m = marks[k];
