@@ -5,7 +5,7 @@ import dataclasses
 import importlib
 import sys
 import types
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 import pytest
@@ -88,9 +88,21 @@ def test_helper_nothing_attempted_is_ok():
 
 # ------------------------------------------------------------ race_entries
 
+# 고정 시계 — UTC 16:00 = KST 다음날 01:00. UTC/KST 날짜가 갈리는 창(UTC 15~24시)이라
+# 잡이 컨테이너(UTC) 날짜가 아니라 KST 날짜로 경주일을 고르는지까지 검증된다.
+ENTRIES_NOW = datetime(2026, 11, 25, 16, 0, tzinfo=UTC)
+ENTRIES_TODAY = ENTRIES_NOW.astimezone(sync_race_entries.KST).date()  # 2026-11-26 (목)
+
+
+class _EntriesClock(datetime):
+    @classmethod
+    def now(cls, tz: Any = None) -> datetime:  # type: ignore[override]
+        return ENTRIES_NOW.astimezone(tz) if tz else ENTRIES_NOW
+
 
 @pytest.fixture
 def entries(monkeypatch):
+    monkeypatch.setattr(sync_race_entries, "datetime", _EntriesClock)
     monkeypatch.setattr(sync_race_entries, "upsert_race_entries", _count_upsert)
     monkeypatch.setattr(sync_race_entries, "upsert_races_skeleton", _count_upsert)
     # api 매핑은 그대로 쓰지 않고 item 통과
@@ -114,7 +126,9 @@ def test_entries_all_fail_raises(entries):
 def test_entries_partial_fail_returns_rows(entries):
     entries(lambda d, m: BOOM if m == 1 else [{"x": 1}, {"x": 2}])
     n = sync_race_entries.sync_upcoming(days_ahead=10)
-    dates = sync_race_entries._upcoming_race_dates(date.today(), 10)
+    dates = sync_race_entries._upcoming_race_dates(ENTRIES_TODAY, 10)
+    # KST 기준 8일 (11/26~30 매일 + 12/4·5·6 금토일). UTC 날짜(11/25)로 잡으면 7일.
+    assert len(dates) == 8
     assert n == 3 * 2 * len(dates)  # meet 2·3·4 × 2건 × 일자 수
 
 
@@ -136,10 +150,21 @@ _MEET_JOBS = [
 ]
 
 
+SALES_TODAY = date(2026, 11, 26)
+
+
+class _SalesDate(date):
+    @classmethod
+    def today(cls) -> date:  # type: ignore[override]
+        return SALES_TODAY
+
+
 @pytest.fixture(params=_MEET_JOBS, ids=lambda p: p[3])
 def meet_job(request, monkeypatch):
     mod, client_attr, upsert_attr, name = request.param
     monkeypatch.setattr(mod, upsert_attr, _count_upsert)
+    # backfill_recent_days 는 date.today() 기준 — 자정을 걸쳐 돌아도 흔들리지 않게 고정
+    monkeypatch.setattr(mod, "date", _SalesDate)
 
     def install(respond) -> _Fake:
         fake = _Fake(respond)
@@ -185,8 +210,7 @@ def test_backfill_all_days_fail_raises(meet_job):
 
 def test_backfill_partial_days_ok(meet_job):
     mod, install, _ = meet_job
-    today = date.today()
-    install(lambda d, m: BOOM if d == today else [{"i": 1}])
+    install(lambda d, m: BOOM if d == SALES_TODAY else [{"i": 1}])
     assert mod.backfill_recent_days(days=3) == 2 * 4  # 이틀 × 4 meet
 
 
