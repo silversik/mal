@@ -114,6 +114,7 @@ PR-1(#87)은 머지·배포됐고(빈 테이블·CLI·메뉴 링크 없는 `/for
   - 로컬 테스트 DB 는 세션 컨테이너에만 있었다. 새로 만들려면 `crawler/tests/e2e/setup_db.sh` 로 DB 를 만들고
     `uv run python -m tests.racing_form_seed --db <이름> [--today YYYY-MM-DD]` 로 시드 (같은 `--today` 면 결정적).
 - 머지 뒤: 첫 발행 18:05 확인 (대시보드·`racing-form-show`·1면·healthcheck 3행) → PR-3(사이트 연결, G2).
+- **이어서 → [0007-racing-form-g1-handover.md](0007-racing-form-g1-handover.md)** (2026-11-25: 첫 호 목표 12/3(목)으로 변경, 소유자 할 일·preflight 해석·r1 수정 절차·첫 발행 확인 체크리스트).
 - #89 브랜치(`claude/quirky-mendel-pp3kwg`)는 #94~#96 을 이미 포함한다. #97 이 main 에 들어갔으므로 머지 전에
   main 을 한 번 merge 해 두면 된다 (rebase·force-push 금지 — 이 저장소 관례).
 - 이번 스택이 경마지에 준 영향: `scratched_at IS NULL` 인 말만 출전마로 쓰고, 17:25 늦은 변경 수집 덕에 18:00 동결
