@@ -87,12 +87,12 @@ def test_normalize_meets() -> None:
 def test_substitutions_replace_each_published_rule_with_reserve() -> None:
     subs = backtest.substitutions(R1)
     assert [(s.replaced, s.by, s.rules) for s in subs] == [
-        ("rating", "trainer", ("trainer", "form", "course", "jockey")),
-        ("form", "trainer", ("rating", "trainer", "course", "jockey")),
-        ("course", "trainer", ("rating", "form", "trainer", "jockey")),
-        ("jockey", "trainer", ("rating", "form", "course", "trainer")),
+        ("rating", "course", ("course", "form", "jockey", "trainer")),
+        ("form", "course", ("rating", "course", "jockey", "trainer")),
+        ("jockey", "course", ("rating", "form", "course", "trainer")),
+        ("trainer", "course", ("rating", "form", "jockey", "course")),
     ]
-    assert [s.key for s in subs][0] == "rating>trainer"
+    assert [s.key for s in subs][0] == "rating>course"
 
 
 def test_settle_clock_is_after_void_deadline_and_deterministic() -> None:
@@ -151,7 +151,7 @@ def test_section_counts_consensus_mark1_only_and_unsettled() -> None:
     sec.add_race(RaceScore(race_date=D, meet="서울", race_no=1, small_field=False, outcome=o,
                            picks={"rating": ((1, "H1"), (2, "H2"), (3, "H9")),
                                   "consensus": ((1, "H2"), (2, "H1"))},
-                           combos={"rating>trainer": ((1, "H3"),)}))
+                           combos={"rating>course": ((1, "H3"),)}))
     sec.add_race(RaceScore(race_date=D, meet="서울", race_no=2, small_field=True, outcome=None,
                            picks={}, combos={}))
     js = sec.to_json()

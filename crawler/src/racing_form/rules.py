@@ -380,7 +380,7 @@ def rank_jockey(race: RaceInputs, defn: RuleSetDef) -> RuleResult:
 
 
 def rank_trainer(race: RaceInputs, defn: RuleSetDef) -> RuleResult:
-    """(예비) 출전표 조교사의 같은 meet [H−90, H) 출주 20회 이상."""
+    """출전표 조교사의 같은 meet [H−90, H) 출주 20회 이상 (동명이인 검사 없음)."""
     cfg = defn.p("rules", "trainer")
     return _rank_conn(
         race,

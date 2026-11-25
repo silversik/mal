@@ -67,10 +67,10 @@
             "horse_no": "0041003",
             "mark": 1,
             "marks": {
-              "course": 1,
               "form": 1,
               "jockey": 1,
-              "rating": 1
+              "rating": 1,
+              "trainer": 2
             },
             "reasons": [
               "레이팅 75 · 출전 6두 중 1위",
@@ -84,14 +84,14 @@
             "horse_no": "0041001",
             "mark": 2,
             "marks": {
-              "course": 2,
               "form": 2,
               "jockey": 2,
-              "rating": 2
+              "rating": 2,
+              "trainer": 1
             },
             "reasons": [
-              "레이팅 72 · 출전 6두 중 2위",
-              "최근 3전 3착→1착→2착 (3착 이내 3번)"
+              "박조교 조교사 · 최근 90일 서울 40번 중 8승 (승률 20%)",
+              "레이팅 72 · 출전 6두 중 2위"
             ],
             "reasons_more": 2,
             "votes": 4
@@ -154,30 +154,6 @@
           "status": "picked"
         },
         {
-          "key": "course",
-          "picks": [
-            {
-              "chul_no": 3,
-              "horse_no": "0041003",
-              "mark": 1,
-              "reason": "서울 1200m 4번 중 3착 이내 4번 (1착 2번)"
-            },
-            {
-              "chul_no": 1,
-              "horse_no": "0041001",
-              "mark": 2,
-              "reason": "서울 1200m 3번 중 3착 이내 2번 (1착 1번)"
-            },
-            {
-              "chul_no": 4,
-              "horse_no": "0041004",
-              "mark": 3,
-              "reason": "서울 1200m 3번 중 3착 이내 1번 (1착 0번)"
-            }
-          ],
-          "status": "picked"
-        },
-        {
           "key": "jockey",
           "picks": [
             {
@@ -197,6 +173,30 @@
               "horse_no": "0041005",
               "mark": 3,
               "reason": "정마루 기수 · 최근 90일 서울 35번 중 5승 (승률 14%)"
+            }
+          ],
+          "status": "picked"
+        },
+        {
+          "key": "trainer",
+          "picks": [
+            {
+              "chul_no": 1,
+              "horse_no": "0041001",
+              "mark": 1,
+              "reason": "박조교 조교사 · 최근 90일 서울 40번 중 8승 (승률 20%)"
+            },
+            {
+              "chul_no": 3,
+              "horse_no": "0041003",
+              "mark": 2,
+              "reason": "박조교 조교사 · 최근 90일 서울 40번 중 8승 (승률 20%)"
+            },
+            {
+              "chul_no": 4,
+              "horse_no": "0041004",
+              "mark": 3,
+              "reason": "정조교 조교사 · 최근 90일 서울 22번 중 4승 (승률 18%)"
             }
           ],
           "status": "picked"
@@ -292,10 +292,10 @@
             "rank": 2
           },
           "marks": {
-            "course": 2,
             "form": 2,
             "jockey": 2,
-            "rating": 2
+            "rating": 2,
+            "trainer": 1
           },
           "rating": 72,
           "rating_prev": 62,
@@ -499,10 +499,10 @@
             "rank": 1
           },
           "marks": {
-            "course": 1,
             "form": 1,
             "jockey": 1,
-            "rating": 1
+            "rating": 1,
+            "trainer": 2
           },
           "rating": 75,
           "rating_prev": 62,
@@ -597,7 +597,7 @@
             "rank": 3
           },
           "marks": {
-            "course": 3
+            "trainer": 3
           },
           "rating": 61,
           "rating_prev": 61,
@@ -834,15 +834,15 @@
           "status": "picked"
         },
         {
-          "key": "course",
-          "reason": "이 경마장·거리에서 3번 이상 뛴 말이 2두뿐 (최소 3두)",
-          "reason_code": "course_no_pick_eligible",
-          "status": "no_pick"
-        },
-        {
           "key": "jockey",
           "reason": "최근 90일 이 경마장에서 20번 이상 탄 기수의 말이 0두뿐 (최소 3두)",
           "reason_code": "jockey_no_pick",
+          "status": "no_pick"
+        },
+        {
+          "key": "trainer",
+          "reason": "최근 90일 이 경마장에서 20번 이상 출주한 조교사의 말이 0두뿐 (최소 3두)",
+          "reason_code": "trainer_no_pick",
           "status": "no_pick"
         }
       ],
@@ -1218,13 +1218,13 @@
           "status": "no_pick"
         },
         {
-          "key": "course",
+          "key": "jockey",
           "reason": "출전 4두 — 5두 미만이라 예상 안 함",
           "reason_code": "small_field",
           "status": "no_pick"
         },
         {
-          "key": "jockey",
+          "key": "trainer",
           "reason": "출전 4두 — 5두 미만이라 예상 안 함",
           "reason_code": "small_field",
           "status": "no_pick"
@@ -1398,14 +1398,14 @@
       "label": "최근 성적"
     },
     {
-      "definition": "같은 경마장·같은 거리에서 3착 안에 든 비율이 높은 순서로 고릅니다.",
-      "key": "course",
-      "label": "거리 적성"
-    },
-    {
       "definition": "기수의 최근 90일 같은 경마장 승률이 높은 순서로 고릅니다.",
       "key": "jockey",
       "label": "기수"
+    },
+    {
+      "definition": "조교사의 최근 90일 같은 경마장 승률이 높은 순서로 고릅니다.",
+      "key": "trainer",
+      "label": "조교사"
     }
   ],
   "schema_version": 1,

@@ -713,7 +713,7 @@ def test_sql_build_equals_fake_build(engine: Engine, world: World) -> None:
     # 세계가 기준을 실제로 태우는지 (빈 예상끼리 같은 것이 아님)
     for race in got.payload["races"]:
         assert {r["key"]: r["status"] for r in race["rules"]} == {
-            "rating": "picked", "form": "picked", "course": "picked", "jockey": "picked"}
+            "rating": "picked", "form": "picked", "jockey": "picked", "trainer": "picked"}
     assert got.payload["races"][1]["stakes"] == {"name": "가상배", "grade": "L"}
     kinds = {b["kind"] for race in got.payload["races"] for rn in race["runners"]
              for b in rn["badges"]}

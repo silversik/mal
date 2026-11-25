@@ -35,8 +35,8 @@ import {
   RECORD_FAVORITE_TAG,
   RECORD_ROI_NOTE,
   RECORD_STABLE_N,
+  PUBLISHED_RULES,
   RULE_LABEL,
-  RULE_ORDER,
   type FormMeet,
   type FormMeetSlug,
 } from "@/lib/racing_form-shared";
@@ -349,7 +349,7 @@ export default async function FormRecordPage({ searchParams }: { searchParams: P
             </ul>
           ) : (
             <p className="text-base text-foreground">
-              공개 기준 4개 — {RULE_ORDER.filter((k) => k !== "trainer").map((k) => RULE_LABEL[k]).join(" · ")}.
+              공개 기준 4개 — {PUBLISHED_RULES.map((k) => RULE_LABEL[k]).join(" · ")}.
               정의 문장은 첫 호를 발행할 때 함께 공개합니다.
             </p>
           )}
