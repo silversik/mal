@@ -1209,7 +1209,7 @@ def _web_sql(name: str) -> str:
 def test_46_web_racing_form_jockeys_and_record(e2e):
     D = e2e.world.D.isoformat()
     # racing_form.ts getCurrentJockeys — 발행 후 기수 변경 (diffJockeys 입력)
-    cur = e2e.web_query(_web_sql("CURRENT_JOCKEYS_SQL"), D, "서울")
+    cur = e2e.web_query(_web_sql("CURRENT_JOCKEYS_SQL"), D, ["서울"])  # $2 = 저장 라벨 배열
     ed = e2e.one("SELECT payload FROM racing_form_editions WHERE meet='서울'")
     frozen = {(r["race_no"], x["horse_no"]): x["jockey_name"]
               for r in ed["payload"]["races"] for x in r["runners"]}
