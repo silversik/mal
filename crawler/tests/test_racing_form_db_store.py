@@ -584,6 +584,119 @@ def test_calendar_first_post_is_parsed_time(engine: Engine, world: World) -> Non
     assert (row.race_date, row.meet, row.race_count, row.first_post) == (day, "부경", 3, "09:50")
 
 
+def test_busan_stored_as_alias_like_prod(engine: Engine, world: World) -> None:
+    """prod 처럼 부경이 '부산경남' 으로 저장돼 있어도 (D, '부경') 조회가 그 호를 본다.
+
+    2026-11 운영 감사: race_entries 는 전부 '부산경남', race_results·race_dividends 는 2026-08-16
+    부터 '부산경남', races 는 같은 경주가 두 라벨로 따로 있다. 정확히 '부경' 으로만 찾으면 부경 호는
+    no_entries 로 발행되지 않는다.
+    """
+    d = date(2099, 6, 19)
+    h = d - timedelta(days=1)
+    alias = "부산경남"
+    hs = [f"{HORSE_PREFIX}B{n:02d}" for n in range(1, 7)]
+    w = World()
+    for hn in hs:
+        w.horses.append(dict(horse_no=hn, horse_name=f"별칭말{hn[-2:]}", total=4))
+    # D — 출전표·races 뼈대는 '부산경남'. 1R 은 '부경' 행이 하나 더 (거리 없음, 발주 시각 다름)
+    w.add_race(d, 1, 1200, meet=alias, start_time="11:00")
+    w.add_race(d, 2, 1400, meet=alias, start_time="11:30", race_name="별칭배")
+    w.add_race(d, 1, None, meet="부경", grade=None, start_time="10:50")
+    w.plans.append(dict(meet=alias, year=2099, race_date=d, race_no=2, race_name="별칭배",
+                        grade="L"))
+
+    def entry(i: int, hn: str, **over: Any) -> dict[str, Any]:
+        return {**dict(
+            race_date=d, meet=alias, race_no=1 + i // 3, horse_no=hn, chul_no=1 + i % 3,
+            horse_name=f"별칭말{hn[-2:]}", jockey=JOCKEYS[i], trainer=TRAINERS[i % 3], age="3",
+            sex="수", rating=60 + i, hr_rating=None, wg_budam="54.0", updated_at=at(h, 15)),
+            **over}
+
+    w.entries += [entry(i, hn) for i, hn in enumerate(hs)]
+    # 같은 말이 '부경' 으로 한 번 더 (나중 수집·기수 다름) → 최신 한 행만
+    w.entries.append(entry(0, hs[0], meet="부경", jockey=JOCKEYS[6], updated_at=at(h, 16)))
+    # 이력 — 결과 '부산경남' ↔ races '부경' (H−7) · 결과 '부경' ↔ races '부산경남' (H−14)
+    w.add_race(h - timedelta(days=7), 1, 1300, meet="부경")
+    w.add_race(h - timedelta(days=14), 1, 1000, meet=alias)
+    for i, hn in enumerate(hs[:3]):
+        w.add_result(h - timedelta(days=7), 1, hn, i + 1, f"8{i}.00", meet=alias,
+                     jockey=JOCKEYS[i], jk_no=f"09{i}1", trainer=TRAINERS[0], chul_no=str(i + 1))
+        w.add_result(h - timedelta(days=14), 1, hn, 3 - i, f"6{i}.00", meet="부경",
+                     jockey=JOCKEYS[i], jk_no=f"09{i}1", trainer=TRAINERS[0], chul_no=str(i + 1))
+    # D 결과·배당 (정산 입력) — '부산경남'. 한 말은 두 라벨로 겹친다 (정규 라벨 행을 쓴다)
+    for i, hn in enumerate(hs[:3]):
+        w.add_result(d, 1, hn, i + 1, f"7{i}.00", meet=alias, chul_no=str(i + 1))
+        w.dividends.append(dict(race_date=d, meet=alias, race_no=1, chul_no_text=str(i + 1),
+                                win_rate=f"{i + 2}.5"))
+    w.add_result(d, 1, hs[0], 2, "70.50", meet="부경", chul_no="1")
+    w.dividends.append(dict(race_date=d, meet="부경", race_no=1, chul_no_text="1",
+                            win_rate="9.9"))
+    seed(engine, w)
+    fake = to_fake(w)
+    meets = parse.VALID_MEETS
+
+    def by(*keys: str) -> Callable[[Any], tuple[Any, ...]]:
+        return lambda x: tuple(getattr(x, k) for k in keys)
+
+    with read_only_provider(tx_factory(engine)) as sql:
+        cal = sql.calendar(d, d, meets)
+        assert cal == fake.calendar(d, d, meets)
+        # 두 라벨의 1R 은 한 번만 세고, 발주 시각은 정규 라벨 행 것
+        assert [(c.meet, c.race_count, c.first_post) for c in cal] == [("부경", 2, "10:50")]
+
+        ents = sorted(sql.entries(d, "부경"), key=by("race_no", "horse_no"))
+        assert ents == sorted(fake.entries(d, "부경"), key=by("race_no", "horse_no"))
+        assert [e.horse_no for e in ents] == hs and {e.meet for e in ents} == {"부경"}
+        assert ents[0].jockey_name == JOCKEYS[6] and ents[0].batch_at == at(h, 16)
+        assert sql.entries(d, alias) == sql.entries(d, "부경")  # 별칭으로 물어도 같다
+
+        metas = sql.race_meta(d, "부경")
+        assert metas == fake.race_meta(d, "부경")
+        assert [(m.race_no, m.distance, m.grade, m.start_time, m.plan_grade) for m in metas] == [
+            (1, 1200, "국6", "10:50", None), (2, 1400, "국6", "11:30", "L")]
+
+        key = by("horse_no", "race_date", "race_no")
+        hist = sorted(sql.history(hs, h), key=key)
+        assert hist == sorted(fake.history(hs, h), key=key)
+        assert {(x.race_date, x.meet, x.distance, x.field_size) for x in hist} == {
+            (h - timedelta(days=7), alias, 1300, 3), (h - timedelta(days=14), "부경", 1000, 3)}
+
+        name = by("name")
+        stats = sorted(sql.jockey_stats(list(JOCKEYS), "부경", h, 90), key=name)
+        assert stats == sorted(fake.jockey_stats(list(JOCKEYS), "부경", h, 90), key=name)
+        assert [(x.name, x.starts, x.distinct_ids) for x in stats] == [
+            (JOCKEYS[i], 2, 1) for i in range(3)]
+
+        # races '부경' ↔ 결과 '부산경남' 은 미해결이 아니다
+        assert sql.unresolved_races(h, 30) == fake.unresolved_races(h, 30) == []
+        assert sql.results_exist(d, "부경") is fake.results_exist(d, "부경") is True
+        res = sorted(sql.results(d, "부경"), key=by("race_no", "horse_no"))
+        assert res == sorted(fake.results(d, "부경"), key=by("race_no", "horse_no"))
+        assert [(r.horse_no, r.rank) for r in res] == [(hs[0], 2), (hs[1], 2), (hs[2], 3)]
+        div = sql.win_dividends(d, "부경")
+        assert div == fake.win_dividends(d, "부경")
+        assert [(x.chul_no_text, x.win_rate) for x in div] == [
+            ("1", "9.9"), ("2", "3.5"), ("3", "4.5")]
+        # 다른 경마장은 그대로 비어 있다
+        assert sql.entries(d, "서울") == [] and sql.results(d, "제주") == []
+
+
+def test_insert_edition_recheck_sees_alias_results(engine: Engine, world: World) -> None:
+    """저장 직전 'D 결과 존재' 재확인도 별칭('부산경남')으로 저장된 결과를 본다."""
+    repo = sql_repo(engine)
+    repo.ensure_rule_set(R1, PRE)
+    d = date(2099, 6, 26)
+    res = mini_build(d, "부경")
+    seed_results(engine, [dict(race_date=d, meet="부산경남", race_no=1, horse_no=FILLERS[0],
+                               rank=1, time="61.00", track="양호", jockey=None, jk_no=None,
+                               trainer=None, hr_rating=None, wg_budam=None, chul_no="1",
+                               rc_dist="1000")])
+    with pytest.raises(NotPublishable) as ei:
+        repo.insert_edition(res, at(d - timedelta(days=1), 18, 5))
+    assert ei.value.code == "results_present"
+    assert q(engine, "SELECT id FROM racing_form_editions WHERE race_date = :d", d=d) == []
+
+
 # ============================================================== 발행 (잡 기본 배선)
 
 

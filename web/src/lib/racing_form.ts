@@ -19,7 +19,9 @@ import { unstable_cache } from "next/cache";
 import { query } from "./db";
 import {
   FORM_INDEXABLE,
+  FORM_MEET_ALIAS_PAIRS,
   FORM_MEET_LABELS,
+  FORM_MEET_STORED_LABELS,
   SCHEMA_VERSION,
   formEditionPath,
   isFormMeet,
@@ -70,11 +72,23 @@ function validId(id: number): boolean {
 // ============================================================================
 
 /**
- * races ∩ race_entries 인 (race_date, meet) 별 경주 수와 첫 발주.
+ * 원천 테이블(races·race_entries)의 저장 라벨 → 경마지 라벨 SQL 식. 운영 DB 의 부경은 두 라벨이
+ * 섞여 있다 (FORM_MEET_STORED_LABELS 설명) — crawler `queries.norm_meet_sql` 과 같은 규칙.
+ * 한글 라벨은 SQL 에 쓰지 않고 파라미터로 넘긴다: $4 = 별칭 라벨 배열, $5 = 같은 자리의 경마지 라벨.
+ * col 은 이 파일의 고정 값만.
+ */
+const normMeetSql = (col: string): string =>
+  `COALESCE(($5::text[])[array_position($4::text[], ${col}::text)], ${col})`;
+
+/**
+ * races ∩ race_entries 인 (race_date, meet) 별 경주 수와 첫 발주. meet 은 정규화 라벨로 묶고,
+ * 같은 경주가 두 라벨의 races 행으로 있으면 한 번만 센다 (발주 시각 있는 행 → 정규 라벨 순 —
+ * crawler Q0 와 같다).
  * first_post = 가장 이른 발주 시각을 **시·분으로 비교**해 "HH:MM" 으로 맞춘 값
  * ('9:30' 처럼 0 이 빠진 값을 사전순으로 비교하면 '10:35' 가 앞서므로). 해석 규칙은
  * crawler schedule.parse_hhmm 과 같다 ('1035'·'10:35:00' 허용, 24시·60분 이상은 무시).
- * $1 from · $2 to (YYYY-MM-DD, 포함) · $3 경마장 라벨 배열 (MEET_ORDER 순 — 정렬에도 씀).
+ * $1 from · $2 to (YYYY-MM-DD, 포함) · $3 경마장 라벨 배열 (MEET_ORDER 순 — 정렬에도 씀) ·
+ * $4 별칭 라벨 배열 · $5 그 별칭의 경마지 라벨 배열 (FORM_MEET_ALIAS_PAIRS).
  */
 export const FORM_CALENDAR_SQL = `
 SELECT to_char(c.race_date, 'YYYY-MM-DD') AS race_date,
@@ -85,7 +99,8 @@ SELECT to_char(c.race_date, 'YYYY-MM-DD') AS race_date,
                  lpad(mod(MIN(c.post_min), 60)::text, 2, '0')
        END AS first_post
   FROM (
-        SELECT r.race_date, r.meet, r.race_no,
+        SELECT DISTINCT ON (r.race_date, ${normMeetSql("r.meet")}, r.race_no)
+               r.race_date, ${normMeetSql("r.meet")} AS meet, r.race_no,
                CASE WHEN t.hm IS NOT NULL AND t.hm[1]::int <= 23 AND t.hm[2]::int <= 59
                     THEN t.hm[1]::int * 60 + t.hm[2]::int
                END AS post_min
@@ -97,13 +112,17 @@ SELECT to_char(c.race_date, 'YYYY-MM-DD') AS race_date,
                        ) AS hm
                ) t
          WHERE r.race_date BETWEEN $1::date AND $2::date
-           AND r.meet = ANY($3::text[])
+           AND ${normMeetSql("r.meet")} = ANY($3::text[])
            AND EXISTS (SELECT 1
                          FROM race_entries e
                         WHERE e.race_date = r.race_date
-                          AND e.meet = r.meet
+                          AND ${normMeetSql("e.meet")} = ${normMeetSql("r.meet")}
                           AND e.race_no = r.race_no
                           AND e.scratched_at IS NULL)
+         ORDER BY r.race_date, ${normMeetSql("r.meet")}, r.race_no,
+                  (NULLIF(btrim(r.start_time), '') IS NULL),
+                  (r.meet <> ${normMeetSql("r.meet")}),
+                  r.meet
        ) c
  GROUP BY c.race_date, c.meet
  ORDER BY c.race_date, array_position($3::text[], c.meet::text)`;
@@ -115,7 +134,13 @@ export async function getFormCalendar(from: string, to: string): Promise<FormCal
   const f = normalizeFormDate(from);
   const t = normalizeFormDate(to);
   if (!f || !t) return [];
-  const rows = await query<CalendarDbRow>(FORM_CALENDAR_SQL, [f, t, [...FORM_MEET_LABELS]]);
+  const rows = await query<CalendarDbRow>(FORM_CALENDAR_SQL, [
+    f,
+    t,
+    [...FORM_MEET_LABELS],
+    FORM_MEET_ALIAS_PAIRS.map((p) => p.stored),
+    FORM_MEET_ALIAS_PAIRS.map((p) => p.meet),
+  ]);
   return rows
     .filter((r): r is CalendarDbRow & { meet: FormMeet } => isFormMeet(r.meet))
     .map((r) => ({
@@ -468,33 +493,40 @@ export async function getEditionTallies(editionIds: number[]): Promise<EditionTa
 /**
  * 지금 출전표 기준 실제 기수 = btrim(COALESCE(기수변경 after, 출전표 기수)) — 빈 문자열은 NULL
  * 취급(after 가 비면 출전표 기수). jockey_changes 는 meet 없이 (race_date, race_no, horse_no)
- * 최신 1건 (계약 Q1 과 같은 LATERAL). 출전취소(scratched_at) 행은 제외. $1 race_date · $2 meet(한글 라벨).
+ * 최신 1건 (계약 Q1 과 같은 LATERAL). 출전취소(scratched_at) 행은 제외.
+ * $1 race_date · $2 그 경마장의 저장 라벨 배열 (FORM_MEET_STORED_LABELS — 부경은 별칭 포함).
+ * 같은 말이 두 라벨로 겹치면 최신 수집 행만.
  */
 export const CURRENT_JOCKEYS_SQL = `
-SELECT e.race_no,
-       e.horse_no,
-       e.chul_no,
-       COALESCE(NULLIF(btrim(jc.jk_name_after), ''), NULLIF(btrim(e.jockey_name), '')) AS jockey_name,
-       NULLIF(btrim(jc.reason), '') AS reason
-  FROM race_entries e
-  LEFT JOIN LATERAL (
-        SELECT c.jk_name_after, c.reason
-          FROM jockey_changes c
-         WHERE c.race_date = e.race_date
-           AND c.race_no = e.race_no
-           AND c.horse_no = e.horse_no
-         ORDER BY c.updated_at DESC, c.id DESC
-         LIMIT 1
-       ) jc ON TRUE
- WHERE e.race_date = $1::date
-   AND e.meet = $2
-   AND e.scratched_at IS NULL
- ORDER BY e.race_no, e.chul_no NULLS LAST, e.horse_no`;
+SELECT x.race_no, x.horse_no, x.chul_no, x.jockey_name, x.reason
+  FROM (
+        SELECT DISTINCT ON (e.race_no, e.horse_no)
+               e.race_no,
+               e.horse_no,
+               e.chul_no,
+               COALESCE(NULLIF(btrim(jc.jk_name_after), ''), NULLIF(btrim(e.jockey_name), '')) AS jockey_name,
+               NULLIF(btrim(jc.reason), '') AS reason
+          FROM race_entries e
+          LEFT JOIN LATERAL (
+                SELECT c.jk_name_after, c.reason
+                  FROM jockey_changes c
+                 WHERE c.race_date = e.race_date
+                   AND c.race_no = e.race_no
+                   AND c.horse_no = e.horse_no
+                 ORDER BY c.updated_at DESC, c.id DESC
+                 LIMIT 1
+               ) jc ON TRUE
+         WHERE e.race_date = $1::date
+           AND e.meet = ANY($2::text[])
+           AND e.scratched_at IS NULL
+         ORDER BY e.race_no, e.horse_no, e.updated_at DESC, e.meet
+       ) x
+ ORDER BY x.race_no, x.chul_no NULLS LAST, x.horse_no`;
 
 export async function getCurrentJockeys(date: string, meet: string): Promise<CurrentJockeyRow[]> {
   const d = normalizeFormDate(date);
   if (!d || !isFormMeet(meet)) return [];
-  return query<CurrentJockeyRow>(CURRENT_JOCKEYS_SQL, [d, meet]);
+  return query<CurrentJockeyRow>(CURRENT_JOCKEYS_SQL, [d, [...FORM_MEET_STORED_LABELS[meet]]]);
 }
 
 // ============================================================================
