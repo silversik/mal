@@ -32,6 +32,7 @@ from enum import StrEnum
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
+from .meets import meet_label
 from .redact import redact
 
 KST = ZoneInfo("Asia/Seoul")
@@ -336,8 +337,9 @@ def _ago(delta: timedelta) -> str:
 
 
 def _norm_meet(meet: Any) -> str:
+    """저장 라벨 → 정규 라벨. 정리 전 행('부산경남'·'양천')도 같은 경주로 본다."""
     m = str(meet or "").strip()
-    return "부경" if m == "부산경남" else m
+    return meet_label(m) or m
 
 
 RaceKey = tuple[date, str, int]
