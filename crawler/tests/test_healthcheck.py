@@ -87,6 +87,47 @@ def _key_rows(keys: set[RaceKey]) -> Callable[..., list[dict[str, Any]]]:
     return fn
 
 
+def _racing_form_healthy(now: datetime, days: list[date]) -> dict[str, Any]:
+    """경마지 정상 운영 — 동결이 지난 호는 모두 발행, 지난 경주일 정산은 전부 확정."""
+    from src.racing_form import definitions
+    from src.racing_form.verify import EXPECTED_TRIGGERS
+
+    today = now.date()
+    r1 = definitions.get("r1")
+    window = [d for d in days if abs((d - today).days) <= hc.RACING_FORM_CALENDAR_DAYS]
+    meets = (("서울", 3, "11:00"), ("부경", 2, "12:00"))
+    freeze = {d: datetime.combine(d - timedelta(days=1), datetime.min.time(), KST)
+              + timedelta(hours=18) for d in window}
+    published = [d for d in window if freeze[d] <= now]
+    settle_days = [d for d in days
+                   if 0 <= (today - d).days <= hc.RACING_FORM_SETTLE_LOOKBACK_DAYS]
+    return {
+        "racing_form_tables": [{"present": 6, "expected": 6}],
+        "racing_form_rule_sets": [{
+            "rules_version": "r1", "definition_sha256": definitions.definition_sha256(r1),
+            "registered_at": now - timedelta(days=30),
+        }],
+        "racing_form_calendar": [
+            {"race_date": d, "meet": m, "start_times": [t]} for d in window for m, _, t in meets
+        ],
+        "racing_form_editions": [
+            {"race_date": d, "meet": m, "issue_no": 1, "published_at": freeze[d],
+             "freeze_at": freeze[d]} for d in published for m, _, _ in meets
+        ],
+        "racing_form_notices": [],
+        "racing_form_settlement": [
+            {"edition_id": i, "race_date": d, "meet": m, "races": n,
+             "final": n if d < today else 0, "open_with_results": 0}
+            for i, (d, (m, n, _)) in enumerate(
+                ((d, mm) for d in settle_days for mm in meets), start=1)
+        ],
+        "racing_form_payload": [{"editions": len(published) * 2, "bad": 0}],
+        "racing_form_triggers": [
+            {"name": n, "table_name": t, "enabled": "A"} for n, t in EXPECTED_TRIGGERS.items()
+        ],
+    }
+
+
 def healthy_data(now: datetime = NOW) -> dict[str, Any]:
     """정상 운영 상태 — 직전 경주일(지난 일요일)까지 결과·파생 완비, 오늘·내일 출전표 있음."""
     today = now.date()
@@ -140,6 +181,7 @@ def healthy_data(now: datetime = NOW) -> dict[str, Any]:
             {"source": "youtube:krbc", "last_run_at": utc_now, "last_success_at": utc_now,
              "has_error": False, "attempts": 0, "exhausted": 0},
         ],
+        **_racing_form_healthy(now, days),
     }
 
 
@@ -742,3 +784,192 @@ def test_cli_healthcheck_exit_code(
     result = CliRunner().invoke(main_module.app, ["healthcheck", "--json", "--no-dashboard"])
     assert result.exit_code == code
     assert seen == {"json_output": True, "check_dashboard_url": False}
+
+
+# ── 경마지 (racing form) ────────────────────────────────────────────────────────
+
+_RF_ROWS = ("경마지 발행", "경마지 정산", "경마지 보호 장치")
+
+
+def _rf(checks: list[Check]) -> dict[str, Check]:
+    out = {c.name: c for c in checks if c.area == "경마지"}
+    assert set(out) == set(_RF_ROWS), [c.name for c in checks if c.area == "경마지"]
+    return out
+
+
+def _rf_check(data: dict[str, Any], now: datetime = NOW) -> dict[str, Check]:
+    return _rf(hc.check_data(FakeDB(data), now))
+
+
+def _at(d: date, hh: int, mm: int = 0) -> datetime:
+    return datetime(d.year, d.month, d.day, hh, mm, tzinfo=KST)
+
+
+def test_racing_form_queries_take_time_as_params_not_db_clock() -> None:
+    rf = {k: v for k, v in hc.QUERIES.items() if k.startswith("racing_form_")}
+    assert len(rf) >= 6
+    for name, sql in rf.items():
+        assert "now()" not in sql.lower() and "current_date" not in sql.lower(), name
+
+
+def test_racing_form_healthy_rows_ok() -> None:
+    rows = _rf_check(healthy_data())
+    assert all(c.status == Status.OK for c in rows.values()), rows
+    # 창 [10-30, 11-13] 중 동결이 지난 10-30·10-31·11-01·11-06 × 2 경마장, 11-07·11-08 대기
+    assert "달력 12호 · 발행 8 · 대기 4" in rows["경마지 발행"].detail
+    assert "트리거 12개 ALWAYS" in rows["경마지 보호 장치"].detail
+
+
+def test_racing_form_migration_missing_warns_before_launch() -> None:
+    data = healthy_data()
+    data["racing_form_tables"] = [{"present": 0, "expected": 6}]
+    rows = _rf_check(data)
+    assert {c.status for c in rows.values()} == {Status.WARN}
+    assert all("036 미적용" in c.detail for c in rows.values())
+
+
+def test_racing_form_no_rule_set_is_pre_launch_warn() -> None:
+    data = healthy_data()
+    data["racing_form_rule_sets"] = []
+    rows = _rf_check(data)
+    assert rows["경마지 발행"].status == Status.WARN
+    assert "운영 전" in rows["경마지 발행"].detail
+    assert rows["경마지 정산"].status == Status.WARN
+    assert rows["경마지 보호 장치"].status == Status.OK  # 트리거·해시는 출시 전에도 본다
+
+
+def _drop_edition(data: dict[str, Any], d: date, meet: str) -> None:
+    data["racing_form_editions"] = [
+        e for e in data["racing_form_editions"] if (e["race_date"], e["meet"]) != (d, meet)]
+
+
+@pytest.mark.parametrize(
+    ("hh", "mm", "status", "text"),
+    [
+        (18, 30, Status.OK, "동결 전"),  # freeze + 30분 — 아직 경고 아님
+        (18, 40, Status.WARN, "+ 35분 미발행"),
+        (20, 10, Status.FAIL, "+ 125분 미발행"),
+    ],
+)
+def test_racing_form_publish_late_thresholds(
+    hh: int, mm: int, status: Status, text: str,
+) -> None:
+    # D = 11-07(토) 서울 — 동결 11-06(금) 18:00
+    now = _at(TODAY, hh, mm)
+    data = healthy_data(now)
+    _drop_edition(data, TODAY + timedelta(days=1), "서울")
+    row = _rf_check(data, now)["경마지 발행"]
+    assert row.status == status, row
+    if status != Status.OK:
+        assert text in row.detail and "서울" in row.detail
+    else:
+        assert "대기 3" in row.detail  # 11-07 서울(동결 직후) + 11-08 두 호(동결 전)
+
+
+def test_racing_form_publish_past_deadline_without_missed_fails() -> None:
+    # NOW = 11-06 10:00 — 11-06 서울 마감 08:00 (첫 발주 11:00 − 60분 = 10:00 보다 이름) + 30분 지남
+    data = healthy_data()
+    _drop_edition(data, TODAY, "서울")
+    row = _rf_check(data)["경마지 발행"]
+    assert row.status == Status.FAIL
+    assert "발행본·missed 모두 없음" in row.detail
+
+
+def test_racing_form_publish_missed_recorded_warns_for_three_days() -> None:
+    data = healthy_data()
+    _drop_edition(data, TODAY, "서울")
+    data["racing_form_notices"] = [{
+        "kind": "missed", "race_date": TODAY, "meet": "서울", "until": None,
+        "noticed_at": _at(TODAY, 8, 0),
+    }]
+    row = _rf_check(data)["경마지 발행"]
+    assert row.status == Status.WARN and "missed" in row.detail
+    later = NOW + timedelta(days=4)
+    data_later = healthy_data(later)
+    _drop_edition(data_later, TODAY, "서울")
+    data_later["racing_form_notices"] = data["racing_form_notices"]
+    assert _rf_check(data_later, later)["경마지 발행"].status == Status.OK
+
+
+def test_racing_form_publish_skips_paused_and_pre_launch() -> None:
+    data = healthy_data()
+    _drop_edition(data, TODAY, "서울")
+    data["racing_form_notices"] = [{
+        "kind": "paused", "race_date": TODAY - timedelta(days=1), "meet": None,
+        "until": TODAY.isoformat(), "noticed_at": NOW - timedelta(days=2),
+    }]
+    row = _rf_check(data)["경마지 발행"]
+    assert row.status == Status.OK and "제외(출시 전·쉼)" in row.detail
+
+    data = healthy_data()
+    _drop_edition(data, TODAY, "서울")
+    # 출시(첫 등록)가 이 호의 동결(11-05 18:00) 뒤 → missed 로 세지 않는다
+    data["racing_form_rule_sets"][0]["registered_at"] = _at(TODAY, 9, 0)
+    assert _rf_check(data)["경마지 발행"].status == Status.OK
+
+
+def _settle_rows(d: date, races: int, final: int, with_results: int) -> list[dict[str, Any]]:
+    return [{"edition_id": 1, "race_date": d, "meet": "서울", "races": races, "final": final,
+             "open_with_results": with_results}]
+
+
+def test_racing_form_settle_thresholds() -> None:
+    d = date(2026, 10, 31)  # 토
+    data = healthy_data()
+    data["racing_form_settlement"] = _settle_rows(d, 3, 3, 0)
+    assert _rf_check(data)["경마지 정산"].status == Status.OK
+
+    # D+1 13:00 확정 직후는 정상, 13:30 지나면 경고
+    for now, status in ((_at(d + timedelta(days=1), 13, 20), Status.OK),
+                        (_at(d + timedelta(days=1), 13, 40), Status.WARN)):
+        data = healthy_data(now)
+        data["racing_form_settlement"] = _settle_rows(d, 3, 1, 2)
+        assert _rf_check(data, now)["경마지 정산"].status == status, now
+
+    # D+2 13:30 이후: 결과 행이 있으면 실패, 없으면(결과 미공표) 경고
+    data = healthy_data()
+    data["racing_form_settlement"] = _settle_rows(d, 3, 2, 1)
+    row = _rf_check(data)["경마지 정산"]
+    assert row.status == Status.FAIL and "결과 행 있음 1" in row.detail
+    data["racing_form_settlement"] = _settle_rows(d, 3, 2, 0)
+    row = _rf_check(data)["경마지 정산"]
+    assert row.status == Status.WARN and "결과 행 없음" in row.detail
+
+
+def test_racing_form_guard_failures() -> None:
+    data = healthy_data()
+    data["racing_form_payload"] = [{"editions": 4, "bad": 1}]
+    row = _rf_check(data)["경마지 보호 장치"]
+    assert row.status == Status.FAIL and "payload 해시" in row.detail
+
+    data = healthy_data()
+    data["racing_form_triggers"] = data["racing_form_triggers"][1:]
+    row = _rf_check(data)["경마지 보호 장치"]
+    assert row.status == Status.FAIL and "11/12" in row.detail
+
+    data = healthy_data()
+    data["racing_form_triggers"][0]["enabled"] = "O"  # ENABLE (ORIGIN) — replica 에서 꺼짐
+    row = _rf_check(data)["경마지 보호 장치"]
+    assert row.status == Status.FAIL and "ALWAYS 아님" in row.detail
+
+    data = healthy_data()
+    data["racing_form_rule_sets"][0]["definition_sha256"] = "0" * 64
+    row = _rf_check(data)["경마지 보호 장치"]
+    assert row.status == Status.FAIL and "r1 해시" in row.detail
+
+    data = healthy_data()
+    data["racing_form_rule_sets"].append({
+        "rules_version": "r9", "definition_sha256": "1" * 64, "registered_at": NOW,
+    })
+    row = _rf_check(data)["경마지 보호 장치"]
+    assert row.status == Status.FAIL and "r9" in row.detail
+
+
+def test_racing_form_query_error_fails_only_that_row() -> None:
+    data = healthy_data()
+    data["racing_form_calendar"] = RuntimeError("relation does not exist")
+    rows = _rf_check(data)
+    assert rows["경마지 발행"].status == Status.FAIL
+    assert "점검 실패" in rows["경마지 발행"].detail
+    assert rows["경마지 정산"].status == Status.OK
+    assert rows["경마지 보호 장치"].status == Status.OK
