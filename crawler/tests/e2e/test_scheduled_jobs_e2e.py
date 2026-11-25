@@ -198,8 +198,8 @@ def test_03c_publish_racing_form_at_freeze(e2e):
     assert {k: (v["status"], v.get("reason_code")) for k, v in rules.items()} == {
         "rating": ("picked", None),
         "form": ("no_pick", "form_no_pick_eligible"),
-        "course": ("no_pick", "course_no_pick_eligible"),
         "jockey": ("no_pick", "jockey_no_pick"),
+        "trainer": ("no_pick", "trainer_no_pick"),
     }
     assert s1["consensus"]["picks"] == []  # 기준 1개(A=1)뿐 — 주목마 없음
     assert s1["consensus"]["active_rules"] == 1
