@@ -6,7 +6,7 @@ Endpoint: https://apis.data.go.kr/B551015/API10_1/jockeyChangeInfo_1
 일일 ~수십 건 (전국 평균). 같은 (rcDate, meet, rcNo, chulNo) 는 1건만.
 
 응답 필드 (2026-04-23 실측):
-    rcDate, meet (한글 "서울"/"제주"/"부경"), rcNo, chulNo,
+    rcDate, meet (한글 — 정규 라벨로 저장), rcNo, chulNo,
     hrNo, hrName,
     jkBef, jkBefName, jkAft, jkAftName,
     befBudam, aftBudam, reason
@@ -21,6 +21,7 @@ from datetime import date, datetime
 from typing import Any
 
 from ..config import settings
+from ..meets import normalize_meet
 from .kra_base import KraClient
 
 ENDPOINT = "API10_1"
@@ -101,7 +102,7 @@ def api_item_to_jockey_change_fields(item: dict[str, Any]) -> dict[str, Any]:
     """Map an API10_1/jockeyChangeInfo_1 item into `jockey_changes` columns."""
     return {
         "race_date": _parse_date(item.get("rcDate")),
-        "meet": _str(item.get("meet")),
+        "meet": normalize_meet(item.get("meet")),
         "race_no": _parse_int(item.get("rcNo")),
         "chul_no": _parse_int(item.get("chulNo")),
         "horse_no": _str(item.get("hrNo")) or "",

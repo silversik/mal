@@ -7,7 +7,7 @@ Endpoint: https://apis.data.go.kr/B551015/API309/horseOwnerInfo
     rcCntT/Y, ord1CntT/Y, ord2CntT/Y, ord3CntT/Y,
     winRateT/Y, plcRateT/Y, qnlRateT/Y, part
 
-⚠ meet 는 "서울"/"제주"/"부산경남" 한글 그대로 (1/2/3 코드 X) — trainer 와 동일.
+⚠ meet 는 "서울"/"제주"/"부산경남" 한글로 옴 (1/2/3 코드 X) — "부경" 으로 정규화해 저장.
 ⚠ 마주는 개인+법인 혼재 — owName 에 회사명/한자 등 다양한 형식.
 ⚠ 등록일(stDate)/생년월일은 응답에 없을 수 있음 — None 처리.
 """
@@ -17,6 +17,7 @@ from datetime import date, datetime
 from typing import Any
 
 from ..config import settings
+from ..meets import normalize_meet
 from .kra_base import KraClient
 
 ENDPOINT = "API309"
@@ -94,7 +95,7 @@ def api_item_to_owner_fields(item: dict[str, Any]) -> dict[str, Any]:
         "ow_no": str(_first(item, "owNo", "ow_no") or "").strip(),
         "ow_name": str(_first(item, "owName", "owNm", "ow_name") or "").strip(),
         "ow_name_en": _clean(_first(item, "owNameEn", "owEnName", "owEnNm")),
-        "meet": _clean(item.get("meet")),  # 응답이 한글 ("서울"/"제주"/"부산경남")
+        "meet": normalize_meet(item.get("meet")),  # 응답 한글("부산경남") → 정규 라벨
         "reg_date": _parse_date(_first(item, "stDate", "regDate", "regDt")),
         "total_race_count": total,
         "first_place_count": first,

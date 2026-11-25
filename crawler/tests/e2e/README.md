@@ -54,6 +54,7 @@ E2E_DATABASE_URL='postgresql+psycopg://mal:mal_dev_pw@localhost:5432/mal_e2e' \
 | 예정일 U | 실제 오늘 이후 첫 금/토/일. 출전표는 경주일 3일 전 공표 → 즐겨찾기 알림 |
 | 공휴일 H | U 다음 월요일, 부경 단독 1경주 (`0041010`~`0041012`). 금/토/일만 보던 출전표 수집이 놓치던 날 → race_entries·races skeleton·`/races` 달력 노출 확인 |
 | 늦은 변경 | H-1 15:00 `0041011` 출전취소(출전표에서 빠짐) · 16:00 H 부경 1R 기수변경 → 17:25 `sync_late_changes` 가 경마지 18:00 동결 전 반영, `scratched_at` 표시 |
+| meet 표기 | 경주결과·출전표·배당 응답은 부경을 `"부산경남"`, 영천 경주결과는 `"양천"` 으로 준다 (운영에 쌓인 표기 재현) → DB 에는 정규 라벨 `부경`·`영천` 하나로만 저장돼야 한다 |
 | 그 외 | XML 응답(API308), 페이징(등급변동 250행 = 2페이지), 중복 row dedupe, KMA "전날까지" 한도, YouTube uploads head 캡(3) + search + 12개월 walk, EUC-KR HTML |
 
 DB 쪽 `NOW()`/`CURRENT_DATE` 는 가짜 시계로 바꿀 수 없다. 이 값을 쓰는 곳은 videos

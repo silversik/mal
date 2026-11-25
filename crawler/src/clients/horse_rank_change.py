@@ -20,6 +20,7 @@ from datetime import date, datetime
 from typing import Any
 
 from ..config import settings
+from ..meets import normalize_meet
 from .kra_base import KraClient
 
 ENDPOINT = "raceHorseRatingChangeInfo_2"
@@ -65,7 +66,7 @@ def api_item_to_horse_rank_change_fields(item: dict[str, Any]) -> dict[str, Any]
         "horse_no": _str(item.get("hrNo")) or "",
         "st_date": _parse_date(item.get("stDate")),
         "horse_name": _str(item.get("hrName")),
-        "meet": _str(item.get("meet")),
+        "meet": normalize_meet(item.get("meet")),
         "blood": _str(item.get("blood")),
         "before_rank": _str(item.get("beforeRank")),
         "after_rank": _str(item.get("rank")),

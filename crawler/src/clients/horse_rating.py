@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..config import settings
+from ..meets import normalize_meet
 from .kra_base import KraClient
 
 ENDPOINT = "API77"
@@ -67,7 +68,7 @@ def api_item_to_rating_fields(item: dict[str, Any]) -> dict[str, Any]:
     return {
         "horse_no": horse_no,
         "horse_name": _clean_str(item.get("hrName")),
-        "meet": _clean_str(item.get("meet")),
+        "meet": normalize_meet(item.get("meet")),
         "rating1": _parse_int(item.get("rating1")),
         "rating2": _parse_int(item.get("rating2")),
         "rating3": _parse_int(item.get("rating3")),

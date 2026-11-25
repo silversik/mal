@@ -29,8 +29,9 @@ def _is_valid(row: dict[str, Any]) -> bool:
     )
 
 
-def upsert_race_sales(items: list[dict[str, Any]]) -> int:
-    rows = [api_item_to_race_sales_fields(it) for it in items]
+def upsert_race_sales(items: list[dict[str, Any]], *, meet: int | None = None) -> int:
+    """meet 는 items 를 받은 요청의 경마장 코드 (전체 조회면 None) — 라벨 정규화에 쓴다."""
+    rows = [api_item_to_race_sales_fields(it, meet=meet) for it in items]
     rows = [r for r in rows if _is_valid(r)]
     if not rows:
         return 0
@@ -76,7 +77,7 @@ def sync_date(rc_date: date, *, meet: int | None = None) -> int:
         meet=meet,
         count=len(items),
     )
-    return upsert_race_sales(items)
+    return upsert_race_sales(items, meet=meet)
 
 
 def sync_date_all_meets(rc_date: date) -> int:

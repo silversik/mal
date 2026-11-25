@@ -26,7 +26,7 @@ from datetime import date, datetime
 from typing import Any
 
 from ..config import settings
-from ..meets import MEET_NAMES
+from ..meets import normalize_meet
 from .kra_base import KraClient
 
 ENDPOINT = "racedetailresult"
@@ -52,7 +52,6 @@ class RaceResultClient(KraClient):
 
 # --------------------------------------------------------------------- mapping
 
-_MEET_NAMES = MEET_NAMES
 
 
 def _parse_date(value: Any) -> date | None:
@@ -108,13 +107,17 @@ def _clean_id(value: Any) -> str | None:
     return None if s in ("", "-") else s
 
 
-def api_item_to_race_result_fields(item: dict[str, Any]) -> dict[str, Any]:
-    """Map a getracedetailresult item into `race_results` columns."""
-    meet_raw = str(item.get("meet") or "").strip()
+def api_item_to_race_result_fields(
+    item: dict[str, Any], *, meet: int | None = None
+) -> dict[str, Any]:
+    """Map a getracedetailresult item into `race_results` columns.
+
+    meet 는 이 item 을 받은 요청의 경마장 코드 — 응답 meet 을 알아볼 수 없을 때 쓴다.
+    """
     return {
         "horse_no": str(item.get("hrNo") or "").strip(),
         "race_date": _parse_date(item.get("rcDate")),
-        "meet": _MEET_NAMES.get(meet_raw, _clean(meet_raw)),
+        "meet": normalize_meet(item.get("meet"), requested=meet),
         "race_no": _parse_int(item.get("rcNo")),
         "track_condition": _clean(item.get("track")),
         "rank": _parse_int(item.get("stOrd") or item.get("ord")),

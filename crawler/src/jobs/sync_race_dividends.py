@@ -45,10 +45,13 @@ def _chunks(rows: list[dict[str, Any]], size: int = _UPSERT_CHUNK) -> Iterable[l
         yield rows[i : i + size]
 
 
-def upsert_race_dividends(items: list[dict[str, Any]]) -> int:
-    """단·연 (WIN/PLC) + 복식 (QNL/QPL/EXA/TRI/TLA) 모두 upsert. 반환=horse-level row 수."""
-    horse_rows = items_to_dividend_rows(items)
-    combo_rows = items_to_combo_dividend_rows(items)
+def upsert_race_dividends(items: list[dict[str, Any]], *, meet: int | None = None) -> int:
+    """단·연 (WIN/PLC) + 복식 (QNL/QPL/EXA/TRI/TLA) 모두 upsert. 반환=horse-level row 수.
+
+    meet 는 items 를 받은 요청의 경마장 코드 — meet 라벨 정규화에 쓴다.
+    """
+    horse_rows = items_to_dividend_rows(items, meet=meet)
+    combo_rows = items_to_combo_dividend_rows(items, meet=meet)
 
     with session_scope() as s:
         for chunk in _chunks(horse_rows):
@@ -84,7 +87,7 @@ def sync_date(rc_date: date, meet: int) -> int:
     log.info("race_dividends_fetched", date=str(rc_date), meet=meet, count=len(items))
     if not items:
         return 0
-    return upsert_race_dividends(items)
+    return upsert_race_dividends(items, meet=meet)
 
 
 def sync_date_all_meets(

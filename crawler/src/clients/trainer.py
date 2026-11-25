@@ -8,7 +8,7 @@ Endpoint: https://apis.data.go.kr/B551015/API308/trainerInfo
     winRateT/Y, plcRateT/Y, qnlRateT/Y, part
 
 ⚠ 응답에 birthday 가 없음 — trainers.birth_date 는 항상 NULL.
-⚠ meet 는 "서울"/"제주"/"부산경남" 한글 그대로 옴 (1/2/3 코드 X).
+⚠ meet 는 "서울"/"제주"/"부산경남" 한글로 옴 (1/2/3 코드 X) — "부경" 으로 정규화해 저장.
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from datetime import date, datetime
 from typing import Any
 
 from ..config import settings
-from ..meets import MEET_NAMES
+from ..meets import normalize_meet
 from .kra_base import KraClient
 
 ENDPOINT = "API308"
@@ -42,7 +42,6 @@ class TrainerClient(KraClient):
 
 # --------------------------------------------------------------------- mapping
 
-_MEET_NAMES = MEET_NAMES
 
 
 def _parse_date(value: Any) -> date | None:
@@ -97,7 +96,7 @@ def api_item_to_trainer_fields(item: dict[str, Any]) -> dict[str, Any]:
         "tr_no": str(_first(item, "trNo", "tr_no") or "").strip(),
         "tr_name": str(_first(item, "trName", "trNm", "tr_name") or "").strip(),
         "tr_name_en": _clean(_first(item, "trNameEn", "trEnName", "trEnNm")),
-        "meet": _clean(item.get("meet")),  # 응답이 이미 한글 ("서울"/"제주"/"부산경남")
+        "meet": normalize_meet(item.get("meet")),  # 응답 한글("부산경남") → 정규 라벨
         "birth_date": None,  # API 미제공
         "debut_date": _parse_date(_first(item, "stDate", "debut", "debutDt")),
         "total_race_count": total,

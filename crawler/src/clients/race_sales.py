@@ -16,14 +16,12 @@ from datetime import date, datetime
 from typing import Any
 
 from ..config import settings
-from ..meets import MEET_NAMES
+from ..meets import normalize_meet
 from .kra_base import KraClient
 
 ENDPOINT = "API179_1"
 DEFAULT_OPERATION = "salesAndDividendRate_1"
 
-# 응답 meet (1/2/3) → 다른 테이블과 일치시키기 위한 한글 매핑.
-_MEET_NAMES: dict[int | str, str] = {**MEET_NAMES, **{int(k): v for k, v in MEET_NAMES.items()}}
 
 
 class RaceSalesClient(KraClient):
@@ -80,24 +78,21 @@ def _str(value: Any) -> str | None:
     return str(value).strip() or None
 
 
-def _meet_to_name(value: Any) -> str | None:
-    """KRA meet 숫자(1/2/3) → 한글. 이미 한글이면 그대로."""
-    if value is None or value == "":
-        return None
-    if value in _MEET_NAMES:
-        return _MEET_NAMES[value]
-    s = str(value).strip()
-    if s in _MEET_NAMES:
-        return _MEET_NAMES[s]
-    # 한글 그대로 들어왔다면 정규화 없이 사용 (방어적).
-    return s or None
+def _meet_to_name(value: Any, requested: int | None = None) -> str | None:
+    """KRA meet (숫자 1~4 또는 한글) → 정규 라벨. requested 는 요청한 경마장 코드."""
+    return normalize_meet(value, requested=requested)
 
 
-def api_item_to_race_sales_fields(item: dict[str, Any]) -> dict[str, Any]:
-    """Map an API179_1/salesAndDividendRate_1 item into `race_pool_sales` columns."""
+def api_item_to_race_sales_fields(
+    item: dict[str, Any], *, meet: int | None = None
+) -> dict[str, Any]:
+    """Map an API179_1/salesAndDividendRate_1 item into `race_pool_sales` columns.
+
+    meet 는 이 item 을 받은 요청의 경마장 코드 (전체 조회면 None).
+    """
     return {
         "race_date": _parse_date(item.get("rcDate")),
-        "meet": _meet_to_name(item.get("meet")),
+        "meet": _meet_to_name(item.get("meet"), meet),
         "race_no": _parse_int(item.get("rcNo")),
         "pool": _str(item.get("pool")),
         "amount": _parse_int(item.get("amt"), default=0) or 0,

@@ -94,6 +94,8 @@ def api_item_to_race_plan_fields(item: dict[str, Any], *, year: int) -> dict[str
 
     KRA 필드명이 Swagger 확인 전이므로 가장 일반적인 후보들을 모두 시도.
     """
+    # race_plans 만 KRA 원문("부산경남")을 그대로 둔다 — unique 키 (meet, year, race_name)
+    # 라 라벨만 바꾸면 같은 대상경주가 두 행이 되고 웹도 '부산경남' 기준 (src/meets.py).
     meet_raw = str(item.get("meet") or "").strip()
     return {
         "meet": _MEET_NAMES.get(meet_raw, _clean(meet_raw) or "알수없음"),

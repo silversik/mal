@@ -14,7 +14,7 @@ from datetime import date, datetime
 from typing import Any
 
 from ..config import settings
-from ..meets import MEET_NAMES
+from ..meets import normalize_meet
 from .kra_base import KraClient
 
 ENDPOINT = "currentjockeyInfo"
@@ -40,7 +40,6 @@ class JockeyClient(KraClient):
 
 # --------------------------------------------------------------------- mapping
 
-_MEET_NAMES = MEET_NAMES
 
 
 def _parse_date(value: Any) -> date | None:
@@ -71,19 +70,13 @@ def _parse_number(value: Any) -> float | None:
         return None
 
 
-def _clean(value: Any) -> Any:
-    if value is None or value == "-" or value == "":
-        return None
-    return value
-
-
 def api_item_to_jockey_fields(item: dict[str, Any]) -> dict[str, Any]:
     """Map a currentjockeyinfo item into `jockeys` columns.
 
     Verified field names (2026-04-15):
         jkNo        기수번호
         jkName      기수명
-        meet        소속 ("서울"/"제주"/"부경" — 텍스트)
+        meet        소속 ("서울"/"제주"/"부경" — 텍스트, 정규 라벨로 저장)
         birthday    생년월일 (마스킹됨 "********")
         debut       데뷔일 (YYYYMMDD)
         rcCntT      통산출전
@@ -91,14 +84,13 @@ def api_item_to_jockey_fields(item: dict[str, Any]) -> dict[str, Any]:
         ord2CntT    통산 2착
         ord3CntT    통산 3착
     """
-    meet_raw = str(item.get("meet") or "").strip()
     total = _parse_int(item.get("rcCntT"))
     first = _parse_int(item.get("ord1CntT"))
     win_rate = round(first / total * 100, 2) if total > 0 else None
     return {
         "jk_no": str(item.get("jkNo") or "").strip(),
         "jk_name": str(item.get("jkName") or "").strip(),
-        "meet": _MEET_NAMES.get(meet_raw, _clean(meet_raw)),
+        "meet": normalize_meet(item.get("meet")),
         "birth_date": _parse_date(item.get("birthday")),
         "debut_date": _parse_date(item.get("debut")),
         "total_race_count": total,
