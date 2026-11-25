@@ -55,7 +55,7 @@ PR-1·PR-2 는 브랜치 `claude/quirky-mendel-pp3kwg`. PR-3 는 `claude/zen-pas
 - **마이그레이션은 되돌리지 않는다** — 롤백은 웹·잡 revert 로만 ([feature 문서 ⑨ 9.6](../feature/racing-form.md)).
 - **백업** — 036 의 함수는 스키마를 붙이지 않아 prod 에서 mal 스키마에 생기고 `pg_dump -n mal` 에 포함된다.
   호스트에서 `pg_restore --list <dump> | grep -E "FUNCTION mal racing_form|TRIGGER mal"` 로 함수 3·트리거 12 확인.
-  [docs/spec/backup.md](../spec/backup.md) 에 이 확인을 더하는 것은 남은 작업.
+  같은 확인을 [docs/spec/backup.md](../spec/backup.md) "분기 복구 리허설"에 더했다 (2026-11-26).
 - **CI 는 pytest 를 돌리지 않는다** (Jenkins 는 tsc·빌드만) → 커밋 전 `cd crawler && uv run pytest -q` + e2e·DB 테스트
   (`E2E_DATABASE_URL`) 필수. 해시 핀 테스트가 기준 수치 변경을 잡는다.
 - **r1 은 prod 첫 등록 전까지만 고칠 수 있다** — 첫 등록은 PR-2 의 첫 발행 잡 실행. 감사 뒤 사전 등록(PR-1b)이 r1 을 고치는

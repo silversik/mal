@@ -31,6 +31,14 @@ DUMP=/srv/backups/mal/mal-mal-20261106-044000.dump bash db/restore-rehearsal.sh
   핵심 테이블 행 수와 최신 `race_results.race_date` 를 출력한 뒤 **항상 DROP** 한다. 운영 DB 는 건드리지 않는다.
 - docker 모드는 superuser(`PG_ADMIN`, 기본 postgres)로 접속한다 — `mal_app` 은 DB 생성 권한이 없다.
 - 복원 소요 시간이 곧 RTO 의 하한 — 결과를 기록해 둔다.
+- **경마지 보호 장치가 덤프에 들어 있는지** (036 — 추가 전용 기록을 지키는 함수 3개·트리거 12개). 함수는 스키마를 붙이지
+  않고 만들어 prod 에서는 `mal` 스키마에 있으므로 `-n mal` 덤프에 포함된다. 호스트에서:
+  ```bash
+  pg_restore --list <덤프 파일> | grep -cE "FUNCTION mal racing_form"     # 3
+  pg_restore --list <덤프 파일> | grep -cE "TRIGGER mal .*trg_rf_"        # 12
+  ```
+  숫자가 모자라면 복원한 DB 에서 발행본·정산을 고치거나 지울 수 있게 된다 — 운영 스키마로 쓰기 전에 036 의 함수·트리거를
+  다시 만든다. 복원 뒤에는 `docker exec mal-crawler python -m src.main racing-form-verify` (트리거 12개·ALWAYS, payload 해시).
 
 ## 실제 복구 (사고 시)
 
@@ -42,3 +50,4 @@ DUMP=/srv/backups/mal/mal-mal-20261106-044000.dump bash db/restore-rehearsal.sh
 
 > 로컬 검증 (2026-11): Postgres 16 에 전체 마이그레이션 적용 → `mal` 스키마 복사본 백업 → 리허설 복원
 > 성공 (사이드카 없이는 `set_updated_at()` 부재로 트리거 생성 실패하는 것을 재현·수정).
+> 경마지 확인 명령은 로컬 PG16 의 `mal` 스키마 덤프에서 3 · 12 가 나오는 것을 확인 (2026-11-26).
