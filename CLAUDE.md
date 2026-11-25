@@ -41,11 +41,12 @@ uv run python -m src.scheduler_main
 4. **`web/.env.local` 의 `DATABASE_URL` 은 `localhost:5432` (로컬 docker postgres) 만**. 운영 DB(`49.50.138.31`) 직접 connect 시 임의 query 가 prod 락을 잡음. prod 컨테이너는 `mal_app` role 로 접속 → `search_path = mal, public`.
 5. **`crawler/_crawler_core` symlink** (`→ ../../crawler/core`) — sibling `crawler` 레포의 공유 패키지(`crawler_core`, 대시보드 리포트 클라이언트)를 editable 로 설치 (`pyproject.toml [tool.uv.sources]`). 호스트 dev 편의용, 삭제 금지. 컨테이너 빌드는 build context `..` 로 sibling 을 포함.
 6. **시각/UI 작업 전 [DESIGN.md](DESIGN.md) 를 먼저 읽는다** — 아래 "디자인 시스템" 참고.
+7. **경마지(`/form`) 기록은 추가 전용** — `racing_form_*` 6개 테이블은 트리거로 UPDATE·DELETE·TRUNCATE 를 거부한다. 발행한 호·확정 정산은 고치거나 지우지 않고, 정정·철회·쉼은 `racing-form-notice` 로 공지만 추가한다. 기준 정의(`crawler/src/racing_form/definitions.py` `RULE_SETS`)는 prod 에 등록된 버전의 수치·문구를 바꾸지 않는다 — 바꾸려면 새 버전(r2 …)을 추가(해시 핀 테스트가 막는다). **목·금·토 17:30~18:15 KST 에는 main 에 push·머지하지 않는다** (D−1 18:00 발행과 크롤러 재시작이 겹침, `docs/spec/deployment.md`).
 
 ## 디렉터리 구조
 
 - **`web/`** — Next.js 16, App Router. 인증 NextAuth v5 **Kakao only** (`web/AGENTS.md`: "이건 학습 데이터의 Next.js 와 다름" — App Router 16 breaking changes 주의, `node_modules/next/dist/docs/` 참고).
-  - `src/app/` 라우트 그룹: `(analysis)`(analysis·compare·rankings·records) · `(database)`(database·horses·jockeys·owner·trainer) · 상세(`horse/[horse_no]`·`jockey/[jk_no]`·`parent/[parent_no]`) · `races`·`contact`·`notifications`·`me`·정책(about·privacy·terms) · `sitemap.xml`(index→chunk).
+  - `src/app/` 라우트 그룹: `(analysis)`(analysis·compare·rankings·records) · `(database)`(database·horses·jockeys·owner·trainer) · 상세(`horse/[horse_no]`·`jockey/[jk_no]`·`parent/[parent_no]`) · `races`·`form`(경마지 — 허브·호 1면·경주면·기록)·`contact`·`notifications`·`me`·정책(about·privacy·terms) · `sitemap.xml`(index→chunk).
   - `src/lib/*.ts` — **데이터 액세스는 raw SQL** (`db.ts` = lazy `pg` Pool, `query()` 헬퍼). 도메인별 모듈(`races.ts`·`horses.ts`·`jockeys.ts`·`contact.ts`·`notifications.ts`·`favorite_horses.ts`·`telegram.ts` …). ORM 없음.
   - `src/app/actions/` — Server Actions. `components/ui/` shadcn, `components/brand`·`components/seo`.
 - **`crawler/`** — `uv run` 기반 Python. **모듈 루트는 `src`** (`python -m src.main` / `python -m src.scheduler_main`).
@@ -77,7 +78,7 @@ Next.js web (mal-web, PORT 4000 → nginx → mal.kr)  ·  로컬 dev :3000
    - 조회/분석 페이지 · sitemap.xml index→chunk 분할 (Search Console fetch 안정화)
 ```
 
-운영 중 기능: 즐겨찾기 마필 + 다음 출주 인앱 알림(`build_favorite_notifications`) · 늦은 기수변경·출전취소 반영(`sync_late_changes` 17:25 내일·09:40 오늘 경주 — 출전표 재수집에서 빠진 말은 `race_entries.scratched_at`, 삭제 안 함) · 문의 게시판(텔레그램 알림) · 엔티티 댓글 · 날씨 폼 · 말 폼 브레이크다운. (**모의배팅은 2026-06 전면 제거** — `0004-remove-mock-betting`.)
+운영 중 기능: **경마지**(`/form` — 경주 전날 18:00 고정 발행, 공개 기준 4개의 ◎○△·주목마·말 소식·적중 공개. 잡 `mal.publish_racing_form` 매시 정각 + 기동 직후 1회 · `mal.settle_racing_form` 10~23시 :15·:45, KRA 호출 없음. 제품 정의 `docs/feature/racing-form.md`, 계약 `docs/spec/racing-form-contract.md`) · 즐겨찾기 마필 + 다음 출주 인앱 알림(`build_favorite_notifications`) · 늦은 기수변경·출전취소 반영(`sync_late_changes` 17:25 내일·09:40 오늘 경주 — 출전표 재수집에서 빠진 말은 `race_entries.scratched_at`, 삭제 안 함) · 문의 게시판(텔레그램 알림) · 엔티티 댓글 · 날씨 폼 · 말 폼 브레이크다운. (**모의배팅은 2026-06 전면 제거** — `0004-remove-mock-betting`.)
 
 ## 배포 — Jenkins 단일 잡
 

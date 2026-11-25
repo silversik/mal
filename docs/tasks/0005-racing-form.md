@@ -4,8 +4,8 @@
 KRA 데이터 이벤트 말 소식·적중 공개를 만든다. 제품 정의·운영은 [docs/feature/racing-form.md](../feature/racing-form.md),
 데이터 계약은 [docs/spec/racing-form-contract.md](../spec/racing-form-contract.md).
 
-> **상태: PR-1 진행 중** (브랜치 `claude/quirky-mendel-pp3kwg`). 런타임 영향 없음 — 스케줄 연결·메뉴 링크가 없어
-> 발행·정산이 일어나지 않는다. 계획은 2026-11-13 사용자 승인(= G0). 계획 원본(저장소 밖):
+> **상태 (2026-11-26): PR-1 머지·배포 완료 · PR-2(#89) G1 대기 · PR-3 코드 준비 완료(draft, G2 뒤 머지).**
+> PR-2 머지 전에는 발행·정산이 일어나지 않는다. G1 절차는 [0007](0007-racing-form-g1-handover.md). 계획은 2026-11-13 사용자 승인(= G0). 계획 원본(저장소 밖):
 > `~/.claude/plans/radiant-finding-lightning.md`. 이 파일은 PR 마다 갱신하고, PR-3 머지 때 최종본으로 닫는다.
 
 ## 1. 변경 요약
@@ -14,12 +14,13 @@ KRA 데이터 이벤트 말 소식·적중 공개를 만든다. 제품 정의·�
 
 | 단계 | 내용 | 관문 | 상태 |
 |------|------|------|------|
-| **PR-1** | S0 → S2 → S3a → S1 → S3b → S4 (아래 1.B). 문서·코드·빈 테이블·메뉴 링크 없는 페이지 | **G0** — 계획 승인을 DESIGN 결정(△·'주목' 라벨·레이아웃·고지) 승인으로 기록 ([DESIGN.md](../../DESIGN.md) Decisions Log 2026-11-13), 실물은 PR-1 스크린샷으로 확인 | 진행 중 |
-| 사용자 prod 작업 (읽기 전용) | `racing-form-preflight` → r1 정책 사전 등록(작은 PR-1b) → `racing-form-backtest --label dev` → 후보 해시 고정 → `--label holdout` 1회 → 경주 주말 D−1 18:05 `racing-form-build --json` dry-run 대조 | **G1** — 게이트 결과 · 법률 검토(고지 문구·기호·청소년유해매체물·AdSense·data.go.kr 이용조건) · 제주 포함 여부 → 사용자 결정 | 예정 |
-| **PR-2** | S5 스케줄 연결. **목요일 18:00 전 배포**, 첫 호부터 실전 집계 | 첫 발행 18:05 확인 (대시보드·`racing-form-show`·1면·healthcheck) | 예정 |
-| **PR-3** | S6 사이트 연결 + S7 문서 확정 | **G2** — 첫 호 실물·첫 주말 정산 대조. 헤더가 바뀌므로 DB 없는 빌드 재확인 | 예정 |
+| **PR-1** | S0 → S2 → S3a → S1 → S3b → S4 (아래 1.B). 문서·코드·빈 테이블·메뉴 링크 없는 페이지 | **G0** — 계획 승인을 DESIGN 결정(△·'주목' 라벨·레이아웃·고지) 승인으로 기록 ([DESIGN.md](../../DESIGN.md) Decisions Log 2026-11-13), 실물은 PR-1 스크린샷으로 확인 | 머지·배포 (#87) |
+| 사용자 prod 작업 (읽기 전용) | `racing-form-preflight` → r1 정책 사전 등록(작은 PR-1b) → `racing-form-backtest --label dev` → 후보 해시 고정 → `--label holdout` 1회 → 경주 주말 D−1 18:05 `racing-form-build --json` dry-run 대조 | **G1** — 게이트 결과 · 법률 검토(고지 문구·기호·청소년유해매체물·AdSense·data.go.kr 이용조건) · 제주 포함 여부 → 사용자 결정 | **진행 중** — [0007](0007-racing-form-g1-handover.md) |
+| **PR-2** | S5 스케줄 연결. **목요일 18:00 전 배포**, 첫 호부터 실전 집계 | 첫 발행 18:05 확인 (대시보드·`racing-form-show`·1면·healthcheck) | draft [#89](https://github.com/silversik/mal/pull/89), G1 대기 |
+| **PR-3** | S6 사이트 연결 + S7 문서 확정 | **G2** — 첫 호 실물·첫 주말 정산 대조. 헤더가 바뀌므로 DB 없는 빌드 재확인 | 코드 준비 완료 (2026-11-26, PR-2 위에 쌓은 draft) — G2 뒤 머지 |
 
-PR 이 머지되면 같은 브랜치 이름으로 최신 main 에서 다시 시작해 다음 PR 을 연다 (draft).
+PR-1·PR-2 는 브랜치 `claude/quirky-mendel-pp3kwg`. PR-3 는 `claude/zen-pascal-0wufg3` 에서 PR-2 를 merge commit 으로 포함해
+쌓았다 — PR-2 가 main 에 들어간 뒤에 머지한다 (스택 PR 은 squash 금지).
 
 ### 1.B 슬라이스
 
@@ -32,7 +33,7 @@ PR 이 머지되면 같은 브랜치 이름으로 최신 main 에서 다시 시�
 | S3b | 쓰기 경로 | `store.py` · `main.py` `racing-form-settle`·`-notice`·`-backtest`(holdout) · `crawler/src/jobs/racing_form_jobs.py` (**미등록**) | PR-1 |
 | S4 | 웹 (메뉴 링크 없음·noindex·허브 "준비 중") | `web/src/lib/racing_form-shared.ts`·`racing_form.ts` · `web/src/app/form/**` 5경로 + `loading.tsx` · `web/src/components/racing-form/*` · `responsible-gambling-notice.tsx` · vitest 2개 | PR-1 |
 | S5 | 스케줄 연결 | `monitoring.JOB_CATALOG`(category `racing_form`) · `periodic.py` `@track_job` · `scheduler_main.py` `add_job`(+기동 직후 1회)·`TRIGGER_JOBS` · `healthcheck.py` 3행 · e2e 타임라인·`test_healthcheck` · `docs/spec/deployment.md` (healthcheck 3행·배포 금지 시간) | PR-2 |
-| S6 | 사이트 연결 | `races-subnav.tsx`(신규) · `/races` 링크 · `nav-links`·`mobile-bottom-nav` · 홈 카드 · sitemap · 푸터 한 줄 · about·이용약관 · `FORM_INDEXABLE=true` | PR-3 |
+| S6 | 사이트 연결 | `components/races-subnav.tsx`·`lib/races-subnav.ts`·`app/form/layout.tsx`(신규) · `/races` 서브탭·경주 머리 링크 · `nav-links`·`mobile-bottom-nav` · 홈 '경마지' 섹션(`pickHomeEditions`·`cachedHomeFormEditionsSafe`) · sitemap(`/sitemap/0.xml`) · 푸터 한 줄 · about·이용약관 · `FORM_INDEXABLE=true` · 허브·기록의 "공휴일 경주 미지원" 문구 정정 · 고지의 "24시간" 삭제 | PR-3 |
 | S7 | 문서 확정 | feature 문서·이 파일·`crawler/README.md`·CLAUDE.md(사용자 확인) 를 구현 기준으로 (CLI 옵션 이름·라인 번호) | PR-3 |
 
 슬라이스별 완료 표시는 PR-1 머지 때 이 표에 남긴다.
