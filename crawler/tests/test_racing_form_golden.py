@@ -62,10 +62,21 @@ def build_world(spec: dict[str, Any]) -> FakeProvider:
         p.add_race(D, MEET, rn, distance=race["distance"], raw_rc_dist=race.get("raw_rc_dist"))
         for name, (rides, wins, top3, ids) in race.get("jockeys", {}).items():
             p.set_jockey_stat(name, MEET, rides, wins, top3, ids)
+        for name, (starts, wins, top3) in race.get("trainers", {}).items():
+            p.set_trainer_stat(name, MEET, starts, wins, top3)
         for rs in race["runners"]:
             chul = rs["chul"]
             hn = f"G{rn:02d}{chul:02d}"
-            p.add_entry(D, MEET, rn, hn, chul, rating=rs.get("rating"), jockey=rs.get("jockey"))
+            p.add_entry(
+                D,
+                MEET,
+                rn,
+                hn,
+                chul,
+                rating=rs.get("rating"),
+                jockey=rs.get("jockey"),
+                trainer=rs.get("trainer"),
+            )
             p.set_master(hn, 0)
             form = rs.get("form", [])
             for i, item in enumerate(form):
@@ -95,6 +106,31 @@ def payload() -> dict[str, Any]:
     return res.payload
 
 
+@pytest.fixture(scope="module")
+def extra_results() -> dict[int, dict[str, Any]]:
+    """예비 기준(backtest_extra_rules — r1 은 course) 결과: {race_no: {key: RuleResultV1}}.
+
+    발행본에는 없고 과거 시험(backtest 모드)에서만 함께 계산된다.
+    """
+    res = build.build_edition(
+        build_world(GOLDEN), D, MEET, kst(2026, 11, 14, 18, 0), DEFN, "backtest"
+    )
+    return {rn: {rr["key"]: rr for rr in rrs} for rn, rrs in res.extra_rule_results.items()}
+
+
+def _assert_rule(key: str, e: dict[str, Any], g: dict[str, Any]) -> None:
+    if "picks" in e:
+        assert g["status"] == "picked", (key, g)
+        assert [[p["mark"], p["chul_no"]] for p in g["picks"]] == e["picks"], key
+        if "reasons" in e:
+            assert [p["reason"] for p in g["picks"]] == e["reasons"], key
+    else:
+        assert g["status"] == "no_pick", (key, g)
+        assert g["reason_code"] == e["no_pick"], key
+        if "reason" in e:
+            assert g["reason"] == e["reason"], key
+
+
 def test_golden_is_bound_to_definition_hash() -> None:
     # 기준 정의가 바뀌면(새 버전) 골든도 손으로 다시 유도해야 한다
     assert definitions.definition_sha256(DEFN) == GOLDEN["definition_sha256"]
@@ -105,45 +141,52 @@ def test_golden_shape_and_coverage() -> None:
     assert len(races) == 20
     assert [r["race_no"] for r in races] == list(range(1, 21))
     assert all(r["why"].strip() for r in races)
-    codes = {
-        e["no_pick"]
-        for r in races
-        for k, e in r["expected"].items()
-        if k != "consensus" and "no_pick" in e
-    }
-    assert codes == {
+
+    def codes(keys: tuple[str, ...]) -> set[str]:
+        return {
+            r["expected"][k]["no_pick"]
+            for r in races
+            for k in keys
+            if "no_pick" in r["expected"][k]
+        }
+
+    assert set(races[0]["expected"]) == {*DEFN.rules, *DEFN.backtest_extra_rules, "consensus"}
+    assert codes(DEFN.rules) == {
         "small_field",
         "rating_no_pick",
         "form_no_pick_eligible",
         "form_no_pick_top3",
+        "jockey_no_pick",
+        "trainer_no_pick",
+    }
+    # 예비 기준(course)의 경계도 계속 고정한다 — r2 후보
+    assert codes(DEFN.backtest_extra_rules) == {
+        "small_field",
         "course_no_pick_distance",
         "course_no_pick_eligible",
         "course_no_pick_top3",
-        "jockey_no_pick",
     }
+    for key in (*DEFN.rules, *DEFN.backtest_extra_rules):
+        assert any("picks" in r["expected"][key] for r in races), key
     statuses = {r["expected"]["consensus"]["status"] for r in races}
     assert statuses == {"picked", "split", "insufficient", "small_field"}
 
 
 @pytest.mark.parametrize("race", GOLDEN["races"], ids=lambda r: f"R{r['race_no']:02d}")
-def test_golden_race(payload: dict[str, Any], race: dict[str, Any]) -> None:
+def test_golden_race(
+    payload: dict[str, Any], extra_results: dict[int, dict[str, Any]], race: dict[str, Any]
+) -> None:
     got = next(r for r in payload["races"] if r["race_no"] == race["race_no"])
     exp = race["expected"]
     assert got["field_size"] == len(race["runners"])
     by_key = {rr["key"]: rr for rr in got["rules"]}
     assert list(by_key) == list(DEFN.rules)
     for key in DEFN.rules:
-        e, g = exp[key], by_key[key]
-        if "picks" in e:
-            assert g["status"] == "picked", (key, g)
-            assert [[p["mark"], p["chul_no"]] for p in g["picks"]] == e["picks"], key
-            if "reasons" in e:
-                assert [p["reason"] for p in g["picks"]] == e["reasons"], key
-        else:
-            assert g["status"] == "no_pick", (key, g)
-            assert g["reason_code"] == e["no_pick"], key
-            if "reason" in e:
-                assert g["reason"] == e["reason"], key
+        _assert_rule(key, exp[key], by_key[key])
+    extra = extra_results[race["race_no"]]
+    assert list(extra) == list(DEFN.backtest_extra_rules)
+    for key in DEFN.backtest_extra_rules:
+        _assert_rule(key, exp[key], extra[key])
 
     ec, gc = exp["consensus"], got["consensus"]
     assert gc["status"] == ec["status"]

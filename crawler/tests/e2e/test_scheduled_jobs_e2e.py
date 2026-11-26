@@ -198,8 +198,8 @@ def test_03c_publish_racing_form_at_freeze(e2e):
     assert {k: (v["status"], v.get("reason_code")) for k, v in rules.items()} == {
         "rating": ("picked", None),
         "form": ("no_pick", "form_no_pick_eligible"),
-        "course": ("no_pick", "course_no_pick_eligible"),
         "jockey": ("no_pick", "jockey_no_pick"),
+        "trainer": ("no_pick", "trainer_no_pick"),
     }
     assert s1["consensus"]["picks"] == []  # 기준 1개(A=1)뿐 — 주목마 없음
     assert s1["consensus"]["active_rules"] == 1
@@ -719,7 +719,7 @@ def test_32_late_changes_preday_before_freeze(e2e):
     assert rows["0041010"]["scratched_at"] is None and rows["0041012"]["scratched_at"] is None
     # 경마지 Q1 은 출전취소 행을 뺀다 — stale 추측 불필요
     with e2e.engine.connect() as c:
-        q1 = c.execute(queries._Q1_ENTRIES, {"d": w.H, "meet": "부경"}).mappings().all()
+        q1 = c.execute(queries._Q1_ENTRIES, {"d": w.H, "meets": ["부경", "부산경남"]}).mappings().all()
     assert [(r["horse_no"], r["jockey_name"], r["jc_after"]) for r in q1] == [
         ("0041010", "최부경", None), ("0041012", "강광안", "한교체")]
 
@@ -1209,7 +1209,7 @@ def _web_sql(name: str) -> str:
 def test_46_web_racing_form_jockeys_and_record(e2e):
     D = e2e.world.D.isoformat()
     # racing_form.ts getCurrentJockeys — 발행 후 기수 변경 (diffJockeys 입력)
-    cur = e2e.web_query(_web_sql("CURRENT_JOCKEYS_SQL"), D, "서울")
+    cur = e2e.web_query(_web_sql("CURRENT_JOCKEYS_SQL"), D, ["서울"])  # $2 = 저장 라벨 배열
     ed = e2e.one("SELECT payload FROM racing_form_editions WHERE meet='서울'")
     frozen = {(r["race_no"], x["horse_no"]): x["jockey_name"]
               for r in ed["payload"]["races"] for x in r["runners"]}

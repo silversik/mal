@@ -77,7 +77,7 @@ def test_saturday_results_do_not_change_sunday_edition(mode: str) -> None:
     assert with_sat.extra_rule_results == base.extra_rule_results
     assert base.meta["results_through"] == with_sat.meta["results_through"] < H
     # 집계가 실제로 결과 행에서 계산됐는지 (정마루 25기승 5승, 번호 하나 → 동명이인 아님)
-    jockey = base.payload["races"][0]["rules"][3]
+    jockey = next(r for r in base.payload["races"][0]["rules"] if r["key"] == "jockey")
     assert jockey["status"] == "picked"
     assert "정마루 기수 · 최근 90일 서울 25번 중 5승 (승률 20%)" in [
         x["reason"] for x in jockey["picks"]
@@ -254,9 +254,6 @@ def test_replay_equals_live_except_live_warnings() -> None:
 
 def test_backtest_skips_news_and_adds_extra_rules() -> None:
     p = payload_scenario()
-    p.set_trainer_stat("박조교", "서울", 40, 8, 15)
-    p.set_trainer_stat("최조교", "서울", 30, 3, 9)
-    p.set_trainer_stat("정조교", "서울", 22, 4, 8)
     res = build_edition(p, D, GOLDEN_MEET, GOLDEN_NOW, R1, mode="backtest")
     assert not p.called("rank_changes") and not p.called("masters")
     assert p.called("trainer_stats")
@@ -265,20 +262,25 @@ def test_backtest_skips_news_and_adds_extra_rules() -> None:
     assert all(x["badges"] == [] for r in pl["races"] for x in r["runners"])
     assert [r["key"] for r in pl["rules"]] == list(R1.rules)  # 예비 기준은 payload 밖
     assert set(res.extra_rule_results) == {1, 2, 3}
-    trainer_1r = res.extra_rule_results[1][0]
-    assert trainer_1r["key"] == "trainer" and trainer_1r["status"] == "picked"
-    # 박조교(20%) 말 1·3번 → 번호순, 그다음 정조교(18%) 4·6번 중 4번
-    assert [(x["mark"], x["chul_no"]) for x in trainer_1r["picks"]] == [(1, 1), (2, 3), (3, 4)]
+    # 예비 기준(course — r2 후보)은 payload 밖에서 함께 계산된다
+    course_1r = res.extra_rule_results[1][0]
+    assert course_1r["key"] == "course" and course_1r["status"] in ("picked", "no_pick")
     assert res.extra_rule_results[3][0]["reason_code"] == "small_field"
+    # 조교사는 발행 기준 — 박조교(20%) 말 1·3번 → 번호순, 그다음 정조교(18%) 4·6번 중 4번
+    trainer_1r = next(r for r in pl["races"][0]["rules"] if r["key"] == "trainer")
+    assert trainer_1r["status"] == "picked"
+    assert [(x["mark"], x["chul_no"]) for x in trainer_1r["picks"]] == [(1, 1), (2, 3), (3, 4)]
     live = build_edition(payload_scenario(), D, GOLDEN_MEET, GOLDEN_NOW, R1)
     # 픽은 live 와 같다 (소식만 꺼짐)
     assert res.picks == live.picks
 
 
-def test_live_does_not_query_trainer_stats() -> None:
+def test_live_queries_published_rules_only() -> None:
+    """live 는 발행 기준(조교사 포함)의 집계만 읽고, 예비 기준(course)은 계산하지 않는다."""
     p = payload_scenario()
-    build_edition(p, D, GOLDEN_MEET, GOLDEN_NOW, R1)
-    assert not p.called("trainer_stats")
+    res = build_edition(p, D, GOLDEN_MEET, GOLDEN_NOW, R1)
+    assert p.called("trainer_stats") and p.called("jockey_stats")
+    assert res.extra_rule_results == {}
     assert p.called("rank_changes") and p.called("masters")
 
 

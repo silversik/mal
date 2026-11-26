@@ -155,7 +155,7 @@ function Body({ view }: { view: BacktestView }) {
       <RecordTable
         record={view.record}
         idPrefix="bt"
-        extraRuleNote="조교사는 과거 시험에서만 함께 본 예비 기준입니다 (발행에는 쓰지 않습니다)."
+        extraRuleNote="거리 적성은 과거 시험에서만 함께 본 예비 기준입니다 (발행에는 쓰지 않습니다)."
       />
       <p className="text-small text-muted-foreground">
         계산 {publishStampKo(view.computedAt)} · 정의 해시 {view.definitionSha.slice(0, 12)}

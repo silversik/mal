@@ -99,8 +99,16 @@ describe("SQL 상수 — e2e 가 글자 그대로 복사해 실행할 수 있는
 describe("파라미터 — 한글 경마장·날짜는 $n 으로만", () => {
   it("getFormCalendar — 날짜 2개 + 경마장 라벨 배열(MEET_ORDER)", async () => {
     await rf.getFormCalendar("2026-11-13", "2026-11-15");
-    expectParamOnly(rf.FORM_CALENDAR_SQL, ["2026-11-13", "2026-11-15", ["서울", "제주", "부경"]]);
+    // $4·$5 = 별칭 라벨과 그 경마지 라벨 (운영 DB 의 부경은 '부산경남' 으로도 저장돼 있다)
+    expectParamOnly(rf.FORM_CALENDAR_SQL, [
+      "2026-11-13",
+      "2026-11-15",
+      ["서울", "제주", "부경"],
+      ["부산경남"],
+      ["부경"],
+    ]);
     expect(rf.FORM_CALENDAR_SQL).toContain("= ANY($3::text[])");
+    expect(rf.FORM_CALENDAR_SQL).toContain("array_position($4::text[], e.meet::text)");
   });
 
   it("getEditionIndex / getEditionHead", async () => {
@@ -112,7 +120,10 @@ describe("파라미터 — 한글 경마장·날짜는 $n 으로만", () => {
 
   it("getCurrentJockeys / getNotices / getNoticesBetween", async () => {
     await rf.getCurrentJockeys("2026-11-15", "서울");
-    expectParamOnly(rf.CURRENT_JOCKEYS_SQL, ["2026-11-15", "서울"]);
+    expectParamOnly(rf.CURRENT_JOCKEYS_SQL, ["2026-11-15", ["서울"]]);
+    await rf.getCurrentJockeys("2026-11-27", "부경"); // 출전표는 '부산경남' 으로 저장돼 있다
+    expectParamOnly(rf.CURRENT_JOCKEYS_SQL, ["2026-11-27", ["부경", "부산경남"]]);
+    expect(rf.CURRENT_JOCKEYS_SQL).toContain("e.meet = ANY($2::text[])");
     await rf.getNotices("2026-11-15", "제주");
     expectParamOnly(rf.NOTICES_SQL, ["2026-11-15", "제주"]);
     await rf.getNoticesBetween("2026-11-09", "2026-11-15");

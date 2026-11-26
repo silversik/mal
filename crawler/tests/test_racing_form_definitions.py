@@ -15,8 +15,8 @@ from src.racing_form import definitions, wording
 from src.racing_form.definitions import RULE_DEFINITIONS, RULE_KEYS, RULE_LABELS, RULE_SETS
 
 PINNED_SHA256 = {
-    "r1": "a3144ab4f55f4e5f223ee23de2f14a418f0f2169ed5cb8c21b6b74570f8673a4",
-    "r1-e2e": "0af1ee3611281e065ae09dfa26d006ac16b9cfbc295701d9f5b4959b7bebec16",
+    "r1": "1a62c07f30590e17935125dca00c081058969c70941d4fbfa76d0ea791de841a",
+    "r1-e2e": "ce1d2d84f884f74e302924584e1ac08c045f14bddd8ab7b76cd192b2b02d862d",
 }
 
 
@@ -59,8 +59,8 @@ def test_labels_and_keys() -> None:
     }
     for defn in RULE_SETS.values():
         assert defn.version in RULE_SETS
-        assert defn.rules == ("rating", "form", "course", "jockey")
-        assert defn.backtest_extra_rules == ("trainer",)
+        assert defn.rules == ("rating", "form", "jockey", "trainer")
+        assert defn.backtest_extra_rules == ("course",)
         assert not set(defn.rules) & set(defn.backtest_extra_rules)
         assert set(defn.rules) | set(defn.backtest_extra_rules) <= set(RULE_KEYS)
 

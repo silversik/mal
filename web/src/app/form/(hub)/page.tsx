@@ -164,7 +164,7 @@ export default async function FormHubPage() {
             경마지 준비 중
           </h2>
           <p className="text-base leading-relaxed text-foreground">
-            mal.kr 경마지는 공개 기준 4개(레이팅·최근 성적·거리 적성·기수)가 경주마다 1·2·3순위를 고르고,
+            mal.kr 경마지는 공개 기준 4개(레이팅·최근 성적·기수·조교사)가 경주마다 1·2·3순위를 고르고,
             그 근거를 숫자 한 줄로 적는 무료 웹 경마지입니다. 기준 3개 이상이 함께 고른 말은 주목마로 따로
             보여 줍니다.
           </p>

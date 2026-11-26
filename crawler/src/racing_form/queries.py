@@ -9,9 +9,14 @@
   jsonb 숫자는 `raw->>'key'` 텍스트. 이름·라벨은 `NULLIF(btrim(…), '')`.
 - 리스트 파라미터는 `= ANY(CAST(:list AS text[]))` (빈 리스트도 안전).
 - 현재 시각을 읽지 않는다 (NOW()·CURRENT_DATE 금지). 날짜·기준일은 모두 인자.
-- meet: races·race_entries·race_results·race_dividends 는 '서울'·'부경'·'제주' 로 저장된다
-  (수집 클라이언트가 코드 → 라벨 변환). race_plans 는 prod 에서 '부산경남' 이라 별칭으로 찾고,
-  Q3 집계는 Python 정규화(FakeProvider)와 같게 '부산경남' 도 같은 경마장으로 센다.
+- meet: 인자는 정규화 라벨('서울'·'부경'·'제주'). **저장 라벨은 한 가지가 아니다** — prod 의
+  부경은 테이블·시기에 따라 '부경' 과 '부산경남' 이 섞여 있다 (race_entries·race_plans 는 전부
+  '부산경남', race_results·race_dividends 는 2026-08-16 부터 '부산경남', races 는 같은 경주가 두
+  라벨로 따로 있을 수 있다 — KRA 응답이 코드 대신 한글로 오면 그대로 저장되기 때문).
+  그래서 (D, meet) 로 찾는 모든 조회는 `meet_aliases` 로 읽고, 두 테이블을 잇는 조인은
+  `norm_meet_sql` 로 정규화해 비교한다. 같은 경주·말이 두 라벨로 겹치면 한 행만 남긴다
+  (정규 라벨 우선 — `_merge_race_meta` · `_dedupe`). 달력·출전명단이 돌려주는 meet 은 정규화 라벨,
+  이력(Q2)의 meet 은 저장값 그대로다 (features 가 정규화).
 
 text() 주의: SQL 문자열 리터럴 안에 `:단어` 를 쓰지 않는다 (bind 파라미터로 해석된다).
 """
@@ -58,6 +63,69 @@ def meet_aliases(meet: str) -> list[str]:
     return list(MEET_ALIASES[norm])
 
 
+def expand_meets(meets: Sequence[str]) -> list[str]:
+    """정규화 라벨 여러 개 → 저장 라벨 후보 전체 (중복 없이, 정렬)."""
+    return sorted({a for m in meets for a in meet_aliases(m)})
+
+
+def norm_meet_sql(col: str) -> str:
+    """저장 라벨 컬럼 → 정규화 라벨 SQL 식 (`parse.normalize_meet` 의 SQL 판).
+
+    MEET_ALIASES 에서 만든다 ('부산경남' → '부경').
+
+    별칭이 없는 값(서울·제주·영천·NULL …)은 그대로 둔다. col 은 이 모듈의 고정 값만 넘긴다.
+    """
+    whens = " ".join(
+        f"WHEN '{alias}' THEN '{norm}'"
+        for norm, labels in MEET_ALIASES.items()
+        for alias in labels
+        if alias != norm
+    )
+    return f"(CASE {col} {whens} ELSE {col} END)" if whens else col
+
+
+def _canonical(meet: str) -> str:
+    """인자 meet 의 정규화 라벨 (정규화가 안 되는 값은 그대로)."""
+    return parse.normalize_meet(meet) or str(meet)
+
+
+def _dedupe(
+    rows: Sequence[Mapping[str, Any]],
+    key: Callable[[Mapping[str, Any]], Any],
+    rank: Callable[[Mapping[str, Any]], Any],
+) -> list[Mapping[str, Any]]:
+    """key 가 같은 행 중 rank 가 가장 작은 한 행만 남긴다 (처음 나온 자리 유지).
+
+    같은 경주·말이 '부경'·'부산경남' 두 라벨로 겹쳐 저장됐을 때 두 번 세지 않기 위한 것.
+    """
+    best: dict[Any, Mapping[str, Any]] = {}
+    for r in rows:
+        k = key(r)
+        if k not in best or rank(r) < rank(best[k]):
+            best[k] = r
+    return list(best.values())
+
+
+_META_FIELDS = (
+    "race_name", "distance", "raw_rc_dist", "grade", "track_type", "start_time",
+    "plan_name", "plan_grade",
+)
+
+
+def _merge_race_meta(rows: Sequence[Mapping[str, Any]]) -> list[RaceMeta]:
+    """Q6 행(race_no, 정규 라벨 우선 순) → 경주당 RaceMeta 하나.
+
+    같은 경주가 두 라벨의 races 행으로 있으면 필드마다 처음 나온 NULL 아닌 값을 쓴다.
+    """
+    merged: dict[int, dict[str, Any]] = {}
+    for r in rows:
+        cur = merged.setdefault(int(r["race_no"]), dict.fromkeys(_META_FIELDS))
+        for f in _META_FIELDS:
+            if cur[f] is None and r[f] is not None:
+                cur[f] = r[f]
+    return [RaceMeta(race_no=n, **merged[n]) for n in sorted(merged)]
+
+
 def first_post_of(start_times: Sequence[str | None]) -> str | None:
     """발주 시각 목록 → 가장 이른 시각 'HH:MM' (해석 안 되는 값은 무시, 없으면 None).
 
@@ -78,29 +146,44 @@ def first_post_of(start_times: Sequence[str | None]) -> str | None:
 # SQL (계약 §1)
 # ---------------------------------------------------------------------------
 
-# Q0 달력 — races ∩ race_entries. 첫 발주는 Python(first_post_of)이 고른다.
+# Q0 달력 — races ∩ race_entries (라벨은 정규화해 비교). 첫 발주는 Python(first_post_of)이 고른다.
+# 같은 경주가 두 라벨의 races 행으로 있으면 한 번만 센다 (발주 시각 있는 행 → 정규 라벨 순).
 _Q0_CALENDAR = text(
-    """
-    SELECT r.race_date,
-           r.meet,
+    f"""
+    SELECT c.race_date,
+           c.meet,
            COUNT(*)::int AS race_count,
-           array_remove(array_agg(NULLIF(btrim(r.start_time), '')), NULL) AS start_times
-      FROM races r
-     WHERE r.race_date BETWEEN :d_from AND :d_to
-       AND r.meet = ANY(CAST(:meets AS text[]))
-       AND EXISTS (
-             SELECT 1
-               FROM race_entries e
-              WHERE e.race_date = r.race_date
-                AND e.meet = r.meet
-                AND e.race_no = r.race_no
-                AND e.scratched_at IS NULL)
-     GROUP BY r.race_date, r.meet
-     ORDER BY r.race_date, r.meet
+           array_remove(array_agg(c.start_time), NULL) AS start_times
+      FROM (
+            SELECT DISTINCT ON (r.race_date, {norm_meet_sql("r.meet")}, r.race_no)
+                   r.race_date,
+                   {norm_meet_sql("r.meet")}      AS meet,
+                   r.race_no,
+                   NULLIF(btrim(r.start_time), '') AS start_time
+              FROM races r
+             WHERE r.race_date BETWEEN :d_from AND :d_to
+               AND r.meet = ANY(CAST(:meets AS text[]))
+               AND EXISTS (
+                     SELECT 1
+                       FROM race_entries e
+                      WHERE e.race_date = r.race_date
+                        AND e.meet = ANY(CAST(:meets AS text[]))
+                        AND {norm_meet_sql("e.meet")} = {norm_meet_sql("r.meet")}
+                        AND e.race_no = r.race_no
+                        AND e.scratched_at IS NULL)
+             ORDER BY r.race_date,
+                      {norm_meet_sql("r.meet")},
+                      r.race_no,
+                      (NULLIF(btrim(r.start_time), '') IS NULL),
+                      (r.meet <> {norm_meet_sql("r.meet")}),
+                      r.meet
+           ) c
+     GROUP BY c.race_date, c.meet
+     ORDER BY c.race_date, c.meet
     """
 )
 
-# Q1 출전명단 — (D, meet) 출전취소(scratched_at) 아닌 행
+# Q1 출전명단 — (D, meet 별칭) 출전취소(scratched_at) 아닌 행
 #   + 배치 시각 + jockey_changes 최신 1건 (meet 미사용, 계약 §1)
 _Q1_ENTRIES = text(
     """
@@ -118,7 +201,7 @@ _Q1_ENTRIES = text(
            e.raw ->> 'hrRating'              AS raw_hr_rating,
            e.raw ->> 'wgBudam'               AS raw_wg_budam,
            e.updated_at,
-           MAX(e.updated_at) OVER (PARTITION BY e.race_date, e.meet) AS batch_at,
+           MAX(e.updated_at) OVER (PARTITION BY e.race_date) AS batch_at,
            NULLIF(btrim(jc.jk_name_before), '') AS jc_before,
            NULLIF(btrim(jc.jk_name_after), '')  AS jc_after,
            NULLIF(btrim(jc.reason), '')         AS jc_reason,
@@ -135,13 +218,14 @@ _Q1_ENTRIES = text(
              LIMIT 1
            ) jc ON TRUE
      WHERE e.race_date = :d
-       AND e.meet = :meet
+       AND e.meet = ANY(CAST(:meets AS text[]))
        AND e.scratched_at IS NULL
-     ORDER BY e.race_no, e.chul_no NULLS LAST, e.horse_no
+     ORDER BY e.race_no, e.chul_no NULLS LAST, e.horse_no, e.meet
     """
 )
 
-# Q6 경주 메타 — races (D, meet) + race_plans (D, race_no, meet 별칭) 최신 1건
+# Q6 경주 메타 — races (D, meet 별칭) + race_plans (D, race_no, meet 별칭) 최신 1건.
+# 같은 경주의 두 라벨 행은 Python(_merge_race_meta)이 합친다 — 정규 라벨 행을 먼저 준다.
 _Q6_RACE_META = text(
     """
     SELECT r.race_no,
@@ -160,21 +244,23 @@ _Q6_RACE_META = text(
               FROM race_plans rp
              WHERE rp.race_date = r.race_date
                AND rp.race_no = r.race_no
-               AND rp.meet = ANY(CAST(:plan_meets AS text[]))
+               AND rp.meet = ANY(CAST(:meets AS text[]))
              ORDER BY rp.id DESC
              LIMIT 1
            ) p ON TRUE
      WHERE r.race_date = :d
-       AND r.meet = :meet
-     ORDER BY r.race_no
+       AND r.meet = ANY(CAST(:meets AS text[]))
+     ORDER BY r.race_no, (r.meet <> :meet), r.meet
     """
 )
 
 # Q2 이력 — 말별 race_date < :h. field_size 는 그 경주의 결과 행 수:
 # 말들의 이력에 나온 (race_date, meet, race_no) 만 모아(k) idx_race_results_date 로 센다.
 # meet 은 NULL 일 수 있어 IS NOT DISTINCT FROM 으로 묶는다 (창 함수 PARTITION 과 같은 의미).
+# 거리는 races 에서 — 결과와 races 의 라벨이 다를 수 있어('부산경남' 결과 ↔ '부경' races) 정규화해
+# 잇고, 두 라벨 행이 다 있으면 거리가 있는 행 → 결과와 같은 라벨 순으로 하나만 고른다.
 _Q2_HISTORY = text(
-    """
+    f"""
     WITH h AS (
         SELECT rr.horse_no,
                rr.race_date,
@@ -212,10 +298,15 @@ _Q2_HISTORY = text(
         ON fs.race_date = h.race_date
        AND fs.race_no = h.race_no
        AND fs.meet IS NOT DISTINCT FROM h.meet
-      LEFT JOIN races ra
-        ON ra.race_date = h.race_date
-       AND ra.meet = h.meet
-       AND ra.race_no = h.race_no
+      LEFT JOIN LATERAL (
+            SELECT x.distance
+              FROM races x
+             WHERE x.race_date = h.race_date
+               AND x.race_no = h.race_no
+               AND {norm_meet_sql("x.meet")} = {norm_meet_sql("h.meet")}
+             ORDER BY (x.distance IS NULL), (x.meet <> h.meet), x.meet
+             LIMIT 1
+           ) ra ON TRUE
      ORDER BY h.horse_no, h.race_date, h.race_no
     """
 )
@@ -296,16 +387,18 @@ _RESULTS_THROUGH = text("SELECT MAX(race_date) FROM race_results WHERE race_date
 _RESULTS_EXIST = text(
     """
     SELECT EXISTS (
-        SELECT 1 FROM race_results WHERE race_date = :d AND meet = :meet
+        SELECT 1 FROM race_results
+         WHERE race_date = :d AND meet = ANY(CAST(:meets AS text[]))
     )
     """
 )
 
-# 이력 창 [lo, h) 에서 races 는 있는데 race_results 가 없는 경주 → (race_date, meet)
-# (periodic._has_unresolved_races_on 과 같은 경주 단위 판정)
+# 이력 창 [lo, h) 에서 races 는 있는데 race_results 가 없는 경주 → (race_date, 정규화 meet)
+# (periodic._has_unresolved_races_on 과 같은 경주 단위 판정). 라벨은 정규화해 비교한다 —
+# races '부경' ↔ 결과 '부산경남' 을 미해결로 잘못 세지 않게.
 _UNRESOLVED = text(
-    """
-    SELECT DISTINCT r.race_date, r.meet
+    f"""
+    SELECT DISTINCT r.race_date, {norm_meet_sql("r.meet")} AS meet
       FROM races r
      WHERE r.race_date >= :lo
        AND r.race_date < :h
@@ -313,24 +406,25 @@ _UNRESOLVED = text(
              SELECT 1
                FROM race_results rr
               WHERE rr.race_date = r.race_date
-                AND rr.meet = r.meet
+                AND {norm_meet_sql("rr.meet")} = {norm_meet_sql("r.meet")}
                 AND rr.race_no = r.race_no)
-     ORDER BY r.race_date, r.meet
+     ORDER BY 1, 2
     """
 )
 
-# 정산 입력 — 결과 (D, meet)
+# 정산 입력 — 결과 (D, meet 별칭). 같은 말이 두 라벨로 겹치면 정규 라벨 행 (Python _dedupe)
 _RESULTS = text(
     """
     SELECT rr.race_no,
            rr.horse_no,
+           rr.meet,
            rr.rank,
            rr.record_time::text AS record_time,
            rr.raw ->> 'chulNo'  AS raw_chul_no
       FROM race_results rr
      WHERE rr.race_date = :d
-       AND rr.meet = :meet
-     ORDER BY rr.race_no, rr.horse_no
+       AND rr.meet = ANY(CAST(:meets AS text[]))
+     ORDER BY rr.race_no, rr.horse_no, rr.meet
     """
 )
 
@@ -339,11 +433,12 @@ _WIN_DIVIDENDS = text(
     """
     SELECT d.race_no,
            d.horse_no         AS chul_no_text,
+           d.meet,
            d.win_rate::text   AS win_rate
       FROM race_dividends d
      WHERE d.race_date = :d
-       AND d.meet = :meet
-     ORDER BY d.race_no, d.horse_no
+       AND d.meet = ANY(CAST(:meets AS text[]))
+     ORDER BY d.race_no, d.horse_no, d.meet
     """
 )
 
@@ -366,7 +461,9 @@ class SqlProvider:
     # ------------------------------------------------------------------ Q0
     def calendar(self, d_from: date, d_to: date, meets: tuple[str, ...]) -> list[CalendarRow]:
         rows = _rows(
-            self.conn, _Q0_CALENDAR, {"d_from": d_from, "d_to": d_to, "meets": list(meets)}
+            self.conn,
+            _Q0_CALENDAR,
+            {"d_from": d_from, "d_to": d_to, "meets": expand_meets(meets)},
         )
         return [
             CalendarRow(
@@ -380,11 +477,22 @@ class SqlProvider:
 
     # ------------------------------------------------------------------ Q1
     def entries(self, d: date, meet: str) -> list[EntryRow]:
-        rows = _rows(self.conn, _Q1_ENTRIES, {"d": d, "meet": meet})
+        canon = _canonical(meet)
+        rows = _dedupe(
+            _rows(self.conn, _Q1_ENTRIES, {"d": d, "meets": meet_aliases(meet)}),
+            key=lambda r: (r["race_no"], r["horse_no"]),
+            # 최신 수집 행 → 정규 라벨 순
+            rank=lambda r: (
+                r["updated_at"] is None,
+                -(r["updated_at"].timestamp() if r["updated_at"] is not None else 0.0),
+                r["meet"] != canon,
+                r["meet"],
+            ),
+        )
         return [
             EntryRow(
                 race_date=r["race_date"],
-                meet=r["meet"],
+                meet=canon,
                 race_no=int(r["race_no"]),
                 horse_no=r["horse_no"],
                 chul_no=r["chul_no"],
@@ -412,22 +520,9 @@ class SqlProvider:
         rows = _rows(
             self.conn,
             _Q6_RACE_META,
-            {"d": d, "meet": meet, "plan_meets": meet_aliases(meet)},
+            {"d": d, "meet": _canonical(meet), "meets": meet_aliases(meet)},
         )
-        return [
-            RaceMeta(
-                race_no=int(r["race_no"]),
-                race_name=r["race_name"],
-                distance=r["distance"],
-                raw_rc_dist=r["raw_rc_dist"],
-                grade=r["grade"],
-                track_type=r["track_type"],
-                start_time=r["start_time"],
-                plan_name=r["plan_name"],
-                plan_grade=r["plan_grade"],
-            )
-            for r in rows
-        ]
+        return _merge_race_meta(rows)
 
     # ------------------------------------------------------------------ Q2
     def history(self, horse_nos: list[str], h: date) -> list[HistoryRow]:
@@ -524,7 +619,9 @@ class SqlProvider:
         return self.conn.execute(_RESULTS_THROUGH, {"h": h}).scalar()
 
     def results_exist(self, d: date, meet: str) -> bool:
-        return bool(self.conn.execute(_RESULTS_EXIST, {"d": d, "meet": meet}).scalar())
+        return bool(
+            self.conn.execute(_RESULTS_EXIST, {"d": d, "meets": meet_aliases(meet)}).scalar()
+        )
 
     def unresolved_races(self, h: date, days: int) -> list[tuple[date, str]]:
         rows = _rows(self.conn, _UNRESOLVED, {"h": h, "lo": h - timedelta(days=int(days))})
@@ -532,7 +629,12 @@ class SqlProvider:
 
     # ------------------------------------------------------------------ 정산 입력
     def results(self, d: date, meet: str) -> list[ResultRow]:
-        rows = _rows(self.conn, _RESULTS, {"d": d, "meet": meet})
+        canon = _canonical(meet)
+        rows = _dedupe(
+            _rows(self.conn, _RESULTS, {"d": d, "meets": meet_aliases(meet)}),
+            key=lambda r: (r["race_no"], r["horse_no"]),
+            rank=lambda r: (r["meet"] != canon, r["meet"]),
+        )
         return [
             ResultRow(
                 race_no=int(r["race_no"]),
@@ -545,7 +647,12 @@ class SqlProvider:
         ]
 
     def win_dividends(self, d: date, meet: str) -> list[DividendRow]:
-        rows = _rows(self.conn, _WIN_DIVIDENDS, {"d": d, "meet": meet})
+        canon = _canonical(meet)
+        rows = _dedupe(
+            _rows(self.conn, _WIN_DIVIDENDS, {"d": d, "meets": meet_aliases(meet)}),
+            key=lambda r: (r["race_no"], r["chul_no_text"]),
+            rank=lambda r: (r["meet"] != canon, r["meet"]),
+        )
         return [
             DividendRow(
                 race_no=int(r["race_no"]),

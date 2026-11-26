@@ -13,7 +13,7 @@ FakeProvider 는 계약 §1 의 SQL 의미를 Python 으로 흉내 낸다:
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, fields, replace
 from datetime import date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -222,14 +222,50 @@ class FakeProvider:
     def called(self, name: str) -> bool:
         return any(c[0] == name for c in self.calls)
 
+    # -- 저장 라벨 ('부경'·'부산경남' 이 섞여 있다) 을 정규화해 비교한다 (계약 §1 meet)
+    @staticmethod
+    def _norm(meet: str | None) -> str | None:
+        """정규화 라벨. 별칭이 없는 값(영천 등)은 그대로."""
+        if meet is None:
+            return None
+        return parse.normalize_meet(meet) or meet
+
+    def _metas_of(self, d: date, meet: str | None) -> dict[int, RaceMeta]:
+        """(d, meet 별칭) 의 경주 메타 — 두 라벨로 겹친 경주는 필드마다 정규 라벨 값 먼저."""
+        norm = self._norm(meet)
+        labels = sorted(
+            (m for (dd, m) in self.metas if dd == d and self._norm(m) == norm),
+            key=lambda m: (m != norm, m),
+        )
+        out: dict[int, RaceMeta] = {}
+        for m in labels:
+            for race_no, meta in self.metas[(d, m)].items():
+                cur = out.get(race_no)
+                if cur is None:
+                    out[race_no] = meta
+                    continue
+                fill = {
+                    f.name: getattr(meta, f.name)
+                    for f in fields(RaceMeta)
+                    if getattr(cur, f.name) is None and getattr(meta, f.name) is not None
+                }
+                out[race_no] = replace(cur, **fill)
+        return out
+
     def calendar(self, d_from: date, d_to: date, meets: tuple[str, ...]) -> list[CalendarRow]:
         self._call("calendar", d_from, d_to, meets)
         out: list[CalendarRow] = []
-        for (d, meet), races in sorted(self.metas.items()):
-            if not (d_from <= d <= d_to and meet in meets):
+        keys = sorted({(d, self._norm(m)) for (d, m) in self.metas})
+        for d, meet in keys:
+            if meet is None or not (d_from <= d <= d_to and meet in meets):
                 continue
+            races = self._metas_of(d, meet)
             with_entries = sorted(
-                {e.race_no for e in self.entry_rows if e.race_date == d and e.meet == meet}
+                {
+                    e.race_no
+                    for e in self.entry_rows
+                    if e.race_date == d and self._norm(e.meet) == meet
+                }
                 & set(races)
             )
             if not with_entries:
@@ -244,15 +280,23 @@ class FakeProvider:
 
     def entries(self, d: date, meet: str) -> list[EntryRow]:
         self._call("entries", d, meet)
-        rows = [e for e in self.entry_rows if e.race_date == d and e.meet == meet]
+        norm = self._norm(meet)
+        rows = [e for e in self.entry_rows if e.race_date == d and self._norm(e.meet) == norm]
         if not rows:
             return []
         batch = max(e.updated_at for e in rows)
-        return [replace(e, batch_at=batch) for e in rows]
+        best: dict[tuple[int, str], EntryRow] = {}
+        for e in rows:  # 같은 말이 두 라벨로 겹치면 최신 수집 행 → 정규 라벨 순
+            k = (e.race_no, e.horse_no)
+            cur = best.get(k)
+            if cur is None or (e.updated_at, e.meet == norm) > (cur.updated_at, cur.meet == norm):
+                best[k] = e
+        return [replace(e, meet=norm or e.meet, batch_at=batch) for e in best.values()]
 
     def race_meta(self, d: date, meet: str) -> list[RaceMeta]:
         self._call("race_meta", d, meet)
-        return [self.metas[(d, meet)][n] for n in sorted(self.metas.get((d, meet), {}))]
+        metas = self._metas_of(d, meet)
+        return [metas[n] for n in sorted(metas)]
 
     def _field_size(self, r: FakeResult) -> int:
         if r.field_size is not None:
@@ -270,7 +314,19 @@ class FakeProvider:
         for r in self.result_rows:
             if r.horse_no not in wanted or r.race_date >= h:
                 continue
-            meta = self.metas.get((r.race_date, r.meet or ""), {}).get(r.race_no)
+            # 거리는 races 에서 — 라벨을 정규화해 잇고, 거리가 있는 행 → 결과와 같은 라벨 순
+            cands = sorted(
+                (
+                    (m, races[r.race_no])
+                    for (dd, m), races in self.metas.items()
+                    if dd == r.race_date
+                    and r.meet is not None
+                    and self._norm(m) == self._norm(r.meet)
+                    and r.race_no in races
+                ),
+                key=lambda c: (c[1].distance is None, c[0] != r.meet, c[0]),
+            )
+            meta = cands[0][1] if cands else None
             out.append(
                 HistoryRow(
                     horse_no=r.horse_no,
@@ -389,32 +445,48 @@ class FakeProvider:
 
     def results_exist(self, d: date, meet: str) -> bool:
         self._call("results_exist", d, meet)
-        return any(r.race_date == d and r.meet == meet for r in self.result_rows)
+        norm = self._norm(meet)
+        return any(r.race_date == d and self._norm(r.meet) == norm for r in self.result_rows)
 
     def unresolved_races(self, h: date, days: int) -> list[tuple[date, str]]:
         self._call("unresolved_races", h, days)
         lo = h - timedelta(days=days)
-        done = {(r.race_date, r.meet, r.race_no) for r in self.result_rows}
+        done = {(r.race_date, self._norm(r.meet), r.race_no) for r in self.result_rows}
         out = {
-            (d, meet)
+            (d, self._norm(meet) or meet)
             for (d, meet), races in self.metas.items()
             if lo <= d < h
             for n in races
-            if (d, meet, n) not in done
+            if (d, self._norm(meet), n) not in done
         }
         return sorted(out)
 
     def results(self, d: date, meet: str) -> list[ResultRow]:
         self._call("results", d, meet)
+        norm = self._norm(meet)
+        best: dict[tuple[int, str], FakeResult] = {}
+        rows = sorted(
+            (r for r in self.result_rows if r.race_date == d and self._norm(r.meet) == norm),
+            key=lambda r: (r.race_no, r.horse_no, r.meet != norm, r.meet or ""),
+        )
+        for r in rows:  # 같은 말이 두 라벨로 겹치면 정규 라벨 행
+            best.setdefault((r.race_no, r.horse_no), r)
         return [
             ResultRow(r.race_no, r.horse_no, r.rank, r.record_time, r.chul_no)
-            for r in self.result_rows
-            if r.race_date == d and r.meet == meet
+            for r in best.values()
         ]
 
     def win_dividends(self, d: date, meet: str) -> list[DividendRow]:
         self._call("win_dividends", d, meet)
-        return [row for dd, m, row in self.dividend_rows if dd == d and m == meet]
+        norm = self._norm(meet)
+        best: dict[tuple[int, str], DividendRow] = {}
+        rows = sorted(
+            ((m, row) for dd, m, row in self.dividend_rows if dd == d and self._norm(m) == norm),
+            key=lambda x: (x[1].race_no, x[1].chul_no_text, x[0] != norm, x[0]),
+        )
+        for _m, row in rows:
+            best.setdefault((row.race_no, row.chul_no_text), row)
+        return list(best.values())
 
 
 # ---------------------------------------------------------------------------
@@ -628,6 +700,10 @@ def payload_scenario() -> FakeProvider:
         "정마루": (35, 5, 12),
     }.items():
         p.set_jockey_stat(name, meet, *st)
+    # 조교사 집계 (r1 발행 기준) — 박조교 20% · 정조교 18% · 최조교 10%
+    p.set_trainer_stat("박조교", meet, 40, 8, 15)
+    p.set_trainer_stat("최조교", meet, 30, 3, 9)
+    p.set_trainer_stat("정조교", meet, 22, 4, 8)
 
     # ---------------- 2R 대상경주 1400m (L)
     p.add_race(

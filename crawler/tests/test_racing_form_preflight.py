@@ -215,6 +215,24 @@ def test_pg_version_below_11_fails() -> None:
     assert by_key(items)["pg_version"].status == FAIL and preflight.exit_code(items) == 1
 
 
+def test_retention_merges_stored_meet_labels() -> None:
+    """부경이 '부경'(~2026-08-14) · '부산경남'(그 뒤) 두 라벨로 저장돼도 한 경마장으로 본다."""
+    data = healthy()
+    data["q06_retention"] = [
+        {"meet": "부경", "first_date": date(2008, 8, 31), "last_date": date(2026, 8, 14),
+         "days": 1653, "n": 9},
+        {"meet": "부산경남", "first_date": date(2026, 8, 16), "last_date": date(2026, 11, 20),
+         "days": 17, "n": 9},
+        {"meet": "서울", "first_date": date(1993, 4, 24), "last_date": date(2026, 11, 22),
+         "days": 2537, "n": 9},
+    ]
+    item = by_key(preflight.run_preflight(FakeRows(data), NOW, R1))["retention"]
+    assert item.status == OK
+    assert "부경 2008-08-31~2026-11-20 (1,670일) [저장 라벨 부경·부산경남]" in item.summary
+    text = "\n".join(item.lines)
+    assert "holdout" not in text and "dev 과거 시험 불가" not in text
+
+
 def test_retention_short_warns_with_dev_advice() -> None:
     data = healthy()
     data["q06_retention"] = [
