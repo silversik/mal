@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { PageContainer } from "@/components/page-container";
+import { BetaNotice } from "@/components/racing-form/beta-notice";
 import { ErrataList, WithdrawnBanner } from "@/components/racing-form/edition-notices";
 import { EditionStamp } from "@/components/racing-form/edition-stamp";
 import { FormSection } from "@/components/racing-form/form-section";
@@ -163,6 +164,7 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
       <PageContainer className="theme-v2 break-keep space-y-6 py-6 md:py-8">
         <BreadcrumbJsonLd items={crumbs} />
         <FrontHeader title={title} issue={null} date={p.date} meet={p.meet} meets={ed.meets}>
+          <BetaNotice date={p.date} />
           <ResponsibleGamblingNotice variant="compact" />
         </FrontHeader>
         <EditionStateMessage state={s} date={p.date} meet={p.meet} />
@@ -221,6 +223,7 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
         meets={ed.meets}
       >
         <EditionStamp head={head} late={s.late} />
+        <BetaNotice date={p.date} />
         <ResponsibleGamblingNotice variant="compact" />
       </FrontHeader>
 
