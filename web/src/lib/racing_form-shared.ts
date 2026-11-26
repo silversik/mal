@@ -1285,6 +1285,31 @@ export function issueLabel(issueNo: number): string {
   return `제${issueNo}호`;
 }
 
+/**
+ * 홈 카드에 실을 호 — 오늘(KST) 이후 가장 가까운 경주일의 발행본들, 없으면 가장 최근 경주일.
+ * 철회된 호는 싣지 않는다 (홈에서 철회본으로 보내지 않는다 — 허브·기록에는 그대로 남는다).
+ * 입력 순서(경주일 → 경마장)를 지킨다.
+ */
+export function pickHomeEditions(
+  editions: readonly EditionHead[],
+  notices: readonly Pick<FormNotice, "kind" | "edition_id">[],
+  today: string,
+): EditionHead[] {
+  const withdrawn = new Set(
+    notices.filter((n) => n.kind === "withdrawn" && n.edition_id !== null).map((n) => n.edition_id),
+  );
+  const live = editions.filter((e) => !withdrawn.has(e.id));
+  const upcoming = live.filter((e) => e.race_date >= today).map((e) => e.race_date);
+  const past = live.filter((e) => e.race_date < today).map((e) => e.race_date);
+  const day =
+    upcoming.length > 0
+      ? upcoming.reduce((a, b) => (a < b ? a : b))
+      : past.length > 0
+        ? past.reduce((a, b) => (a > b ? a : b))
+        : null;
+  return day ? live.filter((e) => e.race_date === day) : [];
+}
+
 // ============================================================================
 // 8. 화면 상태 editionState (계약 §8)
 // ============================================================================
@@ -2037,10 +2062,11 @@ export function findForbidden(text: string): string[] {
 export const SHOW_SCRATCH_HINT: boolean = false;
 
 /**
- * /form 색인 허용 — PR-3(메뉴·sitemap 연결) 전에는 false: 모든 /form 페이지 noindex,
- * getFormSitemapUrlsSafe 는 [].
+ * /form 색인 허용 (2026-11 사이트 연결과 함께 켬). false 로 돌리면 모든 /form 페이지가 noindex 가
+ * 되고 sitemap 에서 빠진다 (getFormSitemapUrlsSafe → [], 허브·기록 URL 도 제외) — 색인만 끄는 스위치.
+ * 경주면·발행 예정·미발행·철회 등 상태별 noindex 는 이 값과 무관하게 formMetadata 의 index 로 정한다.
  */
-export const FORM_INDEXABLE: boolean = false;
+export const FORM_INDEXABLE: boolean = true;
 
 const SITE_SUFFIX_RE = /\s*·\s*mal\.kr\s*$/;
 

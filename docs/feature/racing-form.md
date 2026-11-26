@@ -3,8 +3,9 @@
 경주 전날 오후 6시에 고정 발행하는 무료 웹 경마지 `/form`. 미리 공개한 기준 4개가 각자 ◎○△ 를 고르고,
 KRA 데이터로 말 소식을 정리하고, 적중 기록을 첫 호부터 빠짐없이 공개한다.
 
-> - **상태 (2026-11-13)**: 1단계 **PR-1 진행 중** — 문서·테이블(036)·크롤러 코드·메뉴 링크 없는 페이지까지.
->   스케줄을 연결하지 않아 발행은 아직 없고, 사이트 메뉴·검색 색인에도 노출하지 않는다. 진행 기록은 [docs/tasks/0005](../tasks/0005-racing-form.md).
+> - **상태 (2026-11-26)**: PR-1 머지·배포(문서·테이블 036·크롤러 코드·메뉴 링크 없는 페이지) → **PR-2(스케줄 연결, #89) G1 대기** →
+>   **PR-3(사이트 연결) 코드 준비 완료, G2 뒤 머지**. PR-2 머지 전에는 발행이 없고, PR-3 머지 전에는 사이트 메뉴·검색 색인에
+>   노출하지 않는다. 진행 기록은 [docs/tasks/0005](../tasks/0005-racing-form.md), G1 절차는 [0007](../tasks/0007-racing-form-g1-handover.md).
 > - **데이터 계약(단일 진실원)**: [docs/spec/racing-form-contract.md](../spec/racing-form-contract.md) — as-of 규칙·기준 r1·말 소식·payload v1·정산·공지·화면 상태. 이 문서와 어긋나면 계약이 맞다.
 > - **실제 수치·문구**: [crawler/src/racing_form/definitions.py](../../crawler/src/racing_form/definitions.py) 의 `RULE_SETS["r1"]`. 이 문서의 숫자는 설명용이다.
 > - 구현 전에 쓴 방향 문서다. CLI 옵션 이름·라인 번호 같은 세부는 S7(PR-3)에서 코드 기준으로 확정한다. 라인 번호는 2026-11-13 기준.
@@ -258,8 +259,8 @@ law.go.kr (호주·프랑스는 racingaustralia.horse · pmu.fr)을 추가한 �
 - 같은 (D, 경마장, 사유)의 발행 실패는 첫 1회만 잡 실패로 올리고, 이후는 경고 + 내부 공지(dedup)로 남긴다
   → 밤새 매시 알림이 울리지 않는다.
 - 한 호는 한 벌이다 — 일본식 제2판·가판이 없다 (D3).
-- 다루는 경마장은 서울·부경·제주. 출전표 수집이 meet 1~3 으로 고정돼 있어
-  (`crawler/src/jobs/sync_race_entries.py` `MEETS`) 영천 경주는 호가 생기지 않는다
+- 다루는 경마장은 서울·부경·제주. 발행 잡이 `parse.VALID_MEETS`(서울·부경·제주)만 대상으로 삼아
+  영천 경주는 (출전표는 2026-11 부터 수집하지만) 호가 생기지 않는다
   → 허브·FAQ 에 "다루는 경마장: 서울·부경·제주 (영천 경주는 아직 다루지 않습니다)". 수집 확장은 ⑪ 11.3.
   (공휴일 경주일 출전표는 2026-11 부터 수집 — 요일 대신 공표 구간 매일 조회.)
 - 배포가 18:00 발행과 겹치지 않게 하는 규칙은 ⑨ 9.5.
@@ -297,10 +298,17 @@ law.go.kr (호주·프랑스는 racingaustralia.horse · pmu.fr)을 추가한 �
 - 경로는 ASCII slug — 카카오톡 공유 때 한글 경로가 깨진다. DB 에는 한글 meet 를 저장하고, `yeongcheon` 은 예약.
 - 레이아웃 기본 canonical 이 "/"(`web/src/app/layout.tsx:43`)라 모든 /form 페이지가 canonical 을 직접 지정한다
   (`formMetadata()` 헬퍼 + 테스트).
-- **PR-3 에서 연결**: 하단 5칸은 그대로(더보기가 꽉 참, `web/src/components/mobile-bottom-nav.tsx:103-120`) —
-  '경기' 탭 activePaths 에 `/form`, 서브탭 "경기 일람 | 경마지 | 대상경주 일정"(/races·/form·/races/schedule),
-  데스크톱 메뉴 '경마지', 홈 카드, `/races` 경주 머리의 "이 경주 경마지 예상 보기 ›".
-  하단 탭 승격은 4주 이용 데이터를 본 뒤 정한다.
+- **사이트 연결 (PR-3)**: 하단 5칸은 그대로(더보기가 꽉 참) —
+  - 모바일 하단 '경기' 탭 activePaths 에 `/form` (`web/src/components/mobile-bottom-nav.tsx`).
+  - 서브탭 "경기 일람 | 경마지 | 대상경주 일정" — `web/src/components/races-subnav.tsx`(활성 판정은 순수 모듈
+    `web/src/lib/races-subnav.ts`). `/races`·`/races/schedule` 은 페이지 머리에, `/form/**` 은 `web/src/app/form/layout.tsx` 에서.
+    `/races` 의 "대상경주 일정 →", 일정 페이지의 "← 경기 일람으로" 링크는 서브탭이 대신한다.
+  - 데스크톱 메뉴 '경마지' (`nav-links.tsx`).
+  - 홈 '경마지' 섹션 — 오늘 이후 가장 가까운 경주일의 발행본 카드(없으면 가장 최근 경주일, 철회본 제외, 발행본이 없으면
+    섹션째 생략). `pickHomeEditions`·`loadHomeFormEditions` + `home_data.cachedHomeFormEditionsSafe`(5분 캐시, 실패는 []).
+    DB 없는 빌드의 프리렌더 시도에서 조회가 나가지 않게 섹션이 `await connection()` 으로 요청을 기다린다.
+  - `/races` 경주 머리의 "이 경주 경마지 예상 보기 ›" — 그날 그 경마장 호가 발행됐을 때만 (`getEditionMeetsSafe`).
+  - 하단 탭 승격은 4주 이용 데이터를 본 뒤 정한다.
 
 ### 4.5 1면 (위 → 아래)
 
@@ -767,6 +775,11 @@ FAQ: "회수율은 일부러 공개하지 않습니다 — 베팅 권유가 아�
   `BreadcrumbJsonLd`·`PageContainer`·h1 하나, 댓글 없음.
 - 컴포넌트 `web/src/components/racing-form/` · 고지 `web/src/components/responsible-gambling-notice.tsx` — 디자인 결정은
   [DESIGN.md](../../DESIGN.md) Decisions Log 2026-11-13 (PickMark·'주목' 라벨·레이아웃·고지).
+- 색인 — `FORM_INDEXABLE = true` (PR-3). 허브·기록·발행된 1면만 색인하고 sitemap(`/sitemap/0.xml`)에 싣는다:
+  허브·기록은 정적 목록에, 호 1면은 `getFormSitemapUrlsSafe()`(철회·미발행 제외, 실패 시 []). 경주면·발행 예정·미발행·철회는
+  상태별 noindex 그대로. `FORM_INDEXABLE` 을 false 로 돌리면 전부 noindex + sitemap 제외 (색인만 끄는 스위치).
+- 사이트 푸터 한 줄 "경마에 지나치게 몰입하지 않도록 주의하세요 · 도박 문제 상담 ☎1336" (`site-footer.tsx`, 고지 컴포넌트의
+  `HelplineLink` 재사용). about·이용약관에 경마지 설명·면책 문단 (PR-3).
 - AdSense 가 전역으로 로드된다(`web/src/app/layout.tsx:67, 105-108`) → `/form/*` 광고 제외는 AdSense 대시보드의 페이지
   제외로 한다 (코드 변경 없음). 정책 적합성은 G1 법률 검토 항목.
 
@@ -945,9 +958,10 @@ e2e DB 준비는 [crawler/tests/e2e/README.md](../../crawler/tests/e2e/README.md
 | **PR-1** | S0 방향 문서·색인·Decisions Log → S2 순수 모듈·pytest·golden·벡터 → S3a 읽기 전용 CLI(build·preflight·backtest dev·verify·show) → S1 036·e2e 초기화(TRUNCATE GUC) → S3b store·settle·notice·holdout CLI → S4 웹 lib·vitest·라우트 5개·컴포넌트·고지 (메뉴 링크 없음, noindex, 출시 전이라 허브 "준비 중") | 런타임 영향 없음 (스케줄 변경·메뉴 링크 없음). **G0** — 계획 승인(2026-11-13)을 DESIGN 결정(△·'주목' 라벨·레이아웃·고지) 승인으로 보고 Decisions Log 에 기록, 실물은 PR-1 스크린샷으로 확인 |
 | 사용자 prod 작업 (읽기 전용) | 9.7 — preflight → r1 사전 등록(PR-1b) → backtest dev → holdout 1회 → D−1 18:05 dry-run 대조 | **G1** — 게이트 결과 · 법률 검토(고지 문구·기호·청소년유해매체물·AdSense·data.go.kr 이용조건) · 제주 포함 여부 → 사용자 결정 |
 | **PR-2** | S5 — JOB_CATALOG·periodic·scheduler(+기동 직후 1회)·TRIGGER_JOBS·healthcheck·e2e 타임라인·test_healthcheck·deployment 문서. **목요일 18:00 전 배포**, 첫 호부터 실전 집계 | 첫 발행 18:05 확인 (대시보드·`racing-form-show`·1면·healthcheck) |
-| **PR-3** | S6 연결 — 내비·`races-subnav`·`/races` 링크·홈 카드·sitemap·푸터 한 줄·about/이용약관 문구·`FORM_INDEXABLE=true` + S7 문서를 구현 기준으로 확정 | **G2** — 첫 호 실물·첫 주말 정산 대조. 헤더가 바뀌므로 DB 없는 빌드 재확인 |
+| **PR-3** | S6 연결 — 내비·`races-subnav`·`/races` 링크·홈 카드·sitemap·푸터 한 줄·about/이용약관 문구·`FORM_INDEXABLE=true` + S7 문서를 구현 기준으로 확정. **코드 준비 완료 (2026-11-26, PR-2 위에 쌓은 draft)** | **G2** — 첫 호 실물·첫 주말 정산 대조 뒤 머지. 헤더가 바뀌므로 DB 없는 빌드 재확인 (2026-11-26 통과) |
 
-- 브랜치는 `claude/quirky-mendel-pp3kwg` 하나. PR 이 머지되면 같은 이름으로 최신 main 에서 다시 시작해 다음 PR 을 연다(draft).
+- PR-1·PR-2 브랜치는 `claude/quirky-mendel-pp3kwg`. PR-3 는 그 세션이 정리된 뒤 `claude/zen-pascal-0wufg3` 에서 PR-2 를
+  merge commit 으로 포함해 쌓았다 — **PR-2 가 먼저 main 에 들어간 뒤에 머지한다** (스택 PR 은 squash 금지).
 
 ---
 
@@ -980,7 +994,7 @@ e2e DB 준비는 [crawler/tests/e2e/README.md](../../crawler/tests/e2e/README.md
 3. 동결 직전 기수변경 추가 수집은 하지 않는다 (11.3).
 4. holdout 미달 기준은 고치지 않고 예비로 대체하거나 보류.
 5. "제n호" 표기.
-6. 사이트 푸터에 1336 한 줄 (PR-3).
+6. 사이트 푸터에 1336 한 줄 (PR-3). 운영 시간("24시간")은 1차 출처로 확인하지 못해 고지·푸터에서 뺐다 (2026-11-26).
 7. 하단 탭 승격은 4주 뒤.
 8. 철회해도 집계 포함 (예외 없음).
 9. holdout 결과 공개 (참고치).
@@ -1070,7 +1084,7 @@ web/src/lib/racing_form.ts (raw SQL, payload 에서 한 경주만 jsonb_array_el
 | 웹 컴포넌트 | `web/src/components/racing-form/` (pick-mark·edition-stamp·status-block·race-list·headlines·record-compact·race-header·consensus-box·rule-list·runner-card·news-badges·record-table·legend) · `web/src/components/responsible-gambling-notice.tsx` · `page-skeleton.tsx` `FormSkeleton` | PR-1 |
 | 웹 테스트 | `web/src/lib/__tests__/racing_form.test.ts` · `racing_form_sql.test.ts` | PR-1 |
 | 재사용 부품 | `RankBadge`·`medalClass` (`web/src/components/rank-badge.tsx:20,54`) · `RecentFormStrip` (`recent-form-strip.tsx:8`) · `GateNum`·`SexBullet`·`RaceChip` (`race-detail-ui.tsx:26,66,183`) · `WinRateBar` (`win-rate-bar.tsx:10`) · `EmptyState` · `PageContainer` · `BreadcrumbJsonLd` · `normalizeRaceDate`·`raceDetailPath` (`web/src/lib/race-seo.ts:24,58`) · `kstToday` (`web/src/lib/kst.ts:12`) | 기존 |
-| 사이트 연결 | `web/src/components/races-subnav.tsx`(신규) · `nav-links.tsx` · `mobile-bottom-nav.tsx` · `/races` 링크 · `home_data.ts`·홈 `page.tsx` 카드 · `sitemap-shared.ts` · `site-footer.tsx` · `about/page.tsx` · `FORM_INDEXABLE=true` | PR-3 |
+| 사이트 연결 | `web/src/components/races-subnav.tsx`·`web/src/lib/races-subnav.ts`·`web/src/app/form/layout.tsx`(신규) · `nav-links.tsx` · `mobile-bottom-nav.tsx` · `races/page.tsx`(서브탭·경주 머리 링크)·`races/schedule/page.tsx` · `home_data.ts`·홈 `page.tsx` 섹션 · `racing_form.ts` `loadHomeFormEditions`·`racing_form-shared.ts` `pickHomeEditions` · `sitemap-shared.ts` · `site-footer.tsx` · `about/page.tsx`·`terms/page.tsx` · `FORM_INDEXABLE=true` · vitest `races_subnav.test.ts` | PR-3 |
 
 ### 운영 의존성
 

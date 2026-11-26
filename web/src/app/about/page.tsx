@@ -48,6 +48,15 @@ export default function AboutPage() {
           <li>
             <strong>분석 도구</strong> — 랭킹, 코스 레코드, 마필 비교 기능으로 데이터를 입체적으로 탐색
           </li>
+          <li>
+            <strong>경마지</strong> — 경주 전날 오후 6시에 발행하는 무료 웹 경마지. 미리 공개한 기준
+            4개(레이팅·최근 성적·기수·조교사)가 고른 1·2·3순위와 숫자 근거, 말 소식, 첫 호부터의
+            적중 기록을{" "}
+            <Link href="/form" className="text-primary underline underline-offset-2 hover:opacity-80">
+              경마지
+            </Link>
+            에서 볼 수 있습니다 (서울·부경·제주).
+          </li>
         </ul>
       </section>
 
@@ -73,6 +82,11 @@ export default function AboutPage() {
           활용한 독립적인 정보 제공 플랫폼입니다. 제공되는 데이터의 정확성에 최선을 다하나,
           데이터 오류·지연 등으로 인한 손해에 대해 책임지지 않습니다. 실제 경마 베팅은 한국마사회
           공식 채널을 이용하시기 바랍니다.
+        </p>
+        <p className="text-sm leading-relaxed text-foreground/90">
+          경마지의 예상 기호는 공개한 기준으로 과거 기록을 기계적으로 정리한 참고 자료이며, 한국마사회의
+          공식 예상이 아닙니다. 적중이나 수익을 보장하지 않고, mal.kr 은 마권을 팔거나 대신 사 주지 않으며
+          마권 구매를 권하지 않습니다. 발행한 호는 고치지 않고, 빗나간 경주를 포함한 모든 기록을 공개합니다.
         </p>
       </section>
 

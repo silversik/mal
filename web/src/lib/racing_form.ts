@@ -23,6 +23,7 @@ import {
   FORM_MEET_LABELS,
   FORM_MEET_STORED_LABELS,
   SCHEMA_VERSION,
+  addDays,
   formEditionPath,
   isFormMeet,
   meetOrder,
@@ -31,6 +32,7 @@ import {
   parseEditionSummary,
   parseFinish,
   parseRaceSlice,
+  pickHomeEditions,
   slugFromMeet,
   type CurrentJockeyRow,
   type EditionFront,
@@ -55,7 +57,7 @@ import {
 } from "./racing_form-shared";
 import type { SitemapUrl } from "./sitemap-shared";
 
-// sitemap-shared.ts 의 SITE 와 같다. sitemap-shared 가 PR-3 에서 이 모듈을 import 하므로
+// sitemap-shared.ts 의 SITE 와 같다. sitemap-shared 가 이 모듈을 import 하므로
 // 순환 import 를 피하려고 값은 따로 둔다 (타입만 가져옴).
 const SITE = "https://mal.kr";
 
@@ -876,6 +878,24 @@ export async function getEditionMeetsSafe(date: string): Promise<FormMeet[]> {
   }
 }
 
+/** 홈 카드가 보는 범위 — 오늘(KST) ± 이 일수 (발행 잡의 달력 범위와 같다). */
+export const HOME_FORM_WINDOW_DAYS = 7;
+
+/**
+ * 홈 '경마지' 카드용 발행본 — pickHomeEditions(오늘 이후 가장 가까운 경주일, 없으면 가장 최근).
+ * 실패하면 [] (홈이 500 이 되지 않게). 캐시는 호출부(home_data)에서 — 실패를 캐시하지 않도록
+ * 이 함수가 아니라 loadHomeFormEditions 를 감싼다.
+ */
+export async function loadHomeFormEditions(today: string): Promise<EditionHead[]> {
+  const from = addDays(today, -HOME_FORM_WINDOW_DAYS);
+  const to = addDays(today, HOME_FORM_WINDOW_DAYS);
+  const [editions, notices] = await Promise.all([
+    getEditionIndex(from, to),
+    getNoticesBetween(from, to),
+  ]);
+  return pickHomeEditions(editions, notices, today);
+}
+
 /**
  * 1면 URL 의 lastmod = GREATEST(발행 시각, 마지막 확정 시각). 철회된 호·경주면·미발행 호는 싣지 않는다.
  * lastmod 는 sitemap-shared.ts 와 같은 UTC 형식.
@@ -909,7 +929,7 @@ export function formSitemapUrls(
 }
 
 /**
- * sitemap 용 1면 URL. FORM_INDEXABLE 이 꺼져 있으면(PR-3 전) noindex 페이지라 싣지 않는다 → [].
+ * sitemap 용 1면 URL. FORM_INDEXABLE 이 꺼져 있으면 noindex 페이지라 싣지 않는다 → [].
  * DB 실패도 [] (sitemap 전체가 500 이 되지 않게).
  */
 export async function getFormSitemapUrlsSafe(): Promise<SitemapUrl[]> {

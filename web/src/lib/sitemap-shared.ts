@@ -6,7 +6,7 @@
  * 응답 크기·시간을 줄인다.
  *
  * id 매핑 (/sitemap/<id>.xml)
- *   0        → 정적 페이지 + 소규모 엔티티(jockey/trainer/owner/post)
+ *   0        → 정적 페이지 + 소규모 엔티티(jockey/trainer/owner/post) + 경마지(/form 허브·기록·호 1면)
  *   1..N     → 마필 chunk (OFFSET=(id-1)*HORSE_CHUNK_SIZE)
  *   races-K  → 경주 상세 chunk (OFFSET=K*RACE_CHUNK_SIZE). 마필 수가 늘어도
  *              경주 chunk 번호가 밀리지 않도록 별도 prefix 를 쓴다.
@@ -18,6 +18,8 @@
  */
 import { query } from "@/lib/db";
 import { raceDetailPath } from "@/lib/race-seo";
+import { getFormSitemapUrlsSafe } from "@/lib/racing_form";
+import { FORM_HUB_PATH, FORM_INDEXABLE, FORM_RECORD_PATH } from "@/lib/racing_form-shared";
 
 export const SITE = "https://mal.kr";
 
@@ -135,7 +137,7 @@ export async function getSitemapIndexEntries(): Promise<SitemapIndexEntry[]> {
 }
 
 export async function buildStaticAndSmallChunk(): Promise<SitemapUrl[]> {
-  const [jockeys, trainers, owners] = await Promise.all([
+  const [jockeys, trainers, owners, formEditions] = await Promise.all([
     query<{ jk_no: string; updated_at: string }>(
       `SELECT jk_no, to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
          FROM jockeys`,
@@ -148,6 +150,8 @@ export async function buildStaticAndSmallChunk(): Promise<SitemapUrl[]> {
       `SELECT ow_no, to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
          FROM owners`,
     ),
+    // 경마지 호 1면 (철회·미발행 제외). 실패해도 [] — sitemap 전체가 500 이 되지 않는다.
+    getFormSitemapUrlsSafe(),
   ]);
 
   // 정적 공개 페이지. 개인화·인증 경로(/me, /login, /notifications) 제외.
@@ -155,6 +159,13 @@ export async function buildStaticAndSmallChunk(): Promise<SitemapUrl[]> {
     { loc: SITE,                     changefreq: "daily",   priority: 1.0 },
     { loc: `${SITE}/races`,          changefreq: "daily",   priority: 0.9 },
     { loc: `${SITE}/races/schedule`, changefreq: "weekly",  priority: 0.7 },
+    // 경마지 허브·기록 — 색인을 켰을 때만 (경주면은 noindex 라 싣지 않는다).
+    ...(FORM_INDEXABLE
+      ? [
+          { loc: `${SITE}${FORM_HUB_PATH}`,    changefreq: "daily" as const,  priority: 0.8 },
+          { loc: `${SITE}${FORM_RECORD_PATH}`, changefreq: "weekly" as const, priority: 0.6 },
+        ]
+      : []),
     { loc: `${SITE}/database`,       changefreq: "daily",   priority: 0.8 },
     { loc: `${SITE}/horses`,         changefreq: "daily",   priority: 0.9 },
     { loc: `${SITE}/jockeys`,        changefreq: "weekly",  priority: 0.7 },
@@ -172,6 +183,7 @@ export async function buildStaticAndSmallChunk(): Promise<SitemapUrl[]> {
 
   return [
     ...staticPages,
+    ...formEditions,
     ...jockeys.map((j) => ({
       loc: `${SITE}/jockey/${j.jk_no}`,
       lastmod: j.updated_at,

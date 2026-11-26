@@ -371,9 +371,36 @@ describe("실패 처리 — 캐시 바깥 try/catch · Safe 함수", () => {
     err.mockRestore();
   });
 
-  it("getFormSitemapUrlsSafe — FORM_INDEXABLE=false(PR-3 전)면 조회도 하지 않고 []", async () => {
+  it("getFormSitemapUrlsSafe — 발행본 1면 URL, 실패면 [] (sitemap 이 500 이 되지 않게)", async () => {
+    queryMock.mockResolvedValueOnce([
+      { race_date: "2026-11-27", meet: "부경", lastmod: "2026-11-26T09:00:05Z" },
+    ]);
+    expect(await rf.getFormSitemapUrlsSafe()).toEqual([
+      { loc: "https://mal.kr/form/2026-11-27/busan", lastmod: "2026-11-26T09:00:05Z", changefreq: "weekly", priority: 0.6 },
+    ]);
+    expect(queryMock.mock.calls[0][0]).toBe(rf.FORM_SITEMAP_SQL);
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    queryMock.mockRejectedValueOnce(new Error("db down"));
     expect(await rf.getFormSitemapUrlsSafe()).toEqual([]);
-    expect(queryMock).not.toHaveBeenCalled();
+    err.mockRestore();
+  });
+
+  it("loadHomeFormEditions — 오늘 ±7일 발행본·공지에서 가까운 경주일의 호만", async () => {
+    const head = (id: number, race_date: string, meet: string) => ({
+      id, race_date, meet, issue_no: id, rules_version: "r1", schema_version: 1,
+      history_before: race_date, results_through: null, entries_batch_at: null,
+      freeze_at: `${race_date}T18:00:00.000000+09:00`, deadline_at: `${race_date}T08:00:00.000000+09:00`,
+      published_at: `${race_date}T18:00:05.000000+09:00`, race_count: 8, runner_count: 80, summary: null,
+    });
+    queryMock.mockImplementation(async (sql: string, params?: unknown[]) => {
+      expect(params?.slice(0, 2)).toEqual(["2026-11-19", "2026-12-03"]);
+      if (sql === rf.EDITION_INDEX_SQL) {
+        return [head(1, "2026-11-22", "서울"), head(2, "2026-11-27", "제주"), head(3, "2026-11-27", "부경"), head(4, "2026-11-28", "서울")];
+      }
+      return [];
+    });
+    const got = await rf.loadHomeFormEditions("2026-11-26");
+    expect(got.map((e) => [e.race_date, e.meet])).toEqual([["2026-11-27", "제주"], ["2026-11-27", "부경"]]);
   });
 
   it("formSitemapUrls — 1면 URL·UTC lastmod, 모르는 경마장 제외", () => {

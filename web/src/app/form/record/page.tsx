@@ -50,7 +50,7 @@ const TITLE = "경마지 기록";
 const DESCRIPTION =
   "경마지 기준별 1착·3착 이내 기록 — 첫 호부터 빗나감·무효·미발행·철회까지 빠짐없이, 같은 경주 무작위·경주 후 1번 인기와 비교. 회수율은 내지 않습니다.";
 
-const COVERAGE = "서울·부경·제주를 다룹니다 (영천·공휴일 경주는 아직 다루지 않습니다).";
+const COVERAGE = "서울·부경·제주를 다룹니다 (영천 경주는 아직 다루지 않습니다).";
 
 type PeriodKey = "4w" | "12w" | "all";
 const PERIODS: readonly { key: PeriodKey; label: string; days: number | null }[] = [
