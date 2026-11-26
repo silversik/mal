@@ -3,6 +3,7 @@ import Link from "next/link";
 import { cache } from "react";
 
 import { PageContainer } from "@/components/page-container";
+import { BetaNotice } from "@/components/racing-form/beta-notice";
 import {
   EditionCard,
   editionCardSub,
@@ -146,6 +147,7 @@ export default async function FormHubPage() {
         경주 전날 오후 6시에 고정해서 내는 무료 웹 경마지 — 공개 기준 4개가 고른 1·2·3순위와 숫자 근거,
         KRA 데이터로 정리한 말 소식, 빠짐없는 적중 기록.
       </p>
+      <BetaNotice date={hub.today} />
       <ResponsibleGamblingNotice variant="compact" />
     </header>
   );

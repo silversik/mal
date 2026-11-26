@@ -888,6 +888,20 @@ export const FORM_MEETS: readonly { meet: FormMeet; slug: FormMeetSlug }[] = [
   { meet: "부경", slug: "busan" },
 ];
 
+/**
+ * 베타 테스트 기간의 마지막 날 (KST, 포함) — 2026년은 베타 테스트 (소유자 결정 2026-11-26, 제1호부터).
+ * 발행·정산 규칙은 정식과 같다. 화면에 안내만 붙인다 (components/racing-form/beta-notice).
+ */
+export const FORM_BETA_UNTIL = "2026-12-31";
+
+export const FORM_BETA_TEXT =
+  "2026년은 베타 테스트 기간입니다. 발행한 호는 고치지 않지만, 화면과 기준은 이후 호부터 달라질 수 있습니다.";
+
+/** date(YYYY-MM-DD — 호의 경주일 또는 오늘)가 베타 기간인가. 형식이 다르면 false. */
+export function isFormBeta(date: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) && date <= FORM_BETA_UNTIL;
+}
+
 /** DB 값(한글) — MEET_ORDER 순. SQL 파라미터로 넘긴다. */
 export const FORM_MEET_LABELS: readonly FormMeet[] = FORM_MEETS.map((m) => m.meet);
 

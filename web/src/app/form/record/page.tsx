@@ -4,6 +4,7 @@ import { cache } from "react";
 
 import { EmptyState } from "@/components/empty-state";
 import { PageContainer } from "@/components/page-container";
+import { BetaNotice } from "@/components/racing-form/beta-notice";
 import { BacktestSection, parseBacktest } from "@/components/racing-form/backtest-section";
 import { FormSection } from "@/components/racing-form/form-section";
 import { TAP } from "@/components/racing-form/format";
@@ -240,6 +241,7 @@ export default async function FormRecordPage({ searchParams }: { searchParams: P
           첫 호부터 빗나감·무효·미발행·철회까지 모두 넣은 실전 기록입니다. 정산은 경주 다음 날 오후 1시에
           확정하고, 확정된 경주만 셉니다.
         </p>
+        <BetaNotice date={kstToday()} />
         <ResponsibleGamblingNotice variant="compact" />
       </header>
 

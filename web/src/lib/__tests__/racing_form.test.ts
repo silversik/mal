@@ -16,6 +16,8 @@ import {
   MARK_TEXT,
   MISSED_HEAD,
   RULE_LABEL,
+  FORM_BETA_TEXT,
+  FORM_BETA_UNTIL,
   PUBLISHED_RULES,
   RESERVE_RULES,
   RULE_ORDER,
@@ -40,6 +42,7 @@ import {
   freezeAt,
   historyBefore,
   inWindow,
+  isFormBeta,
   isLate,
   isPastDeadline,
   isSameJockey,
@@ -893,6 +896,23 @@ describe("settlementLine — 결산 한 줄 (계획 4.8)", () => {
 // ---------------------------------------------------------------------------
 // 크롤러 정본과 대조 — 금지어 · 기준 라벨 · 기호
 // ---------------------------------------------------------------------------
+
+describe("베타 테스트 안내 — 2026년 (제1호부터)", () => {
+  it("isFormBeta — 2026-12-31 까지 (포함), 형식이 다르면 false", () => {
+    expect(FORM_BETA_UNTIL).toBe("2026-12-31");
+    expect(isFormBeta("2026-11-27")).toBe(true); // 제1호 경주일
+    expect(isFormBeta("2026-12-31")).toBe(true);
+    expect(isFormBeta("2027-01-01")).toBe(false);
+    expect(isFormBeta("20261127")).toBe(false);
+    expect(isFormBeta("")).toBe(false);
+  });
+
+  it("문구 — 2026년·베타 테스트를 말하고, 권유·평가어가 없다", () => {
+    expect(FORM_BETA_TEXT).toContain("2026년");
+    expect(FORM_BETA_TEXT).toContain("베타 테스트");
+    expect(findForbidden(FORM_BETA_TEXT)).toEqual([]);
+  });
+});
 
 describe("크롤러 정본과 같은 값", () => {
   it("FORBIDDEN_WORDS = forbidden_words.json", () => {
