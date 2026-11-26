@@ -211,9 +211,12 @@ def mark_scratches(d: date, meet: str, fetched: list[dict[str, Any]]) -> int:
     return len(cands)
 
 
-def store_entries(d: date, items: list[dict[str, Any]]) -> int:
-    """(경주일, 경마장) 출전표 응답 → upsert + races skeleton + 출전취소 표시."""
-    mapped = [api_item_to_race_entry_fields(it) for it in items]
+def store_entries(d: date, items: list[dict[str, Any]], *, meet: int | None = None) -> int:
+    """(경주일, 경마장) 출전표 응답 → upsert + races skeleton + 출전취소 표시.
+
+    meet 는 items 를 받은 요청의 경마장 코드 — meet 라벨 정규화에 쓴다.
+    """
+    mapped = [api_item_to_race_entry_fields(it, meet=meet) for it in items]
     n = upsert_race_entries(mapped)
     # 출전표 수집 시점에 races 테이블에도 예정 경주 행을 즉시 만들어
     # 메인 페이지 "다음 진행 예정 경기" 섹션에 반영되도록 한다.
@@ -249,7 +252,7 @@ def sync_dates(dates: Iterable[date], meets: Iterable[int] = MEETS) -> int:
                 fails.ok()
                 log.info("race_entries_fetched", date=str(d), meet=meet, count=len(items))
                 day_items += len(items)
-                total += store_entries(d, items)
+                total += store_entries(d, items, meet=meet)
             if meets and meet_errors == len(meets):
                 unknown.append(d)
             elif day_items:

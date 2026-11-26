@@ -17,7 +17,7 @@ from datetime import date, datetime
 from typing import Any
 
 from ..config import settings
-from ..meets import MEET_NAMES
+from ..meets import normalize_meet
 from .kra_base import KraClient
 
 ENDPOINT = "API26_2"
@@ -53,7 +53,6 @@ class RaceChulmaClient(KraClient):
 
 # --------------------------------------------------------------------- mapping
 
-_MEET_NAMES = MEET_NAMES
 
 
 def _parse_date(value: Any) -> date | None:
@@ -88,15 +87,17 @@ def _clean(value: Any) -> Any:
     return value
 
 
-def api_item_to_race_entry_fields(item: dict[str, Any]) -> dict[str, Any]:
+def api_item_to_race_entry_fields(
+    item: dict[str, Any], *, meet: int | None = None
+) -> dict[str, Any]:
     """Map a chulma item into `race_entries` columns.
 
     필드명은 다른 KRA API 와의 일관성으로 추정 — 최종 확인 전까지 여러 후보 시도.
+    meet 는 이 item 을 받은 요청의 경마장 코드 — 응답 meet 을 알아볼 수 없을 때 쓴다.
     """
-    meet_raw = str(item.get("meet") or "").strip()
     return {
         "race_date": _parse_date(item.get("rcDate") or item.get("rc_date")),
-        "meet": _MEET_NAMES.get(meet_raw, _clean(meet_raw) or "알수없음"),
+        "meet": normalize_meet(item.get("meet"), requested=meet) or "알수없음",
         "race_no": _parse_int(item.get("rcNo") or item.get("rc_no")),
         "horse_no": str(item.get("hrNo") or "").strip(),
         "chul_no": _parse_int(item.get("chulNo") or item.get("chul_no")),

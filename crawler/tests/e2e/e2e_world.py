@@ -46,6 +46,14 @@ YT_UPLOADS = "UUe2eKRBCchannel000000"
 CHULMA_OP = "entrySheet_2"
 
 MEET_NAME = {1: "서울", 2: "제주", 3: "부경", 4: "영천"}
+
+# KRA 응답의 meet 표기 — 운영에서 쌓인 그대로 재현한다 (2026-08-16~):
+# 경주결과·출전표·배당 응답은 부경을 "부산경남" 한글로 주고, 영천 경주결과는 "양천" 으로
+# 저장됐다. 매출(API179)은 코드 그대로. 크롤러는 어느 표기든 MEET_NAME 라벨 하나로 저장해야
+# 한다 — 이 파일의 표기를 바꿔도 테스트의 기대 라벨('부경'·'영천')은 그대로여야 한다.
+KRA_RESULT_MEET = {1: "1", 2: "2", 3: "부산경남", 4: "양천"}
+KRA_ENTRY_MEET = {1: "1", 2: "2", 3: "부산경남", 4: "4"}
+KRA_DIVIDEND_MEET = {1: "1", 2: "2", 3: "부산경남", 4: "영천"}
 STATION_OF_MEET = {1: 119, 2: 184, 3: 159, 4: 281}
 
 # 마필 12두 — (마번, 마명, 성별, 모색 원문, 마주 idx)
@@ -283,7 +291,7 @@ class FakeWorld:
                 _, tr_name = self.trainer_for(h)
                 out.append({
                     "rcDate": int(ymd(d)),  # KRA JSON 은 숫자/문자 혼재
-                    "meet": r.meet,
+                    "meet": KRA_RESULT_MEET[r.meet],
                     "rcNo": r.no,
                     "chulNo": i + 1,
                     "ord": r.ranks[i],
@@ -309,7 +317,7 @@ class FakeWorld:
         for r in self.races_on(meet, d):
             if not self.published(r.meet, r.no, now):
                 continue
-            base = {"rcDate": ymd(d), "meet": str(r.meet), "rcNo": str(r.no)}
+            base = {"rcDate": ymd(d), "meet": KRA_DIVIDEND_MEET[r.meet], "rcNo": str(r.no)}
             for chul in (1, 2, 3):
                 win = f"{2 + chul}.{chul}"
                 out.append({**base, "pool": "WIN", "chulNo": str(chul), "odds": win})
@@ -363,7 +371,7 @@ class FakeWorld:
                 jk_no, jk_name = self.jockey_for(r, i + 1, at_entry=True)
                 _, tr_name = self.trainer_for(h)
                 item = {
-                    "rcDate": ymd(d), "meet": str(r.meet), "rcNo": str(r.no),
+                    "rcDate": ymd(d), "meet": KRA_ENTRY_MEET[r.meet], "rcNo": str(r.no),
                     "chulNo": str(i + 1), "hrNo": h.no, "hrName": h.name,
                     "jkNo": jk_no, "jkName": jk_name, "trName": tr_name,
                     "wgBudam": "54.0", "age": "4", "sex": h.sex, "hrRating": str(60 + h.idx),

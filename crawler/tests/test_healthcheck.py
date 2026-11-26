@@ -449,6 +449,14 @@ def test_results_invariant_counts_old_orphans() -> None:
     assert old.isoformat() in c.detail
 
 
+def test_norm_meet_uses_shared_aliases() -> None:
+    """정리 전 행의 별칭 라벨은 src/meets.py 표로 정규 라벨에 모은다."""
+    assert hc._norm_meet("부산경남") == hc._norm_meet("부경") == "부경"
+    assert hc._norm_meet("양천") == hc._norm_meet(" 영천 ") == "영천"
+    assert hc._norm_meet("새경마장") == "새경마장"  # 모르는 값은 그대로
+    assert hc._norm_meet(None) == ""
+
+
 def test_meet_alias_busan_is_normalized() -> None:
     """한 테이블이 '부산경남' 으로 적재돼도 '부경' 과 같은 경주로 본다."""
     data = healthy_data()

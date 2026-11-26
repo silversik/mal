@@ -24,7 +24,7 @@ from datetime import date, datetime
 from typing import Any
 
 from ..config import settings
-from ..meets import MEET_NAMES
+from ..meets import normalize_meet
 from .kra_base import KraClient
 
 ENDPOINT = "API301"
@@ -50,7 +50,6 @@ class RaceDividendClient(KraClient):
 
 # --------------------------------------------------------------------- mapping
 
-_MEET_NAMES = MEET_NAMES
 
 
 def _parse_date(value: Any) -> date | None:
@@ -93,17 +92,17 @@ def _clean_str(value: Any) -> str | None:
     return s
 
 
-def _meet_name(item: dict[str, Any]) -> str | None:
-    raw = str(item.get("meet") or "").strip()
-    if raw in _MEET_NAMES:
-        return _MEET_NAMES[raw]
-    return raw or None
+def _meet_name(item: dict[str, Any], requested: int | None = None) -> str | None:
+    """응답 meet → 정규 라벨. requested 는 요청한 경마장 코드 (모르는 값일 때 대체)."""
+    return normalize_meet(item.get("meet"), requested=requested)
 
 
-def _row_key(item: dict[str, Any]) -> tuple[date, str, int, str] | None:
+def _row_key(
+    item: dict[str, Any], requested: int | None = None
+) -> tuple[date, str, int, str] | None:
     """(race_date, meet, race_no, horse_no) 키. 결측 시 None."""
     rd = _parse_date(item.get("rcDate") or item.get("rc_date"))
-    meet = _meet_name(item)
+    meet = _meet_name(item, requested)
     race_no = _parse_int(item.get("rcNo") or item.get("rc_no"))
     horse_no = _clean_str(item.get("chulNo"))
     if rd is None or meet is None or race_no is None or horse_no is None:
@@ -112,7 +111,7 @@ def _row_key(item: dict[str, Any]) -> tuple[date, str, int, str] | None:
 
 
 def bucket_horse_dividends(
-    items: list[dict[str, Any]]
+    items: list[dict[str, Any]], *, meet: int | None = None
 ) -> dict[tuple[date, str, int, str], dict[str, Any]]:
     """WIN/PLC row 들을 (race, horse_no) 단위로 묶어 horse-level 배당 dict 생성.
 
@@ -124,7 +123,7 @@ def bucket_horse_dividends(
         pool = (item.get("pool") or "").strip().upper()
         if pool not in ("WIN", "PLC"):
             continue
-        key = _row_key(item)
+        key = _row_key(item, meet)
         if key is None:
             continue
         rd, meet, race_no, horse_no = key
@@ -144,9 +143,14 @@ def bucket_horse_dividends(
     return bucket
 
 
-def items_to_dividend_rows(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """API 응답 item 리스트 → race_dividends row dict 리스트 (WIN+PLC only)."""
-    bucket = bucket_horse_dividends(items)
+def items_to_dividend_rows(
+    items: list[dict[str, Any]], *, meet: int | None = None
+) -> list[dict[str, Any]]:
+    """API 응답 item 리스트 → race_dividends row dict 리스트 (WIN+PLC only).
+
+    meet 는 items 를 받은 요청의 경마장 코드.
+    """
+    bucket = bucket_horse_dividends(items, meet=meet)
     rows: list[dict[str, Any]] = []
     for slot in bucket.values():
         rows.append(
@@ -193,7 +197,7 @@ def _combo_key(horses: list[str], ordered: bool) -> str:
 
 
 def items_to_combo_dividend_rows(
-    items: list[dict[str, Any]]
+    items: list[dict[str, Any]], *, meet: int | None = None
 ) -> list[dict[str, Any]]:
     """API 응답 item 리스트 → race_combo_dividends row dict 리스트.
 
@@ -207,9 +211,9 @@ def items_to_combo_dividend_rows(
         if size is None:
             continue
         rd = _parse_date(item.get("rcDate") or item.get("rc_date"))
-        meet = _meet_name(item)
+        label = _meet_name(item, meet)
         race_no = _parse_int(item.get("rcNo") or item.get("rc_no"))
-        if rd is None or meet is None or race_no is None:
+        if rd is None or label is None or race_no is None:
             continue
         horses = _combo_horses(item, size)
         if horses is None:
@@ -218,9 +222,9 @@ def items_to_combo_dividend_rows(
         key = _combo_key(horses, ordered)
         odds = _parse_number(item.get("odds"))
 
-        dedup[(rd, meet, race_no, pool, key)] = {
+        dedup[(rd, label, race_no, pool, key)] = {
             "race_date": rd,
-            "meet": meet,
+            "meet": label,
             "race_no": race_no,
             "pool": pool,
             "combo_key": key,

@@ -484,7 +484,7 @@ def test_18_trainers_xml_fallback(e2e):
     assert n == 4
     t = e2e.one("SELECT * FROM trainers WHERE tr_no='070203'")
     assert (t["tr_name"], t["tr_name_en"], t["meet"], t["debut_date"]) == (
-        "부조교", "Boo Jogyo", "부산경남", date(2010, 1, 1))
+        "부조교", "Boo Jogyo", "부경", date(2010, 1, 1))  # 응답 "부산경남" → 정규 라벨
     assert (t["total_race_count"], t["first_place_count"], t["win_rate"]) == (
         802, 92, Decimal("11.30"))
 

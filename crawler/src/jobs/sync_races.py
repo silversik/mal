@@ -17,9 +17,12 @@ from ..models import RaceResult
 log = get_logger(__name__)
 
 
-def upsert_race_results(items: list[dict[str, Any]]) -> int:
-    """UPSERT a batch of API items into `race_results`. Returns row count."""
-    rows = [api_item_to_race_result_fields(it) for it in items]
+def upsert_race_results(items: list[dict[str, Any]], *, meet: int | None = None) -> int:
+    """UPSERT a batch of API items into `race_results`. Returns row count.
+
+    meet 는 items 를 받은 요청의 경마장 코드 — meet 라벨 정규화에 쓴다.
+    """
+    rows = [api_item_to_race_result_fields(it, meet=meet) for it in items]
     rows = [r for r in rows if r["horse_no"] and r["race_date"] and r["race_no"] is not None]
     if not rows:
         return 0
@@ -104,7 +107,7 @@ def sync_date(rc_date: date, meet: int) -> int:
         return 0
 
     _ensure_horses_exist(items)
-    n = upsert_race_results(items)
+    n = upsert_race_results(items, meet=meet)
     backfill_races_from_results()
     return n
 

@@ -63,7 +63,7 @@ class _Fake:
         return self._call(query)
 
 
-def _count_upsert(items: list[Any]) -> int:
+def _count_upsert(items: list[Any], **_: Any) -> int:
     return len(items)
 
 
@@ -94,7 +94,7 @@ def entries(monkeypatch):
     monkeypatch.setattr(sync_race_entries, "upsert_race_entries", _count_upsert)
     monkeypatch.setattr(sync_race_entries, "upsert_races_skeleton", _count_upsert)
     # api 매핑은 그대로 쓰지 않고 item 통과
-    monkeypatch.setattr(sync_race_entries, "api_item_to_race_entry_fields", lambda it: it)
+    monkeypatch.setattr(sync_race_entries, "api_item_to_race_entry_fields", lambda it, **_: it)
 
     def install(respond) -> _Fake:
         fake = _Fake(respond)

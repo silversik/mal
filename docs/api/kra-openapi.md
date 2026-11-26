@@ -51,6 +51,6 @@
 ## 운영 메모
 
 - **응답 메모리**: KRA 가 같은 race 를 중복 응답하는 케이스 (sales/dividends/corners) — upsert 직전 batch 내 dedupe 필수 ([sync_race_plan.py](../../crawler/src/jobs/sync_race_plan.py) 의 `seen` dict 패턴 재사용).
-- **meet 코드**: 요청 시 정수 1/2/3/4 (서울/제주/부경/영천). 응답에서는 텍스트 "1".."4" 또는 한글로 옴 — 단일 매핑 [`crawler/src/meets.py`](../../crawler/src/meets.py) (`MEET_NAMES`) 로 한글 정규화 후 저장. 영천(4)은 2026-09 개장, 시즌(2026: 9/13~12/6) 매주 일요일 6경주 — 비개최일엔 NODATA. 연간 대상경주 계획(API40)은 영천 NODATA 를 정상으로 본다 (`sync_race_plan.SOFT_NO_DATA_MEETS`).
+- **meet 코드**: 요청 시 정수 1/2/3/4 (서울/제주/부경/영천). 응답에서는 텍스트 "1".."4" 또는 한글로 옴 (2026-08-16 부터 경주결과·출전표·배당 응답은 부경을 "부산경남" 으로 줌) — [`crawler/src/meets.py`](../../crawler/src/meets.py) 의 `normalize_meet` 로 정규 라벨(서울/제주/부경/영천) 하나로 바꿔 저장. 모르는 표기는 요청에 넣은 meet 코드의 라벨로 저장하고 경고 로그(`meet_label_unknown_using_request`)를 남긴다. `race_plans` 만 KRA 원문("부산경남") 유지. 영천(4)은 2026-09 개장, 시즌(2026: 9/13~12/6) 매주 일요일 6경주 — 비개최일엔 NODATA. 연간 대상경주 계획(API40)은 영천 NODATA 를 정상으로 본다 (`sync_race_plan.SOFT_NO_DATA_MEETS`).
 - **start_time / 발주시각**: API187 이 KST 한글 "HH시 MM분" 또는 "HH:MM" 양식. `crawler/src/jobs/sync_race_today_meta.py` 가 HTML 크롤링으로 fallback (API187 빈 응답 보완).
 - **쿼터**: KRA 일일 호출 한도 ~ 10,000. 야간 배당 gap 백필 잡 (`mal.chunked_dividends_backfill`, 02:30) 은 365일 윈도우에서 combo 배당이 빠진 (date, meet) 만 최신순으로 하루 최대 15 `sync_date` (≈ 450~900 page call) 로 제한. 3회 시도해도 combo 가 안 생기는 gap 은 exhausted 로 건너뜀 (`sync_meta` 원장). 429 / data.go.kr 코드 22 (`LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR`) 감지 시 즉시 중단.
