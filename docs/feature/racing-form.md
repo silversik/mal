@@ -482,14 +482,93 @@ prod 읽기 전용 감사(⑨ 9.7) 결과와 그에 따른 r1 결정을 여기�
 
 | 항목 | 감사 | 기본값 | 확정 |
 |---|---|---|---|
-| rank NULL/0 + 기록 유무의 출주 분류 | ① | 기록 > 0 이면 출주(입상 아님) | 미정 |
-| '출전취소' raw 표식의 무효 완화 | ① | 완화 없음 (결과 행 있으면 빗나감) | 미정 |
-| stale 판정 vs 실제 미출주 일치율 → `SHOW_SCRATCH_HINT` | ② | 끔 | 미정 |
-| 출전표 rating ↔ 결과 hrRating 일치율 | ③ | 게이트 ⑤ 기준 95% | 미정 |
-| dev 기간 조정 | ⑥ | 2025-01-01~12-31 | 미정 |
-| 제주 포함 여부 | ⑮ + 참여율 | 포함 (제외 시 "준비 중") | G1 |
-| dev 파라미터 변경 (최대 1회) · 후보 해시 | – | 없음 | 미정 |
-| holdout 결과 · 미달 처리 | – | – | 미정 |
+| rank NULL/0 + 기록 유무의 출주 분류 | ① | 기록 > 0 이면 출주(입상 아님) | **기본값 유지** — 최근 3년 78,250행 중 착순 없음+기록 있음 75행(출주), 착순·기록 없음 1,465행(미출주: 출전제외 571 · 출전취소 345 · 표식 없음 376 · 주행중지 162 …). 주행중지 162행(0.2%)은 뛰었지만 기록이 없어 이력에서 빠진다 → r2 후보 |
+| '출전취소' raw 표식의 무효 완화 | ① | 완화 없음 (결과 행 있으면 빗나감) | **기본값 유지 (완화 없음)** — raw `differ` 에 '출전취소'·'출전제외' 가 따로 찍혀 구분은 가능하다. 다만 과거 시험 명단(Q1b)은 출주마만이라 완화의 효과를 재 볼 수 없고, 빗나감으로 세는 쪽이 적중률을 부풀리지 않는다. 출전취소 API(2단계) 연동 때 r2 로 |
+| stale 판정 vs 실제 미출주 일치율 → `SHOW_SCRATCH_HINT` | ② | 끔 | **끔 유지** — 최근 8주 3,679행에서 stale 로 잡힌 행 0, 안 뛴 말 49두 중 stale 0두 (0%). stale 추측은 쓸모가 없다 — 출전취소는 037 `scratched_at` 으로만 본다 |
+| 출전표 rating ↔ 결과 hrRating 일치율 | ③ | 게이트 ⑤ 기준 95% | **통과 — 8,215/8,215 (100%)** (서울 4,187 · 제주 3,073 · 부경 955). rating 의 시험 수치를 게이트에 포함 |
+| dev 기간 조정 | ⑥ | 2025-01-01~12-31 | **조정 없음** — 워밍업에 필요한 2024-01-02 부터 세 경마장 모두 결과가 있다 (2024년 경주일 서울 98 · 부경 100 · 제주 98). 감사 ⑥의 WARN 은 부경 저장 라벨이 2026-08-16 부터 '부산경남' 으로 바뀌어 라벨별로 본 탓 (아래 메모) |
+| 제주 포함 여부 | ⑮ + 참여율 | 포함 (제외 시 "준비 중") | **포함** (소유자 결정 2026-11-26) — rating 참여 가능 경주가 가장 높다(83%). dev 의 제주 rating ◎ 1착은 11.6%(무작위 10.3%)로 차이가 작다 — 그대로 공개 |
+| dev 파라미터 변경 (최대 1회) · 후보 해시 | – | 없음 | **1회 — course → trainer 대체** (소유자 결정 2026-11-26, PR-1c #105). 처음 후보 `a3144ab4…`(rating·form·course·jockey + 예비 trainer)의 dev 에서 course 가 미달 → 발행 기준을 rating·form·jockey·trainer, 예비를 course 로 맞바꿨다. 수치·문구 params 는 그대로. **최종 후보 r1 `1a62c07f…`**. 버그 수정 1건: 부경 저장 라벨 별칭 (PR-1b #103, 정의·해시 무관) |
+| holdout 결과 · 미달 처리 | – | – | **통과 (2026-11-26 06:07 저장, 공개)** — r1 `1a62c07f…`, 코드 `dfb6c34`, 246호·2,078경주, 오류 0. 발행 기준 4개 모두 참여율·◎ 1착 > 무작위 (아래 표). 미달 처리는 dev 단계에서 끝냈다 — course 는 dev 에서 예상 0건이라 holdout 을 볼 필요 없이 미달이 확정이었고, holdout(정의 해시당 1회·공개)을 최종 정의로 한 번만 쓰려고 그 전에 대체했다 |
+
+**감사 메모 (2026-11-26, `racing-form-preflight` — OK 5 · INFO 8 · WARN 5 · FAIL 0)**
+
+- **부경 저장 라벨 (⑫)** — 원천 테이블의 부경은 '부경' 과 '부산경남' 이 섞여 있다: `race_entries`·`race_plans` 는 전부
+  '부산경남', `race_results`·`race_dividends` 는 2026-08-16 부터 '부산경남', `races` 는 같은 경주가 두 라벨로 따로 있다.
+  정확히 '부경' 으로만 찾던 쿼리 때문에 부경 호가 `no_entries` 로 발행되지 않았다 (`racing-form-build 2026-11-27 부경`).
+  → PR-1b(#103)에서 별칭으로 읽도록 수정 (계약 §1 "저장 라벨"). 감사 ⑥의 "부경 결과가 holdout 보다 짧음"·"dev 불가"
+  WARN 도 라벨별로 본 탓이었다. '영천'(일요일, 2026-09 개장)은 r1 대상이 아니고, 결과 일부가 '양천' 으로 저장돼 있다 (크롤러 쪽 별도 작업).
+- **요일** — 최근 8주: 금 = 부경·제주, 토 = 서울·제주, 일 = 서울(+영천). 일요일 부경 호는 없다.
+- **⑤ 부담중량** — 결과 raw `wgBudam` 의 11% 가 `*51` 처럼 별표(감량 표시)가 붙어 파싱되지 않는다 → 그 말의 직전 부담을 몰라
+  `budam_change` 배지가 빠진다 (틀린 문구는 나가지 않는다). 출전표 쪽은 100% 파싱. r2 후보.
+- **⑧⑨** — 가장 이른 첫 발주 10:35 → 마감은 늘 D 08:00. 출전표는 금요일분도 D−1 00:55 전에 와 있다 (동결 뒤 도착 0).
+- **⑩** — `jockey_changes` 는 전부 당일(발행 뒤) 수집 → 화면의 "발행 후 기수 변경" 으로만 나간다.
+- **⑪** — 단승 배당 보유는 2025년 10~16%, 2026년 94~100% → dev 의 "1번 인기" 비교는 표본이 작다 (게이트 조건 아님).
+- **⑮** — 출전표 레이팅 결측(최근 8주): 부경 48% · 서울 28% · 제주 17%. rating 기준 참여 가능 경주: 부경 52% · 서울 73% · 제주 83%.
+  제주가 가장 높다 → 제주를 뺄 근거는 없다 (오히려 가을 부경이 낮다 — 2세·미평가마 경주).
+- **⑯⑰⑱** — Q2 인덱스 사용, Q3 는 Seq Scan(호당 2회, 정상), `jockey_changes` 조인 중복 0, PostgreSQL 16.4.
+
+**dev 과거 시험 ① 처음 후보 (2025-01-01~12-31, `a3144ab4…` = rating·form·course·jockey + 예비 trainer, 2026-11-26)** — 293호 · 2,472경주 · 오류 0 · 506초 (호당 최대 2.6초)
+
+| 기준 | 참여율 (게이트) | ◎ n | ◎ 1착 | 무작위 기대 | ◎ 3착 이내 | 판정 |
+|---|---|---|---|---|---|---|
+| rating | 75.6% (≥ 70) | 1,868 | 14.8% | 9.7% | 37.5% | 통과 |
+| form | 91.4% (≥ 70) | 2,259 | 23.8% | 9.6% | 53.1% | 통과 |
+| course | **0.0%** (≥ 40) | **0** | – | – | – | **미달 — 시험 불가** |
+| jockey | 99.7% (≥ 70) | 2,464 | 19.8% | 9.6% | 48.3% | 통과 |
+| trainer (예비) | 99.7% | 2,464 | 16.3% | 9.6% | 41.6% | 통과 |
+| 주목마 | 35.4% | 875 | 25.6% | 9.7% | 56.1% | (참고) |
+
+- course 가 0 인 까닭은 규칙이 아니라 **데이터** 다 — 2025년 경주의 거리가 DB 에 없다. `races.distance` 는 출전표·당일
+  메타를 수집한 최근 경주만 채워져 있고 (감사 ⑧: 부경 289 경주일 중 246일은 발주 시각도 없다 — 같은 경로로 채우는 값),
+  결과 raw 에는 `rcDist` 가 없다 (감사 ⑤ "rcDist 값 있음 0"). 거리 메타를 주던 KRA API187 은 2026-05 부터 빈 응답이라
+  백필 경로도 없다 (`sync_race_info.py`). 오늘 경주의 거리를 모르면 course 는 예상을 내지 않는다.
+  live 에서는 최근 경주의 거리가 있어 예상이 나온다 (11/27 제주 dry-run: 7경주 중 4경주).
+- 경마장별 ◎ 1착(무작위 기대): 서울 rating 16.4%(9.5) · form 25.2% · jockey 18.2% / 부경 15.8%(9.2) · 21.2% · 22.7% /
+  제주 **11.6%(10.3)** · 24.4% · 19.2%. 제주 rating 은 무작위와 차이가 작다 (공개).
+- 대체 조합 주목마(course → trainer): 참여 71.5% · n 1,767 · 1착 24.6% (무작위 9.7%).
+- 이번 주 live dry-run(11/27~29, 5호 45경주)에서는 course 가 21경주(47%)에서 예상을 냈다 (부경 1/10) — 거리 데이터가
+  쌓이면 다시 시험할 수 있다 → r2 후보.
+
+**dev 과거 시험 ② 최종 후보 (같은 기간, r1 `1a62c07f…` = rating·form·jockey·trainer + 예비 course, PR-1b·PR-1c 배포 뒤)**
+— 293호 · 2,472경주 · 오류 0 · 538초 (호당 최대 4.0초). 픽이 같은 기준(rating·form·jockey·trainer)의 수치는 ①과 같다.
+
+| 기준 | 참여율 (게이트) | ◎ n | ◎ 1착 | 무작위 기대 | ◎ 3착 이내 | 판정 |
+|---|---|---|---|---|---|---|
+| rating | 75.6% (≥ 70) | 1,868 | 14.8% | 9.7% | 37.5% | 통과 |
+| form | 91.4% (≥ 70) | 2,259 | 23.8% | 9.6% | 53.1% | 통과 |
+| jockey | 99.7% (≥ 70) | 2,464 | 19.8% | 9.6% | 48.3% | 통과 |
+| trainer | 99.7% (jockey 와 같은 ≥ 70 으로 봄) | 2,464 | 16.3% | 9.6% | 41.6% | 통과 |
+| course (예비) | 0.0% | 0 | – | – | – | 시험 불가 |
+| 주목마 | 71.5% | 1,767 | 24.6% | 9.7% | 54.6% | (참고) |
+
+- 경마장별 trainer ◎ 1착(무작위 기대): 서울 16.4%(9.5) · 부경 15.5%(9.2) · 제주 16.9%(10.3) — 모두 n ≥ 300.
+  주목마 참여율: 서울 70.1% · 부경 67.0% · 제주 78.1%.
+- 게이트 ① 결정성·as-of 테스트 통과 (crawler 807 passed) · ② 오류 0·호당 5초 미만·1년치 10분 미만 · ③④ 위 표 ·
+  ⑤ 감사 ③ 100%. **dev 기준 게이트 통과** — 남은 것은 holdout 1회.
+- trainer 의 참여율 하한은 사전 등록에 숫자가 없었다 (예비였으므로). 같은 종류의 집계 기준인 jockey 의 70% 를 적용했다.
+- ①과 ②의 "1번 인기" 비교 표본이 다르다 (rating ◎ 기준 246 → 270경주) — PR-1b 뒤로 '부산경남' 라벨로 저장된 2025년
+  부경 배당도 읽기 때문이다. 픽·적중 수치는 같다.
+- 이번 주 live dry-run(새 r1): 5호 45경주 모두 계산 성공. 기준별 예상 경주 — 레이팅 32 · 최근 성적 37 · 기수 45 · 조교사 45,
+  주목마 27경주.
+
+**holdout (2026-01-01~10-31, r1 `1a62c07f…`, 2026-11-26 06:07 저장 · 공개 · 1회)** — 246호 · 2,078경주(무효 1) · 오류 0 ·
+405초 (호당 최대 2.9초). `/form/record` 의 "과거 데이터로 시험(참고)" 에 그대로 나온다.
+
+| 기준 | 참여율 (게이트) | ◎ n | ◎ 1착 | 무작위 기대 | ◎ 3착 이내 | 판정 |
+|---|---|---|---|---|---|---|
+| rating | 75.2% (≥ 70) | 1,561 | 13.1% | 9.8% | 35.6% | 통과 |
+| form | 90.8% (≥ 70) | 1,886 | 23.1% | 9.7% | 52.5% | 통과 |
+| jockey | 99.5% (≥ 70) | 2,067 | 18.3% | 9.7% | 46.2% | 통과 |
+| trainer | 99.5% (≥ 70) | 2,067 | 15.9% | 9.7% | 42.0% | 통과 |
+| course (예비) | 9.5% | 197 | 8.1% | 10.0% | 38.6% | 미달 (r2 후보 — 거리 데이터가 쌓인 뒤 다시) |
+| 주목마 | 69.0% | 1,433 | 22.7% | 9.8% | 52.7% | (참고) |
+
+- 게이트는 기준별(전체)로 사전 등록했고 4개 모두 통과다. 경마장별로 보면 **제주 rating 은 ◎ 1착 10.2% 로 무작위 기대 10.6% 보다
+  낮다** (n 499, dev 에서도 11.6% vs 10.3%). 제주의 form 22.0% · jockey 20.2% · trainer 20.0% 는 뚜렷하다. 제주 rating 은
+  r2 에서 다시 볼 항목으로 공개 기록에 남긴다 (서울 rating 13.3% vs 9.5%, 부경 16.4% vs 9.3%).
+- 1번 인기의 1착률(같은 경주): 34.9~37.2% — 어떤 기준도 1번 인기를 이기지 못한다 (조건 아님, 공개).
+- course 는 holdout 에서도 참여 9.5%·◎ 1착 8.1%(무작위 10.0%)였다 — 대체가 맞는 판단이었다.
 
 ---
 
@@ -639,7 +718,7 @@ FAQ: "회수율은 일부러 공개하지 않습니다 — 베팅 권유가 아�
 | `queries.py` · `store.py` | Q0~Q6·정산 입력 SQL provider / `ensure_rule_set`·`insert_edition`(advisory lock + 재확인 + issue_no)·`insert_notice`·`upsert_outcome`·`finalize_outcomes` |
 | `backtest.py` · `preflight.py` · `verify.py` | Q1b 재생(월 단위, READ ONLY) / 읽기 전용 감사 / 무결성 점검 |
 
-### 8.4 잡 (본체 PR-1, 스케줄 연결 PR-2)
+### 8.4 잡 (본체 PR-1, 스케줄 연결 PR-2 — 연결 완료)
 
 본체는 `crawler/src/jobs/racing_form_jobs.py`. 호별 실패를 모아 periodic 이 `_raise_collected`
 (`crawler/src/jobs/periodic.py:269-279`)로 한꺼번에 올린다.
@@ -649,9 +728,10 @@ FAQ: "회수율은 일부러 공개하지 않습니다 — 베팅 권유가 아�
 | `mal.publish_racing_form` | `CronTrigger(minute=0)` + `next_run_time=now` (기동 직후 1회) | `ensure_rule_set` → 창 안·미발행·D 결과 없음이면 발행 → D 08:00 실행에서 missed (D ≤ 오늘, freeze_at ≥ 최초 registered_at, paused 아님) + 실패 1회. 할 일 없는 0 은 정상 |
 | `mal.settle_racing_form` | `CronTrigger(hour="10-23", minute="15,45")` | D ∈ [오늘−14, 오늘] 발행본: 잠정 upsert(digest 가 다를 때만) → D+1 13:00 이후 확정 → D+7 무효 → 확정본의 finish·status 변경 시 `result_changed` + 실패 1회 (단승 배당만 달라지면 로그만, 확정 정산 그대로). 결과가 있는데 정산 0·분류 불가 행은 실패 |
 
-- PR-2 배선: `monitoring.JOB_CATALOG`(category `racing_form`, 기대 주기 발행 1시간·정산 10시간 30분) ·
-  `periodic.py` `@track_job` 래퍼(여기서 `datetime.now(KST)` 를 읽어 넘김) · `scheduler_main.py` `add_job` 2줄 +
-  `TRIGGER_JOBS` 2항목.
+- PR-2 배선 (완료): `monitoring.JOB_CATALOG`(category `racing_form`, 기대 주기 발행 1시간·정산 10시간 30분) ·
+  `periodic.py` `@track_job` 래퍼 `run_publish_racing_form`·`run_settle_racing_form`(여기서 `datetime.now(KST)` 를
+  읽어 넘기고, 호별 실패 메시지는 `_raise_collected` 로 한꺼번에 올림) · `scheduler_main.py` `add_job` 2줄
+  (발행은 `next_run_time` 으로 기동 직후 1회) + `TRIGGER_JOBS` 2항목. e2e 타임라인이 두 잡을 스케줄 진입점째로 돌린다.
 - 새 env 없음 → 루트 docker-compose 변경 없음. models.py 미러 모델은 만들지 않는다 (INSERT 는 `text()`, notifications 선례).
 - 경마지 잡은 KRA 를 호출하지 않는다 — 분당 한도에 영향 없음.
 
@@ -694,9 +774,9 @@ FAQ: "회수율은 일부러 공개하지 않습니다 — 베팅 권유가 아�
 
 ## ⑨ 운영
 
-### 9.1 스케줄 (PR-2 에서 연결)
+### 9.1 스케줄 (PR-2 에서 연결 — 완료)
 
-PR-1 에서는 잡이 등록되지 않아 아무것도 발행·정산되지 않는다. PR-2 머지 뒤:
+PR-2 머지(= 배포) 뒤 첫 실행(기동 직후 1회)이 기준 정의를 등록하고(`registered_at` = 출시 경계 launchAt), 그 뒤 동결되는 호부터 발행한다:
 
 | 잡 | 시각 | 의존하는 입력 (선행 잡) |
 |---|---|---|
@@ -705,9 +785,10 @@ PR-1 에서는 잡이 등록되지 않아 아무것도 발행·정산되지 않�
 
 - 웹이 덧씌우는 발주 시각은 `mal.sync_race_today_meta`(06~21시 매시 05분)가 채운다 — 부경은 당일 06:05 이후.
 
-### 9.2 healthcheck (PR-2, 읽기 전용)
+### 9.2 healthcheck (PR-2, 읽기 전용 — 구현 완료)
 
-`QUERIES` 에 `racing_form_*` 6개(`:now`·`:today` 파라미터, NOW() 금지, 쓰기 키워드 금지 —
+`QUERIES` 에 `racing_form_*` 8개(테이블 유무·기준 정의·달력·발행본·공지·정산·payload 해시·트리거, `:today` 파라미터,
+NOW() 금지, 쓰기 키워드 금지 —
 `crawler/tests/test_healthcheck.py` `test_queries_have_no_write_statements`), `check_racing_form` 을 `check_data` 안에서
 `_guard("경마지", …)` 로 감싼다. 임계값 상수는 `crawler/src/healthcheck.py:55-79` 블록 옆.
 
@@ -717,7 +798,9 @@ PR-1 에서는 잡이 등록되지 않아 아무것도 발행·정산되지 않�
 | 경마지 정산 | D+1 13:30 미확정, D+2 13:30 미확정이지만 결과 행 없음 | D+2 13:30 미확정이고 결과 행 있음 |
 | 경마지 보호 장치 | – | payload 해시 불일치, (search_path 스키마의) 트리거 12개 미만 또는 ALWAYS 아님, 레지스트리 해시 ≠ DB 행 (버전별) — `racing-form-verify` 와 같은 조회 |
 
-PR-2 에서 [docs/spec/deployment.md](../spec/deployment.md) 헬스체크 표에 이 3행을 더한다.
+- 036 미적용 → 3행 모두 WARN "운영 전". 기준 정의 미등록(첫 발행 잡 전) → 발행·정산 WARN "운영 전", 보호 장치는
+  트리거·해시를 그대로 본다. 한 행의 조회 실패는 그 행만 FAIL (나머지 행은 계속).
+- [docs/spec/deployment.md](../spec/deployment.md) 헬스체크 표에 이 3행을 더했다 (PR-2).
 
 ### 9.3 CLI
 
@@ -732,7 +815,7 @@ PR-2 에서 [docs/spec/deployment.md](../spec/deployment.md) 헬스체크 표에
 | `racing-form-backtest --from <D> --to <D> [--meet] --label dev\|holdout [--json]` | holdout 만 | 과거 시험. dev 는 읽기 전용, holdout 은 정의 해시당 1회 저장한 뒤 출력 |
 | `racing-form-settle [--date]` | 있음 | 정산 잡과 같은 규칙으로 1회 정산 (outcomes) |
 | `racing-form-notice --kind erratum\|withdrawn\|paused …` | 있음 | 운영자 공지 추가 (추가 전용 — 지울 수 없음). 철회해도 집계에 포함됨을 출력 |
-| (PR-2) `periodic-publish-racing-form` · `periodic-settle-racing-form` | 있음 | 스케줄 잡을 `@track_job` 째로 1회 (대시보드 run 기록) |
+| `periodic-publish-racing-form` · `periodic-settle-racing-form` (PR-2) | 있음 | 스케줄 잡을 `@track_job` 째로 1회 (대시보드 run 기록) |
 
 **발행 경로는 잡 규칙 하나뿐이다** — `--publish` 같은 수동 발행 CLI 는 두지 않는다.
 
@@ -770,7 +853,7 @@ PR-2 에서 [docs/spec/deployment.md](../spec/deployment.md) 헬스체크 표에
 - Jenkins 배포는 mal-crawler 컨테이너를 stop·rm 후 다시 올리고(`Jenkinsfile:120-142`), APScheduler 메모리 저장소는
   놓친 실행을 재생하지 않는다. 기동 직후 1회 실행으로 보완하지만, 18:00 발행과 배포가 겹치지 않게 한다.
 - **PR-2 머지 이후 목·금·토 17:30~18:15 에는 main 에 push 하지 않는다** (금·토·일 경주의 D−1 18:00 발행).
-  SCM 폴링이 `H/2` 라 17:58 push 도 18:00 전후 배포로 이어진다. PR-2 에서 deployment.md 에 함께 적는다.
+  SCM 폴링이 `H/2` 라 17:58 push 도 18:00 전후 배포로 이어진다. [deployment.md](../spec/deployment.md) §2 에도 적었다 (PR-2).
 - 놓쳐도 D 07:00 까지 매시 재시도하고, freeze + 60분을 넘긴 발행은 "늦게 발행"으로 표기된다.
 
 ### 9.6 롤백
@@ -981,7 +1064,7 @@ web/src/lib/racing_form.ts (raw SQL, payload 에서 한 경주만 jsonb_array_el
 | CLI (스케줄 잡 1회) | `crawler/src/main.py` `periodic-publish-racing-form`·`periodic-settle-racing-form` | PR-2 |
 | 스케줄 연결 | `crawler/src/monitoring.py` `JOB_CATALOG` · `crawler/src/jobs/periodic.py` `@track_job` 래퍼 · `crawler/src/scheduler_main.py` `add_job`·`TRIGGER_JOBS`(`:237-261`) | PR-2 |
 | healthcheck | `crawler/src/healthcheck.py` `QUERIES` `racing_form_*`·`check_racing_form` | PR-2 |
-| 테스트 (크롤러) | `crawler/tests/test_racing_form_*.py` · `crawler/tests/racing_form_fakes.py` · `crawler/tests/fixtures/racing_form/` (`schedule_vectors.json`·`golden_r1.json`·`payload_v1.golden.json`) · `crawler/tests/e2e/conftest.py` `_DATA_TABLES`(`:212`) | PR-1 (e2e 타임라인·test_healthcheck 는 PR-2) |
+| 테스트 (크롤러) | `crawler/tests/test_racing_form_*.py` · `crawler/tests/racing_form_fakes.py` · `crawler/tests/fixtures/racing_form/` (`schedule_vectors.json`·`golden_r1.json`·`payload_v1.golden.json`) · `crawler/tests/e2e/conftest.py` `_DATA_TABLES`(`:212`) · e2e 타임라인 `crawler/tests/e2e/test_scheduled_jobs_e2e.py` (test_03b~03d·10c·26b·28b·45·46) · `crawler/tests/test_healthcheck.py` 경마지 행 | PR-1 (e2e 타임라인·test_healthcheck 는 PR-2) |
 | 웹 lib | `web/src/lib/racing_form-shared.ts` (순수) · `web/src/lib/racing_form.ts` (SQL) | PR-1 |
 | 웹 라우트 | `web/src/app/form/(hub)/page.tsx` · `[date]/page.tsx` · `[date]/[meet]/(front)/page.tsx` · `[date]/[meet]/[race]/page.tsx` · `record/page.tsx` + 각 `loading.tsx` · URL 검증 레이아웃 `[date]/[meet]/layout.tsx`·`[date]/[meet]/[race]/layout.tsx` | PR-1 (메뉴 링크 없음·noindex) |
 | 웹 컴포넌트 | `web/src/components/racing-form/` (pick-mark·edition-stamp·status-block·race-list·headlines·record-compact·race-header·consensus-box·rule-list·runner-card·news-badges·record-table·legend) · `web/src/components/responsible-gambling-notice.tsx` · `page-skeleton.tsx` `FormSkeleton` | PR-1 |
@@ -992,7 +1075,7 @@ web/src/lib/racing_form.ts (raw SQL, payload 에서 한 경주만 jsonb_array_el
 ### 운영 의존성
 
 - **환경변수**: 없음 (새 env 0, 루트 docker-compose 변경 없음).
-- **스케줄**: PR-2 에서 `mal.publish_racing_form`·`mal.settle_racing_form` 연결 (9.1). 선행 수집 잡이 제때 돌아야 한다 —
+- **스케줄**: PR-2 에서 `mal.publish_racing_form`·`mal.settle_racing_form` 연결 완료 (9.1). 선행 수집 잡이 제때 돌아야 한다 —
   특히 `mal.sync_race_entries` 가 D−1 18:00 전에 출전표를 채워야 발행된다.
 - **배포**: PR-2 이후 목·금·토 17:30~18:15 main push 금지 (9.5). 036 은 Jenkins `Migrate DB` 가 자동 적용.
 - **DB**: 보호 트리거 12개가 살아 있어야 한다 (`racing-form-verify`·healthcheck). 백업에 racing_form 함수·트리거 포함 확인 (9.7).

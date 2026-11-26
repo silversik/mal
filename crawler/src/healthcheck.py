@@ -78,6 +78,20 @@ WEATHER_FETCH_DONE = time(3, 30)  # sync_weather 03:00 (어제까지 수집)
 VIDEOS_FAIL_DAYS = 7  # 직전 경주일 대비 매칭 영상이 이만큼 뒤처지면 실패
 HORSES_UNRESOLVED_WARN = 100  # raw NULL 중 not-found 원장에 없는 마필
 
+# 경마지 (docs/feature/racing-form.md 9.2). 발행 = 매시 정각 + 기동 직후, 동결 D−1 18:00.
+RACING_FORM_TABLES = (
+    "racing_form_rule_sets", "racing_form_editions", "racing_form_picks",
+    "racing_form_race_outcomes", "racing_form_backtests", "racing_form_notices",
+)
+RACING_FORM_CALENDAR_DAYS = 7  # 발행 잡 달력 D ∈ [오늘−7, 오늘+7]
+RACING_FORM_SETTLE_LOOKBACK_DAYS = 14  # 정산 잡 범위 D ∈ [오늘−14, 오늘]
+RACING_FORM_PUBLISH_WARN_MIN = 35  # freeze + 35분 미발행 → 18:00 실행이 실패한 것
+RACING_FORM_PUBLISH_FAIL_MIN = 125  # freeze + 125분 → 19:00·20:00 재시도도 실패
+RACING_FORM_DEADLINE_GRACE_MIN = 30  # 마감 + 30분 → 08:00 missed 기록도 없음
+RACING_FORM_MISSED_WARN_DAYS = 3  # missed 기록 후 이 기간은 경고로 남김
+RACING_FORM_SETTLE_WARN_AFTER = timedelta(days=1, hours=13, minutes=30)  # D+1 13:30 (확정 13:00)
+RACING_FORM_SETTLE_FAIL_AFTER = timedelta(days=2, hours=13, minutes=30)  # D+2 13:30
+
 STATEMENT_TIMEOUT_MS = 15_000
 LOCK_TIMEOUT_MS = 2_000
 
@@ -253,6 +267,100 @@ QUERIES: dict[str, str] = {
          GROUP BY year
     """,
     "sync_meta": _LEDGER_SQL,
+    # ── 경마지 (036). 시각은 :today / :now 파라미터 — DB 시계(NOW())는 쓰지 않는다.
+    "racing_form_tables": f"""
+        SELECT COUNT(*) FILTER (WHERE to_regclass(t) IS NOT NULL) AS present,
+               COUNT(*) AS expected
+          FROM unnest(ARRAY[{", ".join(f"'{t}'" for t in RACING_FORM_TABLES)}]::text[]) AS t
+    """,
+    "racing_form_rule_sets": """
+        SELECT rules_version, definition_sha256, registered_at
+          FROM racing_form_rule_sets
+         ORDER BY rules_version
+    """,
+    # 발행 잡 Q0 과 같은 달력 (races ∩ race_entries)
+    "racing_form_calendar": f"""
+        SELECT r.race_date,
+               r.meet,
+               array_remove(array_agg(NULLIF(btrim(r.start_time), '')), NULL) AS start_times
+          FROM races r
+         WHERE r.race_date BETWEEN CAST(:today AS date) - {RACING_FORM_CALENDAR_DAYS}
+                               AND CAST(:today AS date) + {RACING_FORM_CALENDAR_DAYS}
+           AND r.meet IN ('서울', '부경', '제주')
+           AND EXISTS (SELECT 1 FROM race_entries e
+                        WHERE e.race_date = r.race_date AND e.meet = r.meet
+                          AND e.race_no = r.race_no)
+         GROUP BY r.race_date, r.meet
+         ORDER BY r.race_date, r.meet
+    """,
+    "racing_form_editions": f"""
+        SELECT race_date, meet, issue_no, published_at, freeze_at
+          FROM racing_form_editions
+         WHERE race_date BETWEEN CAST(:today AS date) - {RACING_FORM_CALENDAR_DAYS}
+                             AND CAST(:today AS date) + {RACING_FORM_CALENDAR_DAYS}
+         ORDER BY race_date, meet
+    """,
+    # missed (달력 창) + 아직 끝나지 않은 paused. detail.until 은 'YYYY-MM-DD' (036 CHECK)
+    "racing_form_notices": f"""
+        SELECT kind, race_date, meet, detail ->> 'until' AS until, noticed_at
+          FROM racing_form_notices
+         WHERE (kind = 'missed'
+                AND race_date BETWEEN CAST(:today AS date) - {RACING_FORM_CALENDAR_DAYS}
+                                  AND CAST(:today AS date) + {RACING_FORM_CALENDAR_DAYS})
+            OR (kind = 'paused'
+                AND detail ->> 'until' >= to_char(
+                      CAST(:today AS date) - {RACING_FORM_CALENDAR_DAYS}, 'YYYY-MM-DD'))
+         ORDER BY noticed_at
+    """,
+    # 발행본 경주(payload.races) × 정산 — 확정 수, 미확정인데 결과 행이 있는 경주 수
+    "racing_form_settlement": f"""
+        SELECT e.id AS edition_id,
+               e.race_date,
+               e.meet,
+               COUNT(*)::int AS races,
+               COUNT(*) FILTER (WHERE o.is_final)::int AS final,
+               COUNT(*) FILTER (
+                 WHERE NOT COALESCE(o.is_final, false)
+                   AND EXISTS (SELECT 1 FROM race_results rr
+                                WHERE rr.race_date = e.race_date
+                                  AND (CASE WHEN rr.meet = '부산경남' THEN '부경'
+                                            ELSE rr.meet END) = e.meet
+                                  AND rr.race_no = x.race_no)
+               )::int AS open_with_results
+          FROM racing_form_editions e
+         CROSS JOIN LATERAL (
+               SELECT (r.v ->> 'race_no')::int AS race_no
+                 FROM jsonb_array_elements(e.payload -> 'races') AS r(v)
+               ) x
+          LEFT JOIN racing_form_race_outcomes o
+                 ON o.edition_id = e.id AND o.race_no = x.race_no
+         WHERE e.race_date BETWEEN CAST(:today AS date) - {RACING_FORM_SETTLE_LOOKBACK_DAYS}
+                               AND CAST(:today AS date)
+         GROUP BY e.id, e.race_date, e.meet
+         ORDER BY e.race_date, e.meet
+    """,
+    # racing-form-verify 와 같은 재계산 (payload 해시는 SQL 로만 계산 — 계약 §5)
+    "racing_form_payload": """
+        SELECT COUNT(*)::int AS editions,
+               COUNT(*) FILTER (
+                 WHERE payload_sha256 <> encode(sha256(convert_to(payload::text, 'UTF8')), 'hex')
+                    OR summary IS DISTINCT FROM payload -> 'summary'
+               )::int AS bad
+          FROM racing_form_editions
+    """,
+    # racing-form-verify 와 같은 조회 — search_path 가 036 표를 찾는 스키마의 트리거만
+    "racing_form_triggers": """
+        SELECT t.tgname::text     AS name,
+               c.relname::text    AS table_name,
+               t.tgenabled::text  AS enabled
+          FROM pg_trigger t
+          JOIN pg_class c ON c.oid = t.tgrelid
+         WHERE starts_with(t.tgname::text, 'trg_rf_')
+           AND NOT t.tgisinternal
+           AND c.relnamespace = (SELECT relnamespace FROM pg_class
+                                  WHERE oid = to_regclass('racing_form_editions'))
+         ORDER BY t.tgname, c.relname
+    """,
 }
 
 
@@ -784,6 +892,212 @@ def check_db(db: RowProvider, now: datetime) -> tuple[list[Check], bool]:
     return out, True
 
 
+# ── 경마지 (racing form) ───────────────────────────────────────────────────────
+
+_RF_AREA = "경마지"
+_RF_PUBLISH = "경마지 발행"
+_RF_SETTLE = "경마지 정산"
+_RF_GUARD = "경마지 보호 장치"
+
+
+def _worst(statuses: Iterable[Status]) -> Status:
+    order = {Status.OK: 0, Status.WARN: 1, Status.FAIL: 2}
+    return max(statuses, key=lambda s: order[s], default=Status.OK)
+
+
+def _rf_label(d: date, meet: Any) -> str:
+    return f"{_d(d)} {_norm_meet(meet)}"
+
+
+def _rf_paused(notices: list[dict[str, Any]], d: date, meet: str) -> bool:
+    for n in notices:
+        if n.get("kind") != "paused" or n.get("race_date") is None:
+            continue
+        until = str(n.get("until") or "")
+        if n["race_date"] <= d and until >= d.isoformat() and (
+            n.get("meet") is None or _norm_meet(n.get("meet")) == meet
+        ):
+            return True
+    return False
+
+
+def check_racing_form_publish(
+    db: RowProvider, now: datetime, launch_at: datetime, defn: Any,
+) -> Check:
+    """창 안 호의 발행 여부. 출시 전(freeze < launch_at)·쉼(paused) 호는 세지 않는다."""
+    from .racing_form import queries as rf_queries
+    from .racing_form import schedule as rf_schedule
+
+    today = now.astimezone(KST).date()
+    calendar = db.rows("racing_form_calendar", today=today)
+    editions = {
+        (r["race_date"], _norm_meet(r["meet"])): r
+        for r in db.rows("racing_form_editions", today=today)
+    }
+    notices = db.rows("racing_form_notices", today=today)
+    missed = {
+        (n["race_date"], _norm_meet(n["meet"])): n for n in notices if n.get("kind") == "missed"
+    }
+
+    statuses: list[Status] = []
+    issues: list[str] = []
+    published = waiting = skipped = 0
+    for row in calendar:
+        d, meet = row["race_date"], _norm_meet(row["meet"])
+        freeze = rf_schedule.freeze_at(d, defn)
+        if freeze < launch_at or _rf_paused(notices, d, meet):
+            skipped += 1
+            continue
+        if (d, meet) in editions:
+            published += 1
+            continue
+        miss = missed.get((d, meet))
+        if miss is not None:
+            noticed = _kst(miss.get("noticed_at"))
+            recent = noticed is not None and now - noticed <= timedelta(
+                days=RACING_FORM_MISSED_WARN_DAYS)
+            if recent:
+                statuses.append(Status.WARN)
+                issues.append(f"{_rf_label(d, meet)} 미발행(missed) 기록 {_dt(noticed)}")
+            continue
+        first_post = rf_queries.first_post_of(row.get("start_times") or [])
+        deadline = rf_schedule.deadline_at(d, first_post, defn)
+        if now >= deadline + timedelta(minutes=RACING_FORM_DEADLINE_GRACE_MIN):
+            statuses.append(Status.FAIL)
+            issues.append(
+                f"{_rf_label(d, meet)} 마감 {_dt(deadline)} 이 지났는데 발행본·missed 모두 없음"
+            )
+        elif now >= freeze + timedelta(minutes=RACING_FORM_PUBLISH_FAIL_MIN):
+            statuses.append(Status.FAIL)
+            issues.append(f"{_rf_label(d, meet)} 동결 {_dt(freeze)} + 125분 미발행")
+        elif now >= freeze + timedelta(minutes=RACING_FORM_PUBLISH_WARN_MIN):
+            statuses.append(Status.WARN)
+            issues.append(f"{_rf_label(d, meet)} 동결 {_dt(freeze)} + 35분 미발행")
+        else:
+            waiting += 1  # 동결 전 · 동결 직후 (재시도 중)
+
+    head = f"달력 {len(calendar)}호 · 발행 {published} · 대기 {waiting}"
+    if skipped:
+        head += f" · 제외(출시 전·쉼) {skipped}"
+    status = _worst(statuses)
+    if issues:
+        return Check(_RF_AREA, _RF_PUBLISH, status, f"{head} — " + " · ".join(issues))
+    return Check(_RF_AREA, _RF_PUBLISH, Status.OK, head)
+
+
+def check_racing_form_settle(db: RowProvider, now: datetime) -> Check:
+    """D+1 13:30 미확정 → 경고, D+2 13:30 미확정 → 결과 행이 있으면 실패 (없으면 경고)."""
+    today = now.astimezone(KST).date()
+    rows = db.rows("racing_form_settlement", today=today)
+    statuses: list[Status] = []
+    issues: list[str] = []
+    races = final = 0
+    for r in rows:
+        d = r["race_date"]
+        n, f, with_results = int(r["races"]), int(r["final"]), int(r["open_with_results"])
+        races += n
+        final += f
+        open_ = n - f
+        if open_ <= 0:
+            continue
+        start = datetime.combine(d, time(0, 0), tzinfo=KST)
+        label = _rf_label(d, r["meet"])
+        if now >= start + RACING_FORM_SETTLE_FAIL_AFTER:
+            if with_results > 0:
+                statuses.append(Status.FAIL)
+                issues.append(
+                    f"{label} D+2 13:30 지나 미확정 {open_}경주 (결과 행 있음 {with_results})"
+                )
+            else:
+                statuses.append(Status.WARN)
+                issues.append(f"{label} D+2 13:30 지나 미확정 {open_}경주 (결과 행 없음)")
+        elif now >= start + RACING_FORM_SETTLE_WARN_AFTER:
+            statuses.append(Status.WARN)
+            issues.append(f"{label} D+1 13:30 지나 미확정 {open_}경주")
+    head = f"최근 {RACING_FORM_SETTLE_LOOKBACK_DAYS}일 {len(rows)}호 · 확정 {final}/{races}경주"
+    if issues:
+        return Check(_RF_AREA, _RF_SETTLE, _worst(statuses), f"{head} — " + " · ".join(issues))
+    return Check(_RF_AREA, _RF_SETTLE, Status.OK, head)
+
+
+def check_racing_form_guard(db: RowProvider, rule_sets: list[dict[str, Any]]) -> Check:
+    """payload 해시 · 보호 트리거 12개 ALWAYS · 레지스트리 해시 = DB 행.
+
+    racing-form-verify 와 같은 뜻 (DB 시계 비교·picks 대조는 verify 만 한다).
+    """
+    from .racing_form import definitions as rf_definitions
+    from .racing_form.verify import EXPECTED_TRIGGERS
+
+    problems: list[str] = []
+    payload = _one(db, "racing_form_payload")
+    editions, bad = int(payload.get("editions") or 0), int(payload.get("bad") or 0)
+    if bad:
+        problems.append(f"payload 해시·summary 불일치 {bad}/{editions}호")
+
+    triggers = db.rows("racing_form_triggers")
+    found = {(t["name"], t["table_name"]) for t in triggers}
+    expected = set(EXPECTED_TRIGGERS.items())
+    missing = sorted(n for n, _ in expected - found)
+    not_always = sorted(t["name"] for t in triggers if t.get("enabled") != "A")
+    if missing or len(triggers) != len(expected):
+        problems.append(
+            f"보호 트리거 {len(found & expected)}/{len(expected)}"
+            + (f" (없음: {', '.join(missing[:3])}{' …' if len(missing) > 3 else ''})"
+               if missing else "")
+        )
+    if not_always:
+        problems.append(f"ENABLE ALWAYS 아님: {', '.join(not_always[:3])}")
+
+    for rs in rule_sets:
+        version = rs.get("rules_version")
+        defn = rf_definitions.RULE_SETS.get(str(version))
+        if defn is None:
+            problems.append(f"레지스트리에 없는 기준 버전 {version}")
+        elif rf_definitions.definition_sha256(defn) != rs.get("definition_sha256"):
+            problems.append(f"기준 정의 {version} 해시 ≠ DB 행")
+
+    if problems:
+        return Check(_RF_AREA, _RF_GUARD, Status.FAIL, " · ".join(problems))
+    versions = ", ".join(str(r.get("rules_version")) for r in rule_sets) or "없음"
+    return Check(
+        _RF_AREA, _RF_GUARD, Status.OK,
+        f"payload 해시 {editions}호 일치 · 트리거 {len(expected)}개 ALWAYS"
+        f" · 기준 정의 {versions} 일치",
+    )
+
+
+def check_racing_form(db: RowProvider, now: datetime) -> list[Check]:
+    """경마지 3행. 036 미적용·기준 정의 미등록(첫 발행 잡 전)은 '운영 전' 경고."""
+    present = _one(db, "racing_form_tables")
+    n_present, n_expected = int(present.get("present") or 0), len(RACING_FORM_TABLES)
+    if n_present < n_expected:
+        detail = f"운영 전 — 036 미적용 (경마지 테이블 {n_present}/{n_expected})"
+        return [Check(_RF_AREA, name, Status.WARN, detail)
+                for name in (_RF_PUBLISH, _RF_SETTLE, _RF_GUARD)]
+
+    rule_sets = db.rows("racing_form_rule_sets")
+    out = _guard(_RF_AREA, _RF_GUARD, lambda: check_racing_form_guard(db, rule_sets))
+    launch_at = min(
+        (k for k in (_kst(r.get("registered_at")) for r in rule_sets) if k is not None),
+        default=None,
+    )
+    if launch_at is None:
+        detail = "운영 전 — 기준 정의 미등록 (mal.publish_racing_form 첫 실행 전)"
+        return [Check(_RF_AREA, _RF_PUBLISH, Status.WARN, detail),
+                Check(_RF_AREA, _RF_SETTLE, Status.WARN, detail), *out]
+
+    from .racing_form import definitions as rf_definitions
+
+    latest = max(rule_sets, key=lambda r: _kst(r.get("registered_at")) or launch_at)
+    defn = rf_definitions.RULE_SETS.get(str(latest.get("rules_version"))) or rf_definitions.active()
+    return [
+        *_guard(_RF_AREA, _RF_PUBLISH,
+                lambda: check_racing_form_publish(db, now, launch_at, defn)),
+        *_guard(_RF_AREA, _RF_SETTLE, lambda: check_racing_form_settle(db, now)),
+        *out,
+    ]
+
+
 # ── 4. 대시보드 ─────────────────────────────────────────────────────────────────
 
 
@@ -850,6 +1164,7 @@ def check_data(db: RowProvider, now: datetime) -> list[Check]:
     last = cal.last_before if cal else None
     out += _guard("외부", "경주 영상", lambda: check_videos(db, now, last))
     out += _guard("기타", "대상경주 계획", lambda: check_race_plans(db, now))
+    out += _guard(_RF_AREA, _RF_AREA, lambda: check_racing_form(db, now))
     if ledger_error is not None:
         out.append(
             Check("기타", "sync_meta 원장", Status.FAIL, f"점검 실패 — {_err(ledger_error)}")
