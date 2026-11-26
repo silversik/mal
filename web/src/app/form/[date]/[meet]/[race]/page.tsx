@@ -2,6 +2,7 @@ import type { Metadata, ResolvingMetadata } from "next";
 import { notFound } from "next/navigation";
 
 import { PageContainer } from "@/components/page-container";
+import { BetaNotice } from "@/components/racing-form/beta-notice";
 import { ChangesBox } from "@/components/racing-form/changes-box";
 import { ConsensusBox } from "@/components/racing-form/consensus-box";
 import { ErrataList, WithdrawnBanner } from "@/components/racing-form/edition-notices";
@@ -97,6 +98,7 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
         <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
           {raceTitle(p.date, p.meet, p.raceNo)}
         </h1>
+        <BetaNotice date={p.date} />
         <p className="rounded-xl border border-border bg-card px-4 py-4 text-base text-foreground">
           이 호는 새 형식이라 아직 표시할 수 없습니다.
         </p>
@@ -137,6 +139,7 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
         startTime={startTime}
         raceNos={raceNos}
       />
+      <BetaNotice date={p.date} />
 
       {s.state === "withdrawn" ? (
         <WithdrawnBanner text={editionStateText(s) ?? "철회됨 — 기록에 포함"} hidePicks={s.hidePicks} />
