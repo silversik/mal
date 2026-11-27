@@ -1131,6 +1131,12 @@ export function addDays(date: string, days: number): string {
   return new Date(dayMs(date) + days * DAY_MS).toISOString().slice(0, 10);
 }
 
+/** 그 주 월요일 (날짜 문자열 기준 — 프로세스 TZ 무관). 한 주는 월~일. */
+export function mondayOf(date: string): string {
+  const dow = new Date(dayMs(date)).getUTCDay(); // 0=일
+  return addDays(date, -((dow + 6) % 7));
+}
+
 /** date 의 00:00 KST 로부터 minutes 분 뒤. */
 export function atKst(date: string, minutes: number): Date {
   return new Date(dayMs(date) - KST_OFFSET_MS + minutes * MIN_MS);
@@ -1286,7 +1292,9 @@ export function issueLabel(issueNo: number): string {
 }
 
 /**
- * 홈 카드에 실을 호 — 오늘(KST) 이후 가장 가까운 경주일의 발행본들, 없으면 가장 최근 경주일.
+ * 홈 카드에 실을 호 — **이번 주(월~일, KST)의 발행본 전부** (2026-11-27: 가까운 경주일 하루치만 싣던
+ * 것을 바꿈 — 금요일 호를 본 뒤에도 토·일 호와 함께 남는다).
+ * 이번 주 발행본이 아직 없으면(주 초) 오늘 이후 가장 가까운 경주일, 그것도 없으면 가장 최근 경주일.
  * 철회된 호는 싣지 않는다 (홈에서 철회본으로 보내지 않는다 — 허브·기록에는 그대로 남는다).
  * 입력 순서(경주일 → 경마장)를 지킨다.
  */
@@ -1299,6 +1307,10 @@ export function pickHomeEditions(
     notices.filter((n) => n.kind === "withdrawn" && n.edition_id !== null).map((n) => n.edition_id),
   );
   const live = editions.filter((e) => !withdrawn.has(e.id));
+  const weekStart = mondayOf(today);
+  const weekEnd = addDays(weekStart, 6);
+  const week = live.filter((e) => e.race_date >= weekStart && e.race_date <= weekEnd);
+  if (week.length > 0) return week;
   const upcoming = live.filter((e) => e.race_date >= today).map((e) => e.race_date);
   const past = live.filter((e) => e.race_date < today).map((e) => e.race_date);
   const day =
@@ -2015,6 +2027,84 @@ export function settlementLine(args: {
     (marks ? ` / ${MARK_TEXT[1]} ${marks}` : "") +
     (provisional ? ` (${provisional})` : "");
   return { head, consensus, marks, provisional, text };
+}
+
+// ============================================================================
+// 13-1. 호 카드의 "예상 ↔ 실제" (허브 이번 주 · 홈) — 주목마가 실제로 몇 착 했는지
+// ============================================================================
+
+/** 주목마(1순위) 한 경주의 예상 ↔ 실제. */
+export type EditionResultRow = {
+  race_no: number;
+  /** 예상 — 주목마 1순위 */
+  chul_no: number;
+  horse_name: string;
+  /** 실제 — pending 은 아직 정산 전 (경주일 도중) */
+  outcome: PickOutcome;
+  /** 주목마의 착순 (순위 없음·무효·정산 전이면 null) */
+  rank: number | null;
+  /** 실제 1착 출전번호 (동착이면 여럿). 주목마가 1착이거나 정산 전·경주 무효면 [] */
+  winner_chul_nos: number[];
+};
+
+export type EditionResult = {
+  rows: EditionResultRow[];
+  /** 정산된 경주 수 (주목마 유무와 무관) */
+  races_settled: number;
+  wins: number;
+  /** 2~3착 (1착 제외) */
+  placed: number;
+  misses: number;
+  voids: number;
+  pending: number;
+};
+
+/**
+ * 발행본의 주목마(요약의 1순위)와 정산을 맞춰 "예상 ↔ 실제" 줄을 만든다.
+ * 정산된 경주가 하나도 없으면 null — 그 호는 아직 "경주 전" 이다.
+ */
+export function editionResult(
+  summary: Pick<SummaryV1, "races"> | null,
+  outcomes: readonly OutcomeRow[],
+): EditionResult | null {
+  if (!summary || outcomes.length === 0) return null;
+  const rows: EditionResultRow[] = [];
+  for (const r of [...summary.races].sort((a, b) => a.race_no - b.race_no)) {
+    const pick = r.consensus.status === "picked" ? r.consensus.pick : null;
+    if (!pick) continue;
+    const o = outcomes.find((x) => x.race_no === r.race_no) ?? null;
+    const outcome = pickOutcome(pick.horse_no, o);
+    rows.push({
+      race_no: r.race_no,
+      chul_no: pick.chul_no,
+      horse_name: pick.horse_name,
+      outcome,
+      rank: outcome === "pending" || outcome === "void" ? null : finishRankOf(o, pick.horse_no),
+      winner_chul_nos:
+        o && (outcome === "top3" || outcome === "miss")
+          ? o.finish.flatMap((f) => (f.rank === 1 && f.chul_no !== null ? [f.chul_no] : []))
+          : [],
+    });
+  }
+  const count = (k: PickOutcome) => rows.filter((x) => x.outcome === k).length;
+  return {
+    rows,
+    races_settled: outcomes.length,
+    wins: count("win"),
+    placed: count("top3"),
+    misses: count("miss"),
+    voids: count("void"),
+    pending: count("pending"),
+  };
+}
+
+/** "주목마 5경주 — 1착 2 · 2~3착 2 · 빗나감 1" (무효·결과 전은 있을 때만). 주목마가 없으면 "주목마 없음". */
+export function editionResultLine(res: Pick<EditionResult, "rows" | "wins" | "placed" | "misses" | "voids" | "pending">): string {
+  if (res.rows.length === 0) return "주목마 없음";
+  const parts = [`1착 ${res.wins}`, `2~3착 ${res.placed}`, `빗나감 ${res.misses}`];
+  if (res.voids > 0) parts.push(`무효 ${res.voids}`);
+  if (res.pending > 0) parts.push(`결과 전 ${res.pending}`);
+  return `주목마 ${res.rows.length}경주 — ${parts.join(" · ")}`;
 }
 
 // ============================================================================

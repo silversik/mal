@@ -1,3 +1,4 @@
+import { GateNum } from "@/components/race-detail-ui";
 import {
   consensusLine,
   RULE_LABEL,
@@ -9,7 +10,6 @@ import {
 import { cn } from "@/lib/utils";
 
 import { FocusLabel } from "./focus-label";
-import { FormNum } from "./form-num";
 import { TAP } from "./format";
 import { PickMark } from "./pick-mark";
 
@@ -76,7 +76,7 @@ export function ConsensusBox({
                       TAP,
                     )}
                   >
-                    <FormNum n={p.chul_no} />
+                    <GateNum n={p.chul_no} size={22} />
                     <span className="sr-only">번</span>
                     <span>{horseName(p.horse_no)}</span>
                   </a>

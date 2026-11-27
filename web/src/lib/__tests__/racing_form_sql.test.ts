@@ -385,7 +385,7 @@ describe("실패 처리 — 캐시 바깥 try/catch · Safe 함수", () => {
     err.mockRestore();
   });
 
-  it("loadHomeFormEditions — 오늘 ±7일 발행본·공지에서 가까운 경주일의 호만", async () => {
+  it("loadHomeFormEditions — 오늘 ±7일 발행본·공지에서 이번 주(월~일) 호 전부", async () => {
     const head = (id: number, race_date: string, meet: string) => ({
       id, race_date, meet, issue_no: id, rules_version: "r1", schema_version: 1,
       history_before: race_date, results_through: null, entries_batch_at: null,
@@ -400,7 +400,11 @@ describe("실패 처리 — 캐시 바깥 try/catch · Safe 함수", () => {
       return [];
     });
     const got = await rf.loadHomeFormEditions("2026-11-26");
-    expect(got.map((e) => [e.race_date, e.meet])).toEqual([["2026-11-27", "제주"], ["2026-11-27", "부경"]]);
+    expect(got.map((e) => [e.race_date, e.meet])).toEqual([
+      ["2026-11-27", "제주"],
+      ["2026-11-27", "부경"],
+      ["2026-11-28", "서울"],
+    ]);
   });
 
   it("formSitemapUrls — 1면 URL·UTC lastmod, 모르는 경마장 제외", () => {

@@ -8,8 +8,7 @@ import {
   getRecentTopFinishers,
 } from "./races";
 import { getUpcomingStakesFromPlans } from "./race_plans";
-import { loadHomeFormEditions } from "./racing_form";
-import type { EditionHead } from "./racing_form-shared";
+import { loadHomeFormCards, type HomeFormCard } from "./racing_form";
 import { getVideosForRaces, type RaceKey } from "./videos";
 import type { VideoItem } from "./video-helpers";
 
@@ -54,17 +53,17 @@ export const cachedUpcomingStakes = unstable_cache(
   { revalidate: 600, tags: ["home", "race_plans"] },
 );
 
-// 경마지 카드 — 발행은 하루 한 번(전날 18:00)이라 5분이면 충분.
-const cachedHomeFormEditionsRaw = unstable_cache(
-  (today: string) => loadHomeFormEditions(today),
-  ["home:formEditions"],
+// 경마지 카드 — 발행은 하루 한 번(전날 18:00), 정산은 30분마다라 5분이면 충분.
+const cachedHomeFormCardsRaw = unstable_cache(
+  (today: string) => loadHomeFormCards(today),
+  ["home:formCards"],
   { revalidate: 300, tags: ["home", "racing_form"] },
 );
 
-/** 홈 '경마지' 카드용 발행본. 실패하면 [] — try/catch 는 캐시 바깥(실패를 캐시하지 않는다). */
-export async function cachedHomeFormEditionsSafe(today: string): Promise<EditionHead[]> {
+/** 홈 '경마지' 카드 재료(발행본 + 정산). 실패하면 [] — try/catch 는 캐시 바깥(실패를 캐시하지 않는다). */
+export async function cachedHomeFormCardsSafe(today: string): Promise<HomeFormCard[]> {
   try {
-    return await cachedHomeFormEditionsRaw(today);
+    return await cachedHomeFormCardsRaw(today);
   } catch (err) {
     console.error("[home] 경마지 카드 조회 실패", err);
     return [];

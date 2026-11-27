@@ -1033,22 +1033,29 @@ describe("pickHomeEditions — 홈 카드에 실을 호", () => {
     ({ id, race_date, meet }) as unknown as Parameters<typeof pickHomeEditions>[0][number];
   const all = [ed(1, "2026-11-22", "서울"), ed(2, "2026-11-27", "제주"), ed(3, "2026-11-27", "부경"), ed(4, "2026-11-28", "서울")];
 
-  it("오늘 이후 가장 가까운 경주일의 호 전부 (입력 순서 유지)", () => {
-    expect(pickHomeEditions(all, [], "2026-11-26").map((e) => e.id)).toEqual([2, 3]);
-    expect(pickHomeEditions(all, [], "2026-11-27").map((e) => e.id)).toEqual([2, 3]); // 경주 당일 포함
-    expect(pickHomeEditions(all, [], "2026-11-28").map((e) => e.id)).toEqual([4]);
+  it("이번 주(월~일) 발행본 전부 — 지난 경주일 호도 주가 끝날 때까지 남는다 (입력 순서 유지)", () => {
+    // 2026-11-23(월) ~ 11-29(일) 주: 11/27 제주·부경, 11/28 서울. 11/22(일)은 지난주
+    expect(pickHomeEditions(all, [], "2026-11-26").map((e) => e.id)).toEqual([2, 3, 4]);
+    expect(pickHomeEditions(all, [], "2026-11-27").map((e) => e.id)).toEqual([2, 3, 4]);
+    expect(pickHomeEditions(all, [], "2026-11-28").map((e) => e.id)).toEqual([2, 3, 4]);
+    expect(pickHomeEditions(all, [], "2026-11-29").map((e) => e.id)).toEqual([2, 3, 4]); // 일요일까지
+    // 아직 11/27 호만 나온 목요일 저녁
+    expect(pickHomeEditions(all.slice(0, 3), [], "2026-11-26").map((e) => e.id)).toEqual([2, 3]);
   });
 
-  it("앞으로 발행본이 없으면 가장 최근 경주일, 하나도 없으면 []", () => {
+  it("이번 주 발행본이 없으면 가까운 경주일 → 가장 최근 경주일, 하나도 없으면 []", () => {
+    // 다음 주 월요일 — 이번 주 호가 아직 없다 → 가장 최근 경주일(11/28)
     expect(pickHomeEditions(all, [], "2026-11-30").map((e) => e.id)).toEqual([4]);
+    // 지난주 일요일 — 그 주의 호(11/22)만
+    expect(pickHomeEditions(all, [], "2026-11-22").map((e) => e.id)).toEqual([1]);
     expect(pickHomeEditions([], [], "2026-11-26")).toEqual([]);
   });
 
-  it("철회된 호는 싣지 않는다 — 그날 호가 모두 철회면 다음 후보 날짜로", () => {
+  it("철회된 호는 싣지 않는다 — 이번 주 호가 모두 철회면 다음 후보로", () => {
     const w = (edition_id: number) => ({ kind: "withdrawn" as const, edition_id });
-    expect(pickHomeEditions(all, [w(2)], "2026-11-26").map((e) => e.id)).toEqual([3]);
-    expect(pickHomeEditions(all, [w(2), w(3)], "2026-11-26").map((e) => e.id)).toEqual([4]);
+    expect(pickHomeEditions(all, [w(2)], "2026-11-26").map((e) => e.id)).toEqual([3, 4]);
+    expect(pickHomeEditions(all, [w(2), w(3), w(4)], "2026-11-26").map((e) => e.id)).toEqual([1]);
     // 정정(erratum)은 철회가 아니다
-    expect(pickHomeEditions(all, [{ kind: "erratum", edition_id: 2 }], "2026-11-26").map((e) => e.id)).toEqual([2, 3]);
+    expect(pickHomeEditions(all, [{ kind: "erratum", edition_id: 2 }], "2026-11-26").map((e) => e.id)).toEqual([2, 3, 4]);
   });
 });

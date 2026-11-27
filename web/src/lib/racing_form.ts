@@ -882,7 +882,7 @@ export async function getEditionMeetsSafe(date: string): Promise<FormMeet[]> {
 export const HOME_FORM_WINDOW_DAYS = 7;
 
 /**
- * 홈 '경마지' 카드용 발행본 — pickHomeEditions(오늘 이후 가장 가까운 경주일, 없으면 가장 최근).
+ * 홈 '경마지' 카드용 발행본 — pickHomeEditions(이번 주 발행본 전부, 없으면 가까운·최근 경주일).
  * 실패하면 [] (홈이 500 이 되지 않게). 캐시는 호출부(home_data)에서 — 실패를 캐시하지 않도록
  * 이 함수가 아니라 loadHomeFormEditions 를 감싼다.
  */
@@ -894,6 +894,27 @@ export async function loadHomeFormEditions(today: string): Promise<EditionHead[]
     getNoticesBetween(from, to),
   ]);
   return pickHomeEditions(editions, notices, today);
+}
+
+/** 홈 카드 하나의 재료 — 발행본 머리 + 그 호의 정산 (결과가 나온 호는 "예상 ↔ 실제" 를 싣는다). */
+export type HomeFormCard = { head: EditionHead; outcomes: OutcomeRow[]; tally: EditionTally | null };
+
+/**
+ * 홈 '경마지' 카드 재료 — loadHomeFormEditions 의 호마다 정산을 붙인다 (호 수는 한 주치라 많아야 6).
+ * 실패는 호출부(home_data)의 try/catch 가 [] 로 바꾼다.
+ */
+export async function loadHomeFormCards(today: string): Promise<HomeFormCard[]> {
+  const heads = await loadHomeFormEditions(today);
+  if (heads.length === 0) return [];
+  const [tallies, outcomes] = await Promise.all([
+    getEditionTallies(heads.map((h) => h.id)),
+    Promise.all(heads.map((h) => getOutcomes(h.id))),
+  ]);
+  return heads.map((head, i) => ({
+    head,
+    outcomes: outcomes[i],
+    tally: tallies.find((t) => t.edition_id === head.id) ?? null,
+  }));
 }
 
 /**

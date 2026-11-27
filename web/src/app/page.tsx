@@ -17,7 +17,7 @@ import { raceKey } from "@/lib/videos";
 import { getRecentComments } from "@/lib/comments";
 import {
   cachedAllJockeys,
-  cachedHomeFormEditionsSafe,
+  cachedHomeFormCardsSafe,
   cachedNextRaceDayRaces,
   cachedRecentRaceDaysRaces,
   cachedRecentTopFinishers,
@@ -26,15 +26,8 @@ import {
   cachedVideosForRaces,
 } from "@/lib/home_data";
 import { RankBadge } from "@/components/rank-badge";
-import { EditionCard, editionCardSub } from "@/components/racing-form/edition-card";
-import {
-  dateKo,
-  FORM_HUB_PATH,
-  formEditionPath,
-  isLate,
-  issueLabel,
-  publishStampKo,
-} from "@/lib/racing_form-shared";
+import { EditionCardGroups, publishedEditionCard } from "@/components/racing-form/edition-card";
+import { FORM_HUB_PATH, isLate } from "@/lib/racing_form-shared";
 
 function todayKST(): string {
   // KST(UTC+9) 기준 오늘 날짜 — toISOString()은 UTC 반환이라 자정~9시 사이 날짜가 틀림.
@@ -317,32 +310,28 @@ function HeroCommentPanel({
 
 /* ── 최근 경기 (스와이퍼) ─────────────────────────────── */
 
-/* ── 경마지 (가까운 경주일의 발행본) ─────────────────── */
+/* ── 경마지 (이번 주 발행본 전부) ─────────────────── */
 
 async function RacingFormSection({ todayDate }: { todayDate: string }) {
   // 요청이 올 때까지 기다린다 — 빌드의 프리렌더 시도에서 (DB 없는 Docker 빌드) 조회가 나가지 않게.
   await connection();
-  const editions = await cachedHomeFormEditionsSafe(todayDate);
-  if (editions.length === 0) return null;
+  const items = await cachedHomeFormCardsSafe(todayDate);
+  if (items.length === 0) return null;
+  const now = new Date();
   return (
     <Section title="경마지" href={FORM_HUB_PATH} tier="l1">
-      <ul className="grid gap-3 md:grid-cols-2">
-        {editions.map((e) => (
-          <li key={e.id}>
-            <EditionCard
-              card={{
-                key: String(e.id),
-                href: formEditionPath(e.race_date, e.meet),
-                title: `${dateKo(e.race_date)} ${e.meet}`,
-                issue: issueLabel(e.issue_no),
-                status: `${publishStampKo(e.published_at)} 발행${isLate(e.published_at, e.race_date) ? " · 늦게 발행" : ""}`,
-                sub: editionCardSub(e),
-                settlement: null,
-              }}
-            />
-          </li>
-        ))}
-      </ul>
+      <EditionCardGroups
+        today={todayDate}
+        cards={items.map((it) =>
+          publishedEditionCard({
+            head: it.head,
+            late: isLate(it.head.published_at, it.head.race_date),
+            outcomes: it.outcomes,
+            tally: it.tally,
+            now,
+          }),
+        )}
+      />
     </Section>
   );
 }
