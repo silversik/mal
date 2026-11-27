@@ -324,7 +324,7 @@ describe("1면 단순화 (2026-11-27) — 탭 · 색 없는 출전번호 · 주�
     expect(one).not.toContain("바뀐 것 없음");
   });
 
-  it("RaceList — 라운드 + 주목마 버튼, '주목' 뱃지는 모두 고른 말만, 주목마 없으면 빈 행", () => {
+  it("RaceList — 라운드 + 주목마 버튼(전부), '주목' 뱃지는 모두 고른 말만 버튼 안에, 없으면 빈 행", () => {
     const pick = (chulNo: number, horseName: string, strong: boolean) => ({
       chulNo,
       horseName,
@@ -355,15 +355,20 @@ describe("1면 단순화 (2026-11-27) — 탭 · 색 없는 출전번호 · 주�
     expect(rows[0]).toContain("1R");
     expect(rows[0]).not.toContain("<button");
     expect(rows[0]).not.toMatch(/주목마 없음|혼전|예상 안 함/);
-    // 4R — 버튼 + "주목" 뱃지
-    expect(rows[1]).toMatch(/<button[^>]*aria-haspopup="dialog"/);
-    expect(rows[1]).toContain("매직트리");
-    expect(rows[1]).toContain(">주목<");
-    // 5R — 버튼만 (뱃지 없음), 2순위는 "외 1두"
+    // 4R — 버튼 하나, "주목" 뱃지는 버튼 안에. 마번은 테두리 없이
+    expect(rows[1].match(/<button/g)?.length).toBe(1);
+    expect(rows[1]).toMatch(/<button[^>]*aria-haspopup="dialog"[^>]*>.*매직트리.*>주목<\/span><\/button>/);
+    expect(rows[1]).toMatch(/<button[^>]*><span class="[^"]*font-mono[^"]*">3<\/span>/);
+    expect(rows[1]).not.toMatch(/<button[^>]*><span class="[^"]*border-border/);
+    // 5R — 주목마 2두 모두 버튼 (뱃지 없음), "외 n두" 로 줄이지 않는다
+    expect(rows[2].match(/<button/g)?.length).toBe(2);
     expect(rows[2]).toContain("판타스틱밸류");
+    expect(rows[2]).toContain("라온포레스트");
     expect(rows[2]).not.toContain(">주목<");
-    expect(rows[2]).toContain("외 1두");
-    expect(rows[2]).not.toContain("라온포레스트");
+    expect(rows[2]).not.toMatch(/외 \d+두/);
+    // 버튼은 보이는 높이를 줄이되(36px) 누르는 영역은 ::before 로 넓힌다
+    expect(rows[2]).toContain("min-h-9");
+    expect(rows[2]).toContain("before:-inset-y-1");
     // 발주 시각·"기준 n개" 문구·게이트 색·팝업 본문(닫힌 상태)은 없다
     expect(h).not.toMatch(/\d{2}:\d{2}/);
     expect(h).not.toContain("예상을 낸 기준");

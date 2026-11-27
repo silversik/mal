@@ -72,6 +72,13 @@ function PickDetail({ pick }: { pick: RacePickView }) {
   );
 }
 
+/**
+ * 주목마 버튼 — 보이는 높이는 36px(2.25rem)로 줄이고, 누르는 영역은 ::before 로 위아래 4px 씩 넓혀
+ * 44px 을 지킨다 (DESIGN.md 터치 타깃). 마번은 테두리 없이, "주목" 뱃지는 버튼 안에.
+ */
+const PICK_BUTTON =
+  "relative inline-flex min-h-9 min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-base font-semibold text-foreground transition-colors before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
+
 /** RaceList 의 클라이언트 쪽 — 주목마 버튼과 요약 팝업 하나(열린 경주만 그린다). */
 export function RaceListRows({ rows }: { rows: readonly RaceListRow[] }) {
   const [openNo, setOpenNo] = useState<number | null>(null);
@@ -80,11 +87,10 @@ export function RaceListRows({ rows }: { rows: readonly RaceListRow[] }) {
     <>
       <ol className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
         {rows.map((r) => {
-          const top = r.picks[0] ?? null;
           return (
             <li
               key={r.raceNo}
-              className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-x-2 px-3 py-1"
+              className="grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-x-2 px-3 py-1"
             >
               <Link
                 href={r.href}
@@ -96,36 +102,26 @@ export function RaceListRows({ rows }: { rows: readonly RaceListRow[] }) {
               >
                 {r.raceNo}R
               </Link>
-              <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 py-1">
                 {r.stakes ? (
                   <span className="text-sm font-semibold text-foreground">{r.stakes}</span>
                 ) : null}
-                {top ? (
-                  <>
+                {r.picks.map((p) => (
+                  <span key={p.chulNo} className="inline-flex min-w-0 items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => setOpenNo(r.raceNo)}
                       aria-haspopup="dialog"
-                      className={cn(
-                        "inline-flex min-w-0 items-center gap-2 rounded-md border border-border bg-card px-3 text-base font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-                        TAP,
-                      )}
+                      className={PICK_BUTTON}
                     >
-                      <FormNum n={top.chulNo} />
+                      <FormNum n={p.chulNo} plain />
                       <span className="sr-only">번</span>
-                      <span className="min-w-0 break-words text-left">{top.horseName}</span>
+                      <span className="min-w-0 break-words text-left">{p.horseName}</span>
+                      {p.strong ? <FocusLabel size="sm" /> : null}
                     </button>
-                    {top.strong ? <FocusLabel /> : null}
-                    {r.picks.length > 1 ? (
-                      <span className="text-sm text-muted-foreground">
-                        외 {r.picks.length - 1}두
-                      </span>
-                    ) : null}
-                  </>
-                ) : null}
-              </span>
-              <span className="flex items-center">
-                {top?.result ? <ResultMark result={top.result} /> : null}
+                    {p.result ? <ResultMark result={p.result} /> : null}
+                  </span>
+                ))}
               </span>
             </li>
           );
