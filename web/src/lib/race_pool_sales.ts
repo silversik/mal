@@ -1,4 +1,5 @@
 import { query } from "./db";
+import { normMeetSql, storedMeetLabels } from "./meets";
 
 /**
  * 경주별·풀별 매출액 — race_pool_sales 테이블 (KRA API179_1).
@@ -24,6 +25,14 @@ export const POOL_DISPLAY_ORDER = [
   "삼쌍",
 ] as const;
 
+// 한 경주의 풀별 행 — 저장 라벨 후보 전부로 찾고($2 = text[]), 같은 풀이 두 라벨로
+// 겹쳐 있으면 한 번만 센다 (정규 라벨 행 우선). 겹친 채로 합치면 매출이 두 배가 된다.
+const POOL_ROWS_SQL = `
+  SELECT DISTINCT ON (pool) pool, amount, odds_summary
+    FROM race_pool_sales
+   WHERE race_date = $1::date AND meet = ANY($2::text[]) AND race_no = $3
+   ORDER BY pool, (meet <> ${normMeetSql("meet")}), meet`;
+
 export async function getRacePoolSales(
   raceDate: string,
   meet: string,
@@ -31,13 +40,12 @@ export async function getRacePoolSales(
 ): Promise<RacePoolSales[]> {
   return query<RacePoolSales>(
     `SELECT pool, amount::text AS amount, odds_summary
-       FROM race_pool_sales
-      WHERE race_date = $1::date AND meet = $2 AND race_no = $3
+       FROM (${POOL_ROWS_SQL}) s
       ORDER BY array_position(
         ARRAY['단식','연식','쌍식','복식','복연','삼복','삼쌍']::text[],
         pool
       ) NULLS LAST`,
-    [raceDate, meet, raceNo],
+    [raceDate, storedMeetLabels(meet), raceNo],
   );
 }
 
@@ -49,9 +57,8 @@ export async function getRaceTotalSales(
 ): Promise<number> {
   const rows = await query<{ total: string | null }>(
     `SELECT COALESCE(SUM(amount), 0)::text AS total
-       FROM race_pool_sales
-      WHERE race_date = $1::date AND meet = $2 AND race_no = $3`,
-    [raceDate, meet, raceNo],
+       FROM (${POOL_ROWS_SQL}) s`,
+    [raceDate, storedMeetLabels(meet), raceNo],
   );
   return Number(rows[0]?.total ?? 0);
 }

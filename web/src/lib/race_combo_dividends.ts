@@ -1,4 +1,5 @@
 import { query } from "./db";
+import { normMeetSql, storedMeetLabels } from "./meets";
 
 /**
  * 복식 (조합) 배당 — race_combo_dividends 테이블.
@@ -61,6 +62,7 @@ export async function getRaceComboDividends(
     // 양쪽에 같은 chul_no 가 있으면 (당일 경기 = 둘 다 적재) UNION ALL 이 중복을
     // 만들어 LEFT JOIN m1·m2·m3 가 2x~8x 로 곱해지는 사고가 있었다 (5/9 EXA 72→288,
     // TLA 84→672). DISTINCT ON 으로 chul_no 당 1행 보장, 결과 우선(prio=1).
+    // 저장 라벨이 테이블마다 달라(부경 ↔ 부산경남) 라벨 후보 전부로 찾는다 ($2 = text[]).
     `WITH chul_map AS (
         SELECT DISTINCT ON (chul_no_text)
                chul_no_text AS chul_no, horse_name
@@ -68,12 +70,12 @@ export async function getRaceComboDividends(
               SELECT r.raw->>'chulNo' AS chul_no_text, h.horse_name, 1 AS prio
                 FROM race_results r
                 LEFT JOIN horses h ON h.horse_no = r.horse_no
-               WHERE r.race_date = $1 AND r.meet = $2 AND r.race_no = $3
+               WHERE r.race_date = $1 AND r.meet = ANY($2::text[]) AND r.race_no = $3
                  AND r.raw IS NOT NULL
               UNION ALL
               SELECT chul_no::text AS chul_no_text, horse_name, 2 AS prio
                 FROM race_entries
-               WHERE race_date = $1 AND meet = $2 AND race_no = $3
+               WHERE race_date = $1 AND meet = ANY($2::text[]) AND race_no = $3
           ) u
          WHERE chul_no_text IS NOT NULL AND chul_no_text <> ''
          ORDER BY chul_no_text, prio
@@ -87,12 +89,18 @@ export async function getRaceComboDividends(
         m2.horse_name AS horse_name_2,
         m3.horse_name AS horse_name_3,
         d.odds::text AS odds
-       FROM race_combo_dividends d
+       FROM (
+             -- 같은 조합이 두 라벨로 겹쳐 있어도 한 번만 (정규 라벨 행 우선)
+             SELECT DISTINCT ON (c.pool, c.combo_key)
+                    c.pool, c.horse_no_1, c.horse_no_2, c.horse_no_3, c.odds
+               FROM race_combo_dividends c
+              WHERE c.race_date = $1 AND c.meet = ANY($2::text[]) AND c.race_no = $3
+              ORDER BY c.pool, c.combo_key, (c.meet <> ${normMeetSql("c.meet")}), c.meet
+            ) d
        LEFT JOIN chul_map m1 ON m1.chul_no = d.horse_no_1
        LEFT JOIN chul_map m2 ON m2.chul_no = d.horse_no_2
        LEFT JOIN chul_map m3 ON m3.chul_no = d.horse_no_3
-      WHERE d.race_date = $1 AND d.meet = $2 AND d.race_no = $3
       ORDER BY d.pool, d.odds NULLS LAST`,
-    [raceDate, meet, raceNo],
+    [raceDate, storedMeetLabels(meet), raceNo],
   );
 }

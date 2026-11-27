@@ -1,4 +1,5 @@
 import { query } from "./db";
+import { normMeetSql, storedMeetLabels } from "./meets";
 
 /**
  * 경주 구간별 성적 — KRA API6_1/raceDetailSectionRecord_1 (publicDataPk=15057847).
@@ -70,8 +71,10 @@ export async function getRaceCorner(
             passtime_1f, passtime_2f, passtime_3f, passtime_4f, passtime_5f,
             passtime_6f, passtime_7f, passtime_8f, passtime_9f, passtime_10f
        FROM race_corners
-      WHERE race_date = $1::date AND meet = $2 AND race_no = $3`,
-    [raceDate, meet, raceNo],
+      WHERE race_date = $1::date AND meet = ANY($2::text[]) AND race_no = $3
+      ORDER BY (meet <> ${normMeetSql("meet")}), meet
+      LIMIT 1`,
+    [raceDate, storedMeetLabels(meet), raceNo],
   );
   return rows[0] ?? null;
 }

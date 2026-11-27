@@ -1,4 +1,5 @@
 import { query } from "./db";
+import { normMeetSql, storedMeetLabels } from "./meets";
 
 export type RaceInfo = {
   id: number;
@@ -13,7 +14,7 @@ export type RaceInfo = {
   entry_count: number | null;
   start_time: string | null;  // HH:MM 발주시각 (KRA API 수집 시 채워짐)
   // 해당 경주에 race_results.rank 가 적재됐는지. "종료" 판정에 사용.
-  // 모든 RACE_COLUMNS 사용 쿼리에서 채워짐.
+  // mergedRacesSql 을 쓰는 모든 쿼리에서 채워짐.
   has_results: boolean;
 };
 
@@ -56,63 +57,54 @@ export type RaceEntriesResult = {
   entries: RaceEntry[];
 };
 
-const RACE_COLUMNS = `
-  id,
-  to_char(race_date, 'YYYY-MM-DD') AS race_date,
-  meet, race_no, race_name, distance, grade,
-  track_type, track_condition, entry_count, start_time,
-  EXISTS (SELECT 1 FROM race_results rr
-           WHERE rr.race_date = races.race_date
-             AND rr.meet = races.meet
-             AND rr.race_no = races.race_no
-             AND rr.rank IS NOT NULL) AS has_results
-`;
+const R_MEET = normMeetSql("r.meet");
+
+/** 같은 경주의 두 라벨 행에서 값이 있는 쪽을 고른다 (정규 라벨 행 우선). */
+function pickMerged(col: string): string {
+  return `(array_agg(r.${col} ORDER BY (r.meet <> ${R_MEET}), r.meet)
+            FILTER (WHERE r.${col} IS NOT NULL))[1] AS ${col}`;
+}
+
+/**
+ * races 를 (race_date, 정규 meet, race_no) 한 행으로 합쳐 RaceInfo 컬럼으로 내보내는 SELECT.
+ *
+ * 부경은 같은 경주가 '부경'·'부산경남' 두 행으로 따로 있다 (한쪽엔 발주시각·거리, 다른 쪽엔
+ * 등급·출전두수). 라벨 그대로 읽으면 화면의 '부경' 경주에 결과·출전표가 붙지 않는다.
+ * `where` 는 races r 에 거는 조건 — 날짜로 좁혀야 한다 (전체를 합치면 느리다).
+ */
+function mergedRacesSql(where: string): string {
+  return `
+    SELECT m.id,
+           to_char(m.race_day, 'YYYY-MM-DD') AS race_date,
+           m.meet, m.race_no, m.race_name, m.distance, m.grade,
+           m.track_type, m.track_condition, m.entry_count, m.start_time,
+           EXISTS (SELECT 1 FROM race_results rr
+                    WHERE rr.race_date = m.race_day
+                      AND ${normMeetSql("rr.meet")} = m.meet
+                      AND rr.race_no = m.race_no
+                      AND rr.rank IS NOT NULL) AS has_results
+      FROM (
+            SELECT MIN(r.id) AS id,
+                   r.race_date AS race_day,
+                   ${R_MEET} AS meet,
+                   r.race_no,
+                   ${pickMerged("race_name")},
+                   ${pickMerged("distance")},
+                   ${pickMerged("grade")},
+                   ${pickMerged("track_type")},
+                   ${pickMerged("track_condition")},
+                   ${pickMerged("entry_count")},
+                   ${pickMerged("start_time")}
+              FROM races r
+             WHERE ${where}
+             GROUP BY r.race_date, ${R_MEET}, r.race_no
+           ) m`;
+}
 
 // "오늘" 비교는 항상 KST. DB 기본 시간대(UTC)의 CURRENT_DATE 를 그대로 쓰면
 // 자정~9시(KST) 구간에 어제/오늘 경계가 어긋나 어제 끝난 경기가 "다음 경기"로
 // 잡히는 버그가 난다. 모든 race_date 비교는 이 헬퍼를 사용.
 const KST_TODAY = `(NOW() AT TIME ZONE 'Asia/Seoul')::date`;
-
-export async function getRecentRaces(limit = 20, meet?: string): Promise<RaceInfo[]> {
-  if (meet) {
-    return query<RaceInfo>(
-      `SELECT ${RACE_COLUMNS}
-         FROM races
-        WHERE meet = $1
-        ORDER BY race_date DESC, race_no
-        LIMIT $2`,
-      [meet, limit],
-    );
-  }
-  return query<RaceInfo>(
-    `SELECT ${RACE_COLUMNS}
-       FROM races
-      ORDER BY race_date DESC, race_no
-      LIMIT $1`,
-    [limit],
-  );
-}
-
-export async function getUpcomingRaces(limit = 60, meet?: string): Promise<RaceInfo[]> {
-  if (meet) {
-    return query<RaceInfo>(
-      `SELECT ${RACE_COLUMNS}
-         FROM races
-        WHERE race_date >= ${KST_TODAY} AND meet = $1
-        ORDER BY race_date ASC, race_no
-        LIMIT $2`,
-      [meet, limit],
-    );
-  }
-  return query<RaceInfo>(
-    `SELECT ${RACE_COLUMNS}
-       FROM races
-      WHERE race_date >= ${KST_TODAY}
-      ORDER BY race_date ASC, meet, race_no
-      LIMIT $1`,
-    [limit],
-  );
-}
 
 /**
  * 오늘 이후(포함) 첫 번째로 경기가 있는 날의 모든 경주를 반환.
@@ -121,12 +113,10 @@ export async function getUpcomingRaces(limit = 60, meet?: string): Promise<RaceI
  */
 export async function getNextRaceDayRaces(): Promise<RaceInfo[]> {
   return query<RaceInfo>(
-    `SELECT ${RACE_COLUMNS}
-       FROM races
-      WHERE race_date = (
+    `${mergedRacesSql(`r.race_date = (
         SELECT MIN(race_date) FROM races WHERE race_date >= ${KST_TODAY}
-      )
-      ORDER BY meet, race_no`,
+      )`)}
+      ORDER BY m.meet, m.race_no`,
     [],
   );
 }
@@ -161,10 +151,8 @@ export async function getRecentRaceDaysRaces(days = 2): Promise<RaceInfo[]> {
         ORDER BY r.race_date DESC
         LIMIT $1
      )
-     SELECT ${RACE_COLUMNS}
-       FROM races
-      WHERE race_date IN (SELECT race_date FROM recent_days)
-      ORDER BY race_date DESC, meet, race_no`,
+     ${mergedRacesSql("r.race_date IN (SELECT race_date FROM recent_days)")}
+      ORDER BY m.race_day DESC, m.meet, m.race_no`,
     [days],
   );
 }
@@ -197,58 +185,37 @@ export async function getRecentTopFinishers(days = 4): Promise<TopFinisher[]> {
         ORDER BY r.race_date DESC
         LIMIT $1
      )
-     SELECT r.race_date::text AS race_date,
-            r.meet,
-            r.race_no,
-            r.rank,
-            r.horse_no,
-            h.horse_name,
-            r.jockey_name
-       FROM race_results r
-       JOIN horses h ON h.horse_no = r.horse_no
-      WHERE r.race_date IN (SELECT race_date FROM recent_days)
-        AND r.rank IN (1, 2, 3)
-      ORDER BY r.race_date DESC, r.meet, r.race_no, r.rank`,
+     SELECT t.race_day::text AS race_date, t.meet, t.race_no, t.rank,
+            t.horse_no, t.horse_name, t.jockey_name
+       FROM (
+             -- 같은 말이 두 라벨로 겹쳐 있어도 한 번만 (정규 라벨 행 우선)
+             SELECT DISTINCT ON (r.race_date, ${R_MEET}, r.race_no, r.horse_no)
+                    r.race_date AS race_day,
+                    ${R_MEET} AS meet,
+                    r.race_no, r.rank, r.horse_no, h.horse_name, r.jockey_name
+               FROM race_results r
+               JOIN horses h ON h.horse_no = r.horse_no
+              WHERE r.race_date IN (SELECT race_date FROM recent_days)
+                AND r.rank IN (1, 2, 3)
+              ORDER BY r.race_date, ${R_MEET}, r.race_no, r.horse_no,
+                       (r.meet <> ${R_MEET}), r.meet
+            ) t
+      ORDER BY t.race_day DESC, t.meet, t.race_no, t.rank`,
     [days],
-  );
-}
-
-export async function getFutureRaces(limit = 90, meet?: string): Promise<RaceInfo[]> {
-  if (meet) {
-    return query<RaceInfo>(
-      `SELECT ${RACE_COLUMNS}
-         FROM races
-        WHERE race_date > ${KST_TODAY} AND meet = $1
-        ORDER BY race_date ASC, race_no
-        LIMIT $2`,
-      [meet, limit],
-    );
-  }
-  return query<RaceInfo>(
-    `SELECT ${RACE_COLUMNS}
-       FROM races
-      WHERE race_date > ${KST_TODAY}
-      ORDER BY race_date ASC, meet, race_no
-      LIMIT $1`,
-    [limit],
   );
 }
 
 export async function getRacesByDate(date: string, meet?: string): Promise<RaceInfo[]> {
   if (meet) {
     return query<RaceInfo>(
-      `SELECT ${RACE_COLUMNS}
-         FROM races
-        WHERE race_date = $1::date AND meet = $2
-        ORDER BY race_no`,
-      [date, meet],
+      `${mergedRacesSql("r.race_date = $1::date AND r.meet = ANY($2::text[])")}
+        ORDER BY m.race_no`,
+      [date, storedMeetLabels(meet)],
     );
   }
   return query<RaceInfo>(
-    `SELECT ${RACE_COLUMNS}
-       FROM races
-      WHERE race_date = $1::date
-      ORDER BY meet, race_no`,
+    `${mergedRacesSql("r.race_date = $1::date")}
+      ORDER BY m.meet, m.race_no`,
     [date],
   );
 }
@@ -304,6 +271,42 @@ export async function getAvailableMeets(): Promise<string[]> {
   return rows.map((r) => r.meet);
 }
 
+/**
+ * 기수·조교사 번호 붙이기 — 한 사람만 고른다 (LATERAL LIMIT 1).
+ * 번호(noExpr)가 맞는 사람 우선, 없으면 이름이 같은 사람. 이름만으로 그냥 JOIN 하면
+ * 동명이인이 있을 때 출전마 행이 두 줄로 늘어난다 (조교사 '토마스' 2명 — 2026-11).
+ */
+function personJoinSql(
+  table: "jockeys" | "trainers",
+  noCol: string,
+  nameCol: string,
+  noExpr: string,
+  nameExpr: string,
+  alias: string,
+): string {
+  return `LEFT JOIN LATERAL (
+              SELECT p.${noCol} FROM ${table} p
+               WHERE p.${noCol} = ${noExpr} OR p.${nameCol} = ${nameExpr}
+               ORDER BY (p.${noCol} = ${noExpr}) DESC NULLS LAST, p.${noCol}
+               LIMIT 1
+            ) ${alias} ON true`;
+}
+
+/** 기수변경 붙이기 — 라벨을 정규화해 맞추고, 여러 건이면 가장 최근 것 하나. */
+function jockeyChangeJoinSql(src: "r" | "e"): string {
+  return `LEFT JOIN LATERAL (
+              SELECT c.jk_name_before, c.jk_name_after, c.jk_no_after, c.reason,
+                     c.weight_before, c.weight_after
+                FROM jockey_changes c
+               WHERE c.race_date = ${src}.race_date
+                 AND ${normMeetSql("c.meet")} = ${normMeetSql(`${src}.meet`)}
+                 AND c.race_no = ${src}.race_no
+                 AND c.horse_no = ${src}.horse_no
+               ORDER BY c.updated_at DESC, c.id DESC
+               LIMIT 1
+            ) jc ON true`;
+}
+
 export async function getRaceEntries(
   raceDate: string,
   meet: string,
@@ -311,11 +314,14 @@ export async function getRaceEntries(
 ): Promise<RaceEntriesResult> {
   // 확정된 결과(race_results) 우선. 없으면 출마표(race_entries)로 폴백해
   // 경주 전 페이지가 비어 보이지 않게 한다.
+  // meet 은 정규 라벨·저장 라벨 어느 쪽으로 와도 저장 라벨 후보 전부로 찾는다.
+  const labels = storedMeetLabels(meet);
   const post = await query<RaceEntry>(
-    // trainer JOIN 은 이름 매칭 — race_results.tr_no 가 백필되기 전까지의 임시 브릿지.
-    // 동명이인 가능하나 실데이터상 충돌 거의 없음 (trainers ~333명).
+    // 기수·조교사는 번호(jk_no·tr_no) 우선, 없으면 이름으로 한 사람만 붙인다 (personJoinSql).
     // weight_diff: 마필의 직전 race_results 와 weight 비교 (lateral subquery).
-    `SELECT r.rank, (r.raw->>'chulNo')::int AS chul_no,
+    `SELECT x.* FROM (
+     SELECT DISTINCT ON (r.horse_no)
+            r.rank, (r.raw->>'chulNo')::int AS chul_no,
             r.horse_no, h.horse_name,
             r.jockey_name,
             j.jk_no AS jockey_no,
@@ -337,18 +343,18 @@ export async function getRaceEntries(
             jc.weight_after::text AS jockey_weight_after
        FROM race_results r
        JOIN horses h ON h.horse_no = r.horse_no
-       LEFT JOIN jockeys j ON j.jk_name = r.jockey_name
-       LEFT JOIN trainers t ON t.tr_name = r.trainer_name
-       LEFT JOIN race_dividends d
-              ON d.race_date = r.race_date
-             AND d.meet = r.meet
-             AND d.race_no = r.race_no
-             AND d.horse_no = (r.raw->>'chulNo')
-       LEFT JOIN jockey_changes jc
-              ON jc.race_date = r.race_date
-             AND jc.meet = r.meet
-             AND jc.race_no = r.race_no
-             AND jc.horse_no = r.horse_no
+       ${personJoinSql("jockeys", "jk_no", "jk_name", "r.jk_no", "r.jockey_name", "j")}
+       ${personJoinSql("trainers", "tr_no", "tr_name", "r.tr_no", "r.trainer_name", "t")}
+       LEFT JOIN LATERAL (
+              SELECT d.win_rate, d.plc_rate FROM race_dividends d
+               WHERE d.race_date = r.race_date
+                 AND ${normMeetSql("d.meet")} = ${R_MEET}
+                 AND d.race_no = r.race_no
+                 AND d.horse_no = (r.raw->>'chulNo')
+               ORDER BY (d.meet <> r.meet), d.meet
+               LIMIT 1
+            ) d ON true
+       ${jockeyChangeJoinSql("r")}
        LEFT JOIN LATERAL (
               SELECT pr.weight FROM race_results pr
                WHERE pr.horse_no = r.horse_no
@@ -358,10 +364,13 @@ export async function getRaceEntries(
                LIMIT 1
             ) prev ON true
       WHERE r.race_date = $1::date
-        AND r.meet = $2
+        AND r.meet = ANY($2::text[])
         AND r.race_no = $3
-      ORDER BY r.rank NULLS LAST`,
-    [raceDate, meet, raceNo],
+      -- 같은 말이 두 라벨로 겹쳐 있으면 정규 라벨 행을 쓴다
+      ORDER BY r.horse_no, (r.meet <> ${R_MEET}), r.meet
+     ) x
+      ORDER BY x.rank NULLS LAST, x.chul_no NULLS LAST`,
+    [raceDate, labels, raceNo],
   );
   if (post.length > 0) return { phase: "post", entries: post };
 
@@ -372,7 +381,9 @@ export async function getRaceEntries(
   // 실제 기승 기수는 jockey_changes.jk_name_after 우선 (lib/racing_form.ts 와 같은 규칙).
   // 그렇지 않으면 교체 배지가 "A → A" 로 읽힌다.
   const pre = await query<RaceEntry>(
-    `SELECT NULL::int AS rank, e.chul_no,
+    `SELECT x.* FROM (
+     SELECT DISTINCT ON (e.horse_no)
+            NULL::int AS rank, e.chul_no,
             e.horse_no, e.horse_name,
             COALESCE(NULLIF(btrim(jc.jk_name_after), ''), e.jockey_name) AS jockey_name,
             j.jk_no AS jockey_no,
@@ -391,14 +402,15 @@ export async function getRaceEntries(
             jc.weight_after::text AS jockey_weight_after
        FROM race_entries e
        LEFT JOIN horses h ON h.horse_no = e.horse_no
-       LEFT JOIN jockey_changes jc
-              ON jc.race_date = e.race_date
-             AND jc.meet = e.meet
-             AND jc.race_no = e.race_no
-             AND jc.horse_no = e.horse_no
-       LEFT JOIN jockeys j
-              ON j.jk_name = COALESCE(NULLIF(btrim(jc.jk_name_after), ''), e.jockey_name)
-       LEFT JOIN trainers t ON t.tr_name = e.trainer_name
+       ${jockeyChangeJoinSql("e")}
+       ${personJoinSql(
+         "jockeys", "jk_no", "jk_name",
+         // 교체됐으면 출전표의 jk_no 는 변경 전 기수 — 변경 후 번호·이름으로 찾는다
+         "(CASE WHEN NULLIF(btrim(jc.jk_name_after), '') IS NULL THEN e.jk_no ELSE jc.jk_no_after END)",
+         "COALESCE(NULLIF(btrim(jc.jk_name_after), ''), e.jockey_name)",
+         "j",
+       )}
+       ${personJoinSql("trainers", "tr_no", "tr_name", "NULLIF(btrim(e.raw->>'trNo'), '')", "e.trainer_name", "t")}
        LEFT JOIN LATERAL (
               SELECT pr.weight FROM race_results pr
                WHERE pr.horse_no = e.horse_no
@@ -408,10 +420,13 @@ export async function getRaceEntries(
                LIMIT 1
             ) prev ON true
       WHERE e.race_date = $1::date
-        AND e.meet = $2
+        AND e.meet = ANY($2::text[])
         AND e.race_no = $3
-      ORDER BY e.chul_no NULLS LAST`,
-    [raceDate, meet, raceNo],
+      -- 같은 말이 두 라벨로 겹쳐 있으면 나중에 수집한 행을 쓴다
+      ORDER BY e.horse_no, e.updated_at DESC, (e.meet <> ${normMeetSql("e.meet")}), e.meet
+     ) x
+      ORDER BY x.chul_no NULLS LAST`,
+    [raceDate, labels, raceNo],
   );
   return { phase: "pre", entries: pre };
 }
@@ -469,9 +484,9 @@ export async function getRaceDataSyncedAt(
     `SELECT MAX(created_at)::text AS synced_at
        FROM race_results
       WHERE race_date = $1::date
-        AND meet = $2
+        AND meet = ANY($2::text[])
         AND race_no = $3`,
-    [raceDate, meet, raceNo],
+    [raceDate, storedMeetLabels(meet), raceNo],
   );
   return rows[0]?.synced_at ?? null;
 }

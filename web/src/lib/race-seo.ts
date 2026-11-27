@@ -6,7 +6,7 @@
  * 자신의 URL 을 canonical 로 쓰고, sitemap 도 같은 builder 로 loc 를 만든다.
  */
 
-import { RACE_VENUES } from "./meets";
+import { RACE_VENUES, canonicalMeet } from "./meets";
 
 export const RACE_MEETS = RACE_VENUES;
 
@@ -44,7 +44,9 @@ export function normalizeRaceParams(sp: {
   race?: RawParam;
 }): NormalizedRaceParams {
   const date = normalizeRaceDate(sp.date);
-  const venueRaw = first(sp.venue)?.trim();
+  // 저장 라벨("부산경남")로 들어온 링크도 정규 라벨("부경")로 받는다.
+  const venueTrimmed = first(sp.venue)?.trim();
+  const venueRaw = venueTrimmed ? canonicalMeet(venueTrimmed) : venueTrimmed;
   const venue =
     venueRaw && (RACE_MEETS as readonly string[]).includes(venueRaw)
       ? venueRaw

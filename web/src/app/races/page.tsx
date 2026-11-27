@@ -13,7 +13,7 @@ import {
 import { RaceDatePicker } from "@/components/race-date-picker";
 import { RacesSubnav } from "@/components/races-subnav";
 import { VenueIcon } from "@/components/venue-icon";
-import { RACE_VENUES } from "@/lib/meets";
+import { RACE_VENUES, canonicalMeet } from "@/lib/meets";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -222,7 +222,9 @@ export default async function RacesPage({
 }) {
   const sp = await searchParams;
   // venue/race 도 배열(?venue=a&venue=b)로 올 수 있어 첫 값만 쓴다.
-  const venue = Array.isArray(sp.venue) ? sp.venue[0] : sp.venue;
+  // 저장 라벨("부산경남")로 들어온 링크도 정규 라벨("부경") 경주로 연다.
+  const venueRaw = Array.isArray(sp.venue) ? sp.venue[0] : sp.venue;
+  const venue = venueRaw === undefined ? undefined : canonicalMeet(venueRaw);
   const race = Array.isArray(sp.race) ? sp.race[0] : sp.race;
   // KST(UTC+9) 기준 오늘. UTC 자정~9시 사이에 어제로 잘못 잡혀 isToday 가
   // 거짓 falsy → KRBC 라이브 버튼 미노출, 검색 버튼 노출 같은 표시 오류를 방지.
