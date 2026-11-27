@@ -271,6 +271,27 @@ export async function getAvailableMeets(): Promise<string[]> {
   return rows.map((r) => r.meet);
 }
 
+/**
+ * 기수·조교사 번호 붙이기 — 한 사람만 고른다 (LATERAL LIMIT 1).
+ * 번호(noExpr)가 맞는 사람 우선, 없으면 이름이 같은 사람. 이름만으로 그냥 JOIN 하면
+ * 동명이인이 있을 때 출전마 행이 두 줄로 늘어난다 (조교사 '토마스' 2명 — 2026-11).
+ */
+function personJoinSql(
+  table: "jockeys" | "trainers",
+  noCol: string,
+  nameCol: string,
+  noExpr: string,
+  nameExpr: string,
+  alias: string,
+): string {
+  return `LEFT JOIN LATERAL (
+              SELECT p.${noCol} FROM ${table} p
+               WHERE p.${noCol} = ${noExpr} OR p.${nameCol} = ${nameExpr}
+               ORDER BY (p.${noCol} = ${noExpr}) DESC NULLS LAST, p.${noCol}
+               LIMIT 1
+            ) ${alias} ON true`;
+}
+
 /** 기수변경 붙이기 — 라벨을 정규화해 맞추고, 여러 건이면 가장 최근 것 하나. */
 function jockeyChangeJoinSql(src: "r" | "e"): string {
   return `LEFT JOIN LATERAL (
@@ -296,8 +317,7 @@ export async function getRaceEntries(
   // meet 은 정규 라벨·저장 라벨 어느 쪽으로 와도 저장 라벨 후보 전부로 찾는다.
   const labels = storedMeetLabels(meet);
   const post = await query<RaceEntry>(
-    // trainer JOIN 은 이름 매칭 — race_results.tr_no 가 백필되기 전까지의 임시 브릿지.
-    // 동명이인 가능하나 실데이터상 충돌 거의 없음 (trainers ~333명).
+    // 기수·조교사는 번호(jk_no·tr_no) 우선, 없으면 이름으로 한 사람만 붙인다 (personJoinSql).
     // weight_diff: 마필의 직전 race_results 와 weight 비교 (lateral subquery).
     `SELECT x.* FROM (
      SELECT DISTINCT ON (r.horse_no)
@@ -323,8 +343,8 @@ export async function getRaceEntries(
             jc.weight_after::text AS jockey_weight_after
        FROM race_results r
        JOIN horses h ON h.horse_no = r.horse_no
-       LEFT JOIN jockeys j ON j.jk_name = r.jockey_name
-       LEFT JOIN trainers t ON t.tr_name = r.trainer_name
+       ${personJoinSql("jockeys", "jk_no", "jk_name", "r.jk_no", "r.jockey_name", "j")}
+       ${personJoinSql("trainers", "tr_no", "tr_name", "r.tr_no", "r.trainer_name", "t")}
        LEFT JOIN LATERAL (
               SELECT d.win_rate, d.plc_rate FROM race_dividends d
                WHERE d.race_date = r.race_date
@@ -383,9 +403,14 @@ export async function getRaceEntries(
        FROM race_entries e
        LEFT JOIN horses h ON h.horse_no = e.horse_no
        ${jockeyChangeJoinSql("e")}
-       LEFT JOIN jockeys j
-              ON j.jk_name = COALESCE(NULLIF(btrim(jc.jk_name_after), ''), e.jockey_name)
-       LEFT JOIN trainers t ON t.tr_name = e.trainer_name
+       ${personJoinSql(
+         "jockeys", "jk_no", "jk_name",
+         // 교체됐으면 출전표의 jk_no 는 변경 전 기수 — 변경 후 번호·이름으로 찾는다
+         "(CASE WHEN NULLIF(btrim(jc.jk_name_after), '') IS NULL THEN e.jk_no ELSE jc.jk_no_after END)",
+         "COALESCE(NULLIF(btrim(jc.jk_name_after), ''), e.jockey_name)",
+         "j",
+       )}
+       ${personJoinSql("trainers", "tr_no", "tr_name", "NULLIF(btrim(e.raw->>'trNo'), '')", "e.trainer_name", "t")}
        LEFT JOIN LATERAL (
               SELECT pr.weight FROM race_results pr
                WHERE pr.horse_no = e.horse_no

@@ -115,6 +115,9 @@ describe("경주 상세 — 저장 라벨 후보 전부로 찾는다", () => {
       expect(c.sql).toContain("meet = ANY($2::text[])");
       expect(c.sql).toMatch(/DISTINCT ON \([re]\.horse_no\)/);
       expect(c.sql).not.toMatch(RAW_LABEL_COMPARE);
+      // 이름만으로 그냥 JOIN 하면 동명이인(조교사 '토마스' 2명) 때 행이 두 줄이 된다
+      expect(c.sql).not.toMatch(/JOIN (jockeys|trainers) \w+\s+ON \w+\.(jk|tr)_name =/);
+      expect(c.sql.match(/LIMIT 1/g)?.length).toBeGreaterThanOrEqual(3);
     }
     // 배당·기수변경은 라벨을 정규화해 맞춘다 (결과 '부산경남' ↔ 기수변경 '부경')
     expect(post.sql).toContain(`${normMeetSql("d.meet")} = ${normMeetSql("r.meet")}`);
