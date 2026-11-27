@@ -35,6 +35,32 @@ function ResultMark({ result }: { result: RaceRowResult }) {
 }
 
 /**
+ * 주목마 버튼 안의 결과 — "→ ①" (화살표 뒤에 착순). "착" 글자는 쓰지 않는다 (2026-11-27).
+ * 1~3착은 RankBadge(메달), 그 밖은 숫자 칩. 스크린리더에는 "결과 4착" 으로 읽힌다.
+ */
+function ResultInButton({ result }: { result: RaceRowResult }) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5">
+      <span aria-hidden="true" className="text-muted-foreground">
+        →
+      </span>
+      {result.kind === "void" ? (
+        <span className="text-sm font-semibold text-muted-foreground">무효</span>
+      ) : result.rank === null ? (
+        <span className="text-sm font-semibold text-muted-foreground">순위 없음</span>
+      ) : (
+        <>
+          <span className="sr-only">결과 {result.rank}착</span>
+          <span aria-hidden="true" className="inline-flex">
+            <RankBadge rank={result.rank} size="sm" rest="chip" />
+          </span>
+        </>
+      )}
+    </span>
+  );
+}
+
+/**
  * 팝업의 별 — 마우스를 올리거나 누르면 "고른 기준 n개" 가 말풍선으로 뜬다 (본문에 따로 적지 않는다).
  * 누르는 영역은 ::before 로 넓힌다 (별은 작다).
  */
@@ -104,7 +130,7 @@ function PickDetail({ pick }: { pick: RacePickView }) {
 
 /**
  * 주목마 버튼 — 보이는 높이는 36px(2.25rem)로 줄이고, 누르는 영역은 ::before 로 위아래 4px 씩 넓혀
- * 44px 을 지킨다 (DESIGN.md 터치 타깃). 마번은 테두리 없이, "주목" 뱃지는 버튼 안에.
+ * 44px 을 지킨다 (DESIGN.md 터치 타깃). 마번은 테두리 없이, 별(주목)과 결과("→ 착순")는 버튼 안에.
  */
 const PICK_BUTTON =
   "relative inline-flex min-h-9 min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-base font-semibold text-foreground transition-colors before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
@@ -150,8 +176,8 @@ export function RaceListRows({ rows }: { rows: readonly RaceListRow[] }) {
                       {p.strong ? (
                         <FocusLabel size="sm" tip={`고른 기준 ${p.criteria.length}개`} />
                       ) : null}
+                      {p.result ? <ResultInButton result={p.result} /> : null}
                     </button>
-                    {p.result ? <ResultMark result={p.result} /> : null}
                   </span>
                 ))}
               </span>
