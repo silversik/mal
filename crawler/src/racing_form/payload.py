@@ -18,7 +18,14 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
 
-from .definitions import CONSENSUS_KEY, RULE_DEFINITIONS, RULE_KEYS, RULE_LABELS, RuleSetDef
+from .definitions import (
+    CONSENSUS_KEY,
+    RULE_DEFINITIONS,
+    RULE_KEYS,
+    RULE_LABELS,
+    RULE_SETS,
+    RuleSetDef,
+)
 from .features import Entrant, Start
 from .news import Badge, Headline
 from .rules import NO_PICK, PICKED, SMALL_FIELD, ConsensusResult, RuleResult
@@ -26,8 +33,17 @@ from .schedule import KST
 
 SCHEMA_VERSION = 1
 
-#: 계약 §4 — 1면 헤드라인 최대 수 (HeadlineV1[] 최대 6)
+#: 계약 §4 — 1면 헤드라인 최대 수 (r1: 6). 분석 소식 버전(r2~)은 그 정의의 news.max_headlines.
 MAX_HEADLINES = 6
+
+
+def _max_headlines(payload: Mapping[str, Any]) -> int:
+    """그 호의 기준 버전이 허용하는 헤드라인 수 — 모르는 버전이면 r1 상한."""
+    edition = payload.get("edition")
+    version = edition.get("rules_version") if isinstance(edition, Mapping) else None
+    if isinstance(version, str) and version in RULE_SETS:
+        return int(RULE_SETS[version].p("news", "max_headlines"))
+    return MAX_HEADLINES
 
 CONSENSUS_STATUSES = ("picked", "split", "insufficient", "small_field")
 
@@ -721,8 +737,9 @@ def validate_v1(payload: Any) -> None:
 
     heads = payload["headlines"]
     _typ(heads, "list", "$.headlines")
-    if len(heads) > MAX_HEADLINES:
-        raise _fail("$.headlines", f"최대 {MAX_HEADLINES}")
+    limit = _max_headlines(payload)
+    if len(heads) > limit:
+        raise _fail("$.headlines", f"최대 {limit}")
     for i, hl in enumerate(heads):
         hp = f"$.headlines[{i}]"
         _obj(hl, hp, ("kind", "race_no", "chul_no", "horse_no", "text"))

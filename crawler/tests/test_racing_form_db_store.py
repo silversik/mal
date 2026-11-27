@@ -734,7 +734,9 @@ def test_publish_job_default_wiring_inserts_edition(engine: Engine, world: World
     assert publish_racing_form(FREEZE + timedelta(hours=1)) == (0, [])
     assert publish_racing_form(DEADLINE) == (0, [])  # 발행됨 → missed 없음
 
-    want = build.build_edition(to_fake(world), D, MEET, FREEZE, R1, mode="live")
+    # 기본 배선 = 지금 발행 버전(definitions.ACTIVE, r2 — 분석 소식)
+    active = definitions.active()
+    want = build.build_edition(to_fake(world), D, MEET, FREEZE, active, mode="live")
     ed = one(engine, """
         SELECT id, issue_no, rules_version, schema_version, history_before, results_through,
                entries_batch_at, freeze_at, deadline_at, published_at, race_count, runner_count,
@@ -746,7 +748,7 @@ def test_publish_job_default_wiring_inserts_edition(engine: Engine, world: World
     assert ed["sha_ok"] and ed["summary_ok"]
     assert ed["payload"] == json.loads(payload.canonical_json(want.payload))
     assert ed["summary"] == want.payload["summary"]
-    assert (ed["issue_no"], ed["rules_version"], ed["schema_version"]) == (1, "r1", 1)
+    assert (ed["issue_no"], ed["rules_version"], ed["schema_version"]) == (1, active.version, 1)
     assert (ed["history_before"], ed["results_through"]) == (H, H - timedelta(days=1))
     assert ed["entries_batch_at"] == BATCH
     assert (ed["freeze_at"], ed["deadline_at"], ed["published_at"]) == (FREEZE, DEADLINE, FREEZE)
@@ -758,8 +760,8 @@ def test_publish_job_default_wiring_inserts_edition(engine: Engine, world: World
     assert picks == want.picks
     assert any(p["rule_key"] == "consensus" for p in picks)
     rs = one(engine, "SELECT definition_sha256, registered_at FROM racing_form_rule_sets "
-                     "WHERE rules_version = 'r1'")
-    assert rs == {"definition_sha256": definitions.definition_sha256(R1), "registered_at": PRE}
+                     "WHERE rules_version = :v", v=active.version)
+    assert rs == {"definition_sha256": definitions.definition_sha256(active), "registered_at": PRE}
     assert q(engine, "SELECT kind FROM racing_form_notices") == []
 
 

@@ -264,6 +264,8 @@ def test_holdout_saves_once_then_refuses_without_computing(
 ) -> None:
     from src.racing_form import backtest, definitions
 
+    # holdout 은 r1 으로 한 번 공개했다 — 이 검사는 버전 무관한 "한 번만" 동작을 r1 으로 본다
+    monkeypatch.setattr(definitions, "ACTIVE", "r1")
     engine, info = seeded
     before = counts(engine)
     lo = info.d_prev - timedelta(days=6)

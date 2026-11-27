@@ -198,6 +198,13 @@ def fmt_kg(tenths: int) -> str:
     return f"{tenths // 10}.{tenths % 10}"
 
 
+def fmt_time_tenths(tenths: int) -> str:
+    """0.1초 정수 → "1:13.5" · "59.8" (웹 timeText 와 같은 표기)."""
+    m, rest = divmod(tenths, 600)
+    s, t = divmod(rest, 10)
+    return f"{m}:{s:02d}.{t}" if m else f"{s}.{t}"
+
+
 def fmt_md(d: date, template: str = "{m}월 {d}일") -> str:
     """날짜 → `"11월 1일"` (template 은 definitions wording 의 date_md)."""
     return template.format(m=d.month, d=d.day)

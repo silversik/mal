@@ -242,6 +242,13 @@ def build_edition(
                         defn=defn,
                     )
                 )
+            # 분석 소식 (r2~) — 출전마끼리 비교·기록 조합. 말 배지 앞쪽 우선순위로 합친다
+            extra = news.analysis_badges(
+                entrants, h=h, meet=meet_n, distance=distances[race_no], defn=defn
+            )
+            for hn, more in extra.items():
+                if more:
+                    badges[hn] = tuple(news.sort_badges([*more, *badges.get(hn, ())], defn))
         race_builds.append(
             payload.RaceBuild(
                 race_no=race_no,

@@ -211,6 +211,97 @@ _R1_PARAMS: dict[str, Any] = {
     },
 }
 
+# ---------------------------------------------------------------------------
+# r2 — r1 과 기준(예상)은 같고, 말 소식만 "분석 소식" 으로 바꾼다 (소유자 결정 2026-11-28).
+#
+# r1 소식은 지난 기록과의 단순 차이(거리·부담·처음 탐 …)라 말 절반에 붙고 1면 헤드라인이 같은 종류로
+# 채워졌다. r2 는 출전마끼리 비교하거나 기록을 엮어 새로 계산한 결과를 소식으로 삼는다:
+#   fastest_record  최근 1년 같은 경마장·거리 최고기록이 출전마 중 가장 빠름
+#   pair_record     오늘 기수와 이 말의 조합 성적
+#   course_record   같은 경마장·거리 성적이 좋음 (3착 이내 비율)
+#   rank_trend      최근 3전 착순이 한 번도 빠짐없이 좋아짐
+#   race_debut · race_first_distance  경주 단위 — 데뷔전·첫 거리 출전마가 많은 경주
+# 1면 헤드라인은 경주마다 최대 2개(서로 다른 종류) — "외 n건" 으로 줄이지 않는다.
+# 문장은 그대로 사실·숫자만 (금지어 검사 대상).
+# ---------------------------------------------------------------------------
+
+_R2_PARAMS: dict[str, Any] = copy.deepcopy(_R1_PARAMS)
+_R2_PARAMS["news"].update(
+    {
+        # 헤드라인 방식 — "analysis": 경주마다 분석 소식 최대 headline_per_race 개
+        # (r1 은 키 없음 = 호 전체 우선순위 6개)
+        "mode": "analysis",
+        "headline_per_race": 2,
+        "max_headlines": 24,
+        # 최고기록 — 최근 window 일 같은 경마장·거리 기록이 있는 출전마가 min_timed 두 이상일 때,
+        # 단독 1위만
+        "fastest_window_days": 365,
+        "fastest_min_timed": 3,
+        # 다음 말보다 이만큼(0.1초) 이상 빨라야 — 0.1초 차 같은 근소한 차이는 소식으로 내지 않는다
+        "fastest_min_gap_tenths": 3,
+        # 같은 경마장·거리 — min_starts 번 이상 뛰고 3착 이내 비율 min_top3_pct% 이상
+        "course_min_starts": 3,
+        "course_min_top3_pct": 60,
+        # 기수와 말 — 오늘 기수와 min_starts 번 이상, 3착 이내 min_top3 번 이상이면서
+        # 그 비율이 min_top3_pct% 이상
+        "pair_min_starts": 2,
+        "pair_min_top3": 2,
+        "pair_min_top3_pct": 50,
+        # 착순 흐름 — 최근 n 전 착순이 매번 좋아지고, 마지막이 last_rank_max 착 이내
+        "trend_n": 3,
+        "trend_last_rank_max": 3,
+        # 경주 단위 — 데뷔전 min 두 이상 · 첫 거리 출전이 min 두 이상이면서 출전마의 절반 이상
+        "race_debut_min": 2,
+        "race_first_distance_min": 3,
+        "badge_priority": [
+            "jockey_change",
+            "fastest_record",
+            "pair_record",
+            "course_record",
+            "rank_trend",
+            "class_change",
+            "layoff",
+            "debut",
+            "no_record",
+            "win_streak",
+            "last_win",
+            "rating_change",
+            "rating_high",
+            "trainer_change",
+            "first_pair",
+            "distance_change",
+            "distance_first",
+            "budam_change",
+            "meet_move",
+            "quick_return",
+        ],
+        # 경주마다 이 순서로 서로 다른 종류를 최대 headline_per_race 개
+        "headline_priority": [
+            "jockey_change",
+            "fastest_record",
+            "pair_record",
+            "course_record",
+            "rank_trend",
+            "race_debut",
+            "race_first_distance",
+            "layoff",
+            "win_streak",
+        ],
+    }
+)
+_R2_PARAMS["wording"].update(
+    {
+        "news_fastest_record": (
+            "최근 1년 {distance}m 최고기록 {time} · 출전마 중 가장 빠름 (다음 {next})"
+        ),
+        "news_pair_record": "{jockey} 기수와 {s}전 · 1착 {w}번 · 3착 이내 {t}번",
+        "news_course_record": "{meet} {distance}m {s}전 중 3착 이내 {t}번 (1착 {w}번)",
+        "news_rank_trend": "최근 {k}전 착순 {seq}",
+        "headline_race_debut": "출전마 {n}두 중 데뷔전 {k}두",
+        "headline_race_first_distance": "출전마 {n}두 중 {k}두가 {distance}m 첫 출전",
+    }
+)
+
 _R1_E2E_PARAMS: dict[str, Any] = copy.deepcopy(_R1_PARAMS)
 # 가짜 세계는 경주당 3두 → 경주 단위 하한을 3 으로. 과거 결과가 없으므로 마스터 기반 가드는 끈다
 # (가드 자체는 단위 테스트로 검증).
@@ -226,6 +317,12 @@ RULE_SETS: dict[str, RuleSetDef] = {
         backtest_extra_rules=("course",),
         params=_R1_PARAMS,
     ),
+    "r2": RuleSetDef(
+        version="r2",
+        rules=("rating", "form", "jockey", "trainer"),
+        backtest_extra_rules=("course",),
+        params=_R2_PARAMS,
+    ),
     "r1-e2e": RuleSetDef(
         version="r1-e2e",
         rules=("rating", "form", "jockey", "trainer"),
@@ -235,7 +332,7 @@ RULE_SETS: dict[str, RuleSetDef] = {
 }
 
 #: 발행에 쓰는 버전. 호출 시점에 `definitions.ACTIVE` 로 읽을 것(모듈 import 시 캡처 금지).
-ACTIVE = "r1"
+ACTIVE = "r2"
 
 # 화면 라벨 (웹 RULE_LABEL 과 같아야 함 — vitest 가 대조)
 RULE_LABELS: dict[str, str] = {
