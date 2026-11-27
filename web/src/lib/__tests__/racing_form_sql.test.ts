@@ -55,13 +55,14 @@ beforeEach(() => {
 });
 
 describe("SQL 상수 — e2e 가 글자 그대로 복사해 실행할 수 있는 형태", () => {
-  it("상수 19개", () => {
+  it("상수 20개", () => {
     expect(SQL_CONSTANTS.map(([k]) => k).sort()).toEqual(
       [
         "CURRENT_JOCKEYS_SQL",
         "EDITION_FRONT_SQL",
         "EDITION_HEAD_SQL",
         "EDITION_INDEX_SQL",
+        "EDITION_LIST_SQL",
         "EDITION_MEETS_SQL",
         "EDITION_TALLY_PICKS_SQL",
         "EDITION_TALLY_RACES_SQL",

@@ -284,6 +284,8 @@ export type CurrentJockeyRow = {
   chul_no: number | null;
   jockey_name: string | null;
   reason: string | null;
+  /** 기수변경 행을 마지막으로 수집한 시각 (KST ISO). 기수변경이 없으면 null */
+  changed_at?: string | null;
 };
 
 export type FormNoticeKind = "missed" | "erratum" | "withdrawn" | "result_changed" | "paused";
@@ -1646,6 +1648,8 @@ export type JockeyDiff = {
   after: string;
   /** 지금 기수변경 행의 사유 */
   reason: string | null;
+  /** 그 기수변경을 수집한 시각 (KST ISO) — "최종 업데이트" 에 쓴다. 모르면 없음 */
+  changed_at?: string;
 };
 
 function normName(v: string | null | undefined): string | null {
@@ -1719,6 +1723,7 @@ export function diffJockeys(
       before,
       after,
       reason: normName(c.reason),
+      ...(c.changed_at ? { changed_at: c.changed_at } : {}),
     });
   }
   return out.sort((a, b) => a.race_no - b.race_no || a.chul_no - b.chul_no);
@@ -2027,6 +2032,82 @@ export function settlementLine(args: {
     (marks ? ` / ${MARK_TEXT[1]} ${marks}` : "") +
     (provisional ? ` (${provisional})` : "");
   return { head, consensus, marks, provisional, text };
+}
+
+// ============================================================================
+// 12-1. "경마지 선택" 팝업 — 호 번호로 묶고, 그 안에서 날짜별로
+// ============================================================================
+
+export type EditionPickerItem = {
+  href: string;
+  /** "YYYY-MM-DD" */
+  date: string;
+  /** "11월 27일(금) 제주" */
+  label: string;
+};
+
+export type EditionPickerGroup = {
+  /** "i3" (제3호) · "planned" (발행 예정) */
+  key: string;
+  /** "제3호" · "발행 예정" */
+  label: string;
+  /** 경주일 → 경마장 순 */
+  items: EditionPickerItem[];
+};
+
+/**
+ * 발행본(경주일·경마장·호 번호)을 호 번호로 묶는다 — 호 번호는 경마장마다 따로 매기므로 "제1호" 에는
+ * 서울·제주·부경의 제1호가 함께 들어간다. 호 번호 오름차순, 아직 발행 전인 호는 맨 뒤 "발행 예정".
+ */
+export function editionPickerGroups(
+  editions: readonly { race_date: string; meet: string; issue_no: number }[],
+  planned: readonly { race_date: string; meet: string }[],
+): EditionPickerGroup[] {
+  const order = (a: { race_date: string; meet: string }, b: { race_date: string; meet: string }) =>
+    a.race_date < b.race_date ? -1 : a.race_date > b.race_date ? 1 : meetOrder(a.meet) - meetOrder(b.meet);
+  const item = (e: { race_date: string; meet: string }): EditionPickerItem => ({
+    href: formEditionPath(e.race_date, e.meet),
+    date: e.race_date,
+    label: `${dateKo(e.race_date)} ${e.meet}`,
+  });
+  const byIssue = new Map<number, { race_date: string; meet: string }[]>();
+  for (const e of editions) {
+    if (slugFromMeet(e.meet) === null) continue;
+    byIssue.set(e.issue_no, [...(byIssue.get(e.issue_no) ?? []), e]);
+  }
+  const groups: EditionPickerGroup[] = [...byIssue.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([no, list]) => ({ key: `i${no}`, label: issueLabel(no), items: [...list].sort(order).map(item) }));
+  const published = new Set(editions.map((e) => `${e.race_date}|${e.meet}`));
+  const upcoming = planned.filter(
+    (p) => slugFromMeet(p.meet) !== null && !published.has(`${p.race_date}|${p.meet}`),
+  );
+  if (upcoming.length > 0) {
+    groups.push({ key: "planned", label: "발행 예정", items: [...upcoming].sort(order).map(item) });
+  }
+  return groups;
+}
+
+// ============================================================================
+// 13-0. 발행 후 마지막 수정 시각 (1면 머리 "최종 업데이트")
+// ============================================================================
+
+/**
+ * 발행 후 덧붙은 것(정정·철회·결과 변경 공지, 발행 후 기수 변경) 가운데 가장 늦은 시각 (KST ISO).
+ * 덧붙은 것이 없으면 null — 머리에 "최종 업데이트" 줄을 그리지 않는다. 발행본 자체는 고치지 않는다.
+ */
+export function lastUpdatedAt(args: {
+  notices: readonly Pick<FormNotice, "kind" | "noticed_at">[];
+  jockeyDiffs: readonly Pick<JockeyDiff, "changed_at">[];
+}): string | null {
+  const times = [
+    ...args.notices
+      .filter((n) => n.kind === "erratum" || n.kind === "withdrawn" || n.kind === "result_changed")
+      .map((n) => n.noticed_at),
+    ...args.jockeyDiffs.flatMap((d) => (d.changed_at ? [d.changed_at] : [])),
+  ];
+  if (times.length === 0) return null;
+  return times.reduce((a, b) => (toMs(a) >= toMs(b) ? a : b));
 }
 
 // ============================================================================
