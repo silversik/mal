@@ -21,15 +21,13 @@ export default async function FormEditionLayout({
   children: ReactNode;
   params: Promise<{ date: string; meet: string }>;
 }) {
-  const p = parseEditionParams(await params);
-  if (!p) notFound();
-  // 지면(종이 한 장) — 1면(요약)과 경주면(라운드)이 같은 제호 아래 놓인다. 모바일은 화면 폭을 다 쓴다.
-  // 아래 여백은 하단에 떠 있는 지면 넘기기 막대(EditionPager) 자리.
+  if (!parseEditionParams(await params)) notFound();
+  // 지면(종이 한 장) — 1면(요약)과 경주면(라운드)이 같은 틀 안에 놓인다. 모바일은 화면 폭을 다 쓴다.
+  // 위 여백은 지면 바깥 오른쪽 위의 "다른 경마지" 드롭다운(PaperSwitcher) 자리,
+  // 아래 여백은 하단에 떠 있는 지면 넘기기 막대(EditionPager) 자리. 제호는 페이지가 얹는다.
   return (
-    <PageContainer className="theme-v2 px-0 pt-4 pb-28 md:px-6 md:pt-8 md:pb-32">
-      <PaperSheet date={p.date} meet={p.meet}>
-        {children}
-      </PaperSheet>
+    <PageContainer className="theme-v2 px-0 pt-16 pb-28 md:px-6 md:pt-20 md:pb-32">
+      <PaperSheet>{children}</PaperSheet>
     </PageContainer>
   );
 }

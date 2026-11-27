@@ -1,6 +1,9 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// EditionSwitcher 의 useRouter — 앱 라우터 밖(정적 렌더)에서는 던지므로 빈 라우터로 바꾼다.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
 
 import type {
   EditionHead,
@@ -36,8 +39,8 @@ import { buildHistory } from "../publication-history";
 import { buildRaceRows, RaceList } from "../race-list";
 import { FormNum } from "../form-num";
 import { EditionPager } from "../edition-pager";
-import { MeetTabs } from "../meet-tabs";
-import { paperDateKo, PaperSheet } from "../paper-sheet";
+import { EditionSwitcher } from "../edition-switcher";
+import { PaperMasthead, PaperSheet, paperTitleKo } from "../paper-sheet";
 import { StatusBlock } from "../status-block";
 
 describe("format — payload 정수 → 표기 (계산 없음)", () => {
@@ -294,17 +297,6 @@ describe("1면 단순화 (2026-11-27) — 탭 · 색 없는 출전번호 · 주�
     expect(h).not.toContain("style=");
   });
 
-  it("MeetTabs — 버튼(채운 칩)이 아니라 밑줄 탭, 지금 경마장은 링크가 아님", () => {
-    const h = html(
-      createElement(MeetTabs, { date: "2026-11-27", meets: ["제주", "부경"], current: "부경" }),
-    );
-    expect(h).toContain('aria-label="같은 날 경마장"');
-    expect(h).toMatch(/<span aria-current="page"[^>]*border-brown[^>]*>부경<\/span>/);
-    expect(h).toContain('href="/form/2026-11-27/jeju"');
-    expect(h.match(/<a /g)?.length).toBe(1);
-    expect(h).not.toContain("bg-primary");
-  });
-
   it("StatusBlock — 발행 후 바뀐 것이 없으면 아무것도 그리지 않는다", () => {
     expect(html(createElement(StatusBlock, { settlement: null, next: null, changes: [] }))).toBe("");
     expect(html(createElement(StatusBlock, { settlement: null, next: null, changes: null }))).toBe("");
@@ -385,41 +377,64 @@ describe("1면 단순화 (2026-11-27) — 탭 · 색 없는 출전번호 · 주�
 });
 
 describe("지면 — 호 한 부를 종이 한 장에, 요약 → 라운드로 넘긴다 (2026-11-27)", () => {
-  it("paperDateKo — 연·월·일·요일 (날짜 문자열 기준)", () => {
-    expect(paperDateKo("2026-11-27")).toBe("2026년 11월 27일 금요일");
-    expect(paperDateKo("2026-11-29")).toBe("2026년 11월 29일 일요일");
-    expect(paperDateKo("2027-01-01")).toBe("2027년 1월 1일 금요일");
+  it("paperTitleKo — 경마장 · 날짜 · 호 · '경마지' (발행 전이면 호 없이)", () => {
+    expect(paperTitleKo("2026-11-28", "서울", 1)).toBe("서울 11월 28일(토) 제1호 경마지");
+    expect(paperTitleKo("2026-11-27", "부경", 12)).toBe("부경 11월 27일(금) 제12호 경마지");
+    expect(paperTitleKo("2026-11-29", "서울", null)).toBe("서울 11월 29일(일) 경마지");
   });
 
-  it("PaperSheet — 제호(허브 링크) · 이중 괘선의 날짜·경마장 줄 · 본문", () => {
-    const h = renderToStaticMarkup(
-      createElement(
-        PaperSheet,
-        { date: "2026-11-27", meet: "부경" } as Parameters<typeof PaperSheet>[0],
-        "본문",
-      ),
+  it("PaperSheet 는 틀만 — 제호는 PaperMasthead (1면 h1 · 경주면은 요약 장 링크)", () => {
+    const sheet = renderToStaticMarkup(
+      createElement(PaperSheet, {} as Parameters<typeof PaperSheet>[0], "본문"),
     );
-    expect(h).toMatch(/<a[^>]*href="\/form"[^>]*>mal\.kr 경마지<\/a>/);
-    expect(h).toContain("2026년 11월 27일 금요일");
-    expect(h).toContain(">부경<");
-    expect(h).toContain("border-double");
-    expect(h).toContain("본문");
-    // 제호는 제목(h1)이 아니다 — 페이지 h1 은 본문에 하나
-    expect(h).not.toContain("<h1");
-    // 텍스처·그라디언트 없이 토큰 색만
-    expect(h).not.toMatch(/gradient|style=/);
+    expect(sheet).toContain("본문");
+    expect(sheet).toContain("relative"); // 바깥 드롭다운의 기준
+    expect(sheet).not.toMatch(/<h1|mal\.kr|gradient|style=/);
+
+    const title = "서울 11월 28일(토) 제1호 경마지";
+    const front = renderToStaticMarkup(createElement(PaperMasthead, { title }));
+    expect(front).toMatch(/<h1[^>]*>서울 11월 28일\(토\) 제1호 경마지<\/h1>/);
+    expect(front).toContain("border-double");
+    expect(front).not.toContain("<a ");
+    const race = renderToStaticMarkup(
+      createElement(PaperMasthead, { title, as: "p", href: "/form/2026-11-28/seoul" }),
+    );
+    expect(race).not.toContain("<h1");
+    expect(race).toMatch(/<a[^>]*href="\/form\/2026-11-28\/seoul"[^>]*>서울 11월 28일\(토\) 제1호 경마지<\/a>/);
+  });
+
+  it("EditionSwitcher — '다른 경마지' 드롭다운: 같은 주의 호 + 전체 보기, 지금 호가 선택됨", () => {
+    const options = [
+      { href: "/form/2026-11-27/busan", label: "11월 27일(금) 부경 · 제1호" },
+      { href: "/form/2026-11-28/seoul", label: "11월 28일(토) 서울 · 제1호" },
+      { href: "/form/2026-11-29/seoul", label: "11월 29일(일) 서울 · 발행 예정" },
+    ];
+    const h = renderToStaticMarkup(
+      createElement(EditionSwitcher, { options, current: "/form/2026-11-28/seoul", hubHref: "/form" }),
+    );
+    expect(h).toContain("다른 경마지");
+    expect(h.match(/<option/g)?.length).toBe(4);
+    expect(h).toMatch(/<option value="\/form\/2026-11-28\/seoul" selected="">/);
+    expect(h).toContain('<option value="/form">경마지 전체 보기</option>');
+    expect(h).toContain("min-h-[max(44px,2.75rem)]");
+    // 목록에 없는 호(지난 주 등)에서 열면 "이 경마지" 를 맨 위에
+    const other = renderToStaticMarkup(
+      createElement(EditionSwitcher, { options, current: "/form/2026-11-20/jeju", hubHref: "/form" }),
+    );
+    expect(other).toMatch(/<option value="\/form\/2026-11-20\/jeju" selected="">이 경마지<\/option>/);
   });
 
   const rounds = [1, 2, 3].map((n) => ({ raceNo: n, href: `/form/2026-11-27/busan/${n}` }));
   const pager = (current: "summary" | number) =>
     renderToStaticMarkup(
-      createElement(EditionPager, { meet: "부경", summaryHref: "/form/2026-11-27/busan", rounds, current }),
+      createElement(EditionPager, { summaryHref: "/form/2026-11-27/busan", rounds, current }),
     );
 
   it("EditionPager — 첫 장은 요약: 앞 장 없음, 다음 장은 1R", () => {
     const h = pager("summary");
     expect(h).toContain('aria-label="지면 넘기기"');
-    expect(h).toContain(">부경<");
+    // 경마장은 제호에 있다 — 막대에는 싣지 않는다
+    expect(h).not.toContain("부경");
     expect(h).toMatch(/<span aria-current="page"[^>]*>요약<\/span>/);
     expect(h).not.toContain('aria-label="앞 장');
     expect(h).toContain('aria-label="다음 장 — 1R" class=');

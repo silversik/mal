@@ -9,6 +9,8 @@ import { ErrataList, WithdrawnBanner } from "@/components/racing-form/edition-no
 import { FormSection } from "@/components/racing-form/form-section";
 import { PickLegend } from "@/components/racing-form/legend";
 import { OpenOnHash } from "@/components/racing-form/open-on-hash";
+import { PaperMasthead, paperTitleKo } from "@/components/racing-form/paper-sheet";
+import { PaperSwitcher } from "@/components/racing-form/paper-switcher";
 import { RaceHeader } from "@/components/racing-form/race-header";
 import { ResultRow } from "@/components/racing-form/result-row";
 import { RuleList } from "@/components/racing-form/rule-list";
@@ -31,7 +33,7 @@ import {
 } from "@/lib/racing_form-shared";
 import { getRacesByDate } from "@/lib/races";
 
-import { loadRace, parseRaceParams } from "../../../_lib/load";
+import { loadRace, loadWeekEditionOptions, parseRaceParams } from "../../../_lib/load";
 
 // 요청 시점에만 DB 를 친다 (빌드의 placeholder DATABASE_URL 로 프리렌더하지 않게).
 export const dynamic = "force-dynamic";
@@ -83,6 +85,15 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
   // 발행본이 없는 호(발행 예정·미발행·쉼)에는 경주면이 없다 — 1면이 상태를 안내한다.
   if (s.notFound || (s.state !== "published" && s.state !== "withdrawn") || !ed.head) notFound();
   const head = ed.head;
+  const weekOptions = await loadWeekEditionOptions(p.date);
+  // 제호 — 경주면에서는 요약 장(1면)으로 가는 링크 (페이지 h1 은 아래 "3R …")
+  const masthead = (
+    <PaperMasthead
+      as="p"
+      title={paperTitleKo(p.date, p.meet, head.issue_no)}
+      href={formEditionPath(p.date, p.meet)}
+    />
+  );
 
   const crumbs = [
     { name: "홈", url: "/" },
@@ -96,6 +107,8 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
     return (
       <div className="break-keep space-y-6">
         <BreadcrumbJsonLd items={crumbs} />
+        <PaperSwitcher date={p.date} meet={p.meet} options={weekOptions} />
+        {masthead}
         <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
           {raceTitle(p.date, p.meet, p.raceNo)}
         </h1>
@@ -139,21 +152,16 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
     <div className="break-keep space-y-6">
       <BreadcrumbJsonLd items={crumbs} />
       <OpenOnHash />
+      <PaperSwitcher date={p.date} meet={p.meet} options={weekOptions} />
       <EditionPager
-        meet={p.meet}
         summaryHref={formEditionPath(p.date, p.meet)}
         current={race.race_no}
         rounds={[...raceNos]
           .sort((a, b) => a - b)
           .map((n) => ({ raceNo: n, href: formRacePath(p.date, p.meet, n) }))}
       />
-      <RaceHeader
-        date={p.date}
-        meet={p.meet}
-        issueNo={head.issue_no}
-        race={race}
-        startTime={startTime}
-      />
+      {masthead}
+      <RaceHeader date={p.date} meet={p.meet} race={race} startTime={startTime} />
       <BetaNotice date={p.date} />
 
       {s.state === "withdrawn" ? (
