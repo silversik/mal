@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { SexBullet } from "@/components/race-detail-ui";
+import { GateNum, SexBullet } from "@/components/race-detail-ui";
 import { RecentFormStrip } from "@/components/recent-form-strip";
 import {
   runnerAnchorId,
@@ -9,7 +9,6 @@ import {
 } from "@/lib/racing_form-shared";
 import { cn } from "@/lib/utils";
 
-import { FormNum } from "./form-num";
 import { MarksReceived } from "./consensus-box";
 import { FocusLabel } from "./focus-label";
 import { deltaClass, deltaText, kgText, rankText, shortDate, TAP, timeText } from "./format";
@@ -113,10 +112,23 @@ function courseText(r: RunnerV1): string {
   return `${c.meet} ${c.distance}m ${c.starts}전 · 1착 ${c.wins}번 · 3착 이내 ${c.top3}번`;
 }
 
+/** 접힌 상태의 둘째 줄 — "서승운 (교체) · 레이팅 62" (한 줄에 최근 5전 칩과 함께 들어가게 짧게) */
+function briefText(r: RunnerV1): string {
+  return [
+    r.jockey_name ? `${r.jockey_name}${shownJockeyChange(r) ? " (교체)" : ""}` : null,
+    r.rating !== null ? `레이팅 ${r.rating}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 /**
  * 출전마 카드 (계획 4.6-6) — **payload 에서만** 읽는다 (경주 시점 고정, as-of). 출전번호 순으로 부모가 나열.
- * 받은 기호 · 레이팅(▲▼+색) · 부담 · 기수·조교사(+교체) · 최근 5전 숫자 칩(왼쪽 = 과거) ·
- * "28일 만 (직전 10월 18일 2착)" · 같은 경마장·거리 전적 · 최고기록과 주로 상태 · 배지 3 + <details> · 지난 5경주.
+ *
+ * 접히는 아코디언(<details>, DESIGN.md Decisions Log 2026-11-27): 접힌 상태는 두 줄 —
+ * 마번(게이트 색)·마명·성별/나이·"주목", 그리고 기수·레이팅·최근 5전. 누르면 펼쳐져
+ * 받은 기호 · 레이팅 증감 · 부담 · 기수·조교사(+교체) · 간격 · 같은 거리 전적 · 최고기록 · 통산 · 배지 · 지난 5경주.
+ * #chul-n 앵커로 들어오면 OpenOnHash 가 그 카드를 펼친다.
  */
 export function RunnerCard({
   runner,
@@ -131,37 +143,66 @@ export function RunnerCard({
   const id = runnerAnchorId(runner.chul_no);
   const hasMarks = Object.keys(runner.marks).length > 0;
   const recent = [...runner.last5].reverse();
+  const brief = briefText(runner);
   return (
-    <article
+    <details
       id={id}
       aria-labelledby={`${id}-name`}
-      className="scroll-mt-20 space-y-3 rounded-xl border border-border bg-card px-4 py-3"
+      className="group/runner scroll-mt-20 rounded-xl border border-border bg-card"
     >
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span aria-hidden="true">
-          <FormNum n={runner.chul_no} />
-        </span>
-        <h3 id={`${id}-name`} className="text-lg font-bold text-foreground">
-          <span className="sr-only">{runner.chul_no}번 </span>
-          {runner.horse_name}
-        </h3>
-        {runner.sex || runner.age ? (
-          <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-            <SexBullet sex={runner.sex} />
-            {runner.age ? <span>{String(runner.age).replace(/세$/, "")}세</span> : null}
+      <summary
+        className={cn(
+          SUMMARY_RESET,
+          "grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 rounded-xl px-4 py-2.5 transition-colors hover:bg-muted",
+          TAP,
+        )}
+      >
+        <span className="min-w-0 space-y-1">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span aria-hidden="true">
+              <GateNum n={runner.chul_no} size={22} />
+            </span>
+            <h3 id={`${id}-name`} className="text-lg font-bold text-foreground">
+              <span className="sr-only">{runner.chul_no}번 </span>
+              {runner.horse_name}
+            </h3>
+            {runner.sex || runner.age ? (
+              <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                <SexBullet sex={runner.sex} />
+                {runner.age ? <span>{String(runner.age).replace(/세$/, "")}세</span> : null}
+              </span>
+            ) : null}
+            {!hidePicks && strong ? <FocusLabel /> : null}
           </span>
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+            {brief ? <NumText text={brief} /> : null}
+            {runner.last5.length > 0 ? (
+              <RecentFormStrip finishes={runner.last5.map((s) => s.rank)} size="sm" />
+            ) : (
+              <span>첫 출전</span>
+            )}
+          </span>
+        </span>
+        <span
+          aria-hidden="true"
+          className="text-lg text-muted-foreground transition-transform group-open/runner:rotate-90"
+        >
+          ›
+        </span>
+      </summary>
+
+      <div className="space-y-3 border-t border-border px-4 py-3">
+        {!hidePicks ? (
+          <p className="text-base text-foreground">
+            <span className="text-sm text-muted-foreground">받은 기호 </span>
+            {hasMarks ? (
+              <MarksReceived marks={runner.marks} />
+            ) : (
+              <span className="text-muted-foreground">없음</span>
+            )}
+          </p>
         ) : null}
-        {!hidePicks && strong ? <FocusLabel /> : null}
-      </header>
-
-      {!hidePicks ? (
-        <p className="text-base text-foreground">
-          <span className="text-sm text-muted-foreground">받은 기호 </span>
-          {hasMarks ? <MarksReceived marks={runner.marks} /> : <span className="text-muted-foreground">없음</span>}
-        </p>
-      ) : null}
-
-      <dl className="grid grid-cols-1 gap-x-6 gap-y-1.5 md:grid-cols-2">
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-1.5 md:grid-cols-2">
         <Fact label="레이팅">
           <RatingValue rating={runner.rating} prev={runner.rating_prev} />
         </Fact>
@@ -249,6 +290,7 @@ export function RunnerCard({
           <p className="pb-1 pt-1 text-small text-muted-foreground">최근 순 · 발행 때 반영한 기록까지</p>
         </details>
       ) : null}
-    </article>
+      </div>
+    </details>
   );
 }

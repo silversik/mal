@@ -1,6 +1,6 @@
+import { GateNum } from "@/components/race-detail-ui";
 import type { JockeyDiff } from "@/lib/racing_form-shared";
 
-import { FormNum } from "./form-num";
 import { changeText, JOCKEY_CHANGE_SOURCE_NOTE } from "./status-block";
 
 /**
@@ -36,7 +36,7 @@ export function ChangesBox({
           >
             <span aria-hidden="true">※</span>
             <span>발행 후 기수 변경</span>
-            <FormNum n={d.chul_no} />
+            <GateNum n={d.chul_no} size={22} />
             <span className="sr-only">번</span>
             <span className="font-semibold">{horseName(d.horse_no)}</span>
             <span>{changeText(d)}</span>

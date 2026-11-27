@@ -8,7 +8,9 @@ import { ConsensusBox } from "@/components/racing-form/consensus-box";
 import { ErrataList, WithdrawnBanner } from "@/components/racing-form/edition-notices";
 import { FormSection } from "@/components/racing-form/form-section";
 import { PickLegend } from "@/components/racing-form/legend";
-import { RaceHeader, RaceNav } from "@/components/racing-form/race-header";
+import { OpenOnHash } from "@/components/racing-form/open-on-hash";
+import { RaceHeader } from "@/components/racing-form/race-header";
+import { RaceRoundsBar } from "@/components/racing-form/race-rounds-bar";
 import { ResultRow } from "@/components/racing-form/result-row";
 import { RuleList } from "@/components/racing-form/rule-list";
 import { RunnerCard } from "@/components/racing-form/runner-card";
@@ -135,15 +137,23 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
   );
 
   return (
-    <PageContainer className="theme-v2 break-keep space-y-6 py-6 md:py-8">
+    <PageContainer className="theme-v2 break-keep space-y-6 pt-6 pb-24 md:pt-8 md:pb-28">
       <BreadcrumbJsonLd items={crumbs} />
+      <OpenOnHash />
+      <RaceRoundsBar
+        meet={p.meet}
+        editionHref={formEditionPath(p.date, p.meet)}
+        current={race.race_no}
+        rounds={[...raceNos]
+          .sort((a, b) => a - b)
+          .map((n) => ({ raceNo: n, href: formRacePath(p.date, p.meet, n) }))}
+      />
       <RaceHeader
         date={p.date}
         meet={p.meet}
         issueNo={head.issue_no}
         race={race}
         startTime={startTime}
-        raceNos={raceNos}
       />
       <BetaNotice date={p.date} />
 
@@ -193,7 +203,6 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
         </div>
       </FormSection>
 
-      <RaceNav date={p.date} meet={p.meet} raceNo={race.race_no} raceNos={raceNos} />
       <ResponsibleGamblingNotice variant="compact" />
     </PageContainer>
   );

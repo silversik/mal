@@ -1,3 +1,4 @@
+import { GateNum } from "@/components/race-detail-ui";
 import { RankBadge } from "@/components/rank-badge";
 import {
   finalizeAt,
@@ -7,7 +8,6 @@ import {
   type RunnerV1,
 } from "@/lib/racing_form-shared";
 
-import { FormNum } from "./form-num";
 import { timeText } from "./format";
 
 function nameOf(runners: readonly Pick<RunnerV1, "horse_no" | "horse_name">[], horseNo: string): string {
@@ -94,7 +94,7 @@ export function ResultRow({
                     <span className="text-sm text-muted-foreground">착</span>
                     {chul !== null ? (
                       <>
-                        <FormNum n={chul} />
+                        <GateNum n={chul} size={22} />
                         <span className="sr-only">번</span>
                       </>
                     ) : null}

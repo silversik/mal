@@ -1,3 +1,4 @@
+import { GateNum } from "@/components/race-detail-ui";
 import {
   RULE_LABEL,
   recordRows,
@@ -9,7 +10,6 @@ import {
 } from "@/lib/racing_form-shared";
 import { cn } from "@/lib/utils";
 
-import { FormNum } from "./form-num";
 import { TAP } from "./format";
 import { PickMark } from "./pick-mark";
 
@@ -102,7 +102,7 @@ export function RuleList({
                         )}
                       >
                         <PickMark mark={p.mark} className="text-lg" />
-                        <FormNum n={p.chul_no} />
+                        <GateNum n={p.chul_no} size={22} />
                         <span className="min-w-0">
                           <span className="sr-only">번 </span>
                           <span className="block text-base font-semibold text-foreground">
