@@ -170,6 +170,7 @@ function race(no: number, over: Partial<FrontRaceV1> = {}): FrontRaceV1 {
     start_time: "11:00",
     field_size: 10,
     status: "ok",
+    rules: [],
     stakes: null,
     consensus: { status: "split", active_rules: 4, min_votes: 3, picks: [] },
     ...over,
@@ -183,6 +184,27 @@ describe("buildRaceRows — 1면 경주 한 줄", () => {
   ];
   const races = [
     race(1, {
+      rules: [
+        {
+          key: "trainer",
+          status: "picked",
+          picks: [
+            { mark: 1, horse_no: "H9", chul_no: 9, reason: "조교사 최근 90일 40전 8승" },
+            { mark: 2, horse_no: "H1", chul_no: 3, reason: "조교사 최근 90일 30전 5승" },
+          ],
+        },
+        {
+          key: "rating",
+          status: "picked",
+          picks: [{ mark: 1, horse_no: "H1", chul_no: 3, reason: "레이팅 62 (출전마 중 1위)" }],
+        },
+        { key: "form", status: "no_pick", reason_code: "few_starts", reason: "최근 성적 부족" },
+        {
+          key: "jockey",
+          status: "picked",
+          picks: [{ mark: 3, horse_no: "H1", chul_no: 3, reason: "기수 최근 90일 18전 4승" }],
+        },
+      ],
       consensus: {
         status: "picked",
         active_rules: 4,
@@ -229,17 +251,23 @@ describe("buildRaceRows — 1면 경주 한 줄", () => {
       "/form/2026-11-14/busan/3",
       "/form/2026-11-14/busan/4",
     ]);
-    // 1R — 기준 4개 중 3개: 뱃지 없음(strong=false). 고른 기준은 고정 순서(RULE_ORDER)·글자("1순위")
+    // 1R — 기준 4개 중 3개: 별 없음(strong=false). 고른 기준은 줄이지 않고 전부 —
+    // 고정 순서(RULE_ORDER)·글자("1순위")·기준마다 근거 한 줄. 고르지 않은 기준(최근 성적)은 싣지 않는다
     expect(rows[0].picks).toHaveLength(2);
     expect(rows[0].picks[0]).toEqual({
       chulNo: 3,
       horseName: "솔빛물결",
       strong: false,
-      marks: ["레이팅 1순위", "기수 3순위", "조교사 2순위"],
-      reasons: ["레이팅 62 (출전마 중 1위)", "기수 최근 90일 18전 4승"],
-      reasonsMore: 1,
+      criteria: [
+        { rule: "레이팅", mark: "1순위", reason: "레이팅 62 (출전마 중 1위)" },
+        { rule: "기수", mark: "3순위", reason: "기수 최근 90일 18전 4승" },
+        { rule: "조교사", mark: "2순위", reason: "조교사 최근 90일 30전 5승" },
+      ],
       result: null,
     });
+    expect(rows[0].picks[1].criteria).toEqual([
+      { rule: "조교사", mark: "1순위", reason: "조교사 최근 90일 40전 8승" },
+    ]);
     expect(rows[0].picks[1]).toMatchObject({ chulNo: 9, horseName: "H9", strong: false });
     // 2R — 기준 3개가 모두 고름: "주목" 뱃지
     expect(rows[1].picks).toHaveLength(1);
@@ -330,14 +358,12 @@ describe("1면 단순화 (2026-11-27) — 탭 · 색 없는 출전번호 · 주�
     expect(one).toContain("갑→을");
   });
 
-  it("RaceList — 라운드 + 주목마 버튼(전부), '주목' 뱃지는 모두 고른 말만 버튼 안에, 없으면 빈 행", () => {
+  it("RaceList — 라운드 + 주목마 버튼(전부), 별(주목)은 모두 고른 말만 버튼 안에, 없으면 빈 행", () => {
     const pick = (chulNo: number, horseName: string, strong: boolean) => ({
       chulNo,
       horseName,
       strong,
-      marks: ["레이팅 1순위"],
-      reasons: [],
-      reasonsMore: 0,
+      criteria: [{ rule: "레이팅", mark: "1순위", reason: "레이팅 62" }],
       result: null,
     });
     const h = html(
@@ -361,16 +387,19 @@ describe("1면 단순화 (2026-11-27) — 탭 · 색 없는 출전번호 · 주�
     expect(rows[0]).toContain("1R");
     expect(rows[0]).not.toContain("<button");
     expect(rows[0]).not.toMatch(/주목마 없음|혼전|예상 안 함/);
-    // 4R — 버튼 하나, "주목" 뱃지는 버튼 안에. 마번은 테두리 없이
+    // 4R — 버튼 하나, "주목" 은 별 아이콘으로 버튼 안에. 마번은 테두리 없이
     expect(rows[1].match(/<button/g)?.length).toBe(1);
-    expect(rows[1]).toMatch(/<button[^>]*aria-haspopup="dialog"[^>]*>.*매직트리.*>주목<\/span><\/button>/);
+    expect(rows[1]).toMatch(
+      /<button[^>]*aria-haspopup="dialog"[^>]*>.*매직트리.*<svg role="img" aria-label="주목"[^>]*>.*<\/svg><\/button>/,
+    );
+    expect(rows[1]).not.toContain(">주목<"); // 글자 뱃지는 없다
     expect(rows[1]).toMatch(/<button[^>]*><span class="[^"]*font-mono[^"]*">3<\/span>/);
     expect(rows[1]).not.toMatch(/<button[^>]*><span class="[^"]*border-border/);
     // 5R — 주목마 2두 모두 버튼 (뱃지 없음), "외 n두" 로 줄이지 않는다
     expect(rows[2].match(/<button/g)?.length).toBe(2);
     expect(rows[2]).toContain("판타스틱밸류");
     expect(rows[2]).toContain("라온포레스트");
-    expect(rows[2]).not.toContain(">주목<");
+    expect(rows[2]).not.toContain('aria-label="주목"');
     expect(rows[2]).not.toMatch(/외 \d+두/);
     // 버튼은 보이는 높이를 줄이되(36px) 누르는 영역은 ::before 로 넓힌다
     expect(rows[2]).toContain("min-h-9");

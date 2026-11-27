@@ -50,23 +50,21 @@ function PickDetail({ pick }: { pick: RacePickView }) {
           </span>
         ) : null}
       </div>
-      {pick.marks.length > 0 ? (
-        <p className="text-sm leading-relaxed text-foreground">
-          <span className="text-muted-foreground">고른 기준 </span>
-          {pick.marks.join(" · ")}
-        </p>
-      ) : null}
-      {pick.reasons.length > 0 ? (
-        <ul className="space-y-0.5 text-sm text-foreground">
-          {pick.reasons.map((r) => (
-            <li key={r} className="leading-relaxed">
-              · {r}
-            </li>
-          ))}
-          {pick.reasonsMore > 0 ? (
-            <li className="text-muted-foreground">외 {pick.reasonsMore}</li>
-          ) : null}
-        </ul>
+      {pick.criteria.length > 0 ? (
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">
+            고른 기준 <span className="font-mono tabular-nums">{pick.criteria.length}</span>개
+          </p>
+          <ul className="divide-y divide-border border-y border-border">
+            {pick.criteria.map((c) => (
+              <li key={c.rule} className="py-1.5 text-sm leading-relaxed text-foreground">
+                <span className="font-semibold">{c.rule}</span>{" "}
+                <span className="font-semibold">{c.mark}</span>
+                <span className="block text-muted-foreground">{c.reason}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
     </li>
   );

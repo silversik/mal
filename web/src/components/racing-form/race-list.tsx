@@ -23,11 +23,8 @@ export type RacePickView = {
   horseName: string;
   /** 예상을 낸 기준이 모두 고름 → "주목" 뱃지. 그 밖의 주목마는 뱃지 없이 버튼만. */
   strong: boolean;
-  /** 고른 기준 — 기준 고정 순서로 "레이팅 1순위" (기호 대신 글자) */
-  marks: string[];
-  /** 근거 (최대 2) */
-  reasons: string[];
-  reasonsMore: number;
+  /** 이 말을 고른 기준 전부 — 기준 고정 순서, 순위는 글자("1순위"), 근거 한 줄씩 (줄이지 않는다) */
+  criteria: { rule: string; mark: string; reason: string }[];
   /** 이 말의 결과 (정산 행이 있을 때만) */
   result: RaceRowResult | null;
 };
@@ -67,12 +64,16 @@ export function buildRaceRows(args: {
         chulNo: p.chul_no,
         horseName: nameOf(r.race_no, p.horse_no),
         strong: p.votes === r.consensus.active_rules,
-        marks: RULE_ORDER.flatMap((k) => {
-          const m = p.marks[k];
-          return m === undefined ? [] : [`${RULE_LABEL[k]} ${MARK_LABEL[m]}`];
+        criteria: RULE_ORDER.flatMap((k) => {
+          const rule = r.rules.find((x) => x.key === k);
+          const pick =
+            rule && rule.status === "picked"
+              ? rule.picks.find((x) => x.horse_no === p.horse_no)
+              : undefined;
+          return pick
+            ? [{ rule: RULE_LABEL[k], mark: MARK_LABEL[pick.mark], reason: pick.reason }]
+            : [];
         }),
-        reasons: [...p.reasons],
-        reasonsMore: p.reasons_more,
         result,
       };
     };

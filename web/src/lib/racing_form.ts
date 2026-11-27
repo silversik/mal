@@ -283,7 +283,7 @@ SELECT e.payload -> 'schema_version' AS schema_version,
        e.payload -> 'rules' AS rules,
        e.payload -> 'headlines' AS headlines,
        e.payload -> 'headline_overflow' AS headline_overflow,
-       (SELECT COALESCE(jsonb_agg((r.race - 'runners') - 'rules' ORDER BY r.ord), '[]'::jsonb)
+       (SELECT COALESCE(jsonb_agg(r.race - 'runners' ORDER BY r.ord), '[]'::jsonb)
           FROM jsonb_array_elements(
                  CASE WHEN jsonb_typeof(e.payload -> 'races') = 'array'
                       THEN e.payload -> 'races' ELSE '[]'::jsonb END

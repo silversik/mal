@@ -186,8 +186,11 @@ export type PayloadV1 = {
   summary: SummaryV1;
 };
 
-/** 1면용 경주 — payload 의 경주에서 runners·rules 를 뺀 것 (1면은 기준×기호 표를 싣지 않는다). */
-export type FrontRaceV1 = Omit<RaceV1, "runners" | "rules">;
+/**
+ * 1면용 경주 — payload 의 경주에서 runners 를 뺀 것. 1면은 기준×기호 표를 싣지 않지만,
+ * 주목마 팝업이 "고른 기준" 을 근거와 함께 전부 보여 주므로 rules(기준별 예상)는 남긴다 (2026-11-27).
+ */
+export type FrontRaceV1 = Omit<RaceV1, "runners">;
 
 /** 1면용 출전마 축약 — 헤드라인 마명·발행 후 기수 변경 비교에 쓴다. */
 export type FrontRunnerV1 = {
@@ -651,6 +654,7 @@ function pFrontRace(v: unknown, p: string): FrontRaceV1 {
     field_size: int(o.field_size, `${p}.field_size`),
     status: oneOf(o.status, ["ok", "small_field"] as const, `${p}.status`),
     stakes: pStakes(o.stakes, `${p}.stakes`),
+    rules: arr(o.rules, `${p}.rules`).map((x, i) => pRuleResult(x, `${p}.rules[${i}]`)),
     consensus: pConsensus(o.consensus, `${p}.consensus`),
   };
 }
@@ -668,7 +672,7 @@ function pRace(v: unknown, p: string): RaceV1 {
     field_size: front.field_size,
     status: front.status,
     stakes: front.stakes,
-    rules: arr(o.rules, `${p}.rules`).map((x, i) => pRuleResult(x, `${p}.rules[${i}]`)),
+    rules: front.rules,
     consensus: front.consensus,
     runners: arr(o.runners, `${p}.runners`).map((x, i) => pRunner(x, `${p}.runners[${i}]`)),
   };

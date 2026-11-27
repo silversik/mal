@@ -269,14 +269,13 @@ describe("payload v1 파싱 — payload_v1.golden.json", () => {
     expect(parseEditionSummary(GOLDEN.summary)).toStrictEqual(GOLDEN.summary);
     expect(parseRaceV1(GOLDEN.races[1])).toStrictEqual(GOLDEN.races[1]);
 
-    // EDITION_FRONT_SQL 이 돌려주는 모양을 흉내 (runners·rules 를 뺀 경주 + 출전마 축약)
+    // EDITION_FRONT_SQL 이 돌려주는 모양을 흉내 (runners 를 뺀 경주 + 출전마 축약 — rules 는 남긴다)
     const front = parseEditionFront({
       edition: GOLDEN.edition,
       rules: GOLDEN.rules,
       races: GOLDEN.races.map((r) => {
         const c: Record<string, unknown> = { ...r };
         delete c.runners;
-        delete c.rules;
         return c;
       }),
       headlines: GOLDEN.headlines,
@@ -293,6 +292,8 @@ describe("payload v1 파싱 — payload_v1.golden.json", () => {
     });
     expect(front).not.toBeNull();
     expect(front!.races.map((r) => r.race_no)).toEqual([1, 2, 3]);
+    // 주목마 팝업의 "고른 기준" 재료 — 기준별 예상이 1면 조각에 그대로 들어 있다
+    expect(front!.races[0].rules).toStrictEqual(GOLDEN.races[0].rules);
     expect(front!.runners.length).toBe(15);
     expect(front!.runners.find((u) => u.horse_no === "0042001")?.jockey_name).toBe("서다솜");
 
