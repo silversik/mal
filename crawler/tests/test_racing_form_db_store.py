@@ -41,6 +41,7 @@ from sqlalchemy.engine import Connection, Engine, make_url
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import sessionmaker
 
+from src import healthcheck
 from src.jobs.racing_form_jobs import publish_racing_form, settle_racing_form
 from src.racing_form import build, definitions, parse, payload, settle
 from src.racing_form.build import NotPublishable
@@ -679,6 +680,12 @@ def test_busan_stored_as_alias_like_prod(engine: Engine, world: World) -> None:
             ("1", "9.9"), ("2", "3.5"), ("3", "4.5")]
         # 다른 경마장은 그대로 비어 있다
         assert sql.entries(d, "서울") == [] and sql.results(d, "제주") == []
+
+    # healthcheck '경마지 발행' 달력도 같은 호를 본다 — 빠지면 부경 미발행을 못 잡는다
+    hc_cal = [r for r in healthcheck.SqlRowProvider(engine).rows("racing_form_calendar", today=d)
+              if r["race_date"] == d]
+    assert [(r["meet"], sorted(r["start_times"])) for r in hc_cal] == [
+        ("부경", ["10:50", "11:30"])]
 
 
 def test_insert_edition_recheck_sees_alias_results(engine: Engine, world: World) -> None:

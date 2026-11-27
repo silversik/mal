@@ -812,6 +812,15 @@ def test_racing_form_queries_take_time_as_params_not_db_clock() -> None:
         assert "now()" not in sql.lower() and "current_date" not in sql.lower(), name
 
 
+def test_racing_form_calendar_reads_stored_meet_aliases() -> None:
+    """달력은 발행 잡 Q0 처럼 저장 라벨 별칭('부산경남')도 읽는다 (빠지면 부경 호 감시 누락)."""
+    sql = hc.QUERIES["racing_form_calendar"]
+    for label in ("서울", "부경", "부산경남", "제주"):
+        assert f"'{label}'" in sql, label
+    assert "e.meet = r.meet" not in sql  # 라벨 그대로 비교 금지 (정규화해 비교)
+    assert "scratched_at IS NULL" in sql
+
+
 def test_racing_form_healthy_rows_ok() -> None:
     rows = _rf_check(healthy_data())
     assert all(c.status == Status.OK for c in rows.values()), rows

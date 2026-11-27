@@ -32,6 +32,9 @@ from enum import StrEnum
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
+from .racing_form import parse as _rf_parse
+from .racing_form.queries import expand_meets as _rf_expand_meets
+from .racing_form.queries import norm_meet_sql as _rf_norm_meet_sql
 from .redact import redact
 
 KST = ZoneInfo("Asia/Seoul")
@@ -84,6 +87,10 @@ RACING_FORM_TABLES = (
     "racing_form_race_outcomes", "racing_form_backtests", "racing_form_notices",
 )
 RACING_FORM_CALENDAR_DAYS = 7  # 발행 잡 달력 D ∈ [오늘−7, 오늘+7]
+# 달력이 읽는 저장 라벨 — 부경은 '부경'·'부산경남' 두 가지로 저장돼 있다 (발행 잡 Q0 과 같은 별칭)
+_RF_STORED_MEETS_SQL = ", ".join(f"'{m}'" for m in _rf_expand_meets(_rf_parse.VALID_MEETS))
+_RF_R_MEET_SQL = _rf_norm_meet_sql("r.meet")
+_RF_E_MEET_SQL = _rf_norm_meet_sql("e.meet")
 RACING_FORM_SETTLE_LOOKBACK_DAYS = 14  # 정산 잡 범위 D ∈ [오늘−14, 오늘]
 RACING_FORM_PUBLISH_WARN_MIN = 35  # freeze + 35분 미발행 → 18:00 실행이 실패한 것
 RACING_FORM_PUBLISH_FAIL_MIN = 125  # freeze + 125분 → 19:00·20:00 재시도도 실패
@@ -278,20 +285,37 @@ QUERIES: dict[str, str] = {
           FROM racing_form_rule_sets
          ORDER BY rules_version
     """,
-    # 발행 잡 Q0 과 같은 달력 (races ∩ race_entries)
+    # 발행 잡 Q0 (`racing_form.queries._Q0_CALENDAR`) 과 같은 달력 — races ∩ race_entries.
+    # 라벨은 정규화해 비교하고 ('부산경남' = '부경'), 같은 경주의 두 라벨 행은 한 번만 센다.
     "racing_form_calendar": f"""
-        SELECT r.race_date,
-               r.meet,
-               array_remove(array_agg(NULLIF(btrim(r.start_time), '')), NULL) AS start_times
-          FROM races r
-         WHERE r.race_date BETWEEN CAST(:today AS date) - {RACING_FORM_CALENDAR_DAYS}
-                               AND CAST(:today AS date) + {RACING_FORM_CALENDAR_DAYS}
-           AND r.meet IN ('서울', '부경', '제주')
-           AND EXISTS (SELECT 1 FROM race_entries e
-                        WHERE e.race_date = r.race_date AND e.meet = r.meet
-                          AND e.race_no = r.race_no)
-         GROUP BY r.race_date, r.meet
-         ORDER BY r.race_date, r.meet
+        SELECT c.race_date,
+               c.meet,
+               array_remove(array_agg(c.start_time), NULL) AS start_times
+          FROM (
+                SELECT DISTINCT ON (r.race_date, {_RF_R_MEET_SQL}, r.race_no)
+                       r.race_date,
+                       {_RF_R_MEET_SQL} AS meet,
+                       r.race_no,
+                       NULLIF(btrim(r.start_time), '') AS start_time
+                  FROM races r
+                 WHERE r.race_date BETWEEN CAST(:today AS date) - {RACING_FORM_CALENDAR_DAYS}
+                                       AND CAST(:today AS date) + {RACING_FORM_CALENDAR_DAYS}
+                   AND r.meet IN ({_RF_STORED_MEETS_SQL})
+                   AND EXISTS (SELECT 1 FROM race_entries e
+                                WHERE e.race_date = r.race_date
+                                  AND e.meet IN ({_RF_STORED_MEETS_SQL})
+                                  AND {_RF_E_MEET_SQL} = {_RF_R_MEET_SQL}
+                                  AND e.race_no = r.race_no
+                                  AND e.scratched_at IS NULL)
+                 ORDER BY r.race_date,
+                          {_RF_R_MEET_SQL},
+                          r.race_no,
+                          (NULLIF(btrim(r.start_time), '') IS NULL),
+                          (r.meet <> {_RF_R_MEET_SQL}),
+                          r.meet
+               ) c
+         GROUP BY c.race_date, c.meet
+         ORDER BY c.race_date, c.meet
     """,
     "racing_form_editions": f"""
         SELECT race_date, meet, issue_no, published_at, freeze_at
