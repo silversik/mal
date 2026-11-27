@@ -291,6 +291,35 @@ def test_jockey_20_rides_homonym_and_null_mix() -> None:
     ]
 
 
+def test_jockey_allowance_prefix_matches_stats() -> None:
+    """출전표 기수 이름의 감량 표기("(-2)권중석")를 떼고 통계를 찾는다 — 근거에도 뗀 이름.
+
+    (2026-11-28 — 붙은 채로 찾아 감량 기수가 통계 없음으로 빠졌다)
+    """
+    rr = rules.rank_jockey(
+        race(
+            [
+                ent(1, jockey="(-2)권중석"),
+                ent(2, jockey="(-1.5) 우인철"),
+                ent(3, jockey="최라온"),
+                ent(4, jockey="정마루"),
+                ent(5),
+            ],
+            jockeys={
+                "권중석": (40, 12, 18, 1),
+                "우인철": (30, 7, 12, 1),
+                "최라온": (25, 5, 10, 1),
+                "정마루": (20, 2, 6, 1),
+            },
+        ),
+        R1,
+    )
+    # 감량 표기가 붙은 두 기수도 통계를 찾아 1·2순위 (붙은 채로 찾으면 둘 다 자격 없음)
+    assert picks(rr) == [(1, 1), (2, 2), (3, 3)]
+    assert rr.picks[0].reason == "권중석 기수 · 최근 90일 서울 40번 중 12승 (승률 30%)"
+    assert rr.picks[1].reason.startswith("우인철 기수 · ")
+
+
 def test_jockey_not_enough_and_missing_name() -> None:
     rr = rules.rank_jockey(
         race(

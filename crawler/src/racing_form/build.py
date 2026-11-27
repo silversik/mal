@@ -176,7 +176,8 @@ def build_edition(
     jockey_stats: dict[str, ConnStat] = {}
     trainer_stats: dict[str, ConnStat] = {}
     if "jockey" in keys_needed:
-        names = sorted({r.jockey_name for r in runners if r.jockey_name})
+        # 결과·기수 테이블의 이름과 맞추려고 감량 표기를 뗀 키로 찾는다 (parse.jockey_key)
+        names = sorted({k for r in runners if (k := parse.jockey_key(r.jockey_name))})
         if names:
             jockey_stats = _stats_map(
                 provider.jockey_stats(

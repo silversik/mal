@@ -171,10 +171,17 @@ def runner_badges(
             text += w("news_jockey_change_weight", wb=parse.fmt_kg(wb), wa=parse.fmt_kg(wa))
         out.append(Badge("jockey_change", text))
 
+    rc = rank_change
+    # 첫 등급 배정 — 변경 전 등급이 없거나 '미검'. 데뷔 표시에만 쓰고 등급 변동 소식은 내지 않는다
+    first_grade = (
+        rc is not None and rc.st_date <= d and parse.is_initial_class(rc.before_rank)
+    )
+
     # 데뷔 / 기록 없음 · 휴양 복귀 / 짧은 간격
     if last is None:
         total = master.total_race_count if master is not None else None
-        if total == 0:
+        # 말 정보(horses)가 아직 없는 새 말도, 이력이 없고 첫 등급을 받았으면 데뷔전 (2026-11-28)
+        if total == 0 or (master is None and first_grade):
             out.append(Badge("debut", w("news_debut")))
         else:
             out.append(Badge("no_record", w("news_no_record")))
@@ -197,9 +204,14 @@ def runner_badges(
         elif days <= int(cfg["quick_return_days"]):
             out.append(Badge("quick_return", w("news_quick_return", days=days)))
 
-    # 등급 변동 후 첫 출전 (마지막 출주일 < st_date ≤ D, 이력 없으면 st_date ≤ D)
-    rc = rank_change
-    if rc is not None and rc.st_date <= d and (last is None or last.race_date < rc.st_date):
+    # 등급 변동 후 첫 출전 (마지막 출주일 < st_date ≤ D, 이력 없으면 st_date ≤ D).
+    # 첫 등급 배정(국미검→국6 등)은 변동이 아니라 제외한다 (2026-11-28 — 데뷔마 전원이 잡혔다)
+    if (
+        rc is not None
+        and rc.st_date <= d
+        and not first_grade
+        and (last is None or last.race_date < rc.st_date)
+    ):
         before = parse.norm_name(rc.before_rank)
         after = parse.norm_name(rc.after_rank)
         direction = w(class_direction(before, after))
@@ -243,8 +255,10 @@ def runner_badges(
                     w("news_trainer_change", prev=last.trainer_name, now=r.trainer_name),
                 )
             )
-        if r.jockey_name and r.jockey_name not in f.jockeys:
-            out.append(Badge("first_pair", w("news_first_pair", jockey=r.jockey_name)))
+        # 감량 표기를 뗀 이름으로 비교·표기한다 ("(-2)권중석" 과 "권중석" 은 같은 기수)
+        jk = parse.jockey_key(r.jockey_name)
+        if jk and jk not in f.jockeys:
+            out.append(Badge("first_pair", w("news_first_pair", jockey=jk)))
 
     # 연승 · 직전 1착
     if f.win_streak >= int(cfg["win_streak_min"]):

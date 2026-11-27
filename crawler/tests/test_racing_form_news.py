@@ -179,6 +179,31 @@ def test_debut_vs_no_record() -> None:
     assert "debut" not in got and "no_record" not in got
 
 
+def test_new_horse_first_grade_is_debut_not_class_change() -> None:
+    """데뷔마의 첫 등급 배정(국미검→국6)은 등급 변동이 아니다 — 말 정보가 없어도 데뷔전.
+
+    (2026-11-28)
+
+    11/28 서울 1R: 데뷔마 11두가 모두 "국미검→국6 등급 변경 후 첫 출전" 으로 헤드라인 6칸을 채웠고,
+    말 정보(horses)가 아직 없어 9두는 "mal.kr 수집 기록 없음" 이었다.
+    """
+    first = RankChange("A", D - timedelta(days=3), "국미검", "국6")
+    got = badges(rank_change=first, master=None)
+    assert "class_change" not in got
+    assert got["debut"].text == "데뷔전" and "no_record" not in got
+    foreign = RankChange("A", D, "외미검", "혼4")
+    assert "class_change" not in badges(rank_change=foreign, master=None)
+    assert "class_change" not in badges(rank_change=RankChange("A", D, None, "국6"), master=None)
+    # 첫 배정이 아직(D 뒤)이거나 없으면 그대로 기록 없음
+    later = RankChange("A", D + timedelta(days=1), "국미검", "국6")
+    assert "no_record" in badges(rank_change=later, master=None)
+    # 이력이 있는 말의 진짜 등급 변동은 그대로
+    real = RankChange("A", days_before_d(10), "국5", "국6")
+    assert "class_change" in badges(history=last_at(40), rank_change=real)
+    # 이력은 없는데 말 정보상 출주가 있는 말(수집 누락)은 데뷔로 보지 않는다
+    assert "no_record" in badges(rank_change=first, master=MasterRow("A", 4))
+
+
 def test_first_pair() -> None:
     got = badges(history=last_at(30), jockey="을기수")
     assert got["first_pair"].text == "을기수 기수가 이 말을 처음 탐"
@@ -188,6 +213,10 @@ def test_first_pair() -> None:
     # 실제 기수(기수 변경 after) 기준
     got = badges(history=last_at(30), jockey="갑기수", jc_before="갑기수", jc_after="병기수")
     assert got["first_pair"].text == "병기수 기수가 이 말을 처음 탐"
+    # 감량 표기는 떼고 비교·표기 — "(-2)갑기수" 는 전에 탄 "갑기수" 와 같은 기수 (2026-11-28)
+    assert "first_pair" not in badges(history=last_at(30), jockey="(-2)갑기수")
+    got = badges(history=last_at(30), jockey="(-3)정기수")
+    assert got["first_pair"].text == "정기수 기수가 이 말을 처음 탐"
 
 
 def test_jockey_change_text_variants() -> None:
