@@ -10,7 +10,7 @@ const TAB =
 
 /**
  * 1면 머리의 경마장 탭 — 같은 날 다른 경마장 호로 옮겨 간다 (MEET_ORDER 순, 44px).
- * 버튼(칩) 대신 탭 — '경기' 서브탭(RacesSubnav)과 같은 문법: 밑줄 하나, 활성 = brown 밑줄 +
+ * 버튼(칩) 대신 탭 — SectionNav 모바일 탭과 같은 문법: 밑줄 하나, 활성 = brown 밑줄 +
  * aria-current (DESIGN.md Decisions Log 2026-11-27). 지금 보는 경마장은 링크가 아니다.
  */
 export function MeetTabs({
