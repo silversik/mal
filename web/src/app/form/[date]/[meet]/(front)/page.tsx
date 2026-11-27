@@ -10,8 +10,7 @@ import { EditionStamp } from "@/components/racing-form/edition-stamp";
 import { FormSection } from "@/components/racing-form/form-section";
 import { TAP } from "@/components/racing-form/format";
 import { buildHeadlineItems, Headlines } from "@/components/racing-form/headlines";
-import { PickLegend } from "@/components/racing-form/legend";
-import { MeetChips } from "@/components/racing-form/meet-chips";
+import { MeetTabs } from "@/components/racing-form/meet-tabs";
 import { buildRaceRows, RaceList } from "@/components/racing-form/race-list";
 import { RecordCompact } from "@/components/racing-form/record-compact";
 import { EditionStateMessage } from "@/components/racing-form/state-message";
@@ -137,7 +136,7 @@ function FrontHeader({
           <span className="font-mono text-lg font-bold tabular-nums text-foreground">{issue}</span>
         ) : null}
       </div>
-      <MeetChips date={date} meets={meets} current={meet} />
+      <MeetTabs date={date} meets={meets} current={meet} />
       {children}
     </header>
   );
@@ -165,7 +164,6 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
         <BreadcrumbJsonLd items={crumbs} />
         <FrontHeader title={title} issue={null} date={p.date} meet={p.meet} meets={ed.meets}>
           <BetaNotice date={p.date} />
-          <ResponsibleGamblingNotice variant="compact" />
         </FrontHeader>
         <EditionStateMessage state={s} date={p.date} meet={p.meet} />
         <ResponsibleGamblingNotice variant="full" />
@@ -224,7 +222,6 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
       >
         <EditionStamp head={head} late={s.late} />
         <BetaNotice date={p.date} />
-        <ResponsibleGamblingNotice variant="compact" />
       </FrontHeader>
 
       {s.state === "withdrawn" ? (
@@ -232,18 +229,11 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
       ) : null}
       <ErrataList errata={s.errata} />
 
-      {/* 범례는 상시 (DESIGN 2026-11-13) — 예상을 숨긴 호도 기준 성적·결산 줄에 ◎ 가 나온다. 기호 뜻만
-          알리고 예상은 드러내지 않는다. */}
-      <PickLegend />
       <StatusBlock settlement={settlement} next={next} changes={changes} />
 
       {front ? (
         <>
-          <FormSection
-            id="races"
-            title={hidePicks ? "경주 목록" : "경주별 주목마"}
-            right={<span className="text-sm text-muted-foreground">행을 누르면 경주면</span>}
-          >
+          <FormSection id="races" title={hidePicks ? "경주 목록" : "경주별 주목마"}>
             <RaceList
               rows={buildRaceRows({
                 date: p.date,
@@ -251,13 +241,12 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
                 races: front.races,
                 runners: front.runners,
                 outcomes,
-                startTimes,
                 hidePicks,
               })}
             />
           </FormSection>
 
-          <FormSection id="news" title="말 소식">
+          <FormSection id="news" title="새로운 소식">
             <Headlines
               items={buildHeadlineItems({
                 date: p.date,

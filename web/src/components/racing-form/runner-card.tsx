@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { GateNum, SexBullet } from "@/components/race-detail-ui";
+import { SexBullet } from "@/components/race-detail-ui";
 import { RecentFormStrip } from "@/components/recent-form-strip";
 import {
   runnerAnchorId,
@@ -9,7 +9,9 @@ import {
 } from "@/lib/racing_form-shared";
 import { cn } from "@/lib/utils";
 
-import { MarksReceived, FocusLabel } from "./consensus-box";
+import { FormNum } from "./form-num";
+import { MarksReceived } from "./consensus-box";
+import { FocusLabel } from "./focus-label";
 import { deltaClass, deltaText, kgText, rankText, shortDate, TAP, timeText } from "./format";
 import { NewsBadges } from "./news-badges";
 import { NumText } from "./num-text";
@@ -116,7 +118,16 @@ function courseText(r: RunnerV1): string {
  * 받은 기호 · 레이팅(▲▼+색) · 부담 · 기수·조교사(+교체) · 최근 5전 숫자 칩(왼쪽 = 과거) ·
  * "28일 만 (직전 10월 18일 2착)" · 같은 경마장·거리 전적 · 최고기록과 주로 상태 · 배지 3 + <details> · 지난 5경주.
  */
-export function RunnerCard({ runner, hidePicks }: { runner: RunnerV1; hidePicks: boolean }) {
+export function RunnerCard({
+  runner,
+  hidePicks,
+  strong = false,
+}: {
+  runner: RunnerV1;
+  hidePicks: boolean;
+  /** 예상을 낸 기준이 모두 고른 주목마 — "주목" 뱃지 (그 밖의 주목마는 뱃지 없이) */
+  strong?: boolean;
+}) {
   const id = runnerAnchorId(runner.chul_no);
   const hasMarks = Object.keys(runner.marks).length > 0;
   const recent = [...runner.last5].reverse();
@@ -128,7 +139,7 @@ export function RunnerCard({ runner, hidePicks }: { runner: RunnerV1; hidePicks:
     >
       <header className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span aria-hidden="true">
-          <GateNum n={runner.chul_no} size={30} />
+          <FormNum n={runner.chul_no} />
         </span>
         <h3 id={`${id}-name`} className="text-lg font-bold text-foreground">
           <span className="sr-only">{runner.chul_no}번 </span>
@@ -140,7 +151,7 @@ export function RunnerCard({ runner, hidePicks }: { runner: RunnerV1; hidePicks:
             {runner.age ? <span>{String(runner.age).replace(/세$/, "")}세</span> : null}
           </span>
         ) : null}
-        {!hidePicks && runner.consensus_mark !== null ? <FocusLabel /> : null}
+        {!hidePicks && strong ? <FocusLabel /> : null}
       </header>
 
       {!hidePicks ? (

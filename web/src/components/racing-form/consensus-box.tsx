@@ -1,4 +1,3 @@
-import { GateNum } from "@/components/race-detail-ui";
 import {
   consensusLine,
   RULE_LABEL,
@@ -9,25 +8,10 @@ import {
 } from "@/lib/racing_form-shared";
 import { cn } from "@/lib/utils";
 
+import { FocusLabel } from "./focus-label";
+import { FormNum } from "./form-num";
 import { TAP } from "./format";
 import { PickMark } from "./pick-mark";
-
-/**
- * "주목" 라벨 — 중립 테두리 (DESIGN.md Decisions Log 2026-11-13). 갈색·강조색·◎ 를 쓰지 않는다
- * (◎ 는 기준 하나의 1순위, 주목마는 기준 사이의 일치라 다른 개념).
- */
-export function FocusLabel({ className }: { className?: string }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex h-7 shrink-0 items-center rounded-md border border-muted-foreground bg-card px-2 text-sm font-bold text-foreground",
-        className,
-      )}
-    >
-      주목
-    </span>
-  );
-}
 
 /** 받은 기호 — 기준 고정 순서로 "PickMark 레이팅 · PickMark 조교사". */
 export function MarksReceived({ marks, className }: { marks: MarkMap; className?: string }) {
@@ -51,6 +35,7 @@ export function MarksReceived({ marks, className }: { marks: MarkMap; className?
 /**
  * 경주면 주목마 상자 (계획 4.6-4) — 최대 2두. 문구의 분모는 늘 A(예상을 낸 기준 수).
  * 근거는 2개까지, 나머지는 "외 n". 기호 범례(PickLegend)는 이 상자 앞에 둔다.
+ * "주목" 뱃지는 예상을 낸 기준이 모두 고른 말에만 붙인다 (2026-11-27).
  */
 export function ConsensusBox({
   race,
@@ -84,7 +69,6 @@ export function ConsensusBox({
             .map((p) => (
               <li key={p.horse_no} className="space-y-1.5 rounded-lg border border-border px-3 py-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <FocusLabel />
                   <a
                     href={`#${runnerAnchorId(p.chul_no)}`}
                     className={cn(
@@ -92,10 +76,12 @@ export function ConsensusBox({
                       TAP,
                     )}
                   >
-                    <GateNum n={p.chul_no} size={26} />
+                    <FormNum n={p.chul_no} />
                     <span className="sr-only">번</span>
                     <span>{horseName(p.horse_no)}</span>
                   </a>
+                  {/* "주목" 뱃지는 예상을 낸 기준이 모두 고른 말에만 (1면·팝업과 같은 뜻) */}
+                  {p.votes === c.active_rules ? <FocusLabel /> : null}
                 </div>
                 <p className="text-base text-foreground">
                   {consensusLine({ status: "picked", active_rules: c.active_rules, votes: p.votes })}

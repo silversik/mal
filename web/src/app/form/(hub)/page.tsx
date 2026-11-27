@@ -12,7 +12,6 @@ import {
 } from "@/components/racing-form/edition-card";
 import { FormSection } from "@/components/racing-form/form-section";
 import { TAP } from "@/components/racing-form/format";
-import { PickLegend } from "@/components/racing-form/legend";
 import { RecordCompact } from "@/components/racing-form/record-compact";
 import { ResponsibleGamblingNotice } from "@/components/responsible-gambling-notice";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
@@ -148,7 +147,6 @@ export default async function FormHubPage() {
         KRA 데이터로 정리한 말 소식, 빠짐없는 적중 기록.
       </p>
       <BetaNotice date={hub.today} />
-      <ResponsibleGamblingNotice variant="compact" />
     </header>
   );
 
@@ -264,7 +262,6 @@ export default async function FormHubPage() {
     <PageContainer className="theme-v2 break-keep space-y-8 py-6 md:py-8">
       <BreadcrumbJsonLd items={crumbs} />
       {header}
-      <PickLegend />
 
       <FormSection
         id="this-week"

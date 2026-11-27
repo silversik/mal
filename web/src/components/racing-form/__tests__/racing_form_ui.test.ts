@@ -28,7 +28,10 @@ import { deltaText, kgText, racesDayPath, rankText, timeText } from "../format";
 import { buildHeadlineItems } from "../headlines";
 import { PickMark } from "../pick-mark";
 import { buildHistory } from "../publication-history";
-import { buildRaceRows } from "../race-list";
+import { buildRaceRows, RaceList } from "../race-list";
+import { FormNum } from "../form-num";
+import { MeetTabs } from "../meet-tabs";
+import { StatusBlock } from "../status-block";
 
 describe("format — payload 정수 → 표기 (계산 없음)", () => {
   it("부담 0.1kg · 기록 0.1초", () => {
@@ -96,21 +99,23 @@ describe("책임 고지 — 계획 §8.3 문구", () => {
     expect(h).toContain("☎1336");
     expect(h).toContain("min-h-[max(44px,2.75rem)]");
   });
-  it("full 6항목 — '공식' 은 부정문에서만, 기호 글리프·구매처 링크 없음", () => {
-    expect(NOTICE_FULL_ITEMS).toHaveLength(6);
+  it("full 3줄 (2026-11-27) — 제목 없이 보장 없음 · 판매·권유·보상 없음 · 한국마사회 발표 우선", () => {
+    expect(NOTICE_FULL_ITEMS.map((it) => it.text)).toEqual([
+      "예상 기호는 과거 기록을 기계적으로 정리한 것이며, 적중이나 수익을 보장하지 않습니다.",
+      "mal.kr 은 마권을 팔거나 대신 사 주지 않고, 마권 구매를 권하지 않으며, 적중에 대한 보상도 하지 않습니다.",
+      "출전·기수 변경·경주 결과는 한국마사회 발표가 우선합니다.",
+    ]);
     for (const it of NOTICE_FULL_ITEMS) {
-      if (it.text.includes("공식")) expect(it.text).toMatch(/공식 [^.]*아니며/);
       expect(it.text).not.toMatch(/[◎○△]/);
+      expect(it.text).not.toContain("공식");
     }
     const h = renderToStaticMarkup(createElement(ResponsibleGamblingNotice, { variant: "full" }));
-    expect(h).toContain("만 19세");
-    expect(h).toContain("만 21세");
-    expect(h).toContain("국번 없이 · 무료");
-    // 운영 시간은 확인된 값만 싣는다 — 확인 전에는 "24시간" 을 쓰지 않는다
+    expect(h).not.toContain("꼭 읽어 주세요");
+    expect(h).not.toContain("<h2");
+    expect(h.match(/<li/g)?.length).toBe(3);
+    // 구매처·배당·영상 링크 없음 (상담 전화 줄은 뺐다 — 사이트 푸터와 경주면 compact 에 남는다)
+    expect(h).not.toContain("<a ");
     expect(h).not.toContain("24시간");
-    // 링크는 tel:1336 하나뿐
-    expect(h.match(/<a /g)?.length).toBe(1);
-    expect(h).toContain('href="tel:1336"');
   });
 });
 
@@ -164,7 +169,15 @@ describe("buildRaceRows — 1면 경주 한 줄", () => {
         active_rules: 4,
         min_votes: 3,
         picks: [
-          { mark: 1, horse_no: "H1", chul_no: 3, votes: 3, marks: {}, reasons: [], reasons_more: 0 },
+          {
+            mark: 1,
+            horse_no: "H1",
+            chul_no: 3,
+            votes: 3,
+            marks: { trainer: 2, rating: 1, jockey: 3 },
+            reasons: ["레이팅 62 (출전마 중 1위)", "기수 최근 90일 18전 4승"],
+            reasons_more: 1,
+          },
           { mark: 2, horse_no: "H9", chul_no: 9, votes: 3, marks: {}, reasons: [], reasons_more: 0 },
         ],
       },
@@ -182,17 +195,13 @@ describe("buildRaceRows — 1면 경주 한 줄", () => {
     race(4, { stakes: { name: "가람컵", grade: "G3" } }),
   ];
 
-  it("주목마 1순위 · 문구 분모 A · 2순위 수 · 대상경주 이름 · 발주 시각 덧씌움", () => {
+  it("주목마 버튼 재료 — 모두 고른 말만 strong, 고른 기준은 글자로, 주목마 없으면 빈 행", () => {
     const rows = buildRaceRows({
       date: "2026-11-14",
       meet: "부경",
       races,
       runners,
       outcomes: [],
-      startTimes: new Map([
-        [1, "9:50"],
-        [2, null],
-      ]),
       hidePicks: false,
     });
     expect(rows.map((r) => r.href)).toEqual([
@@ -201,20 +210,33 @@ describe("buildRaceRows — 1면 경주 한 줄", () => {
       "/form/2026-11-14/busan/3",
       "/form/2026-11-14/busan/4",
     ]);
-    expect(rows[0]).toMatchObject({
-      time: "09:50", // 지금 races.start_time 이 발행 시점 값보다 우선
-      pick: { chulNo: 3, horseName: "솔빛물결" },
-      morePicks: 1,
-      line: "예상을 낸 기준 4개 중 3개가 고름",
+    // 1R — 기준 4개 중 3개: 뱃지 없음(strong=false). 고른 기준은 고정 순서(RULE_ORDER)·글자("1순위")
+    expect(rows[0].picks).toHaveLength(2);
+    expect(rows[0].picks[0]).toEqual({
+      chulNo: 3,
+      horseName: "솔빛물결",
+      strong: false,
+      marks: ["레이팅 1순위", "기수 3순위", "조교사 2순위"],
+      reasons: ["레이팅 62 (출전마 중 1위)", "기수 최근 90일 18전 4승"],
+      reasonsMore: 1,
       result: null,
     });
-    expect(rows[1]).toMatchObject({ time: null, line: "예상을 낸 기준 3개가 모두 고름" });
-    expect(rows[2]).toMatchObject({ pick: null, line: "예상 안 함 — 출전 4두" });
-    expect(rows[3]).toMatchObject({ stakes: "가람컵 (G3)", line: "혼전 — 기준마다 고른 말이 다릅니다" });
+    expect(rows[0].picks[1]).toMatchObject({ chulNo: 9, horseName: "H9", strong: false });
+    // 2R — 기준 3개가 모두 고름: "주목" 뱃지
+    expect(rows[1].picks).toHaveLength(1);
+    expect(rows[1].picks[0]).toMatchObject({ chulNo: 5, horseName: "새벽", strong: true });
+    // 3R(소두수)·4R(혼전) — 설명 없이 비운다. 대상경주 이름은 남긴다
+    expect(rows[2]).toMatchObject({ picks: [], stakes: null });
+    expect(rows[3]).toMatchObject({ picks: [], stakes: "가람컵 (G3)" });
+    // 발주 시각·"기준 n개 중 m개" 문구는 행에 싣지 않는다
+    for (const r of rows) {
+      expect(Object.keys(r).sort()).toEqual(["href", "picks", "raceNo", "stakes"]);
+      expect(JSON.stringify(r)).not.toMatch(/[◎○△]|추천|강력/);
+    }
   });
 
   it("결과: 착순 · 무효(결과 행 없음) · 경주 무효 · 행 없으면 표시 안 함", () => {
-    const base = { date: "2026-11-08", meet: "서울", races: races.slice(0, 2), runners, startTimes: new Map() };
+    const base = { date: "2026-11-08", meet: "서울", races: races.slice(0, 2), runners };
     const rows = buildRaceRows({
       ...base,
       hidePicks: false,
@@ -228,14 +250,16 @@ describe("buildRaceRows — 1면 경주 한 줄", () => {
         outcome({ race_no: 2, non_starters: ["H2"] }),
       ],
     });
-    expect(rows[0].result).toEqual({ kind: "rank", rank: 2 });
-    expect(rows[1].result).toEqual({ kind: "void" });
+    expect(rows[0].picks[0].result).toEqual({ kind: "rank", rank: 2 });
+    // 2순위 주목마(H9)는 결과 행이 없다 → 순위 없음
+    expect(rows[0].picks[1].result).toEqual({ kind: "rank", rank: null });
+    expect(rows[1].picks[0].result).toEqual({ kind: "void" });
     const voidRace = buildRaceRows({
       ...base,
       hidePicks: false,
       outcomes: [outcome({ race_no: 1, status: "race_void" })],
     });
-    expect(voidRace[0].result).toEqual({ kind: "void" });
+    expect(voidRace[0].picks[0].result).toEqual({ kind: "void" });
   });
 
   it("철회(법적 사유) — 예상을 숨긴다", () => {
@@ -245,11 +269,106 @@ describe("buildRaceRows — 1면 경주 한 줄", () => {
       races: races.slice(0, 1),
       runners,
       outcomes: [outcome({ race_no: 1, winners: ["H1"], placed: ["H1"] })],
-      startTimes: new Map(),
       hidePicks: true,
     });
-    expect(rows[0]).toMatchObject({ pick: null, morePicks: 0, result: null });
-    expect(rows[0].line).toContain("숨긴");
+    expect(rows[0].picks).toEqual([]);
+  });
+});
+
+describe("1면 단순화 (2026-11-27) — 탭 · 색 없는 출전번호 · 주목마 버튼 · 빈 상태는 비운다", () => {
+  const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
+
+  it("FormNum — 색 없는 중립 칩, 글씨는 하한 13px", () => {
+    const h = html(createElement(FormNum, { n: 7 }));
+    expect(h).toContain(">7<");
+    expect(h).toContain("text-[0.8125rem]");
+    expect(h).toContain("border-border");
+    // 게이트 색(GateNum 의 inline style) 을 쓰지 않는다
+    expect(h).not.toContain("style=");
+  });
+
+  it("MeetTabs — 버튼(채운 칩)이 아니라 밑줄 탭, 지금 경마장은 링크가 아님", () => {
+    const h = html(
+      createElement(MeetTabs, { date: "2026-11-27", meets: ["제주", "부경"], current: "부경" }),
+    );
+    expect(h).toContain('aria-label="같은 날 경마장"');
+    expect(h).toMatch(/<span aria-current="page"[^>]*border-brown[^>]*>부경<\/span>/);
+    expect(h).toContain('href="/form/2026-11-27/jeju"');
+    expect(h.match(/<a /g)?.length).toBe(1);
+    expect(h).not.toContain("bg-primary");
+  });
+
+  it("StatusBlock — 발행 후 바뀐 것이 없으면 아무것도 그리지 않는다", () => {
+    expect(html(createElement(StatusBlock, { settlement: null, next: null, changes: [] }))).toBe("");
+    expect(html(createElement(StatusBlock, { settlement: null, next: null, changes: null }))).toBe("");
+    const one = html(
+      createElement(StatusBlock, {
+        settlement: null,
+        next: null,
+        changes: [
+          {
+            key: "1-H1",
+            href: "/form/2026-11-27/busan/1#chul-3",
+            raceNo: 1,
+            chulNo: 3,
+            horseName: "솔빛물결",
+            before: "갑",
+            after: "을",
+            reason: null,
+          },
+        ],
+      }),
+    );
+    expect(one).toContain("발행 후 바뀐 것");
+    expect(one).toContain("솔빛물결");
+    expect(one).not.toContain("바뀐 것 없음");
+  });
+
+  it("RaceList — 라운드 + 주목마 버튼, '주목' 뱃지는 모두 고른 말만, 주목마 없으면 빈 행", () => {
+    const pick = (chulNo: number, horseName: string, strong: boolean) => ({
+      chulNo,
+      horseName,
+      strong,
+      marks: ["레이팅 1순위"],
+      reasons: [],
+      reasonsMore: 0,
+      result: null,
+    });
+    const h = html(
+      createElement(RaceList, {
+        rows: [
+          { raceNo: 1, href: "/form/2026-11-27/busan/1", stakes: null, picks: [] },
+          { raceNo: 4, href: "/form/2026-11-27/busan/4", stakes: null, picks: [pick(3, "매직트리", true)] },
+          {
+            raceNo: 5,
+            href: "/form/2026-11-27/busan/5",
+            stakes: null,
+            picks: [pick(1, "판타스틱밸류", false), pick(14, "라온포레스트", false)],
+          },
+        ],
+      }),
+    );
+    const rows = h.split("<li").slice(1);
+    expect(rows).toHaveLength(3);
+    // 1R — 주목마 없음: 라운드(경주면 링크)만, 설명 문구 없음
+    expect(rows[0]).toContain('href="/form/2026-11-27/busan/1"');
+    expect(rows[0]).toContain("1R");
+    expect(rows[0]).not.toContain("<button");
+    expect(rows[0]).not.toMatch(/주목마 없음|혼전|예상 안 함/);
+    // 4R — 버튼 + "주목" 뱃지
+    expect(rows[1]).toMatch(/<button[^>]*aria-haspopup="dialog"/);
+    expect(rows[1]).toContain("매직트리");
+    expect(rows[1]).toContain(">주목<");
+    // 5R — 버튼만 (뱃지 없음), 2순위는 "외 1두"
+    expect(rows[2]).toContain("판타스틱밸류");
+    expect(rows[2]).not.toContain(">주목<");
+    expect(rows[2]).toContain("외 1두");
+    expect(rows[2]).not.toContain("라온포레스트");
+    // 발주 시각·"기준 n개" 문구·게이트 색·팝업 본문(닫힌 상태)은 없다
+    expect(h).not.toMatch(/\d{2}:\d{2}/);
+    expect(h).not.toContain("예상을 낸 기준");
+    expect(h).not.toContain("style=");
+    expect(h).not.toContain("경주면 전체 보기");
   });
 });
 
@@ -430,11 +549,9 @@ describe("경주면 변경 상자 · 호 정정 — 정정은 호 단위라 경�
     noticed_at: "2026-11-08T09:10:00.000000+09:00",
   });
 
-  it("ChangesBox 는 이 경주의 기수 변경만 — 없으면 '발행 후 바뀐 것 없음'", () => {
+  it("ChangesBox 는 이 경주의 기수 변경만 — 없으면 상자째 그리지 않는다", () => {
     const none = renderToStaticMarkup(createElement(ChangesBox, { diffs: [], horseName: name }));
-    expect(none).toContain("이 경주의 발행 후 변경");
-    expect(none).toContain("발행 후 바뀐 것 없음");
-    expect(none).not.toContain("정정");
+    expect(none).toBe("");
     const one = renderToStaticMarkup(
       createElement(ChangesBox, {
         diffs: [{ race_no: 1, horse_no: "0041002", chul_no: 2, before: "갑기수", after: "을기수", reason: "부상" }],
@@ -442,8 +559,9 @@ describe("경주면 변경 상자 · 호 정정 — 정정은 호 단위라 경�
       }),
     );
     expect(one).toContain("발행 후 기수 변경");
+    expect(one).toContain("이 경주의 발행 후 변경");
     expect(one).toContain("녹색신호");
-    expect(one).not.toContain("발행 후 바뀐 것 없음");
+    expect(one).not.toContain("정정");
   });
 
   it("ErrataList — 경주면은 '이 호의 정정 n건', 1면은 '정정 n건', 없으면 그리지 않음", () => {
