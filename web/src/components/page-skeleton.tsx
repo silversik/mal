@@ -63,10 +63,18 @@ export function ProfileSkeleton() {
   );
 }
 
-/** 경마지(/form) — 머리(제목·경마장 칩·발행 도장) → 상태 상자 → 경주 한 줄 목록. */
-export function FormSkeleton() {
+/**
+ * 경마지(/form) — 머리(제목·경마장 탭·발행 도장) → 상태 상자 → 경주 한 줄 목록.
+ * sheet: 지면(PaperSheet) 안에서 쓰는 뼈대 — 지면이 이미 폭·여백을 주므로 컨테이너 없이 그린다.
+ */
+export function FormSkeleton({ sheet = false }: { sheet?: boolean }) {
+  const Wrap = sheet ? "div" : PageContainer;
   return (
-    <PageContainer aria-busy="true" aria-label="불러오는 중" className="space-y-6 py-6 md:py-8">
+    <Wrap
+      aria-busy="true"
+      aria-label="불러오는 중"
+      className={sheet ? "space-y-6" : "space-y-6 py-6 md:py-8"}
+    >
       <div className="space-y-3">
         <Bar className="h-4 w-28" />
         <Bar className="h-8 w-64 max-w-full" />
@@ -87,7 +95,7 @@ export function FormSkeleton() {
           </div>
         ))}
       </div>
-    </PageContainer>
+    </Wrap>
   );
 }
 

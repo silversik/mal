@@ -11,7 +11,6 @@ import {
 } from "@/lib/race-seo";
 
 import { RaceDatePicker } from "@/components/race-date-picker";
-import { RacesSubnav } from "@/components/races-subnav";
 import { VenueIcon } from "@/components/venue-icon";
 import { RACE_VENUES, canonicalMeet } from "@/lib/meets";
 import { Badge } from "@/components/ui/badge";
@@ -359,9 +358,24 @@ export default async function RacesPage({
 
   return (
     <main className="theme-v2 mx-auto w-full max-w-[1080px] px-4 md:px-6 py-6 md:py-8">
-      {/* 서브탭: 경기 일람 | 경마지 | 대상경주 일정 (예전 "대상경주 일정 →" 링크를 대신한다) */}
-      <RacesSubnav className="mb-4" />
-      <h1 className="mb-4 text-2xl font-bold tracking-tight">경기 일람</h1>
+      {/* 상단 서브탭은 뺐다 (2026-11-27) — 경마지·대상경주 일정은 제목 옆 링크로 간다 */}
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h1 className="text-2xl font-bold tracking-tight">경기 일람</h1>
+        <nav aria-label="경기 관련 메뉴" className="flex flex-wrap items-center gap-x-4">
+          <Link
+            href="/form"
+            className="inline-flex min-h-[max(44px,2.75rem)] items-center text-base text-muted-foreground transition hover:text-foreground"
+          >
+            경마지 →
+          </Link>
+          <Link
+            href="/races/schedule"
+            className="inline-flex min-h-[max(44px,2.75rem)] items-center text-base text-muted-foreground transition hover:text-foreground"
+          >
+            대상경주 일정 →
+          </Link>
+        </nav>
+      </div>
 
       {/* ── 날짜 네비게이션: 이전/다음(경기 있는 날로 점프) + 데이트피커 + 오늘 ── */}
       <div className="mb-6 flex flex-wrap items-center gap-2">

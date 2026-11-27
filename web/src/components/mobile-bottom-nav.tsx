@@ -28,7 +28,7 @@ const PRIMARY_ITEMS: NavItem[] = [
         <line x1="4" y1="22" x2="4" y2="15" />
       </svg>
     ),
-    // 경마지(/form)는 '경기' 탭 아래 서브탭 — 하단 5칸은 그대로 둔다.
+    // 경마지(/form)도 '경기' 영역 — 하단 5칸은 그대로 두고 '더보기' 와 경기 일람·홈에서 들어간다.
     activePaths: ["/races", "/form"],
   },
   {
@@ -69,6 +69,7 @@ const PRIMARY_ITEMS: NavItem[] = [
 ];
 
 const MORE_ITEMS = [
+  { href: "/form", label: "경마지" },
   { href: "/notifications", label: "알림" },
   { href: "/me", label: "마이페이지" },
 ];
@@ -102,7 +103,7 @@ export function MobileBottomNav() {
           moreOpen ? "translate-y-0" : "translate-y-full"
         }`}
       >
-        <div className="grid grid-cols-3 divide-x divide-border">
+        <div className="grid grid-cols-4 divide-x divide-border">
           {MORE_ITEMS.map(({ href, label }) => (
             <Link
               key={href}

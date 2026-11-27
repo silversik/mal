@@ -3,9 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { PageContainer } from "@/components/page-container";
 import { BetaNotice } from "@/components/racing-form/beta-notice";
 import { ErrataList, WithdrawnBanner } from "@/components/racing-form/edition-notices";
+import { EditionPager } from "@/components/racing-form/edition-pager";
 import { EditionStamp } from "@/components/racing-form/edition-stamp";
 import { FormSection } from "@/components/racing-form/form-section";
 import { TAP } from "@/components/racing-form/format";
@@ -119,15 +119,7 @@ function FrontHeader({
 }) {
   return (
     <header className="space-y-3">
-      <Link
-        href={FORM_HUB_PATH}
-        className={cn(
-          "inline-flex items-center text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground",
-          TAP,
-        )}
-      >
-        mal.kr 경마지
-      </Link>
+      {/* 제호("mal.kr 경마지" → 허브)는 지면 머리(PaperSheet)에 있다 */}
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h1 className="text-2xl font-extrabold tracking-tight text-balance text-foreground sm:text-3xl">
           {title}
@@ -160,14 +152,14 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
   // 발행 예정·발행 준비 중·미발행·쉼 — 고정본 대신 상태 안내 하나.
   if ((s.state !== "published" && s.state !== "withdrawn") || !ed.head) {
     return (
-      <PageContainer className="theme-v2 break-keep space-y-6 py-6 md:py-8">
+      <div className="break-keep space-y-6">
         <BreadcrumbJsonLd items={crumbs} />
         <FrontHeader title={title} issue={null} date={p.date} meet={p.meet} meets={ed.meets}>
           <BetaNotice date={p.date} />
         </FrontHeader>
         <EditionStateMessage state={s} date={p.date} meet={p.meet} />
         <ResponsibleGamblingNotice variant="full" />
-      </PageContainer>
+      </div>
     );
   }
 
@@ -211,8 +203,19 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
       : null;
 
   return (
-    <PageContainer className="theme-v2 break-keep space-y-6 py-6 md:py-8">
+    <div className="break-keep space-y-6">
       <BreadcrumbJsonLd items={crumbs} />
+      {/* 지면 넘기기 — 첫 장(요약)에서 라운드로 */}
+      {front ? (
+        <EditionPager
+          meet={p.meet}
+          summaryHref={path}
+          current="summary"
+          rounds={[...front.races]
+            .sort((a, b) => a.race_no - b.race_no)
+            .map((r) => ({ raceNo: r.race_no, href: formRacePath(p.date, p.meet, r.race_no) }))}
+        />
+      ) : null}
       <FrontHeader
         title={title}
         issue={issueLabel(head.issue_no)}
@@ -279,6 +282,6 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
       </Link>
 
       <ResponsibleGamblingNotice variant="full" />
-    </PageContainer>
+    </div>
   );
 }

@@ -35,7 +35,9 @@ import { PickMark } from "../pick-mark";
 import { buildHistory } from "../publication-history";
 import { buildRaceRows, RaceList } from "../race-list";
 import { FormNum } from "../form-num";
+import { EditionPager } from "../edition-pager";
 import { MeetTabs } from "../meet-tabs";
+import { paperDateKo, PaperSheet } from "../paper-sheet";
 import { StatusBlock } from "../status-block";
 
 describe("format — payload 정수 → 표기 (계산 없음)", () => {
@@ -379,6 +381,63 @@ describe("1면 단순화 (2026-11-27) — 탭 · 색 없는 출전번호 · 주�
     expect(h).not.toContain("예상을 낸 기준");
     expect(h).not.toContain("style=");
     expect(h).not.toContain("경주면 전체 보기");
+  });
+});
+
+describe("지면 — 호 한 부를 종이 한 장에, 요약 → 라운드로 넘긴다 (2026-11-27)", () => {
+  it("paperDateKo — 연·월·일·요일 (날짜 문자열 기준)", () => {
+    expect(paperDateKo("2026-11-27")).toBe("2026년 11월 27일 금요일");
+    expect(paperDateKo("2026-11-29")).toBe("2026년 11월 29일 일요일");
+    expect(paperDateKo("2027-01-01")).toBe("2027년 1월 1일 금요일");
+  });
+
+  it("PaperSheet — 제호(허브 링크) · 이중 괘선의 날짜·경마장 줄 · 본문", () => {
+    const h = renderToStaticMarkup(
+      createElement(
+        PaperSheet,
+        { date: "2026-11-27", meet: "부경" } as Parameters<typeof PaperSheet>[0],
+        "본문",
+      ),
+    );
+    expect(h).toMatch(/<a[^>]*href="\/form"[^>]*>mal\.kr 경마지<\/a>/);
+    expect(h).toContain("2026년 11월 27일 금요일");
+    expect(h).toContain(">부경<");
+    expect(h).toContain("border-double");
+    expect(h).toContain("본문");
+    // 제호는 제목(h1)이 아니다 — 페이지 h1 은 본문에 하나
+    expect(h).not.toContain("<h1");
+    // 텍스처·그라디언트 없이 토큰 색만
+    expect(h).not.toMatch(/gradient|style=/);
+  });
+
+  const rounds = [1, 2, 3].map((n) => ({ raceNo: n, href: `/form/2026-11-27/busan/${n}` }));
+  const pager = (current: "summary" | number) =>
+    renderToStaticMarkup(
+      createElement(EditionPager, { meet: "부경", summaryHref: "/form/2026-11-27/busan", rounds, current }),
+    );
+
+  it("EditionPager — 첫 장은 요약: 앞 장 없음, 다음 장은 1R", () => {
+    const h = pager("summary");
+    expect(h).toContain('aria-label="지면 넘기기"');
+    expect(h).toContain(">부경<");
+    expect(h).toMatch(/<span aria-current="page"[^>]*>요약<\/span>/);
+    expect(h).not.toContain('aria-label="앞 장');
+    expect(h).toContain('aria-label="다음 장 — 1R" class=');
+    expect(h).toMatch(/href="\/form\/2026-11-27\/busan\/1"[^>]*aria-label="다음 장 — 1R"|aria-label="다음 장 — 1R"[^>]*href="\/form\/2026-11-27\/busan\/1"/);
+    // 전체 라운드가 한 줄에
+    for (const n of [1, 2, 3]) expect(h).toContain(`>${n}R<`);
+  });
+
+  it("EditionPager — 라운드 장: 앞 장은 요약 또는 앞 라운드, 마지막 장은 다음 없음", () => {
+    const first = pager(1);
+    expect(first).toMatch(/<span aria-current="page"[^>]*>1R<\/span>/);
+    expect(first).toContain('aria-label="앞 장 — 요약"');
+    expect(first).toContain('aria-label="다음 장 — 2R"');
+    // 요약 장으로 돌아가는 링크
+    expect(first).toMatch(/<a[^>]*href="\/form\/2026-11-27\/busan"[^>]*>요약<\/a>/);
+    const last = pager(3);
+    expect(last).toContain('aria-label="앞 장 — 2R"');
+    expect(last).not.toContain('aria-label="다음 장');
   });
 });
 

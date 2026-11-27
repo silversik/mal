@@ -17,8 +17,8 @@ const DATABASE_PATHS = [
 // 분석 영역 — /analysis 클릭 시 종합 대시보드로 이동. 호버 드롭다운 없음.
 const ANALYSIS_PATHS = ["/analysis", "/rankings", "/records", "/compare"] as const;
 
-// 경마지(/form)는 '경기' 영역의 서브탭이기도 하지만(RacesSubnav), 데스크톱 메뉴에는 따로 둔다
-// (docs/feature/racing-form.md 4.4).
+// 경마지(/form)는 데스크톱 메뉴에 따로 둔다 (docs/feature/racing-form.md 4.4).
+// 모바일은 '더보기'·경기 일람·홈의 경마지 섹션에서 들어간다 ('경기' 서브탭은 2026-11-27 에 뺐다).
 const NAV_ITEMS = [
   { href: "/races", label: "경기", paths: ["/races"] },
   { href: "/form", label: "경마지", paths: ["/form"] },
