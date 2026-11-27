@@ -5,8 +5,9 @@ import { cache } from "react";
 import { PageContainer } from "@/components/page-container";
 import { BetaNotice } from "@/components/racing-form/beta-notice";
 import {
-  EditionCard,
+  EditionCardGroups,
   editionCardSub,
+  publishedEditionCard,
   SettlementText,
   type EditionCardData,
 } from "@/components/racing-form/edition-card";
@@ -22,6 +23,7 @@ import {
   getFormCalendar,
   getLaunchAt,
   getNoticesBetween,
+  getOutcomes,
   getRuleRecord,
 } from "@/lib/racing_form";
 import {
@@ -39,6 +41,7 @@ import {
   missedReasonOf,
   pausedReasonOf,
   publishStampKo,
+  mondayOf,
   settlementLine,
   type EditionHead,
   type EditionTally,
@@ -55,13 +58,6 @@ const DESCRIPTION =
 /** 다루는 경마장 안내 (계획 4.2). 공휴일 경주일은 2026-11 부터 출전표를 수집해 함께 다룬다. */
 const COVERAGE = "다루는 경마장: 서울·부경·제주 (영천 경주는 아직 다루지 않습니다)";
 
-/** 그 주 월요일 (KST 날짜 문자열 기준 — 프로세스 TZ 무관). */
-function mondayOf(date: string): string {
-  const [y, m, d] = date.split("-").map(Number);
-  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); // 0=일
-  return addDays(date, -((dow + 6) % 7));
-}
-
 const loadHub = cache(async () => {
   const now = new Date();
   const today = kstToday(now);
@@ -74,11 +70,15 @@ const loadHub = cache(async () => {
     getEditionIndex(pastFrom, weekEnd),
     getNoticesBetween(pastFrom, weekEnd),
   ]);
-  const [tallies, record] = await Promise.all([
+  // 이번 주 발행본의 경주별 정산 — 카드의 "예상 ↔ 실제" (한 주치라 많아야 6호)
+  const weekEditions = editions.filter((e) => e.race_date >= weekStart && e.race_date <= weekEnd);
+  const [tallies, record, weekOutcomes] = await Promise.all([
     getEditionTallies(editions.map((e) => e.id)),
     launchAt ? getRuleRecord() : Promise.resolve(null),
+    Promise.all(weekEditions.map((e) => getOutcomes(e.id))),
   ]);
-  return { now, today, weekStart, weekEnd, launchAt, calendar, editions, notices, tallies, record };
+  const outcomes = new Map(weekEditions.map((e, i) => [e.id, weekOutcomes[i]] as const));
+  return { now, today, weekStart, weekEnd, launchAt, calendar, editions, notices, tallies, record, outcomes };
 });
 
 export async function generateMetadata(
@@ -201,32 +201,33 @@ export default async function FormHubPage() {
         launchAt: hub.launchAt,
       });
       if (st.notFound) return [];
-      const tally = edition ? tallyOf(hub.tallies, edition.id) : null;
-      // 카드 제목에 날짜·경마장이 이미 있으므로 발행 예정은 시각만
-      const status =
-        edition && st.state === "published"
-          ? `${publishStampKo(edition.published_at)} 발행${st.late ? " · 늦게 발행" : ""}`
-          : st.state === "planned"
-            ? `${publishStampKo(st.freezeAt)} 발행 예정`
-            : (editionStateText(st) ?? "");
+      // 발행본 — 정산이 시작됐으면 "예상 ↔ 실제" 를 싣는다 (홈 카드와 같은 재료)
+      if (edition && st.state === "published") {
+        return [
+          publishedEditionCard({
+            head: edition,
+            late: st.late,
+            outcomes: hub.outcomes.get(edition.id) ?? [],
+            tally: tallyOf(hub.tallies, edition.id),
+            now: hub.now,
+          }),
+        ];
+      }
+      // 발행 예정·미발행·쉼·철회 — 상태 한 줄만. 카드 제목에 날짜·경마장이 있으므로 발행 예정은 시각만
       return [
         {
           key: `${k.date}|${k.meet}`,
           href: formEditionPath(k.date, k.meet),
+          date: k.date,
           title: `${dateKo(k.date)} ${k.meet}`,
           issue: edition ? issueLabel(edition.issue_no) : null,
-          status,
+          status:
+            st.state === "planned"
+              ? `${publishStampKo(st.freezeAt)} 발행 예정`
+              : (editionStateText(st) ?? ""),
           sub: edition ? editionCardSub(edition) : null,
-          settlement:
-            edition && tally
-              ? settlementLine({
-                  tally,
-                  raceDate: edition.race_date,
-                  meet: edition.meet,
-                  raceCount: edition.race_count,
-                  now: hub.now,
-                })
-              : null,
+          result: null,
+          provisional: null,
         },
       ];
     });
@@ -273,13 +274,7 @@ export default async function FormHubPage() {
         }
       >
         {cards.length > 0 ? (
-          <ul className="grid gap-3 md:grid-cols-2">
-            {cards.map((c) => (
-              <li key={c.key}>
-                <EditionCard card={c} />
-              </li>
-            ))}
-          </ul>
+          <EditionCardGroups cards={cards} today={hub.today} />
         ) : (
           <p className="rounded-xl border border-dashed border-border px-4 py-6 text-base text-muted-foreground">
             이번 주 경마지는 출전표가 나오면 경주 전날 오후 6시에 발행합니다.

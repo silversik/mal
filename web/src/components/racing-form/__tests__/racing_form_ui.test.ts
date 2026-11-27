@@ -12,7 +12,7 @@ import type {
   OutcomeRow,
   PublicBacktest,
 } from "@/lib/racing_form-shared";
-import { recordRows } from "@/lib/racing_form-shared";
+import { editionResult, editionResultLine, recordRows } from "@/lib/racing_form-shared";
 
 import {
   NOTICE_COMPACT_TEXT,
@@ -21,7 +21,12 @@ import {
 } from "../../responsible-gambling-notice";
 import { parseBacktest } from "../backtest-section";
 import { ChangesBox } from "../changes-box";
-import { editionCardSub, SettlementText } from "../edition-card";
+import {
+  EditionCardGroups,
+  editionCardSub,
+  SettlementText,
+  type EditionCardData,
+} from "../edition-card";
 import { ErrataList } from "../edition-notices";
 import { NumText } from "../num-text";
 import { deltaText, kgText, racesDayPath, rankText, timeText } from "../format";
@@ -374,6 +379,134 @@ describe("1면 단순화 (2026-11-27) — 탭 · 색 없는 출전번호 · 주�
     expect(h).not.toContain("예상을 낸 기준");
     expect(h).not.toContain("style=");
     expect(h).not.toContain("경주면 전체 보기");
+  });
+});
+
+describe("호 카드 — 경주 전 / 결과 구분, 결과는 예상 ↔ 실제 (2026-11-27)", () => {
+  const sRace = (
+    no: number,
+    pick: { chul_no: number; horse_no: string; horse_name: string } | null,
+    status: SummaryRaceV1["consensus"]["status"] = pick ? "picked" : "split",
+  ): SummaryRaceV1 => ({
+    race_no: no,
+    race_name: null,
+    start_time: null,
+    distance: 1200,
+    field_size: 10,
+    stakes: false,
+    consensus: { status, active_rules: 4, pick: pick ? { ...pick, votes: 3 } : null },
+  });
+  const summary = {
+    races: [
+      sRace(1, null),
+      sRace(4, { chul_no: 3, horse_no: "H3", horse_name: "매직트리" }),
+      sRace(5, { chul_no: 1, horse_no: "H1", horse_name: "판타스틱밸류" }),
+      sRace(7, { chul_no: 11, horse_no: "H11", horse_name: "미스터선샤인" }),
+      sRace(9, { chul_no: 2, horse_no: "H2", horse_name: "늦은말" }),
+      sRace(10, { chul_no: 5, horse_no: "H5", horse_name: "닥터에이트" }),
+    ],
+  };
+  const fin = (rows: [string, number, number][]) =>
+    rows.map(([horse_no, chul_no, rank]) => ({ horse_no, chul_no, rank, time_tenths: 700 + rank }));
+  const outcomes = [
+    outcome({ race_no: 1, finish: fin([["HX", 7, 1]]), winners: ["HX"], placed: ["HX"] }),
+    // 4R — 주목마 4착, 1착은 8번
+    outcome({
+      race_no: 4,
+      finish: fin([["H8", 8, 1], ["H4", 4, 2], ["H6", 6, 3], ["H3", 3, 4]]),
+      winners: ["H8"],
+      placed: ["H8", "H4", "H6"],
+    }),
+    // 5R — 주목마 3착, 1착은 14번
+    outcome({
+      race_no: 5,
+      finish: fin([["H14", 14, 1], ["H12", 12, 2], ["H1", 1, 3]]),
+      winners: ["H14"],
+      placed: ["H14", "H12", "H1"],
+    }),
+    // 7R — 주목마 1착
+    outcome({ race_no: 7, finish: fin([["H11", 11, 1]]), winners: ["H11"], placed: ["H11"] }),
+    // 9R — 주목마 출전 제외(무효)
+    outcome({ race_no: 9, finish: fin([["H9", 9, 1]]), winners: ["H9"], placed: ["H9"], non_starters: ["H2"] }),
+    // 10R — 아직 정산 전 (행 없음)
+  ];
+
+  it("editionResult — 주목마가 실제로 몇 착 했는지, 빗나가면 실제 1착 번호", () => {
+    expect(editionResult(summary, [])).toBeNull(); // 정산 전 = 아직 "경주 전"
+    expect(editionResult(null, outcomes)).toBeNull();
+    const res = editionResult(summary, outcomes)!;
+    expect(res.rows.map((r) => [r.race_no, r.chul_no, r.outcome, r.rank, r.winner_chul_nos])).toEqual([
+      [4, 3, "miss", 4, [8]],
+      [5, 1, "top3", 3, [14]],
+      [7, 11, "win", 1, []],
+      [9, 2, "void", null, []],
+      [10, 5, "pending", null, []],
+    ]);
+    expect(res).toMatchObject({ races_settled: 5, wins: 1, placed: 1, misses: 1, voids: 1, pending: 1 });
+    expect(editionResultLine(res)).toBe("주목마 5경주 — 1착 1 · 2~3착 1 · 빗나감 1 · 무효 1 · 결과 전 1");
+    // 주목마가 하나도 없던 호
+    const none = editionResult({ races: [sRace(1, null)] }, outcomes)!;
+    expect(none.rows).toEqual([]);
+    expect(editionResultLine(none)).toBe("주목마 없음");
+  });
+
+  it("EditionCardGroups — '경주 전' 먼저, '결과' 는 예상 ↔ 실제 줄. 빈 묶음은 그리지 않는다", () => {
+    const base = { issue: "제1호", sub: "10경주 · 주목마 5경주", provisional: null };
+    const cards: EditionCardData[] = [
+      {
+        ...base,
+        key: "a",
+        href: "/form/2026-11-27/busan",
+        date: "2026-11-27",
+        title: "11월 27일(금) 부경",
+        status: "11월 26일(목) 오후 6시 발행",
+        result: editionResult(summary, outcomes),
+        provisional: "잠정 — 내일 오후 1시 확정",
+      },
+      {
+        ...base,
+        key: "b",
+        href: "/form/2026-11-28/seoul",
+        date: "2026-11-28",
+        title: "11월 28일(토) 서울",
+        status: "11월 27일(금) 오후 6시 발행",
+        result: null,
+      },
+      // 지난 날짜의 미발행 — 결과는 없지만 "경주 전" 은 아니다
+      {
+        key: "c",
+        href: "/form/2026-11-26/jeju",
+        date: "2026-11-26",
+        title: "11월 26일(목) 제주",
+        issue: null,
+        status: "미발행 — 출전표 없음",
+        sub: null,
+        result: null,
+        provisional: null,
+      },
+    ];
+    const h = renderToStaticMarkup(createElement(EditionCardGroups, { cards, today: "2026-11-27" }));
+    const [upcoming, result] = h.split('aria-label="결과"');
+    expect(upcoming).toContain('aria-label="경주 전"');
+    expect(upcoming).toContain("11월 28일(토) 서울");
+    expect(upcoming).toContain("오후 6시 발행");
+    expect(upcoming).not.toContain("부경");
+    expect(result).toContain("11월 27일(금) 부경");
+    expect(result).toContain("11월 26일(목) 제주");
+    expect(result).toContain("잠정 — 내일 오후 1시 확정");
+    expect(result).toContain("매직트리");
+    expect(result).toContain("(1착 <span");
+    expect(result).toContain("결과 전");
+    expect(result).toContain("무효");
+    // 결과 카드는 발행 시각·건수 줄 대신 결과를 싣는다
+    expect(result).not.toContain("11월 26일(목) 오후 6시 발행");
+    // 예상 기호 글리프·권유어 없음, 마번은 색 없이
+    expect(h).not.toMatch(/[◎○△]|추천|강력/);
+    expect(h).not.toContain("style=");
+
+    const only = renderToStaticMarkup(createElement(EditionCardGroups, { cards: [cards[1]], today: "2026-11-27" }));
+    expect(only).toContain('aria-label="경주 전"');
+    expect(only).not.toContain('aria-label="결과"');
   });
 });
 
