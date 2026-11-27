@@ -671,49 +671,79 @@ describe("호 카드 — 경주 전 / 결과 구분, 결과는 예상 ↔ 실제
     expect(editionResultLine(none)).toBe("주목마 없음");
   });
 
-  it("EditionCardGroups — '경주 전' 먼저, '결과' 는 예상 ↔ 실제 줄. 빈 묶음은 그리지 않는다", () => {
-    const base = { issue: "제1호", sub: "10경주 · 주목마 5경주", provisional: null };
+  it("EditionCardGroups — '경주 전' 먼저, '경주 결과' 는 예상 ↔ 실제 줄. 빈 묶음은 그리지 않는다", () => {
+    const base = { issue: "제1호", sub: "10경주 · 주목마 5경주", provisional: null, disabled: false };
     const cards: EditionCardData[] = [
       {
         ...base,
         key: "a",
         href: "/form/2026-11-27/busan",
         date: "2026-11-27",
-        title: "11월 27일(금) 부경",
+        title: "부경 11월 27일(금)",
         status: "11월 26일(목) 오후 6시 발행",
         result: editionResult(summary, outcomes),
         provisional: "잠정 — 내일 오후 1시 확정",
+        picks: [],
       },
       {
         ...base,
         key: "b",
         href: "/form/2026-11-28/seoul",
         date: "2026-11-28",
-        title: "11월 28일(토) 서울",
+        title: "서울 11월 28일(토)",
         status: "11월 27일(금) 오후 6시 발행",
         result: null,
+        picks: [
+          { race_no: 3, chul_no: 8, horse_name: "선라이즈킹", strong: true },
+          { race_no: 5, chul_no: 11, horse_name: "영광의스카이", strong: false },
+        ],
+      },
+      // 발행 예정 — 누를 수 없는 흐린 카드
+      {
+        key: "d",
+        href: "/form/2026-11-29/seoul",
+        date: "2026-11-29",
+        title: "서울 11월 29일(일)",
+        issue: null,
+        status: "11월 28일(토) 오후 6시 발행 예정",
+        sub: null,
+        result: null,
+        provisional: null,
+        picks: null,
+        disabled: true,
       },
       // 지난 날짜의 미발행 — 결과는 없지만 "경주 전" 은 아니다
       {
         key: "c",
         href: "/form/2026-11-26/jeju",
         date: "2026-11-26",
-        title: "11월 26일(목) 제주",
+        title: "제주 11월 26일(목)",
         issue: null,
         status: "미발행 — 출전표 없음",
         sub: null,
         result: null,
         provisional: null,
+        picks: null,
+        disabled: false,
       },
     ];
-    const h = renderToStaticMarkup(createElement(EditionCardGroups, { cards, today: "2026-11-27" }));
-    const [upcoming, result] = h.split('aria-label="결과"');
+    const h = renderToStaticMarkup(
+      createElement(EditionCardGroups, { cards, today: "2026-11-27", showPicks: true }),
+    );
+    const [upcoming, result] = h.split('aria-label="경주 결과"');
     expect(upcoming).toContain('aria-label="경주 전"');
-    expect(upcoming).toContain("11월 28일(토) 서울");
-    expect(upcoming).toContain("오후 6시 발행");
+    expect(upcoming).toContain("서울 11월 28일(토)");
     expect(upcoming).not.toContain("부경");
-    expect(result).toContain("11월 27일(금) 부경");
-    expect(result).toContain("11월 26일(목) 제주");
+    // 경주 전 카드 — 발행 시각 대신 라운드별 주목마 (모두 고른 말은 별)
+    expect(upcoming).not.toContain("11월 27일(금) 오후 6시 발행");
+    expect(upcoming).toContain("선라이즈킹");
+    expect(upcoming).toContain("영광의스카이");
+    expect(upcoming.match(/aria-label="주목"/g)?.length).toBe(1);
+    // 발행 예정 — 링크가 아니다
+    expect(upcoming).toMatch(/<div aria-disabled="true"[^>]*>.*서울 11월 29일\(일\).*발행 예정/);
+    expect(upcoming).not.toContain('href="/form/2026-11-29/seoul"');
+    expect(result).toContain("부경 11월 27일(금)");
+    expect(result).toContain("제주 11월 26일(목)");
     expect(result).toContain("잠정 — 내일 오후 1시 확정");
     expect(result).toContain("매직트리");
     expect(result).toContain("(1착 <span");
@@ -725,9 +755,14 @@ describe("호 카드 — 경주 전 / 결과 구분, 결과는 예상 ↔ 실제
     expect(h).not.toMatch(/[◎○△]|추천|강력/);
     expect(h).not.toContain("style=");
 
+    // 홈(showPicks 없음) — 경주 전 카드에 주목마 이름을 싣지 않는다
+    const home = renderToStaticMarkup(createElement(EditionCardGroups, { cards, today: "2026-11-27" }));
+    expect(home.split('aria-label="경주 결과"')[0]).not.toContain("선라이즈킹");
+    expect(home.split('aria-label="경주 결과"')[0]).toContain("10경주 · 주목마 5경주");
+
     const only = renderToStaticMarkup(createElement(EditionCardGroups, { cards: [cards[1]], today: "2026-11-27" }));
     expect(only).toContain('aria-label="경주 전"');
-    expect(only).not.toContain('aria-label="결과"');
+    expect(only).not.toContain('aria-label="경주 결과"');
   });
 });
 

@@ -7,6 +7,7 @@ import { BetaNotice } from "@/components/racing-form/beta-notice";
 import {
   EditionCardGroups,
   editionCardSub,
+  editionCardTitle,
   publishedEditionCard,
   SettlementText,
   type EditionCardData,
@@ -55,7 +56,7 @@ export const dynamic = "force-dynamic";
 
 const TITLE = "경마지";
 const DESCRIPTION =
-  "한국마사회 데이터를 공개 기준 4개로 정리한 무료 경마지. 경주 전날 오후 6시에 발행하고, 결과는 맞든 틀리든 첫 호부터 모두 공개합니다.";
+  "한국마사회 공개 데이터를 활용한 무료 경마지 — 경주 전날 오후 6시에 발행하고, 결과는 맞든 틀리든 첫 호부터 모두 공개합니다.";
 
 /** 다루는 경마장 안내 (계획 4.2). 공휴일 경주일은 2026-11 부터 출전표를 수집해 함께 다룬다. */
 const COVERAGE = "다루는 경마장: 서울·부경·제주 (영천 경주는 아직 다루지 않습니다)";
@@ -208,8 +209,7 @@ export default async function FormHubPage({
         mal.kr 경마지
       </h1>
       <p className="text-base leading-relaxed text-muted-foreground">
-        한국마사회 데이터를 공개 기준 4개로 정리한 무료 경마지. 경주 전날 오후 6시에 발행하고, 결과는
-        맞든 틀리든 모두 공개합니다.
+        한국마사회 공개 데이터를 활용한 무료 경마지
       </p>
       <BetaNotice date={hub.today} />
     </header>
@@ -284,7 +284,7 @@ export default async function FormHubPage({
           key: `${k.date}|${k.meet}`,
           href: formEditionPath(k.date, k.meet),
           date: k.date,
-          title: `${dateKo(k.date)} ${k.meet}`,
+          title: editionCardTitle(k.date, k.meet),
           issue: edition ? issueLabel(edition.issue_no) : null,
           status:
             st.state === "planned"
@@ -293,6 +293,9 @@ export default async function FormHubPage({
           sub: edition ? editionCardSub(edition) : null,
           result: null,
           provisional: null,
+          picks: null,
+          // 발행 예정 — 아직 볼 것이 없으니 누를 수 없게 (흐린 카드)
+          disabled: st.state === "planned",
         },
       ];
     });
@@ -338,23 +341,16 @@ export default async function FormHubPage({
       {header}
       <HubMeetTabs current={meetFilter} />
 
-      <FormSection
-        id="this-week"
-        title="이번 주 경마지"
-        right={
-          <span className="text-sm text-muted-foreground">
-            {dateKo(hub.weekStart)}~{dateKo(hub.weekEnd)}
-          </span>
-        }
-      >
+      {/* 이번 주(월~일) 호 — 제목 없이 "경주 전" / "경주 결과" 묶음이 바로 나온다 (2026-11-27) */}
+      <section id="this-week" aria-label="이번 주 경마지" className="scroll-mt-20">
         {cards.length > 0 ? (
-          <EditionCardGroups cards={cards} today={hub.today} />
+          <EditionCardGroups cards={cards} today={hub.today} showPicks />
         ) : (
           <p className="rounded-xl border border-dashed border-border px-4 py-6 text-base text-muted-foreground">
             이번 주 {meetFilter ? `${meetFilter} ` : ""}경마지는 출전표가 나오면 경주 전날 오후 6시에 발행합니다.
           </p>
         )}
-      </FormSection>
+      </section>
 
       {/* 지난 8주 — 없으면 섹션째 생략 (빈 상태 문구 없음) */}
       {past.length > 0 ? (

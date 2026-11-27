@@ -18,6 +18,7 @@ import {
 } from "@/lib/racing_form-shared";
 import { cn } from "@/lib/utils";
 
+import { FocusLabel } from "./focus-label";
 import { FormNum } from "./form-num";
 import { TAP } from "./format";
 import { NumText } from "./num-text";
@@ -26,9 +27,9 @@ import { PickMark } from "./pick-mark";
 export type EditionCardData = {
   key: string;
   href: string;
-  /** 경주일 "YYYY-MM-DD" — 묶음(경주 전 / 결과)을 나눌 때 쓴다 */
+  /** 경주일 "YYYY-MM-DD" — 묶음(경주 전 / 경주 결과)을 나눌 때 쓴다 */
   date: string;
-  /** "11월 14일(토) 서울" */
+  /** "서울 11월 14일(토)" — 경마장이 앞 */
   title: string;
   /** 발행본이 있으면 호 번호 */
   issue: string | null;
@@ -40,7 +41,24 @@ export type EditionCardData = {
   result: EditionResult | null;
   /** "잠정 — 내일 오후 1시 확정" · "잠정" · null(확정 또는 결과 없음) */
   provisional: string | null;
+  /** 경주 전 발행본의 라운드별 주목마 (1순위) — 발행본이 아니면 null */
+  picks: EditionCardPick[] | null;
+  /** 발행 예정 — 아직 볼 것이 없어 누를 수 없는 카드 */
+  disabled: boolean;
 };
+
+export type EditionCardPick = {
+  race_no: number;
+  chul_no: number;
+  horse_name: string;
+  /** 예상을 낸 기준이 모두 고름 → 별 */
+  strong: boolean;
+};
+
+/** 카드 제목 — "서울 11월 28일(토)" (경마장이 앞). */
+export function editionCardTitle(date: string, meet: string): string {
+  return `${meet} ${dateKo(date)}`;
+}
 
 /**
  * 허브 카드 보조 줄 "12경주 · 주목마 7경주 · 주요 소식 6건". summary.counts.headlines 는 1면 머리기사 수
@@ -81,12 +99,30 @@ export function publishedEditionCard(args: {
     key: `${e.race_date}|${e.meet}`,
     href: formEditionPath(e.race_date, e.meet),
     date: e.race_date,
-    title: `${dateKo(e.race_date)} ${e.meet}`,
+    title: editionCardTitle(e.race_date, e.meet),
     issue: issueLabel(e.issue_no),
     status: `${publishStampKo(e.published_at)} 발행${args.late ? " · 늦게 발행" : ""}`,
     sub: editionCardSub(e),
     result: editionResult(e.summary, args.outcomes),
     provisional: line?.provisional ?? null,
+    picks: e.summary
+      ? [...e.summary.races]
+          .sort((a, b) => a.race_no - b.race_no)
+          .flatMap((r) => {
+            const pick = r.consensus.status === "picked" ? r.consensus.pick : null;
+            return pick
+              ? [
+                  {
+                    race_no: r.race_no,
+                    chul_no: pick.chul_no,
+                    horse_name: pick.horse_name,
+                    strong: pick.votes === r.consensus.active_rules,
+                  },
+                ]
+              : [];
+          })
+      : null,
+    disabled: false,
   };
 }
 
@@ -143,27 +179,66 @@ function ResultRows({ rows }: { rows: readonly EditionResultRow[] }) {
   );
 }
 
+/** 경주 전 발행본의 라운드별 주목마 한 줄 — "3R 8 선라이즈킹 ★" (결과 카드와 같은 틀, 결과 칸만 없다). */
+function PickRows({ picks }: { picks: readonly EditionCardPick[] }) {
+  return (
+    <span className="block divide-y divide-border border-y border-border">
+      {picks.map((r) => (
+        <span
+          key={r.race_no}
+          className="grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-x-2 py-1.5 text-sm text-foreground"
+        >
+          <span className="font-mono font-bold tabular-nums">{r.race_no}R</span>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <FormNum n={r.chul_no} plain />
+            <span className="sr-only">번</span>
+            <span className="min-w-0 truncate font-semibold">{r.horse_name}</span>
+            {r.strong ? <FocusLabel size="sm" /> : null}
+          </span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
 /**
- * 호 카드 — 카드 전체가 1면 링크 (허브 "이번 주" · 홈).
- * 경주 전: 발행 시각 + 보조 줄. 결과가 나온 호: 주목마가 실제로 몇 착 했는지 경주별로
- * (DESIGN.md Decisions Log 2026-11-27 — 예상과 실제가 어떻게 달랐는지 카드에서 바로).
+ * 호 카드 (허브 · 홈) — 제목은 "서울 11월 28일(토)" + 오른쪽에 호 번호.
+ *  - 경주 결과가 나온 호: 주목마가 실제로 몇 착 했는지 경주별로 (예상 ↔ 실제).
+ *  - 경주 전 발행본: showPicks 면 라운드별 주목마를 같은 틀로 (발행 시각은 싣지 않는다),
+ *    아니면(홈) 건수 한 줄만 — 홈에는 경주 전 주목마 이름을 싣지 않는다 (2026-11-26 결정).
+ *  - 발행 예정(disabled): 링크가 아니다 — 흐리게, "발행 예정" 한 줄만.
+ *  - 미발행·쉼·철회: 상태 한 줄.
  */
-export function EditionCard({ card }: { card: EditionCardData }) {
+export function EditionCard({ card, showPicks = false }: { card: EditionCardData; showPicks?: boolean }) {
   const res = card.result;
+  const head = (
+    <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+      <span className="text-lg font-bold">{card.title}</span>
+      {card.issue ? (
+        <span className="font-mono text-base font-semibold tabular-nums">{card.issue}</span>
+      ) : null}
+    </span>
+  );
+  if (card.disabled) {
+    return (
+      <div
+        aria-disabled="true"
+        className="block space-y-1.5 rounded-xl border border-dashed border-border bg-muted px-4 py-3 text-muted-foreground"
+      >
+        {head}
+        <span className="block text-base">{card.status}</span>
+      </div>
+    );
+  }
   return (
     <Link
       href={card.href}
       className={cn(
-        "block space-y-1.5 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-muted",
+        "block space-y-1.5 rounded-xl border border-border bg-card px-4 py-3 text-foreground transition-colors hover:bg-muted",
         TAP,
       )}
     >
-      <span className="flex flex-wrap items-baseline justify-between gap-x-3">
-        <span className="text-lg font-bold text-foreground">{card.title}</span>
-        {card.issue ? (
-          <span className="font-mono text-base font-semibold tabular-nums text-foreground">{card.issue}</span>
-        ) : null}
-      </span>
+      {head}
       {res ? (
         <>
           <span className="block text-base text-foreground">
@@ -174,7 +249,14 @@ export function EditionCard({ card }: { card: EditionCardData }) {
           </span>
           {res.rows.length > 0 ? <ResultRows rows={res.rows} /> : null}
         </>
+      ) : card.picks !== null ? (
+        // 경주 전 발행본
+        <>
+          {card.sub ? <span className="block text-sm text-muted-foreground">{card.sub}</span> : null}
+          {showPicks && card.picks.length > 0 ? <PickRows picks={card.picks} /> : null}
+        </>
       ) : (
+        // 미발행·쉼·철회
         <>
           <span className="block text-base text-foreground">{card.status}</span>
           {card.sub ? <span className="block text-sm text-muted-foreground">{card.sub}</span> : null}
@@ -185,21 +267,24 @@ export function EditionCard({ card }: { card: EditionCardData }) {
 }
 
 /**
- * 호 카드 묶음 — "경주 전" 과 "결과" 를 나눠 보여 준다 (허브 "이번 주 경마지" · 홈).
- * 결과 = 정산이 시작됐거나 경주일이 지난 호(미발행·철회 포함). 한쪽이 비면 그 묶음은 그리지 않는다.
+ * 호 카드 묶음 — "경주 전" 과 "경주 결과" 를 나눠 보여 준다 (허브 · 홈).
+ * 경주 결과 = 정산이 시작됐거나 경주일이 지난 호(미발행·철회 포함). 한쪽이 비면 그 묶음은 그리지 않는다.
  */
 export function EditionCardGroups({
   cards,
   today,
+  showPicks = false,
 }: {
   cards: readonly EditionCardData[];
   /** 오늘 (KST) "YYYY-MM-DD" */
   today: string;
+  /** 경주 전 카드에 라운드별 주목마를 싣는다 (허브). 홈은 싣지 않는다 */
+  showPicks?: boolean;
 }) {
   const done = (c: EditionCardData) => c.result !== null || c.date < today;
   const groups = [
     { key: "upcoming", label: "경주 전", items: cards.filter((c) => !done(c)) },
-    { key: "result", label: "결과", items: cards.filter(done) },
+    { key: "result", label: "경주 결과", items: cards.filter(done) },
   ].filter((g) => g.items.length > 0);
   return (
     <div className="space-y-4">
@@ -214,7 +299,7 @@ export function EditionCardGroups({
           <ul className="grid gap-3 md:grid-cols-2">
             {g.items.map((c) => (
               <li key={c.key}>
-                <EditionCard card={c} />
+                <EditionCard card={c} showPicks={showPicks} />
               </li>
             ))}
           </ul>
