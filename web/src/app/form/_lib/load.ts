@@ -7,10 +7,23 @@
  */
 import { cache } from "react";
 
-import { getEditionHead, getFormCalendar, getLaunchAt, getNotices, getRaceSlice } from "@/lib/racing_form";
 import {
+  getEditionHead,
+  getEditionIndex,
+  getFormCalendar,
+  getLaunchAt,
+  getNotices,
+  getRaceSlice,
+} from "@/lib/racing_form";
+import {
+  addDays,
+  dateKo,
   editionState,
+  formEditionPath,
+  issueLabel,
   meetFromSlug,
+  meetOrder,
+  mondayOf,
   normalizeFormDate,
   normalizeFormRaceNo,
   SCHEMA_VERSION,
@@ -61,6 +74,44 @@ export const loadEdition = cache(async (date: string, meet: FormMeet) => {
 });
 
 export type EditionLoad = Awaited<ReturnType<typeof loadEdition>>;
+
+/**
+ * 그 호가 속한 주(월~일)의 경마지 목록 — 지면 바깥 "다른 경마지" 드롭다운 재료.
+ * 달력(출전표가 있는 경주일) ∪ 발행본, 경주일 → 경마장 순. 출시 전이라 404 인 호는 뺀다 (허브와 같은 판정).
+ */
+export const loadWeekEditionOptions = cache(async (date: string) => {
+  const weekStart = mondayOf(date);
+  const weekEnd = addDays(weekStart, 6);
+  const [calendar, editions, launchAt] = await Promise.all([
+    getFormCalendar(weekStart, weekEnd),
+    getEditionIndex(weekStart, weekEnd),
+    getLaunchAt(),
+  ]);
+  const now = new Date();
+  const keys = new Map<string, { date: string; meet: string }>();
+  for (const c of calendar) keys.set(`${c.race_date}|${c.meet}`, { date: c.race_date, meet: c.meet });
+  for (const e of editions) keys.set(`${e.race_date}|${e.meet}`, { date: e.race_date, meet: e.meet });
+  return [...keys.values()]
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : meetOrder(a.meet) - meetOrder(b.meet)))
+    .flatMap((k) => {
+      const planned = calendar.find((c) => c.race_date === k.date && c.meet === k.meet) ?? null;
+      const edition = editions.find((e) => e.race_date === k.date && e.meet === k.meet) ?? null;
+      const st = editionState({
+        planned: planned ?? (edition ? { race_date: edition.race_date, meet: edition.meet, first_post: null } : null),
+        edition,
+        notices: [],
+        now,
+        launchAt,
+      });
+      if (st.notFound) return [];
+      return [
+        {
+          href: formEditionPath(k.date, k.meet),
+          label: `${dateKo(k.date)} ${k.meet}${edition ? ` · ${issueLabel(edition.issue_no)}` : " · 발행 예정"}`,
+        },
+      ];
+    });
+});
 
 /**
  * 경주면 — 발행본이 있을 때만 payload 에서 그 경주 하나를 잘라 읽는다.

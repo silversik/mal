@@ -10,7 +10,8 @@ import { EditionStamp } from "@/components/racing-form/edition-stamp";
 import { FormSection } from "@/components/racing-form/form-section";
 import { TAP } from "@/components/racing-form/format";
 import { buildHeadlineItems, Headlines } from "@/components/racing-form/headlines";
-import { MeetTabs } from "@/components/racing-form/meet-tabs";
+import { PaperMasthead, paperTitleKo } from "@/components/racing-form/paper-sheet";
+import { PaperSwitcher } from "@/components/racing-form/paper-switcher";
 import { buildRaceRows, RaceList } from "@/components/racing-form/race-list";
 import { RecordCompact } from "@/components/racing-form/record-compact";
 import { EditionStateMessage } from "@/components/racing-form/state-message";
@@ -49,7 +50,7 @@ import {
 import { getRacesByDate } from "@/lib/races";
 import { cn } from "@/lib/utils";
 
-import { loadEdition, parseEditionParams } from "../../../_lib/load";
+import { loadEdition, loadWeekEditionOptions, parseEditionParams } from "../../../_lib/load";
 
 // 요청 시점에만 DB 를 친다 (빌드의 placeholder DATABASE_URL 로 프리렌더하지 않게).
 export const dynamic = "force-dynamic";
@@ -102,33 +103,11 @@ function findNextRace(args: {
   return anyTime ? null : { raceNo: null };
 }
 
-function FrontHeader({
-  title,
-  issue,
-  date,
-  meet,
-  meets,
-  children,
-}: {
-  title: string;
-  issue: string | null;
-  date: string;
-  meet: FormMeet;
-  meets: readonly FormMeet[];
-  children?: ReactNode;
-}) {
+/** 1면 머리 — 제호(= 페이지 h1) 아래 발행 도장·안내만. 날짜·경마장·호는 제호에 한 번만 나온다. */
+function FrontHeader({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <header className="space-y-3">
-      {/* 제호("mal.kr 경마지" → 허브)는 지면 머리(PaperSheet)에 있다 */}
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h1 className="text-2xl font-extrabold tracking-tight text-balance text-foreground sm:text-3xl">
-          {title}
-        </h1>
-        {issue ? (
-          <span className="font-mono text-lg font-bold tabular-nums text-foreground">{issue}</span>
-        ) : null}
-      </div>
-      <MeetTabs date={date} meets={meets} current={meet} />
+      <PaperMasthead title={title} />
       {children}
     </header>
   );
@@ -143,6 +122,7 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
 
   const title = editionTitleKo(p.date, p.meet);
   const path = formEditionPath(p.date, p.meet);
+  const weekOptions = await loadWeekEditionOptions(p.date);
   const crumbs = [
     { name: "홈", url: "/" },
     { name: "경마지", url: FORM_HUB_PATH },
@@ -154,7 +134,8 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
     return (
       <div className="break-keep space-y-6">
         <BreadcrumbJsonLd items={crumbs} />
-        <FrontHeader title={title} issue={null} date={p.date} meet={p.meet} meets={ed.meets}>
+        <PaperSwitcher date={p.date} meet={p.meet} options={weekOptions} />
+        <FrontHeader title={paperTitleKo(p.date, p.meet, null)}>
           <BetaNotice date={p.date} />
         </FrontHeader>
         <EditionStateMessage state={s} date={p.date} meet={p.meet} />
@@ -206,9 +187,9 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
     <div className="break-keep space-y-6">
       <BreadcrumbJsonLd items={crumbs} />
       {/* 지면 넘기기 — 첫 장(요약)에서 라운드로 */}
+      <PaperSwitcher date={p.date} meet={p.meet} options={weekOptions} />
       {front ? (
         <EditionPager
-          meet={p.meet}
           summaryHref={path}
           current="summary"
           rounds={[...front.races]
@@ -216,13 +197,7 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
             .map((r) => ({ raceNo: r.race_no, href: formRacePath(p.date, p.meet, r.race_no) }))}
         />
       ) : null}
-      <FrontHeader
-        title={title}
-        issue={issueLabel(head.issue_no)}
-        date={p.date}
-        meet={p.meet}
-        meets={ed.meets}
-      >
+      <FrontHeader title={paperTitleKo(p.date, p.meet, head.issue_no)}>
         <EditionStamp head={head} late={s.late} />
         <BetaNotice date={p.date} />
       </FrontHeader>
