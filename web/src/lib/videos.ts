@@ -1,4 +1,5 @@
 import { query } from "./db";
+import { normMeetSql, storedMeetLabels } from "./meets";
 import type { VideoItem } from "./video-helpers";
 
 export type { VideoItem } from "./video-helpers";
@@ -47,13 +48,16 @@ export async function getVideosForRaces(
   const nos   = valid.map((r) => r.race_no);
 
   const rows = await query<VideoItem & { race_date: string; meet: string; race_no: number }>(
-    `SELECT DISTINCT ON (v.race_date, v.meet, v.race_no)
+    // 라벨은 정규화해 맞추고, 호출자가 준 라벨(t.m)로 돌려준다 — raceKey 가 그 라벨로 찾는다.
+    `SELECT DISTINCT ON (v.race_date, t.m, v.race_no)
             ${VIDEO_COLUMNS.trim()},
-            v.race_date::text, v.meet, v.race_no
+            v.race_date::text, t.m AS meet, v.race_no
        FROM kra_videos v
        JOIN unnest($1::date[], $2::text[], $3::int[]) AS t(rd, m, rn)
-         ON v.race_date = t.rd AND v.meet = t.m AND v.race_no = t.rn
-      ORDER BY v.race_date, v.meet, v.race_no, v.published_at DESC, v.id DESC`,
+         ON v.race_date = t.rd
+        AND ${normMeetSql("v.meet")} = ${normMeetSql("t.m")}
+        AND v.race_no = t.rn
+      ORDER BY v.race_date, t.m, v.race_no, v.published_at DESC, v.id DESC`,
     [dates, meets, nos],
   );
 
@@ -77,11 +81,11 @@ export async function getRaceVideo(
     `SELECT ${VIDEO_COLUMNS}
        FROM kra_videos
       WHERE race_date = $1::date
-        AND meet = $2
+        AND meet = ANY($2::text[])
         AND race_no = $3
       ORDER BY published_at DESC, id DESC
       LIMIT 1`,
-    [raceDate, meet, raceNo],
+    [raceDate, storedMeetLabels(meet), raceNo],
   );
   return rows[0] ?? null;
 }

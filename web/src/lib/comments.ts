@@ -1,4 +1,5 @@
 import { query } from "./db";
+import { storedMeetLabels } from "./meets";
 
 export const CONTENT_MAX = 500;
 
@@ -121,9 +122,9 @@ export async function resolveEntityName(
     const [, date, meet, raceNo] = m;
     const rows = await query<{ ok: boolean }>(
       `SELECT TRUE AS ok FROM races
-        WHERE race_date = $1::date AND meet = $2 AND race_no = $3::int
+        WHERE race_date = $1::date AND meet = ANY($2::text[]) AND race_no = $3::int
         LIMIT 1`,
-      [date, meet, Number(raceNo)],
+      [date, storedMeetLabels(meet), Number(raceNo)],
     );
     return rows.length > 0 ? `${date} ${meet} ${raceNo}R` : null;
   }
