@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { GateNum } from "@/components/race-detail-ui";
 import {
   formRacePath,
   runnerAnchorId,
@@ -9,6 +8,7 @@ import {
 } from "@/lib/racing_form-shared";
 import { cn } from "@/lib/utils";
 
+import { FormNum } from "./form-num";
 import { TAP } from "./format";
 
 export type HeadlineItem = {
@@ -67,7 +67,7 @@ function Body({ item }: { item: HeadlineItem }) {
       ) : null}
       {item.chulNo !== null ? (
         <>
-          <GateNum n={item.chulNo} size={22} />
+          <FormNum n={item.chulNo} />
           <span className="sr-only">번</span>
         </>
       ) : null}
@@ -79,7 +79,7 @@ function Body({ item }: { item: HeadlineItem }) {
   );
 }
 
-/** 1면 말 소식 헤드라인 — 최대 6개 + "외 n건" (계획 4.5-5). 평가어 없이 KRA 사실만. */
+/** 1면 "새로운 소식"(말 소식) 헤드라인 — 최대 6개 + "외 n건" (계획 4.5-5). 평가어 없이 KRA 사실만. */
 export function Headlines({
   items,
   overflow,
@@ -88,7 +88,7 @@ export function Headlines({
   overflow: number;
 }) {
   if (items.length === 0) {
-    return <p className="text-base text-muted-foreground">이번 호에는 말 소식이 없습니다.</p>;
+    return <p className="text-base text-muted-foreground">이번 호에는 새로운 소식이 없습니다.</p>;
   }
   const row = cn("flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 text-base", TAP);
   return (

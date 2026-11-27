@@ -242,7 +242,6 @@ export default async function FormRecordPage({ searchParams }: { searchParams: P
           확정하고, 확정된 경주만 셉니다.
         </p>
         <BetaNotice date={kstToday()} />
-        <ResponsibleGamblingNotice variant="compact" />
       </header>
 
       <FormSection id="live" title="실전 기록">

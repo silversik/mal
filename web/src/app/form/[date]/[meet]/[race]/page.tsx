@@ -127,6 +127,12 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
   const horseName = (horseNo: string) =>
     race.runners.find((u) => u.horse_no === horseNo)?.horse_name ?? horseNo;
   const runners = [...race.runners].sort((a, b) => a.chul_no - b.chul_no);
+  // "주목" 뱃지 — 예상을 낸 기준이 모두 고른 주목마만 (1면·팝업과 같은 뜻)
+  const strongPicks = new Set(
+    race.consensus.picks
+      .filter((x) => x.votes === race.consensus.active_rules)
+      .map((x) => x.horse_no),
+  );
 
   return (
     <PageContainer className="theme-v2 break-keep space-y-6 py-6 md:py-8">
@@ -177,7 +183,12 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
       >
         <div className="space-y-3">
           {runners.map((u) => (
-            <RunnerCard key={u.horse_no} runner={u} hidePicks={hidePicks} />
+            <RunnerCard
+              key={u.horse_no}
+              runner={u}
+              hidePicks={hidePicks}
+              strong={strongPicks.has(u.horse_no)}
+            />
           ))}
         </div>
       </FormSection>

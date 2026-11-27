@@ -1,4 +1,3 @@
-import { GateNum } from "@/components/race-detail-ui";
 import {
   RULE_LABEL,
   recordRows,
@@ -10,6 +9,7 @@ import {
 } from "@/lib/racing_form-shared";
 import { cn } from "@/lib/utils";
 
+import { FormNum } from "./form-num";
 import { TAP } from "./format";
 import { PickMark } from "./pick-mark";
 
@@ -45,7 +45,7 @@ function RuleRecordLine({ row }: { row: RecordRuleRow | undefined }) {
 }
 
 /**
- * 경주면 기준별 목록 (계획 4.6-5) — payload 의 고정 순서. ◎○△ 각각 GateNum + 마명 + 근거 한 줄.
+ * 경주면 기준별 목록 (계획 4.6-5) — payload 의 고정 순서. ◎○△ 각각 출전번호 + 마명 + 근거 한 줄.
  * 예상 안 한 기준엔 사유. 기준 라벨 <details> = 정의 한 줄 + 그 기준의 실전 성적.
  */
 export function RuleList({
@@ -102,7 +102,7 @@ export function RuleList({
                         )}
                       >
                         <PickMark mark={p.mark} className="text-lg" />
-                        <GateNum n={p.chul_no} size={24} />
+                        <FormNum n={p.chul_no} />
                         <span className="min-w-0">
                           <span className="sr-only">번 </span>
                           <span className="block text-base font-semibold text-foreground">

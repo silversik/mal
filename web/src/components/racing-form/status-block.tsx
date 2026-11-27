@@ -1,9 +1,9 @@
 import Link from "next/link";
 
-import { GateNum } from "@/components/race-detail-ui";
 import type { SettlementLine } from "@/lib/racing_form-shared";
 import { cn } from "@/lib/utils";
 
+import { FormNum } from "./form-num";
 import { TAP } from "./format";
 import { NumText } from "./num-text";
 import { PickMark } from "./pick-mark";
@@ -35,7 +35,7 @@ export function changeText(c: Pick<StatusChange, "before" | "after" | "reason">)
  * 1면 상태 블록 — 하나만, 내용이 없으면 그리지 않는다 (계획 4.5-2).
  *  - 경주 후: 결산 한 줄 (4.8, 분수·고정 순서·강조 없음)
  *  - 경주일: "다음 경주 3R 14:30" (모르면 "발주 시각 미정")
- *  - 경주 전·경주일: "발행 후 바뀐 것 n건" (발행 후 기수 변경)
+ *  - 경주 전·경주일: "발행 후 바뀐 것 n건" (발행 후 기수 변경) — 0건이면 싣지 않는다
  */
 export function StatusBlock({
   settlement,
@@ -44,10 +44,11 @@ export function StatusBlock({
 }: {
   settlement: SettlementLine | null;
   next: NextRace | null;
-  /** null = 이 줄을 싣지 않음 */
+  /** null·빈 배열 = 이 줄을 싣지 않음 (바뀐 것이 없으면 비운다 — 2026-11-27) */
   changes: readonly StatusChange[] | null;
 }) {
-  if (!settlement && !next && !changes) return null;
+  const changed = changes && changes.length > 0 ? changes : null;
+  if (!settlement && !next && !changed) return null;
   return (
     <section
       aria-labelledby="status-title"
@@ -103,35 +104,31 @@ export function StatusBlock({
         )
       ) : null}
 
-      {changes ? (
+      {changed ? (
         <div className="space-y-2">
           <p className="text-base text-foreground">
-            <span className="font-semibold">
-              {changes.length > 0 ? `발행 후 바뀐 것 ${changes.length}건` : "발행 후 바뀐 것 없음"}
-            </span>
-            {changes.length > 0 ? " — 예상·판정은 발행한 그대로 둡니다" : null}
+            <span className="font-semibold">발행 후 바뀐 것 {changed.length}건</span> — 예상·판정은
+            발행한 그대로 둡니다
           </p>
-          {changes.length > 0 ? (
-            <ul className="space-y-1">
-              {changes.map((c) => (
-                <li key={c.key}>
-                  <Link
-                    href={c.href}
-                    className={cn(
-                      "flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md px-1 text-sm text-foreground transition-colors hover:bg-muted",
-                      TAP,
-                    )}
-                  >
-                    <span className="font-mono font-bold tabular-nums">{c.raceNo}R</span>
-                    <GateNum n={c.chulNo} size={22} />
-                    <span className="sr-only">번</span>
-                    <span className="font-semibold">{c.horseName}</span>
-                    <span>· 발행 후 기수 변경 {changeText(c)}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          <ul className="space-y-1">
+            {changed.map((c) => (
+              <li key={c.key}>
+                <Link
+                  href={c.href}
+                  className={cn(
+                    "flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md px-1 text-sm text-foreground transition-colors hover:bg-muted",
+                    TAP,
+                  )}
+                >
+                  <span className="font-mono font-bold tabular-nums">{c.raceNo}R</span>
+                  <FormNum n={c.chulNo} />
+                  <span className="sr-only">번</span>
+                  <span className="font-semibold">{c.horseName}</span>
+                  <span>· 발행 후 기수 변경 {changeText(c)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
           <p className="text-small text-muted-foreground">{JOCKEY_CHANGE_SOURCE_NOTE}</p>
         </div>
       ) : null}
