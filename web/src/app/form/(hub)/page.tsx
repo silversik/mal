@@ -55,7 +55,7 @@ export const dynamic = "force-dynamic";
 
 const TITLE = "경마지";
 const DESCRIPTION =
-  "경주 전날 오후 6시에 고정 발행하는 무료 경마지 — 공개 기준 4개가 고른 1·2·3순위와 숫자 근거, KRA 데이터로 정리한 말 소식, 첫 호부터 빠짐없는 적중 기록.";
+  "한국마사회 데이터를 공개 기준 4개로 정리한 무료 경마지. 경주 전날 오후 6시에 발행하고, 결과는 맞든 틀리든 첫 호부터 모두 공개합니다.";
 
 /** 다루는 경마장 안내 (계획 4.2). 공휴일 경주일은 2026-11 부터 출전표를 수집해 함께 다룬다. */
 const COVERAGE = "다루는 경마장: 서울·부경·제주 (영천 경주는 아직 다루지 않습니다)";
@@ -208,8 +208,8 @@ export default async function FormHubPage({
         mal.kr 경마지
       </h1>
       <p className="text-base leading-relaxed text-muted-foreground">
-        경주 전날 오후 6시에 고정해서 내는 무료 웹 경마지 — 공개 기준 4개가 고른 1·2·3순위와 숫자 근거,
-        KRA 데이터로 정리한 말 소식, 빠짐없는 적중 기록.
+        한국마사회 데이터를 공개 기준 4개로 정리한 무료 경마지. 경주 전날 오후 6시에 발행하고, 결과는
+        맞든 틀리든 모두 공개합니다.
       </p>
       <BetaNotice date={hub.today} />
     </header>
