@@ -1,16 +1,15 @@
 import type { Metadata, ResolvingMetadata } from "next";
 import { notFound } from "next/navigation";
 
-import { PageContainer } from "@/components/page-container";
 import { BetaNotice } from "@/components/racing-form/beta-notice";
 import { ChangesBox } from "@/components/racing-form/changes-box";
 import { ConsensusBox } from "@/components/racing-form/consensus-box";
+import { EditionPager } from "@/components/racing-form/edition-pager";
 import { ErrataList, WithdrawnBanner } from "@/components/racing-form/edition-notices";
 import { FormSection } from "@/components/racing-form/form-section";
 import { PickLegend } from "@/components/racing-form/legend";
 import { OpenOnHash } from "@/components/racing-form/open-on-hash";
 import { RaceHeader } from "@/components/racing-form/race-header";
-import { RaceRoundsBar } from "@/components/racing-form/race-rounds-bar";
 import { ResultRow } from "@/components/racing-form/result-row";
 import { RuleList } from "@/components/racing-form/rule-list";
 import { RunnerCard } from "@/components/racing-form/runner-card";
@@ -95,7 +94,7 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
   if (!r.slice) {
     if (!r.unknownSchema) notFound();
     return (
-      <PageContainer className="theme-v2 break-keep space-y-6 py-6 md:py-8">
+      <div className="break-keep space-y-6">
         <BreadcrumbJsonLd items={crumbs} />
         <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
           {raceTitle(p.date, p.meet, p.raceNo)}
@@ -105,7 +104,7 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
           이 호는 새 형식이라 아직 표시할 수 없습니다.
         </p>
         <ResponsibleGamblingNotice variant="compact" />
-      </PageContainer>
+      </div>
     );
   }
 
@@ -137,12 +136,12 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
   );
 
   return (
-    <PageContainer className="theme-v2 break-keep space-y-6 pt-6 pb-24 md:pt-8 md:pb-28">
+    <div className="break-keep space-y-6">
       <BreadcrumbJsonLd items={crumbs} />
       <OpenOnHash />
-      <RaceRoundsBar
+      <EditionPager
         meet={p.meet}
-        editionHref={formEditionPath(p.date, p.meet)}
+        summaryHref={formEditionPath(p.date, p.meet)}
         current={race.race_no}
         rounds={[...raceNos]
           .sort((a, b) => a - b)
@@ -204,6 +203,6 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
       </FormSection>
 
       <ResponsibleGamblingNotice variant="compact" />
-    </PageContainer>
+    </div>
   );
 }

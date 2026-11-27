@@ -13,7 +13,7 @@ import { TAP } from "./format";
 
 /**
  * 경주면 머리 (계획 4.6-1) — "3R · 14:30 · 1200m · 국6 · 12두" + 경주명,
- * "출전표·결과 원본(경기 일람) ›". 라운드 이동은 하단에 떠 있는 RaceRoundsBar 가 맡는다.
+ * "출전표·결과 원본(경기 일람) ›". 라운드 이동은 하단에 떠 있는 EditionPager 가 맡는다.
  */
 export function RaceHeader({
   date,
