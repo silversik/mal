@@ -362,13 +362,17 @@ def _rank_conn(
 
 
 def rank_jockey(race: RaceInputs, defn: RuleSetDef) -> RuleResult:
-    """실제 기수의 같은 meet [H−90, H) 기승 20회 이상, 동명이인(기수번호 2개 이상) 제외."""
+    """실제 기수의 같은 meet [H−90, H) 기승 20회 이상, 동명이인(기수번호 2개 이상) 제외.
+
+    이름은 감량 표기를 뗀 비교 키(parse.jockey_key) — 출전표에만 "(-2)" 가 붙는다.
+    """
     cfg = defn.p("rules", "jockey")
     return _rank_conn(
         race,
         defn,
         key="jockey",
-        name_of=lambda e: e.runner.jockey_name,
+        # 감량 표기("(-2)권중석")를 뗀 이름으로 통계를 찾는다 — build 가 같은 키로 집계한다
+        name_of=lambda e: parse.jockey_key(e.runner.jockey_name),
         stats=race.jockey_stats,
         min_starts=int(cfg["min_rides"]),
         min_eligible=int(cfg["min_eligible"]),

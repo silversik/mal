@@ -132,6 +132,17 @@ def test_normalize_meet(value: object, expected: str | None) -> None:
 
 
 def test_norm_name() -> None:
+    # (아래 기존 검사 앞에 감량 표기 키 검사를 둔다)
+    assert parse.jockey_key("(-2)권중석") == "권중석"
+    assert parse.jockey_key(" (-1.5) 홍길동 ") == "홍길동"
+    assert parse.jockey_key("(+1)갑") == "갑"
+    assert parse.jockey_key("김가람") == "김가람"
+    assert parse.jockey_key("이름(괄호)") == "이름(괄호)"  # 앞이 아니면 그대로
+    assert parse.jockey_key("(-2)") is None
+    assert parse.jockey_key(None) is None and parse.jockey_key("  ") is None
+    assert parse.is_initial_class("국미검") and parse.is_initial_class("외미검")
+    assert parse.is_initial_class(None) and parse.is_initial_class(" ")
+    assert not parse.is_initial_class("국6") and not parse.is_initial_class("혼4")
     assert parse.norm_name("  김기수 ") == "김기수"
     assert parse.norm_name("") is None
     assert parse.norm_name("   ") is None

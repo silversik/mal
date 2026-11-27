@@ -30,6 +30,8 @@ _MEET_ALIASES: dict[str, str] = {
 
 _DIST_RE = re.compile(r"^\s*(\d+)\s*[mM]?\s*$")
 _CLASS_RE = re.compile(r"^\s*([^\d\s]*)\s*(\d+)\s*(?:등급)?\s*$")
+# 출전표 기수 이름 앞의 감량 표기 — "(-2)권중석" · "(-1.5) 홍길동" (결과·기수 테이블에는 없다)
+_JOCKEY_ALLOWANCE_RE = re.compile(r"^\s*\(\s*[-+]?\d+(?:\.\d+)?\s*\)\s*")
 _HHMM_RE = re.compile(r"^\s*(\d{1,2}):?(\d{2})(?::\d{2})?\s*$")
 
 
@@ -127,6 +129,30 @@ def norm_name(value: Any) -> str | None:
     return s or None
 
 
+def jockey_key(value: Any) -> str | None:
+    """기수 이름 비교 키 — 정규화 + 앞의 감량 표기 제거 ("(-2)권중석" → "권중석").
+
+    출전표(race_entries)는 견습 기수 이름 앞에 감량 kg 을 붙여 주고,
+    결과(race_results)·기수 테이블은 붙이지 않는다. 기수 통계 조회·"처음 탐" 비교는 이 키로 한다
+    (2026-11-28 — 붙은 채로 비교해 감량 기수의 통계가 없는 것으로 잡히고 "처음 탐" 이 잘못 나왔다).
+    화면 표기는 원문 그대로 둔다.
+    """
+    name = norm_name(value)
+    if name is None:
+        return None
+    return norm_name(_JOCKEY_ALLOWANCE_RE.sub("", name))
+
+
+def is_initial_class(value: Any) -> bool:
+    """처음 받는 등급인지 — 변경 전 등급이 없거나 '미검'(국미검·외미검 = 아직 등급 없음).
+
+    데뷔 전 말은 등록 때 '국미검' 이었다가 첫 출전에서 '국6' 등을 받는다. 이것은 등급 변동이
+    아니라 첫 배정이라 "등급 변경 후 첫 출전" 소식을 내지 않는다 (2026-11-28).
+    """
+    before = norm_name(value)
+    return before is None or "미검" in before
+
+
 def norm_jk_no(value: Any) -> str | None:
     """기수번호 정규화 — strip 후 앞자리 0 제거, 빈 값 → None.
 
@@ -170,6 +196,13 @@ def fmt_kg(tenths: int) -> str:
     if tenths < 0:
         return "-" + fmt_kg(-tenths)
     return f"{tenths // 10}.{tenths % 10}"
+
+
+def fmt_time_tenths(tenths: int) -> str:
+    """0.1초 정수 → "1:13.5" · "59.8" (웹 timeText 와 같은 표기)."""
+    m, rest = divmod(tenths, 600)
+    s, t = divmod(rest, 10)
+    return f"{m}:{s:02d}.{t}" if m else f"{s}.{t}"
 
 
 def fmt_md(d: date, template: str = "{m}월 {d}일") -> str:

@@ -179,6 +179,31 @@ def test_debut_vs_no_record() -> None:
     assert "debut" not in got and "no_record" not in got
 
 
+def test_new_horse_first_grade_is_debut_not_class_change() -> None:
+    """데뷔마의 첫 등급 배정(국미검→국6)은 등급 변동이 아니다 — 말 정보가 없어도 데뷔전.
+
+    (2026-11-28)
+
+    11/28 서울 1R: 데뷔마 11두가 모두 "국미검→국6 등급 변경 후 첫 출전" 으로 헤드라인 6칸을 채웠고,
+    말 정보(horses)가 아직 없어 9두는 "mal.kr 수집 기록 없음" 이었다.
+    """
+    first = RankChange("A", D - timedelta(days=3), "국미검", "국6")
+    got = badges(rank_change=first, master=None)
+    assert "class_change" not in got
+    assert got["debut"].text == "데뷔전" and "no_record" not in got
+    foreign = RankChange("A", D, "외미검", "혼4")
+    assert "class_change" not in badges(rank_change=foreign, master=None)
+    assert "class_change" not in badges(rank_change=RankChange("A", D, None, "국6"), master=None)
+    # 첫 배정이 아직(D 뒤)이거나 없으면 그대로 기록 없음
+    later = RankChange("A", D + timedelta(days=1), "국미검", "국6")
+    assert "no_record" in badges(rank_change=later, master=None)
+    # 이력이 있는 말의 진짜 등급 변동은 그대로
+    real = RankChange("A", days_before_d(10), "국5", "국6")
+    assert "class_change" in badges(history=last_at(40), rank_change=real)
+    # 이력은 없는데 말 정보상 출주가 있는 말(수집 누락)은 데뷔로 보지 않는다
+    assert "no_record" in badges(rank_change=first, master=MasterRow("A", 4))
+
+
 def test_first_pair() -> None:
     got = badges(history=last_at(30), jockey="을기수")
     assert got["first_pair"].text == "을기수 기수가 이 말을 처음 탐"
@@ -188,6 +213,10 @@ def test_first_pair() -> None:
     # 실제 기수(기수 변경 after) 기준
     got = badges(history=last_at(30), jockey="갑기수", jc_before="갑기수", jc_after="병기수")
     assert got["first_pair"].text == "병기수 기수가 이 말을 처음 탐"
+    # 감량 표기는 떼고 비교·표기 — "(-2)갑기수" 는 전에 탄 "갑기수" 와 같은 기수 (2026-11-28)
+    assert "first_pair" not in badges(history=last_at(30), jockey="(-2)갑기수")
+    got = badges(history=last_at(30), jockey="(-3)정기수")
+    assert got["first_pair"].text == "정기수 기수가 이 말을 처음 탐"
 
 
 def test_jockey_change_text_variants() -> None:
@@ -475,3 +504,124 @@ def test_stakes_info_and_text() -> None:
     assert news.stakes_text(5, {"name": "오너스컵", "grade": "G3"}, None, R1) == "5R 오너스컵 (G3)"
     assert news.stakes_info(RaceMeta(1, grade="국6")) is None
     assert news.stakes_info(None) is None
+
+
+# ---------------------------------------------------------------------------
+# r2 — 분석 소식 (출전마끼리 비교·기록 조합) · 경주별 헤드라인
+# ---------------------------------------------------------------------------
+
+R2 = definitions.get("r2")
+
+
+def _ent2(chul: int, history: list | None = None, jockey: str | None = None, race_no: int = 1):
+    return make_entrant(chul, R2, race_no=race_no, horse_no=f"H{race_no:02d}{chul:02d}",
+                        history=history or [], jockey=jockey)
+
+
+def _h(chul: int, days: int, rank: int | None, *, time: str = "72.0", distance: int = 1200,
+       meet: str = "서울", jockey: str | None = None, race_no: int = 1):
+    return hist_row(f"H{race_no:02d}{chul:02d}", days_before_d(days), rank, time=time,
+                    distance=distance, meet=meet, jockey=jockey)
+
+
+def _analysis(entrants: list) -> dict[str, list[str]]:
+    got = news.analysis_badges(entrants, h=H, meet="서울", distance=1200, defn=R2)
+    return {hn: [b.text for b in bs] for hn, bs in got.items() if bs}
+
+
+def test_analysis_off_for_r1() -> None:
+    assert not news.is_analysis(R1) and news.is_analysis(R2)
+    e = _ent2(1, [_h(1, 30, 1, time="70.0")])
+    assert news.analysis_badges([e], h=H, meet="서울", distance=1200, defn=R1) == {}
+
+
+def test_fastest_record_needs_three_timed_and_unique_leader() -> None:
+    es = [
+        _ent2(1, [_h(1, 30, 2, time="72.5"), _h(1, 60, 4, time="73.9")]),
+        _ent2(2, [_h(2, 40, 1, time="71.8")]),
+        _ent2(3, [_h(3, 50, 3, time="73.0")]),
+        _ent2(4, []),
+    ]
+    assert _analysis(es)["H0102"] == [
+        "최근 1년 1200m 최고기록 1:11.8 · 출전마 중 가장 빠름 (다음 1:12.5)"]
+    # 기록이 있는 말이 2두뿐이면 비교하지 않는다
+    assert "H0102" not in _analysis(es[1:])
+    # 같은 기록이거나 0.3초 미만 차이면 내지 않는다
+    tie = [_ent2(1, [_h(1, 30, 2, time="71.8")]), *es[1:]]
+    assert all("최고기록" not in t for ts in _analysis(tie).values() for t in ts)
+    close = [_ent2(1, [_h(1, 30, 2, time="72.0")]), *es[1:]]
+    assert all("최고기록" not in t for ts in _analysis(close).values() for t in ts)
+    # 1년보다 오래된 기록·다른 거리·다른 경마장은 세지 않는다
+    old = [_ent2(2, [_h(2, 400, 1, time="69.0")]), es[0], es[2],
+           _ent2(5, [_h(5, 20, 1, time="68.0", distance=1400)]),
+           _ent2(6, [_h(6, 20, 1, time="68.0", meet="부경")])]
+    assert "H0101" not in _analysis(old) or all(
+        "최고기록" not in t for t in _analysis(old).get("H0101", []))
+
+
+def test_pair_record_uses_jockey_key() -> None:
+    hist = [_h(1, 30, 1, jockey="권중석"), _h(1, 60, 3, jockey="권중석"),
+            _h(1, 90, 7, jockey="다른기수")]
+    got = _analysis([_ent2(1, hist, jockey="(-2)권중석")])
+    assert "권중석 기수와 2전 · 1착 1번 · 3착 이내 2번" in got["H0101"]
+    # 3착 이내가 1번뿐이면 없음
+    # 3착 이내 2번이어도 비율이 절반 미만(2/5)이면 없음
+    weak = [_h(1, 30, 1, jockey="권중석"), _h(1, 45, 3, jockey="권중석"),
+            _h(1, 60, 8, jockey="권중석"), _h(1, 75, 9, jockey="권중석"),
+            _h(1, 120, 7, jockey="권중석")]
+    weak_got = _analysis([_ent2(1, weak, jockey="권중석")]).get("H0101", [])
+    assert all("기수와" not in t for t in weak_got)
+
+
+def test_course_record_and_rank_trend() -> None:
+    course = [_h(1, 30, 2), _h(1, 60, 1), _h(1, 90, 5)]  # 같은 경마장·거리 3전 3착 이내 2번 (67%)
+    got = _analysis([_ent2(1, course)])
+    assert "서울 1200m 3전 중 3착 이내 2번 (1착 1번)" in got["H0101"]
+    assert "H0101" not in _analysis([_ent2(1, [_h(1, 30, 2), _h(1, 60, 6), _h(1, 90, 5)])])
+    # 착순 흐름 — 오래된 → 최근 7→4→2 (매번 좋아지고 마지막 3착 이내)
+    trend = [_h(1, 90, 7, distance=1000), _h(1, 60, 4, distance=1000), _h(1, 30, 2, distance=1000)]
+    assert _analysis([_ent2(1, trend)])["H0101"] == ["최근 3전 착순 7→4→2"]
+    flat = [_h(1, 90, 7, distance=1000), _h(1, 60, 4, distance=1000), _h(1, 30, 4, distance=1000)]
+    assert "H0101" not in _analysis([_ent2(1, flat)])
+    far = [_h(1, 90, 9, distance=1000), _h(1, 60, 7, distance=1000), _h(1, 30, 5, distance=1000)]
+    assert "H0101" not in _analysis([_ent2(1, far)])
+
+
+def _race2(race_no: int, items: list[tuple[int, list[Badge], int | None]]) -> RaceNews:
+    """(출전번호, 배지, 마지막 출주로부터 일수) → RaceNews (r2)."""
+    runners = []
+    for chul, bs, days in items:
+        hist = [_h(chul, days, 3, race_no=race_no)] if days is not None else []
+        runners.append((_ent2(chul, hist, race_no=race_no), tuple(bs)))
+    return RaceNews(race_no=race_no, stakes=None, distance=1200, runners=tuple(runners))
+
+
+def test_analysis_headlines_per_race_distinct_kinds() -> None:
+    debut = Badge("debut", "데뷔전")
+    first = Badge("distance_first", "1200m 첫 출전")
+    pair = Badge("pair_record", "갑 기수와 3전 · 1착 2번 · 3착 이내 3번")
+    trend = Badge("rank_trend", "최근 3전 착순 6→3→1")
+    races = [
+        # 1R — 데뷔마 4두: 말마다 줄지어 내지 않고 경주 단위 한 줄
+        _race2(1, [(c, [debut], None) for c in range(1, 5)]),
+        # 2R — 분석 소식 셋 → 우선순위 상위 2종류만, 같은 종류는 출전번호 빠른 말 하나
+        _race2(2, [(1, [trend], 30), (2, [pair], 30), (3, [pair], 30), (4, [first], 30),
+                   (5, [first], 30), (6, [first], 30)]),
+        # 3R — 분석 소식 없음 → 헤드라인 없음
+        _race2(3, [(1, [Badge("budam_change", "부담 54.0→52.0kg")], 30)]),
+    ]
+    heads, overflow = news.build_headlines(races, R2)
+    assert overflow == 0
+    assert [(h.kind, h.race_no, h.chul_no, h.text) for h in heads] == [
+        ("race_debut", 1, None, "출전마 4두 중 데뷔전 4두"),
+        ("pair_record", 2, 2, "갑 기수와 3전 · 1착 2번 · 3착 이내 3번"),
+        ("rank_trend", 2, 1, "최근 3전 착순 6→3→1"),
+    ]
+    # r1 은 그대로 우선순위 6개 방식
+    assert news.build_headlines(races, R1)[0][0].kind == "summary_debut"
+
+
+def test_r2_wording_has_no_forbidden_words() -> None:
+    for key in ("news_fastest_record", "news_pair_record", "news_course_record",
+                "news_rank_trend", "headline_race_debut", "headline_race_first_distance"):
+        assert wording.find_forbidden(str(R2.p("wording", key))) == [], key

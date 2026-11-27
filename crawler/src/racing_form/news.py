@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from . import parse, wording
@@ -171,10 +171,17 @@ def runner_badges(
             text += w("news_jockey_change_weight", wb=parse.fmt_kg(wb), wa=parse.fmt_kg(wa))
         out.append(Badge("jockey_change", text))
 
+    rc = rank_change
+    # 첫 등급 배정 — 변경 전 등급이 없거나 '미검'. 데뷔 표시에만 쓰고 등급 변동 소식은 내지 않는다
+    first_grade = (
+        rc is not None and rc.st_date <= d and parse.is_initial_class(rc.before_rank)
+    )
+
     # 데뷔 / 기록 없음 · 휴양 복귀 / 짧은 간격
     if last is None:
         total = master.total_race_count if master is not None else None
-        if total == 0:
+        # 말 정보(horses)가 아직 없는 새 말도, 이력이 없고 첫 등급을 받았으면 데뷔전 (2026-11-28)
+        if total == 0 or (master is None and first_grade):
             out.append(Badge("debut", w("news_debut")))
         else:
             out.append(Badge("no_record", w("news_no_record")))
@@ -197,9 +204,14 @@ def runner_badges(
         elif days <= int(cfg["quick_return_days"]):
             out.append(Badge("quick_return", w("news_quick_return", days=days)))
 
-    # 등급 변동 후 첫 출전 (마지막 출주일 < st_date ≤ D, 이력 없으면 st_date ≤ D)
-    rc = rank_change
-    if rc is not None and rc.st_date <= d and (last is None or last.race_date < rc.st_date):
+    # 등급 변동 후 첫 출전 (마지막 출주일 < st_date ≤ D, 이력 없으면 st_date ≤ D).
+    # 첫 등급 배정(국미검→국6 등)은 변동이 아니라 제외한다 (2026-11-28 — 데뷔마 전원이 잡혔다)
+    if (
+        rc is not None
+        and rc.st_date <= d
+        and not first_grade
+        and (last is None or last.race_date < rc.st_date)
+    ):
         before = parse.norm_name(rc.before_rank)
         after = parse.norm_name(rc.after_rank)
         direction = w(class_direction(before, after))
@@ -243,8 +255,10 @@ def runner_badges(
                     w("news_trainer_change", prev=last.trainer_name, now=r.trainer_name),
                 )
             )
-        if r.jockey_name and r.jockey_name not in f.jockeys:
-            out.append(Badge("first_pair", w("news_first_pair", jockey=r.jockey_name)))
+        # 감량 표기를 뗀 이름으로 비교·표기한다 ("(-2)권중석" 과 "권중석" 은 같은 기수)
+        jk = parse.jockey_key(r.jockey_name)
+        if jk and jk not in f.jockeys:
+            out.append(Badge("first_pair", w("news_first_pair", jockey=jk)))
 
     # 연승 · 직전 1착
     if f.win_streak >= int(cfg["win_streak_min"]):
@@ -269,6 +283,210 @@ def runner_badges(
 
 
 # ---------------------------------------------------------------------------
+# 분석 소식 (r2 — news.mode == "analysis")
+# ---------------------------------------------------------------------------
+
+
+def is_analysis(defn: RuleSetDef) -> bool:
+    """분석 소식 버전인지 (r2 부터). r1 정의에는 키가 없다."""
+    news_cfg = defn.params.get("news", {})
+    return isinstance(news_cfg, dict) and news_cfg.get("mode") == "analysis"
+
+
+def analysis_badges(
+    entrants: Sequence[Entrant],
+    *,
+    h: date,
+    meet: str,
+    distance: int | None,
+    defn: RuleSetDef,
+) -> dict[str, list[Badge]]:
+    """경주 하나의 분석 소식 — 출전마끼리 비교하거나 기록을 엮어 새로 계산한 결과 (이력 < H 만).
+
+    말 번호 → 배지 목록. 분석 소식 버전이 아니면 빈 dict.
+    """
+    if not is_analysis(defn):
+        return {}
+    cfg = defn.p("news")
+    arrow = str(defn.p("wording", "seq_arrow"))
+    out: dict[str, list[Badge]] = {e.runner.horse_no: [] for e in entrants}
+
+    def w(key: str, **kw: Any) -> str:
+        return wording.render(defn, key, **kw)
+
+    # 최고기록 — 최근 window 일 같은 경마장·거리, 기록이 있는 출전마가 min_timed 이상일 때 단독 1위
+    if distance is not None:
+        lo = h - timedelta(days=int(cfg["fastest_window_days"]))
+        best: list[tuple[int, str]] = []
+        for e in entrants:
+            times = [
+                s.time_tenths
+                for s in e.feat.starts
+                if s.meet == meet
+                and s.distance == distance
+                and s.time_tenths is not None
+                and lo <= s.race_date < h
+            ]
+            if times:
+                best.append((min(times), e.runner.horse_no))
+        best.sort()
+        if (
+            len(best) >= int(cfg["fastest_min_timed"])
+            # 다음 말보다 fastest_min_gap_tenths 이상 빨라야 (같은 기록·근소한 차이는 내지 않는다)
+            and best[1][0] - best[0][0] >= int(cfg["fastest_min_gap_tenths"])
+        ):
+            out[best[0][1]].append(
+                Badge(
+                    "fastest_record",
+                    w(
+                        "news_fastest_record",
+                        distance=distance,
+                        time=parse.fmt_time_tenths(best[0][0]),
+                        next=parse.fmt_time_tenths(best[1][0]),
+                    ),
+                )
+            )
+
+    for e in entrants:
+        f, r = e.feat, e.runner
+        mine = out[r.horse_no]
+
+        # 기수와 말 — 오늘 기수(감량 표기 뗀 이름)와의 조합 성적
+        jk = parse.jockey_key(r.jockey_name)
+        if jk:
+            pair = [s for s in f.starts if parse.jockey_key(s.jockey_name) == jk]
+            top3 = sum(1 for s in pair if s.is_top3)
+            if (
+                len(pair) >= int(cfg["pair_min_starts"])
+                and top3 >= int(cfg["pair_min_top3"])
+                and top3 * 100 >= int(cfg["pair_min_top3_pct"]) * len(pair)
+            ):
+                mine.append(
+                    Badge(
+                        "pair_record",
+                        w(
+                            "news_pair_record",
+                            jockey=jk,
+                            s=len(pair),
+                            w=sum(1 for s in pair if s.is_win),
+                            t=top3,
+                        ),
+                    )
+                )
+
+        # 같은 경마장·거리 성적
+        c = f.course
+        if (
+            c is not None
+            and c.starts >= int(cfg["course_min_starts"])
+            and c.top3 * 100 >= int(cfg["course_min_top3_pct"]) * c.starts
+        ):
+            mine.append(
+                Badge(
+                    "course_record",
+                    w(
+                        "news_course_record",
+                        meet=c.meet,
+                        distance=c.distance,
+                        s=c.starts,
+                        t=c.top3,
+                        w=c.wins,
+                    ),
+                )
+            )
+
+        # 착순 흐름 — 최근 n 전 착순이 매번 좋아지고 마지막이 last_rank_max 착 이내
+        n = int(cfg["trend_n"])
+        recent = f.starts[-n:]
+        ranks = [s.rank for s in recent]
+        if (
+            len(recent) == n
+            and all(x is not None for x in ranks)
+            and all(a > b for a, b in zip(ranks, ranks[1:], strict=False))  # type: ignore[operator]
+            and ranks[-1] <= int(cfg["trend_last_rank_max"])  # type: ignore[operator]
+        ):
+            seq = arrow.join(str(x) for x in ranks)
+            mine.append(Badge("rank_trend", w("news_rank_trend", k=n, seq=seq)))
+
+    return out
+
+
+def _analysis_headlines(
+    races: Sequence[RaceNews], defn: RuleSetDef
+) -> tuple[list[Headline], int]:
+    """분석 소식 헤드라인 — 경주마다 headline_priority 순으로 서로 다른 종류를
+    최대 headline_per_race 개.
+
+    같은 종류가 한 경주에 여러 말이면 출전번호가 빠른 말 하나만 (같은 문장이 줄지어 나오지 않게).
+    경주 단위 요약(race_debut · race_first_distance)은 그 경주의 배지 수로 만든다.
+    """
+    cfg = defn.p("news")
+    per_race = int(cfg["headline_per_race"])
+    out: list[Headline] = []
+    for race in sorted(races, key=lambda r: r.race_no):
+        field = len(race.runners)
+        by_kind: dict[str, list[Headline]] = {}
+        for e, badges in sorted(race.runners, key=lambda x: x[0].runner.chul_no):
+            for b in badges:
+                if b.kind == "layoff" and (e.feat.days_since_last or 0) < int(
+                    cfg["layoff_headline_days"]
+                ):
+                    continue
+                if b.kind == "win_streak" and e.feat.win_streak < int(
+                    cfg["win_streak_headline_min"]
+                ):
+                    continue
+                by_kind.setdefault(b.kind, []).append(
+                    Headline(b.kind, race.race_no, e.runner.chul_no, e.runner.horse_no, b.text)
+                )
+
+        def count(kind: str, badges_by_runner: Sequence[tuple[Entrant, tuple[Badge, ...]]]) -> int:
+            return sum(1 for _, bs in badges_by_runner if any(b.kind == kind for b in bs))
+
+        debuts = count("debut", race.runners)
+        if debuts >= int(cfg["race_debut_min"]):
+            by_kind["race_debut"] = [
+                Headline(
+                    "race_debut",
+                    race.race_no,
+                    None,
+                    None,
+                    wording.render(defn, "headline_race_debut", n=field, k=debuts),
+                )
+            ]
+        firsts = count("distance_first", race.runners)
+        if (
+            race.distance is not None
+            and firsts >= int(cfg["race_first_distance_min"])
+            and firsts * 2 >= field
+        ):
+            by_kind["race_first_distance"] = [
+                Headline(
+                    "race_first_distance",
+                    race.race_no,
+                    None,
+                    None,
+                    wording.render(
+                        defn,
+                        "headline_race_first_distance",
+                        n=field,
+                        k=firsts,
+                        distance=race.distance,
+                    ),
+                )
+            ]
+        picked = 0
+        for kind in cfg["headline_priority"]:
+            if picked >= per_race:
+                break
+            if kind in by_kind:
+                out.append(by_kind[kind][0])
+                picked += 1
+    cap = int(cfg["max_headlines"])
+    return out[:cap], max(0, len(out) - cap)
+
+
+# ---------------------------------------------------------------------------
 # 1면 헤드라인
 # ---------------------------------------------------------------------------
 
@@ -284,7 +502,9 @@ class RaceNews:
 
 
 def build_headlines(races: Sequence[RaceNews], defn: RuleSetDef) -> tuple[list[Headline], int]:
-    """호 전체 헤드라인 (최대 max_headlines) + 넘친 수."""
+    """호 전체 헤드라인 (최대 max_headlines) + 넘친 수. 분석 소식 버전(r2~)은 경주별 방식."""
+    if is_analysis(defn):
+        return _analysis_headlines(races, defn)
     cfg = defn.p("news")
     ordered = sorted(races, key=lambda r: r.race_no)
 

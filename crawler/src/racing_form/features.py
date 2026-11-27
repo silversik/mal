@@ -420,7 +420,8 @@ def compute_features(
         max_rating=max(rated) if rated else None,
         rated_starts=len(rated),
         distances=frozenset(s.distance for s in starts if s.distance is not None),
-        jockeys=frozenset(s.jockey_name for s in starts if s.jockey_name),
+        # "처음 탐" 비교용 — 감량 표기를 뗀 비교 키 (parse.jockey_key)
+        jockeys=frozenset(k for s in starts if (k := parse.jockey_key(s.jockey_name))),
         win_streak=streak,
     )
 

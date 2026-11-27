@@ -122,6 +122,29 @@ payload 에는 **float 가 없다** — 부담·기록은 0.1 단위 정수(`*_t
 
 평가어 금지: 근거·소식 문장에는 `crawler/src/racing_form/data/forbidden_words.json` 의 단어와 기호 글리프(◎○△▲▼ 중 ◎○△)를 넣지 않는다 (rating_change 의 ▲▼ 는 허용 — 증감 부호).
 
+버그 수정 (2026-11-28, 모든 버전 공통 — 정의 수치·문구는 그대로):
+- `class_change` 는 **첫 등급 배정**(변경 전 등급이 없거나 `미검` — 국미검·외미검)이면 내지 않는다 (`parse.is_initial_class`).
+- `debut` 는 마스터가 없어도(새 말) 이력 0건이고 D 이전에 첫 등급을 받았으면 debut (그 밖은 no_record).
+- 기수 이름은 **감량 표기를 뗀 비교 키**(`parse.jockey_key`, `"(-2)권중석"` → `"권중석"`)로 비교한다 — 기수 기준의 통계 조회·근거, `first_pair` 비교·문구. 출전표에만 감량 표기가 붙어 결과·기수 테이블과 어긋났다. payload `runners[].jockey_name` 은 원문 그대로.
+
+### 3.1 분석 소식 (r2~, `news.mode = "analysis"`)
+
+r2 는 기준(예상)·가드·정산·일정이 r1 과 같고 `news`·`wording` 만 다르다 (r1 문구는 그대로, 키 추가). 위 표의 사실 소식은 말 배지로 그대로 남고,
+출전마끼리 비교하거나 기록을 엮어 새로 계산한 **분석 소식**이 더해진다 (`news.analysis_badges`, 이력 < H 만):
+
+| kind | 조건 (r2 수치) | 문구 |
+|---|---|---|
+| `fastest_record` | 최근 365일 같은 경마장·거리 기록이 있는 출전마 3두 이상, 1위가 다음 말보다 0.3초 이상 빠름 (단독) | `최근 1년 {distance}m 최고기록 {time} · 출전마 중 가장 빠름 (다음 {next})` |
+| `pair_record` | 오늘 기수(비교 키)와 2전 이상, 3착 이내 2번 이상이면서 50% 이상 | `{jockey} 기수와 {s}전 · 1착 {w}번 · 3착 이내 {t}번` |
+| `course_record` | 같은 경마장·거리 3전 이상, 3착 이내 60% 이상 | `{meet} {distance}m {s}전 중 3착 이내 {t}번 (1착 {w}번)` |
+| `rank_trend` | 최근 3전 착순이 모두 있고 매번 좋아지며 마지막이 3착 이내 | `최근 {k}전 착순 7→4→2` |
+| `race_debut` (경주) | 데뷔전 배지가 2두 이상 | `출전마 {n}두 중 데뷔전 {k}두` |
+| `race_first_distance` (경주) | 오늘 거리를 알고, 첫 거리 출전 3두 이상이면서 절반 이상 | `출전마 {n}두 중 {k}두가 {distance}m 첫 출전` |
+
+- 배지 우선순위: `jockey_change` > 분석 4종 > `class_change` > `layoff` > … (r2 `news.badge_priority`).
+- 헤드라인은 **경주마다** `headline_priority`(기수 교체 > 최고기록 > 기수와 말 > 같은 거리 > 착순 흐름 > 경주 데뷔 > 경주 첫 거리 > 180일 이상 복귀 > 3연승 이상) 순으로 **서로 다른 종류 최대 2개**, 같은 종류가 여러 말이면 출전번호가 빠른 말 하나. 호 전체 최대 24 (`headline_overflow` 는 그 넘친 수). 대상경주 줄(`stakes`)은 헤드라인에 싣지 않는다 (경주 목록에 이름이 있다). 경주 단위 줄은 `chul_no`·`horse_no` 가 null 이고 `race_no` 가 있다.
+- payload 검증의 헤드라인 상한은 그 호의 `rules_version` 정의의 `news.max_headlines` (r1 = 6).
+
 ## 4. payload v1 (`racing_form_editions.payload`)
 
 ```ts

@@ -176,7 +176,8 @@ def build_edition(
     jockey_stats: dict[str, ConnStat] = {}
     trainer_stats: dict[str, ConnStat] = {}
     if "jockey" in keys_needed:
-        names = sorted({r.jockey_name for r in runners if r.jockey_name})
+        # 결과·기수 테이블의 이름과 맞추려고 감량 표기를 뗀 키로 찾는다 (parse.jockey_key)
+        names = sorted({k for r in runners if (k := parse.jockey_key(r.jockey_name))})
         if names:
             jockey_stats = _stats_map(
                 provider.jockey_stats(
@@ -241,6 +242,13 @@ def build_edition(
                         defn=defn,
                     )
                 )
+            # 분석 소식 (r2~) — 출전마끼리 비교·기록 조합. 말 배지 앞쪽 우선순위로 합친다
+            extra = news.analysis_badges(
+                entrants, h=h, meet=meet_n, distance=distances[race_no], defn=defn
+            )
+            for hn, more in extra.items():
+                if more:
+                    badges[hn] = tuple(news.sort_badges([*more, *badges.get(hn, ())], defn))
         race_builds.append(
             payload.RaceBuild(
                 race_no=race_no,

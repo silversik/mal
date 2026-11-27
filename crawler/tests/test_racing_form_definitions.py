@@ -17,6 +17,7 @@ from src.racing_form.definitions import RULE_DEFINITIONS, RULE_KEYS, RULE_LABELS
 PINNED_SHA256 = {
     "r1": "1a62c07f30590e17935125dca00c081058969c70941d4fbfa76d0ea791de841a",
     "r1-e2e": "ce1d2d84f884f74e302924584e1ac08c045f14bddd8ab7b76cd192b2b02d862d",
+    "r2": "5c7c5148670b2a24a2178783a9a5da8c4110f5b6369dd6c73809a11f39ea4865",
 }
 
 
@@ -65,8 +66,25 @@ def test_labels_and_keys() -> None:
         assert set(defn.rules) | set(defn.backtest_extra_rules) <= set(RULE_KEYS)
 
 
+def test_r2_changes_only_news_and_wording() -> None:
+    """r2 는 소식만 바꾼다 — 기준(예상)·가드·정산·일정 수치는 r1 과 같다.
+
+    r1 문구도 하나도 바뀌지 않는다 (새 문구 키만 더한다).
+    """
+    a = RULE_SETS["r1"].to_json_obj()
+    b = RULE_SETS["r2"].to_json_obj()
+    assert (a["rules"], a["backtest_extra_rules"]) == (b["rules"], b["backtest_extra_rules"])
+    pa, pb = a["params"], b["params"]
+    assert {k for k in pa if pa[k] != pb[k]} == {"news", "wording"}
+    assert all(pb["wording"][k] == v for k, v in pa["wording"].items())
+    assert pb["news"]["mode"] == "analysis" and "mode" not in pa["news"]
+    # r1 소식 임계값은 그대로 남는다 (원래 소식은 말 카드에 계속 싣는다)
+    assert all(pb["news"][k] == v for k, v in pa["news"].items()
+               if k not in ("badge_priority", "headline_priority", "max_headlines"))
+
+
 def test_active_reads_module_attribute(monkeypatch: pytest.MonkeyPatch) -> None:
-    assert definitions.active().version == definitions.ACTIVE == "r1"
+    assert definitions.active().version == definitions.ACTIVE == "r2"
     monkeypatch.setattr(definitions, "ACTIVE", "r1-e2e")
     assert definitions.active().version == "r1-e2e"
 
