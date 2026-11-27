@@ -390,7 +390,7 @@ describe("1면 단순화 (2026-11-27) — 탭 · 색 없는 출전번호 · 주�
     // 4R — 버튼 하나, "주목" 은 별 아이콘으로 버튼 안에. 마번은 테두리 없이
     expect(rows[1].match(/<button/g)?.length).toBe(1);
     expect(rows[1]).toMatch(
-      /<button[^>]*aria-haspopup="dialog"[^>]*>.*매직트리.*<svg role="img" aria-label="주목"[^>]*>.*<\/svg><\/button>/,
+      /<button[^>]*aria-haspopup="dialog"[^>]*>.*매직트리.*<svg role="img" aria-label="주목 — 고른 기준 1개"[^>]*><title>고른 기준 1개<\/title>.*<\/svg><\/button>/,
     );
     expect(rows[1]).not.toContain(">주목<"); // 글자 뱃지는 없다
     expect(rows[1]).toMatch(/<button[^>]*><span class="[^"]*font-mono[^"]*">3<\/span>/);
@@ -399,7 +399,9 @@ describe("1면 단순화 (2026-11-27) — 탭 · 색 없는 출전번호 · 주�
     expect(rows[2].match(/<button/g)?.length).toBe(2);
     expect(rows[2]).toContain("판타스틱밸류");
     expect(rows[2]).toContain("라온포레스트");
-    expect(rows[2]).not.toContain('aria-label="주목"');
+    expect(rows[2]).not.toContain('aria-label="주목');
+    // "고른 기준 n개" 는 본문 글자가 아니라 별의 설명(title)으로만
+    expect(h.replace(/<title>[^<]*<\/title>/g, "").replace(/aria-label="[^"]*"/g, "")).not.toContain("고른 기준");
     expect(rows[2]).not.toMatch(/외 \d+두/);
     // 버튼은 보이는 높이를 줄이되(36px) 누르는 영역은 ::before 로 넓힌다
     expect(rows[2]).toContain("min-h-9");

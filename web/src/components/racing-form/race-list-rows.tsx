@@ -34,6 +34,41 @@ function ResultMark({ result }: { result: RaceRowResult }) {
   );
 }
 
+/**
+ * 팝업의 별 — 마우스를 올리거나 누르면 "고른 기준 n개" 가 말풍선으로 뜬다 (본문에 따로 적지 않는다).
+ * 누르는 영역은 ::before 로 넓힌다 (별은 작다).
+ */
+function StarTip({ count }: { count: number }) {
+  const [open, setOpen] = useState(false);
+  const tip = `고른 기준 ${count}개`;
+  return (
+    <span
+      className="relative inline-flex"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        aria-label={`주목 — ${tip}`}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        onBlur={() => setOpen(false)}
+        className="relative inline-flex items-center rounded-md before:absolute before:-inset-3 before:content-[''] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+      >
+        <FocusLabel decorative />
+      </button>
+      {open ? (
+        <span
+          role="tooltip"
+          className="absolute top-full left-1/2 z-10 mt-1.5 -translate-x-1/2 rounded-md bg-foreground px-2 py-1 text-sm font-semibold whitespace-nowrap text-background shadow-md"
+        >
+          {tip}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 function PickDetail({ pick }: { pick: RacePickView }) {
   return (
     <li className="space-y-1.5 rounded-lg border border-border px-3 py-2">
@@ -43,7 +78,7 @@ function PickDetail({ pick }: { pick: RacePickView }) {
         <span className="min-w-0 break-words text-lg font-bold text-foreground">
           {pick.horseName}
         </span>
-        {pick.strong ? <FocusLabel /> : null}
+        {pick.strong ? <StarTip count={pick.criteria.length} /> : null}
         {pick.result ? (
           <span className="ml-auto">
             <ResultMark result={pick.result} />
@@ -52,9 +87,6 @@ function PickDetail({ pick }: { pick: RacePickView }) {
       </div>
       {pick.criteria.length > 0 ? (
         <div className="space-y-1">
-          <p className="text-sm text-muted-foreground">
-            고른 기준 <span className="font-mono tabular-nums">{pick.criteria.length}</span>개
-          </p>
           <ul className="divide-y divide-border border-y border-border">
             {pick.criteria.map((c) => (
               <li key={c.rule} className="py-1.5 text-sm leading-relaxed text-foreground">
@@ -115,7 +147,9 @@ export function RaceListRows({ rows }: { rows: readonly RaceListRow[] }) {
                       <FormNum n={p.chulNo} plain />
                       <span className="sr-only">번</span>
                       <span className="min-w-0 break-words text-left">{p.horseName}</span>
-                      {p.strong ? <FocusLabel size="sm" /> : null}
+                      {p.strong ? (
+                        <FocusLabel size="sm" tip={`고른 기준 ${p.criteria.length}개`} />
+                      ) : null}
                     </button>
                     {p.result ? <ResultMark result={p.result} /> : null}
                   </span>

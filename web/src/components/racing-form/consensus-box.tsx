@@ -81,7 +81,7 @@ export function ConsensusBox({
                     <span>{horseName(p.horse_no)}</span>
                   </a>
                   {/* "주목" 뱃지는 예상을 낸 기준이 모두 고른 말에만 (1면·팝업과 같은 뜻) */}
-                  {p.votes === c.active_rules ? <FocusLabel /> : null}
+                  {p.votes === c.active_rules ? <FocusLabel tip={`고른 기준 ${p.votes}개`} /> : null}
                 </div>
                 <p className="text-base text-foreground">
                   {consensusLine({ status: "picked", active_rules: c.active_rules, votes: p.votes })}

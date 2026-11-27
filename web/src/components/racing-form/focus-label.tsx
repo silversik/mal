@@ -8,16 +8,23 @@ import { cn } from "@/lib/utils";
  */
 export function FocusLabel({
   size = "md",
+  tip,
+  decorative = false,
   className,
 }: {
   /** sm — 주목마 버튼 안에 넣는 작은 별 */
   size?: "md" | "sm";
+  /** 마우스를 올리면 뜨는 설명 (SVG <title>) — "고른 기준 3개" */
+  tip?: string;
+  /** 바깥 버튼이 이름을 갖고 있을 때 — 스크린리더에서 숨긴다 */
+  decorative?: boolean;
   className?: string;
 }) {
   return (
     <svg
-      role="img"
-      aria-label="주목"
+      {...(decorative
+        ? { "aria-hidden": true }
+        : { role: "img", "aria-label": tip ? `주목 — ${tip}` : "주목" })}
       viewBox="0 0 24 24"
       fill="currentColor"
       className={cn(
@@ -26,6 +33,7 @@ export function FocusLabel({
         className,
       )}
     >
+      {tip && !decorative ? <title>{tip}</title> : null}
       <path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4l-5.8 3.1 1.1-6.5L2.6 9.4l6.5-.9L12 2.6z" />
     </svg>
   );
