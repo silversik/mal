@@ -37,7 +37,19 @@ ssh -i /Users/esik/keyfile/service-ssh.pem root@49.50.138.31
 4. `Build & restart` — `docker compose build mal-web mal-crawler && up -d`
 5. `Smoke test` — `curl http://127.0.0.1:4000`
 
-빌드 트리거: git push → Jenkins (`http://localhost:8080`).
+빌드 트리거: `main` 에 push(머지) → Jenkins (`http://localhost:8080`). Jenkins 는 `*/main` 만 폴링한다 —
+`dev`·feature 브랜치 push 는 배포를 일으키지 않는다.
+
+### 브랜치 운용 — `dev` 에서 작업, `main` 은 실서버 반영 전용 (2026-11-27~)
+
+- **평소 작업은 `dev`** — `dev` 에 직접 커밋하거나 `dev` 에서 딴 feature 브랜치를 `dev` 로 머지한다. push 는 `dev` 까지.
+- **로컬에서 확인** — `git switch dev && git pull` 후 `cd web && npm run dev`(:3000, 로컬 docker Postgres).
+  크롤러는 `cd crawler && uv run python -m src.main <잡>`.
+- **실서버 반영은 소유자가 명시적으로 지시할 때만** — 그때 `dev → main` PR 을 만들고 머지한다
+  (`gh pr create --base main --head dev` → `gh pr merge <n> --merge --admin`). `main` 직접 push 는 브랜치 보호로 막혀 있다.
+  작업 요청("고쳐줘"·"~하자")은 반영 승인이 아니다.
+- 반영 뒤에는 `dev` 를 `main` 에 맞춘다 (`git switch dev && git merge --ff-only origin/main` — 머지 커밋만큼만 앞선다).
+- 아래 배포 금지 시간은 `main` 머지에 그대로 적용된다.
 
 ### 배포 금지 시간 — 목·금·토 17:30~18:15 KST main push 금지
 

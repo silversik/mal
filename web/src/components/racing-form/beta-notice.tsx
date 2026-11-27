@@ -23,3 +23,20 @@ export function BetaNotice({ date, className }: { date: string; className?: stri
     </p>
   );
 }
+
+/**
+ * 지면 위 줄(드롭다운과 같은 선)에 놓는 베타 뱃지 — 라벨만 보이고 설명은 title·스크린리더로 (2026-11-27).
+ * 지면 안의 BetaNotice 문장을 대신한다. 베타 기간이 아니면 그리지 않는다.
+ */
+export function BetaBadge({ date }: { date: string }) {
+  if (!isFormBeta(date)) return null;
+  return (
+    <span
+      title={FORM_BETA_TEXT}
+      className="inline-flex h-7 shrink-0 items-center rounded-md border border-muted-foreground bg-card px-2 text-sm font-bold text-foreground"
+    >
+      베타 테스트
+      <span className="sr-only"> — {FORM_BETA_TEXT}</span>
+    </span>
+  );
+}

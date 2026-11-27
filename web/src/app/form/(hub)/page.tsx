@@ -7,6 +7,7 @@ import { BetaNotice } from "@/components/racing-form/beta-notice";
 import {
   EditionCardGroups,
   editionCardSub,
+  editionCardTitle,
   publishedEditionCard,
   SettlementText,
   type EditionCardData,
@@ -14,7 +15,7 @@ import {
 import { FormSection } from "@/components/racing-form/form-section";
 import { TAP } from "@/components/racing-form/format";
 import { RecordCompact } from "@/components/racing-form/record-compact";
-import { ResponsibleGamblingNotice } from "@/components/responsible-gambling-notice";
+import { NOTICE_FULL_ITEMS } from "@/components/responsible-gambling-notice";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
 import { kstToday } from "@/lib/kst";
 import {
@@ -32,7 +33,6 @@ import {
   editionState,
   editionStateText,
   FORM_HUB_PATH,
-  FORM_RECORD_PATH,
   formEditionPath,
   formMetadata,
   isLate,
@@ -41,9 +41,12 @@ import {
   missedReasonOf,
   pausedReasonOf,
   publishStampKo,
+  FORM_MEETS,
+  meetFromSlug,
   mondayOf,
   settlementLine,
   type EditionHead,
+  type FormMeet,
   type EditionTally,
 } from "@/lib/racing_form-shared";
 import { cn } from "@/lib/utils";
@@ -53,7 +56,7 @@ export const dynamic = "force-dynamic";
 
 const TITLE = "경마지";
 const DESCRIPTION =
-  "경주 전날 오후 6시에 고정 발행하는 무료 경마지 — 공개 기준 4개가 고른 1·2·3순위와 숫자 근거, KRA 데이터로 정리한 말 소식, 첫 호부터 빠짐없는 적중 기록.";
+  "한국마사회 공개 데이터를 활용한 무료 경마지 — 경주 전날 오후 6시에 발행하고, 결과는 맞든 틀리든 첫 호부터 모두 공개합니다.";
 
 /** 다루는 경마장 안내 (계획 4.2). 공휴일 경주일은 2026-11 부터 출전표를 수집해 함께 다룬다. */
 const COVERAGE = "다루는 경마장: 서울·부경·제주 (영천 경주는 아직 다루지 않습니다)";
@@ -115,22 +118,85 @@ function Principles() {
       body: "회수율(ROI)은 계산하지도 싣지도 않습니다 — 마권 구매를 권하지 않습니다.",
     },
   ];
+  // 발행 원칙과 맨 아래 안내(책임 고지)를 한 상자로 합친다 (2026-11-27) — 안내 문구는 NOTICE_FULL_ITEMS 그대로.
   return (
     <FormSection id="principles" title="발행 원칙">
-      <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-        {items.map((it) => (
-          <li key={it.head} className="px-4 py-3">
-            <p className="text-base font-bold text-foreground">{it.head}</p>
-            <p className="mt-0.5 text-base leading-relaxed text-muted-foreground">{it.body}</p>
-          </li>
-        ))}
-      </ul>
-      <p className="mt-3 text-base text-foreground">{COVERAGE}</p>
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <ul className="divide-y divide-border">
+          {items.map((it) => (
+            <li key={it.head} className="px-4 py-3">
+              <p className="text-base font-bold text-foreground">{it.head}</p>
+              <p className="mt-0.5 text-base leading-relaxed text-muted-foreground">{it.body}</p>
+            </li>
+          ))}
+        </ul>
+        <ul
+          aria-label="안내"
+          className="list-disc space-y-2 border-t border-border py-3 pr-4 pl-9 text-sm leading-relaxed text-foreground"
+        >
+          {NOTICE_FULL_ITEMS.map((it) => (
+            <li key={it.text}>{it.text}</li>
+          ))}
+          <li>{COVERAGE}</li>
+        </ul>
+      </div>
     </FormSection>
   );
 }
 
-export default async function FormHubPage() {
+type SearchParams = { meet?: string | string[] };
+
+const HUB_TAB =
+  "-mb-px flex items-center whitespace-nowrap border-b-2 px-4 text-base font-semibold transition-colors";
+
+/**
+ * 허브의 지역 탭 — 전체 | 서울 | 제주 | 부경 (DESIGN.md Decisions Log 2026-11-27).
+ * `?meet=slug` 로 이번 주·지난 8주·실전 기록을 그 경마장 것만 보여 준다. 밑줄 탭(활성 = brown 밑줄 + aria-current).
+ */
+function HubMeetTabs({ current }: { current: FormMeet | null }) {
+  const tabs: { key: string; label: string; href: string; on: boolean }[] = [
+    { key: "all", label: "전체", href: FORM_HUB_PATH, on: current === null },
+    ...FORM_MEETS.map((m) => ({
+      key: m.slug,
+      label: m.meet,
+      href: `${FORM_HUB_PATH}?meet=${m.slug}`,
+      on: current === m.meet,
+    })),
+  ];
+  return (
+    <nav aria-label="경마장" className="border-b border-border">
+      <ul className="flex gap-1 overflow-x-auto scrollbar-hide">
+        {tabs.map((t) => (
+          <li key={t.key} className="shrink-0">
+            {t.on ? (
+              <span aria-current="page" className={cn(HUB_TAB, TAP, "border-brown text-foreground")}>
+                {t.label}
+              </span>
+            ) : (
+              <Link
+                href={t.href}
+                scroll={false}
+                className={cn(HUB_TAB, TAP, "border-transparent text-muted-foreground hover:text-foreground")}
+              >
+                {t.label}
+              </Link>
+            )}
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+export default async function FormHubPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const sp = await searchParams;
+  // ?meet=seoul|jeju|busan — 모르는 값은 전체
+  const meetFilter = meetFromSlug(Array.isArray(sp.meet) ? sp.meet[0] : sp.meet);
+  const inMeet = (meet: string | null) => meetFilter === null || meet === null || meet === meetFilter;
   const hub = await loadHub();
   const crumbs = [
     { name: "홈", url: "/" },
@@ -143,8 +209,7 @@ export default async function FormHubPage() {
         mal.kr 경마지
       </h1>
       <p className="text-base leading-relaxed text-muted-foreground">
-        경주 전날 오후 6시에 고정해서 내는 무료 웹 경마지 — 공개 기준 4개가 고른 1·2·3순위와 숫자 근거,
-        KRA 데이터로 정리한 말 소식, 빠짐없는 적중 기록.
+        한국마사회 공개 데이터를 활용한 무료 경마지
       </p>
       <BetaNotice date={hub.today} />
     </header>
@@ -175,7 +240,6 @@ export default async function FormHubPage() {
           <p className="text-base text-foreground">{COVERAGE}</p>
         </section>
         <Principles />
-        <ResponsibleGamblingNotice variant="full" />
       </PageContainer>
     );
   }
@@ -189,6 +253,7 @@ export default async function FormHubPage() {
     }
   }
   const cards: EditionCardData[] = [...keys.values()]
+    .filter((k) => inMeet(k.meet))
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : meetOrder(a.meet) - meetOrder(b.meet)))
     .flatMap((k) => {
       const planned = hub.calendar.find((c) => c.race_date === k.date && c.meet === k.meet) ?? null;
@@ -219,7 +284,7 @@ export default async function FormHubPage() {
           key: `${k.date}|${k.meet}`,
           href: formEditionPath(k.date, k.meet),
           date: k.date,
-          title: `${dateKo(k.date)} ${k.meet}`,
+          title: editionCardTitle(k.date, k.meet),
           issue: edition ? issueLabel(edition.issue_no) : null,
           status:
             st.state === "planned"
@@ -228,6 +293,9 @@ export default async function FormHubPage() {
           sub: edition ? editionCardSub(edition) : null,
           result: null,
           provisional: null,
+          picks: null,
+          // 발행 예정 — 아직 볼 것이 없으니 누를 수 없게 (흐린 카드)
+          disabled: st.state === "planned",
         },
       ];
     });
@@ -238,10 +306,15 @@ export default async function FormHubPage() {
     | { kind: "missed" | "paused"; key: string; date: string; meet: string; text: string };
   const past: PastLine[] = [
     ...hub.editions
-      .filter((e) => e.race_date < hub.weekStart)
+      .filter((e) => e.race_date < hub.weekStart && inMeet(e.meet))
       .map((e) => ({ kind: "edition" as const, key: `e-${e.id}`, date: e.race_date, meet: e.meet, e })),
     ...hub.notices
-      .filter((n) => (n.kind === "missed" || n.kind === "paused") && n.race_date < hub.weekStart)
+      .filter(
+        (n) =>
+          (n.kind === "missed" || n.kind === "paused") &&
+          n.race_date < hub.weekStart &&
+          inMeet(n.meet), // 경마장 없는 공지(전 경마장)는 어느 탭에서나 보인다
+      )
       .map((n) => ({
         kind: n.kind as "missed" | "paused",
         key: `n-${n.id}`,
@@ -255,6 +328,9 @@ export default async function FormHubPage() {
   ].sort(
     (a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : meetOrder(a.meet) - meetOrder(b.meet)),
   );
+  // 실전 기록 — 지역 탭이 걸려 있으면 그 경마장만 다시 집계. 확정된 경주가 없으면 섹션째 생략
+  const record = meetFilter ? await getRuleRecord({ meet: meetFilter }) : hub.record;
+  const hasRecord = record !== null && record.races > 0;
   const withdrawnIds = new Set(
     hub.notices.filter((n) => n.kind === "withdrawn" && n.edition_id !== null).map((n) => n.edition_id),
   );
@@ -263,27 +339,22 @@ export default async function FormHubPage() {
     <PageContainer className="theme-v2 break-keep space-y-8 py-6 md:py-8">
       <BreadcrumbJsonLd items={crumbs} />
       {header}
+      <HubMeetTabs current={meetFilter} />
 
-      <FormSection
-        id="this-week"
-        title="이번 주 경마지"
-        right={
-          <span className="text-sm text-muted-foreground">
-            {dateKo(hub.weekStart)}~{dateKo(hub.weekEnd)}
-          </span>
-        }
-      >
+      {/* 이번 주(월~일) 호 — 제목 없이 "경주 전" / "경주 결과" 묶음이 바로 나온다 (2026-11-27) */}
+      <section id="this-week" aria-label="이번 주 경마지" className="scroll-mt-20">
         {cards.length > 0 ? (
-          <EditionCardGroups cards={cards} today={hub.today} />
+          <EditionCardGroups cards={cards} today={hub.today} showPicks />
         ) : (
           <p className="rounded-xl border border-dashed border-border px-4 py-6 text-base text-muted-foreground">
-            이번 주 경마지는 출전표가 나오면 경주 전날 오후 6시에 발행합니다.
+            이번 주 {meetFilter ? `${meetFilter} ` : ""}경마지는 출전표가 나오면 경주 전날 오후 6시에 발행합니다.
           </p>
         )}
-      </FormSection>
+      </section>
 
-      <FormSection id="past" title="지난 8주">
-        {past.length > 0 ? (
+      {/* 지난 8주 — 없으면 섹션째 생략 (빈 상태 문구 없음) */}
+      {past.length > 0 ? (
+        <FormSection id="past" title="지난 8주">
           <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
             {past.map((l) => {
               if (l.kind !== "edition") {
@@ -335,26 +406,16 @@ export default async function FormHubPage() {
               );
             })}
           </ul>
-        ) : (
-          <p className="text-base text-muted-foreground">지난 8주 동안 발행한 호가 없습니다.</p>
-        )}
-      </FormSection>
+        </FormSection>
+      ) : null}
 
-      <FormSection id="record" title="실전 기록">
-        <RecordCompact record={hub.record} variant="line" />
-      </FormSection>
+      {hasRecord ? (
+        <FormSection id="record" title="실전 기록">
+          <RecordCompact record={record} variant="line" />
+        </FormSection>
+      ) : null}
 
       <Principles />
-      <Link
-        href={`${FORM_RECORD_PATH}#faq`}
-        className={cn(
-          "inline-flex items-center text-base font-semibold text-foreground underline-offset-4 transition-colors hover:underline",
-          TAP,
-        )}
-      >
-        자주 묻는 질문 ›
-      </Link>
-      <ResponsibleGamblingNotice variant="full" />
     </PageContainer>
   );
 }

@@ -34,6 +34,67 @@ function ResultMark({ result }: { result: RaceRowResult }) {
   );
 }
 
+/**
+ * 주목마 버튼 안의 결과 — "→ ①" (화살표 뒤에 착순). "착" 글자는 쓰지 않는다 (2026-11-27).
+ * 1~3착은 RankBadge(메달), 그 밖은 숫자 칩. 스크린리더에는 "결과 4착" 으로 읽힌다.
+ */
+function ResultInButton({ result }: { result: RaceRowResult }) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5">
+      <span aria-hidden="true" className="text-muted-foreground">
+        →
+      </span>
+      {result.kind === "void" ? (
+        <span className="text-sm font-semibold text-muted-foreground">무효</span>
+      ) : result.rank === null ? (
+        <span className="text-sm font-semibold text-muted-foreground">순위 없음</span>
+      ) : (
+        <>
+          <span className="sr-only">결과 {result.rank}착</span>
+          <span aria-hidden="true" className="inline-flex">
+            <RankBadge rank={result.rank} size="sm" rest="chip" />
+          </span>
+        </>
+      )}
+    </span>
+  );
+}
+
+/**
+ * 팝업의 별 — 마우스를 올리거나 누르면 "고른 기준 n개" 가 말풍선으로 뜬다 (본문에 따로 적지 않는다).
+ * 누르는 영역은 ::before 로 넓힌다 (별은 작다).
+ */
+function StarTip({ count }: { count: number }) {
+  const [open, setOpen] = useState(false);
+  const tip = `고른 기준 ${count}개`;
+  return (
+    <span
+      className="relative inline-flex"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        aria-label={`주목 — ${tip}`}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        onBlur={() => setOpen(false)}
+        className="relative inline-flex items-center rounded-md before:absolute before:-inset-3 before:content-[''] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+      >
+        <FocusLabel decorative />
+      </button>
+      {open ? (
+        <span
+          role="tooltip"
+          className="absolute top-full left-1/2 z-10 mt-1.5 -translate-x-1/2 rounded-md bg-foreground px-2 py-1 text-sm font-semibold whitespace-nowrap text-background shadow-md"
+        >
+          {tip}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 function PickDetail({ pick }: { pick: RacePickView }) {
   return (
     <li className="space-y-1.5 rounded-lg border border-border px-3 py-2">
@@ -43,30 +104,25 @@ function PickDetail({ pick }: { pick: RacePickView }) {
         <span className="min-w-0 break-words text-lg font-bold text-foreground">
           {pick.horseName}
         </span>
-        {pick.strong ? <FocusLabel /> : null}
+        {pick.strong ? <StarTip count={pick.criteria.length} /> : null}
         {pick.result ? (
           <span className="ml-auto">
             <ResultMark result={pick.result} />
           </span>
         ) : null}
       </div>
-      {pick.marks.length > 0 ? (
-        <p className="text-sm leading-relaxed text-foreground">
-          <span className="text-muted-foreground">고른 기준 </span>
-          {pick.marks.join(" · ")}
-        </p>
-      ) : null}
-      {pick.reasons.length > 0 ? (
-        <ul className="space-y-0.5 text-sm text-foreground">
-          {pick.reasons.map((r) => (
-            <li key={r} className="leading-relaxed">
-              · {r}
-            </li>
-          ))}
-          {pick.reasonsMore > 0 ? (
-            <li className="text-muted-foreground">외 {pick.reasonsMore}</li>
-          ) : null}
-        </ul>
+      {pick.criteria.length > 0 ? (
+        <div className="space-y-1">
+          <ul className="divide-y divide-border border-y border-border">
+            {pick.criteria.map((c) => (
+              <li key={c.rule} className="py-1.5 text-sm leading-relaxed text-foreground">
+                <span className="font-semibold">{c.rule}</span>{" "}
+                <span className="font-semibold">{c.mark}</span>
+                <span className="block text-muted-foreground">{c.reason}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
     </li>
   );
@@ -74,7 +130,7 @@ function PickDetail({ pick }: { pick: RacePickView }) {
 
 /**
  * 주목마 버튼 — 보이는 높이는 36px(2.25rem)로 줄이고, 누르는 영역은 ::before 로 위아래 4px 씩 넓혀
- * 44px 을 지킨다 (DESIGN.md 터치 타깃). 마번은 테두리 없이, "주목" 뱃지는 버튼 안에.
+ * 44px 을 지킨다 (DESIGN.md 터치 타깃). 마번은 테두리 없이, 별(주목)과 결과("→ 착순")는 버튼 안에.
  */
 const PICK_BUTTON =
   "relative inline-flex min-h-9 min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-base font-semibold text-foreground transition-colors before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
@@ -117,9 +173,11 @@ export function RaceListRows({ rows }: { rows: readonly RaceListRow[] }) {
                       <FormNum n={p.chulNo} plain />
                       <span className="sr-only">번</span>
                       <span className="min-w-0 break-words text-left">{p.horseName}</span>
-                      {p.strong ? <FocusLabel size="sm" /> : null}
+                      {p.strong ? (
+                        <FocusLabel size="sm" tip={`고른 기준 ${p.criteria.length}개`} />
+                      ) : null}
+                      {p.result ? <ResultInButton result={p.result} /> : null}
                     </button>
-                    {p.result ? <ResultMark result={p.result} /> : null}
                   </span>
                 ))}
               </span>

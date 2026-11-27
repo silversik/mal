@@ -35,20 +35,16 @@ export function changeText(c: Pick<StatusChange, "before" | "after" | "reason">)
  * 1면 상태 블록 — 하나만, 내용이 없으면 그리지 않는다 (계획 4.5-2).
  *  - 경주 후: 결산 한 줄 (4.8, 분수·고정 순서·강조 없음)
  *  - 경주일: "다음 경주 3R 14:30" (모르면 "발주 시각 미정")
- *  - 경주 전·경주일: "발행 후 바뀐 것 n건" (발행 후 기수 변경) — 0건이면 싣지 않는다
+ * 발행 후 바뀐 것(기수 변경)은 여기 싣지 않는다 — '업데이트' 섹션(UpdatesSection)으로 옮겼다 (2026-11-27).
  */
 export function StatusBlock({
   settlement,
   next,
-  changes,
 }: {
   settlement: SettlementLine | null;
   next: NextRace | null;
-  /** null·빈 배열 = 이 줄을 싣지 않음 (바뀐 것이 없으면 비운다 — 2026-11-27) */
-  changes: readonly StatusChange[] | null;
 }) {
-  const changed = changes && changes.length > 0 ? changes : null;
-  if (!settlement && !next && !changed) return null;
+  if (!settlement && !next) return null;
   return (
     <section
       aria-labelledby="status-title"
@@ -103,35 +99,40 @@ export function StatusBlock({
           </Link>
         )
       ) : null}
-
-      {changed ? (
-        <div className="space-y-2">
-          <p className="text-base text-foreground">
-            <span className="font-semibold">발행 후 바뀐 것 {changed.length}건</span> — 예상·판정은
-            발행한 그대로 둡니다
-          </p>
-          <ul className="space-y-1">
-            {changed.map((c) => (
-              <li key={c.key}>
-                <Link
-                  href={c.href}
-                  className={cn(
-                    "flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md px-1 text-sm text-foreground transition-colors hover:bg-muted",
-                    TAP,
-                  )}
-                >
-                  <span className="font-mono font-bold tabular-nums">{c.raceNo}R</span>
-                  <FormNum n={c.chulNo} />
-                  <span className="sr-only">번</span>
-                  <span className="font-semibold">{c.horseName}</span>
-                  <span>· 발행 후 기수 변경 {changeText(c)}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <p className="text-small text-muted-foreground">{JOCKEY_CHANGE_SOURCE_NOTE}</p>
-        </div>
-      ) : null}
     </section>
+  );
+}
+
+/** 발행 후 기수 변경 목록 — '업데이트' 섹션이 쓴다. 0건이면 그리지 않는다. */
+export function ChangeList({ changes }: { changes: readonly StatusChange[] }) {
+  if (changes.length === 0) return null;
+  return (
+    <div className="space-y-1 rounded-xl border border-border bg-card px-4 py-3">
+      <p className="text-base text-foreground">
+        <span className="font-semibold">
+          발행 후 기수 변경 <span className="font-mono tabular-nums">{changes.length}</span>건
+        </span>{" "}
+        — 예상·판정은 발행한 그대로 둡니다
+      </p>
+      <ul className="space-y-1">
+        {changes.map((c) => (
+          <li key={c.key}>
+            <Link
+              href={c.href}
+              className={cn(
+                "flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md px-1 text-sm text-foreground transition-colors hover:bg-muted",
+                TAP,
+              )}
+            >
+              <span className="font-mono font-bold tabular-nums">{c.raceNo}R</span>
+              <FormNum n={c.chulNo} />
+              <span className="sr-only">번</span>
+              <span className="font-semibold">{c.horseName}</span>
+              <span>· {changeText(c)}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

@@ -11,7 +11,7 @@ const CHIP =
 
 /**
  * 호(지면)를 넘기는 하단 플로팅 막대 (DESIGN.md Decisions Log 2026-11-27).
- * "‹ [요약] 1R 2R 3R … ›" — 첫 장은 요약(1면), 다음 장부터 라운드(경주면). 경마장은 제호에 있어 싣지 않는다. 지금 장은 brown 채움 +
+ * "‹ [집] 1R 2R 3R … ›" — 첫 장은 요약(1면, 집 아이콘), 다음 장부터 라운드(경주면). 경마장은 제호에 있어 싣지 않는다. 지금 장은 brown 채움 +
  * aria-current, 길면 가로 스크롤(지금 장이 보이게 맞춘다). ‹ › 는 앞·뒤 장.
  * 모바일은 하단 탭바(h-16) 바로 위, 데스크톱은 화면 아래 가운데. 지면 레이아웃이 이 높이만큼 아래 여백을 둔다.
  */
@@ -31,6 +31,22 @@ export function EditionPager({
     currentRef.current?.scrollIntoView({ block: "nearest", inline: "center" });
   }, [current]);
 
+  const HomeIcon = (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="h-5 w-5"
+    >
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5 9.5V21h14V9.5" />
+      <path d="M10 21v-6h4v6" />
+    </svg>
+  );
   const pages: { key: "summary" | number; label: string; href: string }[] = [
     { key: "summary", label: "요약", href: summaryHref },
     ...rounds.map((r) => ({ key: r.raceNo, label: `${r.raceNo}R`, href: r.href })),
@@ -63,6 +79,7 @@ export function EditionPager({
                 <span
                   ref={currentRef}
                   aria-current="page"
+                  aria-label={p.key === "summary" ? "요약 (첫 장)" : undefined}
                   className={cn(
                     CHIP,
                     TAP,
@@ -70,11 +87,12 @@ export function EditionPager({
                     p.key === "summary" ? "" : "font-mono tabular-nums",
                   )}
                 >
-                  {p.label}
+                  {p.key === "summary" ? HomeIcon : p.label}
                 </span>
               ) : (
                 <Link
                   href={p.href}
+                  aria-label={p.key === "summary" ? "요약 (첫 장)" : undefined}
                   className={cn(
                     CHIP,
                     TAP,
@@ -82,7 +100,7 @@ export function EditionPager({
                     p.key === "summary" ? "" : "font-mono tabular-nums",
                   )}
                 >
-                  {p.label}
+                  {p.key === "summary" ? HomeIcon : p.label}
                 </Link>
               )}
             </li>

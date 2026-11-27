@@ -243,6 +243,23 @@ export async function getEditionIndex(from: string, to: string): Promise<Edition
   return rows.map(toHead);
 }
 
+/** 발행본 목록 (경주일·경마장·호 번호만) — "경마지 선택" 팝업. 최근 것부터 $1 개. */
+export const EDITION_LIST_SQL = `
+SELECT to_char(e.race_date, 'YYYY-MM-DD') AS race_date,
+       e.meet,
+       e.issue_no
+  FROM racing_form_editions e
+ ORDER BY e.race_date DESC, e.id DESC
+ LIMIT $1::int`;
+
+export type EditionListRow = { race_date: string; meet: string; issue_no: number };
+
+/** 최근 발행본 목록 (기본 300호 — 세 경마장 약 1년치). summary 를 읽지 않아 가볍다. */
+export async function getEditionList(limit = 300): Promise<EditionListRow[]> {
+  const n = Number.isSafeInteger(limit) && limit > 0 ? Math.min(limit, 1000) : 300;
+  return query<EditionListRow>(EDITION_LIST_SQL, [n]);
+}
+
 /** 한 호의 머리. meet 는 한글 라벨(서울·제주·부경). 없으면 null. */
 export async function getEditionHead(date: string, meet: string): Promise<EditionHead | null> {
   const d = normalizeFormDate(date);
@@ -266,7 +283,7 @@ SELECT e.payload -> 'schema_version' AS schema_version,
        e.payload -> 'rules' AS rules,
        e.payload -> 'headlines' AS headlines,
        e.payload -> 'headline_overflow' AS headline_overflow,
-       (SELECT COALESCE(jsonb_agg((r.race - 'runners') - 'rules' ORDER BY r.ord), '[]'::jsonb)
+       (SELECT COALESCE(jsonb_agg(r.race - 'runners' ORDER BY r.ord), '[]'::jsonb)
           FROM jsonb_array_elements(
                  CASE WHEN jsonb_typeof(e.payload -> 'races') = 'array'
                       THEN e.payload -> 'races' ELSE '[]'::jsonb END
@@ -500,17 +517,19 @@ export async function getEditionTallies(editionIds: number[]): Promise<EditionTa
  * 같은 말이 두 라벨로 겹치면 최신 수집 행만.
  */
 export const CURRENT_JOCKEYS_SQL = `
-SELECT x.race_no, x.horse_no, x.chul_no, x.jockey_name, x.reason
+SELECT x.race_no, x.horse_no, x.chul_no, x.jockey_name, x.reason, x.changed_at
   FROM (
         SELECT DISTINCT ON (e.race_no, e.horse_no)
                e.race_no,
                e.horse_no,
                e.chul_no,
                COALESCE(NULLIF(btrim(jc.jk_name_after), ''), NULLIF(btrim(e.jockey_name), '')) AS jockey_name,
-               NULLIF(btrim(jc.reason), '') AS reason
+               NULLIF(btrim(jc.reason), '') AS reason,
+               to_char(jc.updated_at AT TIME ZONE 'Asia/Seoul',
+                       'YYYY-MM-DD"T"HH24:MI:SS.US"+09:00"') AS changed_at
           FROM race_entries e
           LEFT JOIN LATERAL (
-                SELECT c.jk_name_after, c.reason
+                SELECT c.jk_name_after, c.reason, c.updated_at
                   FROM jockey_changes c
                  WHERE c.race_date = e.race_date
                    AND c.race_no = e.race_no

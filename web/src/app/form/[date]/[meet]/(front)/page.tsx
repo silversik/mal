@@ -3,10 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { BetaNotice } from "@/components/racing-form/beta-notice";
-import { ErrataList, WithdrawnBanner } from "@/components/racing-form/edition-notices";
+import { WithdrawnBanner } from "@/components/racing-form/edition-notices";
 import { EditionPager } from "@/components/racing-form/edition-pager";
-import { EditionStamp } from "@/components/racing-form/edition-stamp";
+import { editionBasisText, EditionStamp } from "@/components/racing-form/edition-stamp";
 import { FormSection } from "@/components/racing-form/form-section";
 import { TAP } from "@/components/racing-form/format";
 import { buildHeadlineItems, Headlines } from "@/components/racing-form/headlines";
@@ -15,7 +14,13 @@ import { PaperSwitcher } from "@/components/racing-form/paper-switcher";
 import { buildRaceRows, RaceList } from "@/components/racing-form/race-list";
 import { RecordCompact } from "@/components/racing-form/record-compact";
 import { EditionStateMessage } from "@/components/racing-form/state-message";
-import { StatusBlock, type NextRace, type StatusChange } from "@/components/racing-form/status-block";
+import {
+  JOCKEY_CHANGE_SOURCE_NOTE,
+  StatusBlock,
+  type NextRace,
+  type StatusChange,
+} from "@/components/racing-form/status-block";
+import { UpdatesSection } from "@/components/racing-form/updates-section";
 import { ResponsibleGamblingNotice } from "@/components/responsible-gambling-notice";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
 import {
@@ -27,9 +32,11 @@ import {
 } from "@/lib/racing_form";
 import {
   atKst,
+  dateTimeKo,
   diffJockeys,
   editionStateText,
   editionTitleKo,
+  finalizeAt,
   FORM_HUB_PATH,
   FORM_RECORD_PATH,
   formEditionPath,
@@ -38,6 +45,7 @@ import {
   formRacePath,
   issueLabel,
   kstDateOf,
+  lastUpdatedAt,
   parseHhmm,
   publishStampKo,
   runnerAnchorId,
@@ -50,7 +58,7 @@ import {
 import { getRacesByDate } from "@/lib/races";
 import { cn } from "@/lib/utils";
 
-import { loadEdition, loadWeekEditionOptions, parseEditionParams } from "../../../_lib/load";
+import { loadEdition, loadEditionPickerGroups, parseEditionParams } from "../../../_lib/load";
 
 // 요청 시점에만 DB 를 친다 (빌드의 placeholder DATABASE_URL 로 프리렌더하지 않게).
 export const dynamic = "force-dynamic";
@@ -122,7 +130,7 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
 
   const title = editionTitleKo(p.date, p.meet);
   const path = formEditionPath(p.date, p.meet);
-  const weekOptions = await loadWeekEditionOptions(p.date);
+  const pickerGroups = await loadEditionPickerGroups();
   const crumbs = [
     { name: "홈", url: "/" },
     { name: "경마지", url: FORM_HUB_PATH },
@@ -134,10 +142,8 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
     return (
       <div className="break-keep space-y-6">
         <BreadcrumbJsonLd items={crumbs} />
-        <PaperSwitcher date={p.date} meet={p.meet} options={weekOptions} />
-        <FrontHeader title={paperTitleKo(p.date, p.meet, null)}>
-          <BetaNotice date={p.date} />
-        </FrontHeader>
+        <PaperSwitcher date={p.date} meet={p.meet} groups={pickerGroups} />
+        <FrontHeader title={paperTitleKo(p.date, p.meet, null)} />
         <EditionStateMessage state={s} date={p.date} meet={p.meet} />
         <ResponsibleGamblingNotice variant="full" />
       </div>
@@ -167,27 +173,37 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
       ? findNextRace({ date: p.date, meet: p.meet, races: front.races, startTimes, outcomes, now })
       : null;
   const diffs = front ? diffJockeys(front.runners, current) : [];
-  const changes: StatusChange[] | null =
-    today <= p.date || diffs.length > 0
-      ? diffs.map((d) => ({
-          key: `${d.race_no}-${d.horse_no}`,
-          href: `${formRacePath(p.date, p.meet, d.race_no)}#${runnerAnchorId(d.chul_no)}`,
-          raceNo: d.race_no,
-          chulNo: d.chul_no,
-          horseName:
-            front?.runners.find((u) => u.race_no === d.race_no && u.horse_no === d.horse_no)
-              ?.horse_name ?? d.horse_no,
-          before: d.before,
-          after: d.after,
-          reason: d.reason,
-        }))
-      : null;
+  const changes: StatusChange[] = diffs.map((d) => ({
+    key: `${d.race_no}-${d.horse_no}`,
+    href: `${formRacePath(p.date, p.meet, d.race_no)}#${runnerAnchorId(d.chul_no)}`,
+    raceNo: d.race_no,
+    chulNo: d.chul_no,
+    horseName:
+      front?.runners.find((u) => u.race_no === d.race_no && u.horse_no === d.horse_no)?.horse_name ??
+      d.horse_no,
+    before: d.before,
+    after: d.after,
+    reason: d.reason,
+  }));
+  // 머리 "최종 업데이트" — 발행 뒤 덧붙은 것(정정·철회·결과 변경 공지, 기수 변경)이 있을 때만
+  const updatedAt = lastUpdatedAt({ notices: ed.notices, jockeyDiffs: diffs });
+  // '업데이트' 섹션의 "예정" — 앞으로 이 지면에 덧붙을 것
+  const allFinal = tally !== null && tally.races_final >= head.race_count;
+  const scheduled: string[] = [];
+  if (!allFinal) {
+    const fin = finalizeAt(p.date);
+    if (today <= p.date) scheduled.push("경주 결과 — 경주가 끝나는 대로 잠정 결과를 싣습니다");
+    scheduled.push(`결과 확정 — ${dateTimeKo(fin)}`);
+  }
+  if (today <= p.date) scheduled.push(JOCKEY_CHANGE_SOURCE_NOTE);
+  // 기준 성적 — 확정된 경주가 있을 때만 싣는다 (없으면 섹션째 생략)
+  const hasRecord = record !== null && record.races > 0;
 
   return (
     <div className="break-keep space-y-6">
       <BreadcrumbJsonLd items={crumbs} />
       {/* 지면 넘기기 — 첫 장(요약)에서 라운드로 */}
-      <PaperSwitcher date={p.date} meet={p.meet} options={weekOptions} />
+      <PaperSwitcher date={p.date} meet={p.meet} groups={pickerGroups} />
       {front ? (
         <EditionPager
           summaryHref={path}
@@ -198,16 +214,13 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
         />
       ) : null}
       <FrontHeader title={paperTitleKo(p.date, p.meet, head.issue_no)}>
-        <EditionStamp head={head} late={s.late} />
-        <BetaNotice date={p.date} />
+        <EditionStamp head={head} late={s.late} updatedAt={updatedAt} />
       </FrontHeader>
 
       {s.state === "withdrawn" ? (
         <WithdrawnBanner text={editionStateText(s) ?? "철회됨 — 기록에 포함"} hidePicks={s.hidePicks} />
       ) : null}
-      <ErrataList errata={s.errata} />
-
-      <StatusBlock settlement={settlement} next={next} changes={changes} />
+      <StatusBlock settlement={settlement} next={next} />
 
       {front ? (
         <>
@@ -242,9 +255,21 @@ export default async function EditionFrontPage({ params }: { params: Promise<Par
         </p>
       )}
 
-      <FormSection id="record" title="기준 성적">
-        <RecordCompact record={record} scopeLabel={`실전 · 전 경마장 · 기준 ${head.rules_version}`} />
+      {/* 발행 뒤 달라진 것·달라질 것 — 정정·기수 변경·확정 예정·발행 기준 (머리의 "최종 업데이트" 가 여기로 온다) */}
+      <FormSection id="updates" title="업데이트">
+        <UpdatesSection
+          errata={s.errata}
+          changes={changes}
+          scheduled={scheduled}
+          basis={editionBasisText(head)}
+        />
       </FormSection>
+
+      {hasRecord ? (
+        <FormSection id="record" title="기준 성적">
+          <RecordCompact record={record} scopeLabel={`실전 · 전 경마장 · 기준 ${head.rules_version}`} />
+        </FormSection>
+      ) : null}
 
       <Link
         href={`${FORM_RECORD_PATH}#rules`}

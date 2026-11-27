@@ -1,7 +1,6 @@
 import type { Metadata, ResolvingMetadata } from "next";
 import { notFound } from "next/navigation";
 
-import { BetaNotice } from "@/components/racing-form/beta-notice";
 import { ChangesBox } from "@/components/racing-form/changes-box";
 import { ConsensusBox } from "@/components/racing-form/consensus-box";
 import { EditionPager } from "@/components/racing-form/edition-pager";
@@ -33,7 +32,7 @@ import {
 } from "@/lib/racing_form-shared";
 import { getRacesByDate } from "@/lib/races";
 
-import { loadRace, loadWeekEditionOptions, parseRaceParams } from "../../../_lib/load";
+import { loadEditionPickerGroups, loadRace, parseRaceParams } from "../../../_lib/load";
 
 // 요청 시점에만 DB 를 친다 (빌드의 placeholder DATABASE_URL 로 프리렌더하지 않게).
 export const dynamic = "force-dynamic";
@@ -85,7 +84,7 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
   // 발행본이 없는 호(발행 예정·미발행·쉼)에는 경주면이 없다 — 1면이 상태를 안내한다.
   if (s.notFound || (s.state !== "published" && s.state !== "withdrawn") || !ed.head) notFound();
   const head = ed.head;
-  const weekOptions = await loadWeekEditionOptions(p.date);
+  const pickerGroups = await loadEditionPickerGroups();
   // 제호 — 경주면에서는 요약 장(1면)으로 가는 링크 (페이지 h1 은 아래 "3R …")
   const masthead = (
     <PaperMasthead
@@ -107,12 +106,11 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
     return (
       <div className="break-keep space-y-6">
         <BreadcrumbJsonLd items={crumbs} />
-        <PaperSwitcher date={p.date} meet={p.meet} options={weekOptions} />
+        <PaperSwitcher date={p.date} meet={p.meet} groups={pickerGroups} />
         {masthead}
         <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
           {raceTitle(p.date, p.meet, p.raceNo)}
         </h1>
-        <BetaNotice date={p.date} />
         <p className="rounded-xl border border-border bg-card px-4 py-4 text-base text-foreground">
           이 호는 새 형식이라 아직 표시할 수 없습니다.
         </p>
@@ -152,7 +150,7 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
     <div className="break-keep space-y-6">
       <BreadcrumbJsonLd items={crumbs} />
       <OpenOnHash />
-      <PaperSwitcher date={p.date} meet={p.meet} options={weekOptions} />
+      <PaperSwitcher date={p.date} meet={p.meet} groups={pickerGroups} />
       <EditionPager
         summaryHref={formEditionPath(p.date, p.meet)}
         current={race.race_no}
@@ -162,7 +160,6 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
       />
       {masthead}
       <RaceHeader date={p.date} meet={p.meet} race={race} startTime={startTime} />
-      <BetaNotice date={p.date} />
 
       {s.state === "withdrawn" ? (
         <WithdrawnBanner text={editionStateText(s) ?? "철회됨 — 기록에 포함"} hidePicks={s.hidePicks} />

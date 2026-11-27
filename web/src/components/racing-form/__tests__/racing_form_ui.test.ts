@@ -15,7 +15,13 @@ import type {
   OutcomeRow,
   PublicBacktest,
 } from "@/lib/racing_form-shared";
-import { editionResult, editionResultLine, recordRows } from "@/lib/racing_form-shared";
+import {
+  editionPickerGroups,
+  editionResult,
+  editionResultLine,
+  lastUpdatedAt,
+  recordRows,
+} from "@/lib/racing_form-shared";
 
 import {
   NOTICE_COMPACT_TEXT,
@@ -39,9 +45,12 @@ import { buildHistory } from "../publication-history";
 import { buildRaceRows, RaceList } from "../race-list";
 import { FormNum } from "../form-num";
 import { EditionPager } from "../edition-pager";
-import { EditionSwitcher } from "../edition-switcher";
+import { EditionPicker } from "../edition-picker";
+import { editionBasisText, EditionStamp } from "../edition-stamp";
 import { PaperMasthead, PaperSheet, paperTitleKo } from "../paper-sheet";
-import { StatusBlock } from "../status-block";
+import { ChangeList, StatusBlock } from "../status-block";
+import { UpdatesSection } from "../updates-section";
+import { BetaBadge } from "../beta-notice";
 
 describe("format — payload 정수 → 표기 (계산 없음)", () => {
   it("부담 0.1kg · 기록 0.1초", () => {
@@ -161,6 +170,7 @@ function race(no: number, over: Partial<FrontRaceV1> = {}): FrontRaceV1 {
     start_time: "11:00",
     field_size: 10,
     status: "ok",
+    rules: [],
     stakes: null,
     consensus: { status: "split", active_rules: 4, min_votes: 3, picks: [] },
     ...over,
@@ -174,6 +184,27 @@ describe("buildRaceRows — 1면 경주 한 줄", () => {
   ];
   const races = [
     race(1, {
+      rules: [
+        {
+          key: "trainer",
+          status: "picked",
+          picks: [
+            { mark: 1, horse_no: "H9", chul_no: 9, reason: "조교사 최근 90일 40전 8승" },
+            { mark: 2, horse_no: "H1", chul_no: 3, reason: "조교사 최근 90일 30전 5승" },
+          ],
+        },
+        {
+          key: "rating",
+          status: "picked",
+          picks: [{ mark: 1, horse_no: "H1", chul_no: 3, reason: "레이팅 62 (출전마 중 1위)" }],
+        },
+        { key: "form", status: "no_pick", reason_code: "few_starts", reason: "최근 성적 부족" },
+        {
+          key: "jockey",
+          status: "picked",
+          picks: [{ mark: 3, horse_no: "H1", chul_no: 3, reason: "기수 최근 90일 18전 4승" }],
+        },
+      ],
       consensus: {
         status: "picked",
         active_rules: 4,
@@ -220,17 +251,23 @@ describe("buildRaceRows — 1면 경주 한 줄", () => {
       "/form/2026-11-14/busan/3",
       "/form/2026-11-14/busan/4",
     ]);
-    // 1R — 기준 4개 중 3개: 뱃지 없음(strong=false). 고른 기준은 고정 순서(RULE_ORDER)·글자("1순위")
+    // 1R — 기준 4개 중 3개: 별 없음(strong=false). 고른 기준은 줄이지 않고 전부 —
+    // 고정 순서(RULE_ORDER)·글자("1순위")·기준마다 근거 한 줄. 고르지 않은 기준(최근 성적)은 싣지 않는다
     expect(rows[0].picks).toHaveLength(2);
     expect(rows[0].picks[0]).toEqual({
       chulNo: 3,
       horseName: "솔빛물결",
       strong: false,
-      marks: ["레이팅 1순위", "기수 3순위", "조교사 2순위"],
-      reasons: ["레이팅 62 (출전마 중 1위)", "기수 최근 90일 18전 4승"],
-      reasonsMore: 1,
+      criteria: [
+        { rule: "레이팅", mark: "1순위", reason: "레이팅 62 (출전마 중 1위)" },
+        { rule: "기수", mark: "3순위", reason: "기수 최근 90일 18전 4승" },
+        { rule: "조교사", mark: "2순위", reason: "조교사 최근 90일 30전 5승" },
+      ],
       result: null,
     });
+    expect(rows[0].picks[1].criteria).toEqual([
+      { rule: "조교사", mark: "1순위", reason: "조교사 최근 90일 40전 8승" },
+    ]);
     expect(rows[0].picks[1]).toMatchObject({ chulNo: 9, horseName: "H9", strong: false });
     // 2R — 기준 3개가 모두 고름: "주목" 뱃지
     expect(rows[1].picks).toHaveLength(1);
@@ -297,13 +334,11 @@ describe("1면 단순화 (2026-11-27) — 탭 · 색 없는 출전번호 · 주�
     expect(h).not.toContain("style=");
   });
 
-  it("StatusBlock — 발행 후 바뀐 것이 없으면 아무것도 그리지 않는다", () => {
-    expect(html(createElement(StatusBlock, { settlement: null, next: null, changes: [] }))).toBe("");
-    expect(html(createElement(StatusBlock, { settlement: null, next: null, changes: null }))).toBe("");
+  it("StatusBlock 은 결산·다음 경주만 — 발행 후 기수 변경은 ChangeList('업데이트' 섹션)로", () => {
+    expect(html(createElement(StatusBlock, { settlement: null, next: null }))).toBe("");
+    expect(html(createElement(ChangeList, { changes: [] }))).toBe("");
     const one = html(
-      createElement(StatusBlock, {
-        settlement: null,
-        next: null,
+      createElement(ChangeList, {
         changes: [
           {
             key: "1-H1",
@@ -318,19 +353,17 @@ describe("1면 단순화 (2026-11-27) — 탭 · 색 없는 출전번호 · 주�
         ],
       }),
     );
-    expect(one).toContain("발행 후 바뀐 것");
+    expect(one).toContain("발행 후 기수 변경");
     expect(one).toContain("솔빛물결");
-    expect(one).not.toContain("바뀐 것 없음");
+    expect(one).toContain("갑→을");
   });
 
-  it("RaceList — 라운드 + 주목마 버튼(전부), '주목' 뱃지는 모두 고른 말만 버튼 안에, 없으면 빈 행", () => {
+  it("RaceList — 라운드 + 주목마 버튼(전부), 별(주목)은 모두 고른 말만 버튼 안에, 없으면 빈 행", () => {
     const pick = (chulNo: number, horseName: string, strong: boolean) => ({
       chulNo,
       horseName,
       strong,
-      marks: ["레이팅 1순위"],
-      reasons: [],
-      reasonsMore: 0,
+      criteria: [{ rule: "레이팅", mark: "1순위", reason: "레이팅 62" }],
       result: null,
     });
     const h = html(
@@ -354,16 +387,21 @@ describe("1면 단순화 (2026-11-27) — 탭 · 색 없는 출전번호 · 주�
     expect(rows[0]).toContain("1R");
     expect(rows[0]).not.toContain("<button");
     expect(rows[0]).not.toMatch(/주목마 없음|혼전|예상 안 함/);
-    // 4R — 버튼 하나, "주목" 뱃지는 버튼 안에. 마번은 테두리 없이
+    // 4R — 버튼 하나, "주목" 은 별 아이콘으로 버튼 안에. 마번은 테두리 없이
     expect(rows[1].match(/<button/g)?.length).toBe(1);
-    expect(rows[1]).toMatch(/<button[^>]*aria-haspopup="dialog"[^>]*>.*매직트리.*>주목<\/span><\/button>/);
+    expect(rows[1]).toMatch(
+      /<button[^>]*aria-haspopup="dialog"[^>]*>.*매직트리.*<svg role="img" aria-label="주목 — 고른 기준 1개"[^>]*><title>고른 기준 1개<\/title>.*<\/svg><\/button>/,
+    );
+    expect(rows[1]).not.toContain(">주목<"); // 글자 뱃지는 없다
     expect(rows[1]).toMatch(/<button[^>]*><span class="[^"]*font-mono[^"]*">3<\/span>/);
     expect(rows[1]).not.toMatch(/<button[^>]*><span class="[^"]*border-border/);
     // 5R — 주목마 2두 모두 버튼 (뱃지 없음), "외 n두" 로 줄이지 않는다
     expect(rows[2].match(/<button/g)?.length).toBe(2);
     expect(rows[2]).toContain("판타스틱밸류");
     expect(rows[2]).toContain("라온포레스트");
-    expect(rows[2]).not.toContain(">주목<");
+    expect(rows[2]).not.toContain('aria-label="주목');
+    // "고른 기준 n개" 는 본문 글자가 아니라 별의 설명(title)으로만
+    expect(h.replace(/<title>[^<]*<\/title>/g, "").replace(/aria-label="[^"]*"/g, "")).not.toContain("고른 기준");
     expect(rows[2]).not.toMatch(/외 \d+두/);
     // 버튼은 보이는 높이를 줄이되(36px) 누르는 영역은 ::before 로 넓힌다
     expect(rows[2]).toContain("min-h-9");
@@ -403,25 +441,132 @@ describe("지면 — 호 한 부를 종이 한 장에, 요약 → 라운드로 �
     expect(race).toMatch(/<a[^>]*href="\/form\/2026-11-28\/seoul"[^>]*>서울 11월 28일\(토\) 제1호 경마지<\/a>/);
   });
 
-  it("EditionSwitcher — '다른 경마지' 드롭다운: 같은 주의 호 + 전체 보기, 지금 호가 선택됨", () => {
-    const options = [
-      { href: "/form/2026-11-27/busan", label: "11월 27일(금) 부경 · 제1호" },
-      { href: "/form/2026-11-28/seoul", label: "11월 28일(토) 서울 · 제1호" },
-      { href: "/form/2026-11-29/seoul", label: "11월 29일(일) 서울 · 발행 예정" },
-    ];
+  it("editionPickerGroups — 호 번호로 묶고(경마장 섞임) 그 안에서 날짜 → 경마장 순, 발행 전은 맨 뒤", () => {
+    const groups = editionPickerGroups(
+      [
+        { race_date: "2026-11-28", meet: "제주", issue_no: 2 },
+        { race_date: "2026-11-28", meet: "서울", issue_no: 1 },
+        { race_date: "2026-11-27", meet: "부경", issue_no: 1 },
+        { race_date: "2026-11-27", meet: "제주", issue_no: 1 },
+        { race_date: "2026-11-22", meet: "영천", issue_no: 1 }, // 다루지 않는 경마장은 뺀다
+      ],
+      [
+        { race_date: "2026-11-29", meet: "서울" },
+        { race_date: "2026-11-28", meet: "서울" }, // 이미 발행됨 → 예정에서 뺀다
+      ],
+    );
+    expect(groups.map((g) => [g.key, g.label])).toEqual([
+      ["i1", "제1호"],
+      ["i2", "제2호"],
+      ["planned", "발행 예정"],
+    ]);
+    expect(groups[0].items).toEqual([
+      { href: "/form/2026-11-27/jeju", date: "2026-11-27", label: "11월 27일(금) 제주" },
+      { href: "/form/2026-11-27/busan", date: "2026-11-27", label: "11월 27일(금) 부경" },
+      { href: "/form/2026-11-28/seoul", date: "2026-11-28", label: "11월 28일(토) 서울" },
+    ]);
+    expect(groups[1].items.map((x) => x.label)).toEqual(["11월 28일(토) 제주"]);
+    expect(groups[2].items.map((x) => x.href)).toEqual(["/form/2026-11-29/seoul"]);
+    expect(editionPickerGroups([], [])).toEqual([]);
+  });
+
+  it("EditionPicker — 닫힌 상태에는 '경마지 선택' 버튼만 (팝업 본문은 열 때 그린다)", () => {
     const h = renderToStaticMarkup(
-      createElement(EditionSwitcher, { options, current: "/form/2026-11-28/seoul", hubHref: "/form" }),
+      createElement(EditionPicker, {
+        groups: editionPickerGroups([{ race_date: "2026-11-28", meet: "서울", issue_no: 1 }], []),
+        currentHref: "/form/2026-11-28/seoul",
+        hubHref: "/form",
+      }),
     );
-    expect(h).toContain("다른 경마지");
-    expect(h.match(/<option/g)?.length).toBe(4);
-    expect(h).toMatch(/<option value="\/form\/2026-11-28\/seoul" selected="">/);
-    expect(h).toContain('<option value="/form">경마지 전체 보기</option>');
+    expect(h).toMatch(/<button[^>]*aria-haspopup="dialog"[^>]*>경마지 선택<\/button>/);
     expect(h).toContain("min-h-[max(44px,2.75rem)]");
-    // 목록에 없는 호(지난 주 등)에서 열면 "이 경마지" 를 맨 위에
-    const other = renderToStaticMarkup(
-      createElement(EditionSwitcher, { options, current: "/form/2026-11-20/jeju", hubHref: "/form" }),
+    expect(h).not.toContain("<select");
+    expect(h).not.toContain("다른 경마지");
+  });
+
+  it("BetaBadge — 지면 위 줄에는 라벨만, 설명은 title·스크린리더로. 베타 기간이 아니면 없음", () => {
+    const h = renderToStaticMarkup(createElement(BetaBadge, { date: "2026-11-28" }));
+    expect(h).toContain("베타 테스트");
+    expect(h).toContain('title="2026년은 베타 테스트 기간입니다.');
+    expect(h).toContain("sr-only");
+    expect(renderToStaticMarkup(createElement(BetaBadge, { date: "2027-01-02" }))).toBe("");
+  });
+
+  it("EditionStamp — 오른쪽 정렬, 발행 시각만. 수정이 있었으면 '최종 업데이트' 한 줄", () => {
+    const head = {
+      published_at: "2026-11-27T18:00:03.000000+09:00",
+      freeze_at: "2026-11-27T18:00:00.000000+09:00",
+    };
+    const plain = renderToStaticMarkup(createElement(EditionStamp, { head, late: false }));
+    expect(plain).toContain("text-right");
+    expect(plain).toContain("11월 27일(금) 오후 6시 발행");
+    expect(plain).not.toContain("고치지 않음");
+    expect(plain).not.toContain("성적 반영");
+    expect(plain).not.toContain("최종 업데이트");
+    const upd = renderToStaticMarkup(
+      createElement(EditionStamp, { head, late: false, updatedAt: "2026-11-28T09:40:12.000000+09:00" }),
     );
-    expect(other).toMatch(/<option value="\/form\/2026-11-20\/jeju" selected="">이 경마지<\/option>/);
+    expect(upd).toMatch(/<a href="#updates"[^>]*>최종 업데이트 11월 28일\(토\) 09:40<\/a>/);
+    expect(
+      editionBasisText({ results_through: "2026-11-22", entries_batch_at: "2026-11-27T17:25:00.000000+09:00" }),
+    ).toBe("성적 반영 11월 22일(일) 경주까지 · 출전표 11월 27일(금) 17:25 갱신분");
+  });
+
+  it("lastUpdatedAt — 정정·철회·결과 변경 공지와 기수 변경 가운데 가장 늦은 시각, 없으면 null", () => {
+    expect(lastUpdatedAt({ notices: [], jockeyDiffs: [] })).toBeNull();
+    // 미발행·쉼 공지와 시각 모르는 기수 변경은 세지 않는다
+    expect(
+      lastUpdatedAt({
+        notices: [{ kind: "missed", noticed_at: "2026-11-28T08:00:00.000000+09:00" }],
+        jockeyDiffs: [{}],
+      }),
+    ).toBeNull();
+    expect(
+      lastUpdatedAt({
+        notices: [
+          { kind: "erratum", noticed_at: "2026-11-28T09:10:00.000000+09:00" },
+          { kind: "result_changed", noticed_at: "2026-11-28T14:00:00.000000+09:00" },
+        ],
+        jockeyDiffs: [{ changed_at: "2026-11-28T09:40:00.000000+09:00" }],
+      }),
+    ).toBe("2026-11-28T14:00:00.000000+09:00");
+    expect(
+      lastUpdatedAt({ notices: [], jockeyDiffs: [{ changed_at: "2026-11-28T09:40:00.000000+09:00" }] }),
+    ).toBe("2026-11-28T09:40:00.000000+09:00");
+  });
+
+  it("UpdatesSection — 수정된 것(있을 때만) · 예정 · 발행 기준", () => {
+    const basis = "성적 반영 11월 22일(일) 경주까지 · 출전표 11월 27일(금) 17:25 갱신분";
+    const quiet = renderToStaticMarkup(
+      createElement(UpdatesSection, { errata: [], changes: [], scheduled: ["결과 확정 — 11월 29일(일) 13:00"], basis }),
+    );
+    expect(quiet).not.toContain("수정된 것");
+    expect(quiet).toContain("예정");
+    expect(quiet).toContain("결과 확정 — 11월 29일(일) 13:00");
+    expect(quiet).toContain(`발행 기준 — ${basis}`);
+    const changed = renderToStaticMarkup(
+      createElement(UpdatesSection, {
+        errata: [],
+        changes: [
+          {
+            key: "2-H5",
+            href: "/form/2026-11-28/seoul/2#chul-5",
+            raceNo: 2,
+            chulNo: 5,
+            horseName: "새벽",
+            before: "갑",
+            after: "을",
+            reason: "기수부상",
+          },
+        ],
+        scheduled: [],
+        basis,
+      }),
+    );
+    expect(changed).toContain("수정된 것");
+    expect(changed).toContain("발행 후 기수 변경");
+    expect(changed).toContain("새벽");
+    expect(changed).not.toContain(">예정<");
   });
 
   const rounds = [1, 2, 3].map((n) => ({ raceNo: n, href: `/form/2026-11-27/busan/${n}` }));
@@ -435,7 +580,9 @@ describe("지면 — 호 한 부를 종이 한 장에, 요약 → 라운드로 �
     expect(h).toContain('aria-label="지면 넘기기"');
     // 경마장은 제호에 있다 — 막대에는 싣지 않는다
     expect(h).not.toContain("부경");
-    expect(h).toMatch(/<span aria-current="page"[^>]*>요약<\/span>/);
+    // 첫 장은 글자 대신 집 아이콘 (이름은 aria-label)
+    expect(h).toMatch(/<span aria-current="page" aria-label="요약 \(첫 장\)"[^>]*><svg/);
+    expect(h).not.toContain(">요약<");
     expect(h).not.toContain('aria-label="앞 장');
     expect(h).toContain('aria-label="다음 장 — 1R" class=');
     expect(h).toMatch(/href="\/form\/2026-11-27\/busan\/1"[^>]*aria-label="다음 장 — 1R"|aria-label="다음 장 — 1R"[^>]*href="\/form\/2026-11-27\/busan\/1"/);
@@ -449,7 +596,7 @@ describe("지면 — 호 한 부를 종이 한 장에, 요약 → 라운드로 �
     expect(first).toContain('aria-label="앞 장 — 요약"');
     expect(first).toContain('aria-label="다음 장 — 2R"');
     // 요약 장으로 돌아가는 링크
-    expect(first).toMatch(/<a[^>]*href="\/form\/2026-11-27\/busan"[^>]*>요약<\/a>/);
+    expect(first).toMatch(/<a[^>]*aria-label="요약 \(첫 장\)"[^>]*href="\/form\/2026-11-27\/busan"[^>]*><svg|<a[^>]*href="\/form\/2026-11-27\/busan"[^>]*aria-label="요약 \(첫 장\)"[^>]*><svg/);
     const last = pager(3);
     expect(last).toContain('aria-label="앞 장 — 2R"');
     expect(last).not.toContain('aria-label="다음 장');
@@ -524,49 +671,79 @@ describe("호 카드 — 경주 전 / 결과 구분, 결과는 예상 ↔ 실제
     expect(editionResultLine(none)).toBe("주목마 없음");
   });
 
-  it("EditionCardGroups — '경주 전' 먼저, '결과' 는 예상 ↔ 실제 줄. 빈 묶음은 그리지 않는다", () => {
-    const base = { issue: "제1호", sub: "10경주 · 주목마 5경주", provisional: null };
+  it("EditionCardGroups — '경주 전' 먼저, '경주 결과' 는 예상 ↔ 실제 줄. 빈 묶음은 그리지 않는다", () => {
+    const base = { issue: "제1호", sub: "10경주 · 주목마 5경주", provisional: null, disabled: false };
     const cards: EditionCardData[] = [
       {
         ...base,
         key: "a",
         href: "/form/2026-11-27/busan",
         date: "2026-11-27",
-        title: "11월 27일(금) 부경",
+        title: "부경 11월 27일(금)",
         status: "11월 26일(목) 오후 6시 발행",
         result: editionResult(summary, outcomes),
         provisional: "잠정 — 내일 오후 1시 확정",
+        picks: [],
       },
       {
         ...base,
         key: "b",
         href: "/form/2026-11-28/seoul",
         date: "2026-11-28",
-        title: "11월 28일(토) 서울",
+        title: "서울 11월 28일(토)",
         status: "11월 27일(금) 오후 6시 발행",
         result: null,
+        picks: [
+          { race_no: 3, chul_no: 8, horse_name: "선라이즈킹", strong: true },
+          { race_no: 5, chul_no: 11, horse_name: "영광의스카이", strong: false },
+        ],
+      },
+      // 발행 예정 — 누를 수 없는 흐린 카드
+      {
+        key: "d",
+        href: "/form/2026-11-29/seoul",
+        date: "2026-11-29",
+        title: "서울 11월 29일(일)",
+        issue: null,
+        status: "11월 28일(토) 오후 6시 발행 예정",
+        sub: null,
+        result: null,
+        provisional: null,
+        picks: null,
+        disabled: true,
       },
       // 지난 날짜의 미발행 — 결과는 없지만 "경주 전" 은 아니다
       {
         key: "c",
         href: "/form/2026-11-26/jeju",
         date: "2026-11-26",
-        title: "11월 26일(목) 제주",
+        title: "제주 11월 26일(목)",
         issue: null,
         status: "미발행 — 출전표 없음",
         sub: null,
         result: null,
         provisional: null,
+        picks: null,
+        disabled: false,
       },
     ];
-    const h = renderToStaticMarkup(createElement(EditionCardGroups, { cards, today: "2026-11-27" }));
-    const [upcoming, result] = h.split('aria-label="결과"');
+    const h = renderToStaticMarkup(
+      createElement(EditionCardGroups, { cards, today: "2026-11-27", showPicks: true }),
+    );
+    const [upcoming, result] = h.split('aria-label="경주 결과"');
     expect(upcoming).toContain('aria-label="경주 전"');
-    expect(upcoming).toContain("11월 28일(토) 서울");
-    expect(upcoming).toContain("오후 6시 발행");
+    expect(upcoming).toContain("서울 11월 28일(토)");
     expect(upcoming).not.toContain("부경");
-    expect(result).toContain("11월 27일(금) 부경");
-    expect(result).toContain("11월 26일(목) 제주");
+    // 경주 전 카드 — 발행 시각 대신 라운드별 주목마 (모두 고른 말은 별)
+    expect(upcoming).not.toContain("11월 27일(금) 오후 6시 발행");
+    expect(upcoming).toContain("선라이즈킹");
+    expect(upcoming).toContain("영광의스카이");
+    expect(upcoming.match(/aria-label="주목"/g)?.length).toBe(1);
+    // 발행 예정 — 링크가 아니다
+    expect(upcoming).toMatch(/<div aria-disabled="true"[^>]*>.*서울 11월 29일\(일\).*발행 예정/);
+    expect(upcoming).not.toContain('href="/form/2026-11-29/seoul"');
+    expect(result).toContain("부경 11월 27일(금)");
+    expect(result).toContain("제주 11월 26일(목)");
     expect(result).toContain("잠정 — 내일 오후 1시 확정");
     expect(result).toContain("매직트리");
     expect(result).toContain("(1착 <span");
@@ -578,9 +755,14 @@ describe("호 카드 — 경주 전 / 결과 구분, 결과는 예상 ↔ 실제
     expect(h).not.toMatch(/[◎○△]|추천|강력/);
     expect(h).not.toContain("style=");
 
+    // 홈(showPicks 없음) — 경주 전 카드에 주목마 이름을 싣지 않는다
+    const home = renderToStaticMarkup(createElement(EditionCardGroups, { cards, today: "2026-11-27" }));
+    expect(home.split('aria-label="경주 결과"')[0]).not.toContain("선라이즈킹");
+    expect(home.split('aria-label="경주 결과"')[0]).toContain("10경주 · 주목마 5경주");
+
     const only = renderToStaticMarkup(createElement(EditionCardGroups, { cards: [cards[1]], today: "2026-11-27" }));
     expect(only).toContain('aria-label="경주 전"');
-    expect(only).not.toContain('aria-label="결과"');
+    expect(only).not.toContain('aria-label="경주 결과"');
   });
 });
 
