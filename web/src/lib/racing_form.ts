@@ -27,6 +27,7 @@ import {
   formEditionPath,
   isFormMeet,
   meetOrder,
+  meetFromSlug,
   normalizeFormDate,
   parseEditionFront,
   parseEditionSummary,
@@ -894,6 +895,44 @@ export async function getEditionMeetsSafe(date: string): Promise<FormMeet[]> {
   } catch (err) {
     console.error("[racing_form] getEditionMeetsSafe 실패", err);
     return [];
+  }
+}
+
+/** 경기 일람 경주 상세의 "이 경주 경마지 주목마" 재료 — 그 호의 머리 + 이 경주 조각 + 이 경주 정산. */
+export type RaceFormPicksData = {
+  head: EditionHead;
+  slice: RaceSlice;
+  outcomes: OutcomeRow[];
+};
+
+/**
+ * /races 경주 상세용 — 그날 그 경마장 호가 발행됐고 예상을 숨기지 않았을 때만 (철회 + 예상 숨김이면 null).
+ * meet 은 '부산경남' 원문이어도 된다 (slug 로 맞춘다). 실패하면 null — 경기 일람은 그대로 뜬다.
+ */
+export async function getRaceFormPicksSafe(
+  date: string,
+  meet: string,
+  raceNo: number,
+): Promise<RaceFormPicksData | null> {
+  const slug = slugFromMeet(meet);
+  const m = slug ? meetFromSlug(slug) : null;
+  if (!m) return null;
+  try {
+    const head = await getEditionHead(date, m);
+    if (!head) return null;
+    const [notices, slice, outcomes] = await Promise.all([
+      getNotices(date, m),
+      getRaceSlice(head.id, raceNo),
+      getOutcomes(head.id),
+    ]);
+    const hidden = notices.some(
+      (n) => n.kind === "withdrawn" && n.edition_id === head.id && n.hide_picks,
+    );
+    if (hidden || !slice) return null;
+    return { head, slice, outcomes: outcomes.filter((o) => o.race_no === raceNo) };
+  } catch (err) {
+    console.error("[racing_form] getRaceFormPicksSafe 실패", err);
+    return null;
   }
 }
 

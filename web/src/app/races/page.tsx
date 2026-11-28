@@ -56,13 +56,13 @@ import { PopularityVsResult, hasPopularityVsResultData } from "@/components/popu
 import { PaceMap, hasPaceMapData } from "@/components/pace-map";
 import { RecentFormStrip } from "@/components/recent-form-strip";
 import { ComboDividendsSection } from "@/components/combo-dividends-section";
+import { RaceFormPicks } from "@/components/racing-form/race-form-picks";
 import {
   getHorseCompareSummaries,
   type HorseCompareSummary,
 } from "@/lib/horses";
 import { getRaceCorner } from "@/lib/race_corners";
-import { getEditionMeetsSafe } from "@/lib/racing_form";
-import { formRacePath, slugFromMeet } from "@/lib/racing_form-shared";
+import { getRaceFormPicksSafe } from "@/lib/racing_form";
 import { CommentSection } from "@/components/comment-section";
 
 // 같은 키가 반복되면(?date=a&date=b) Next 는 배열을 넘긴다 — 반드시 정규화 후 사용.
@@ -296,7 +296,7 @@ export default async function RacesPage({
     comboDividends,
     poolSales,
     raceCorner,
-    formMeets,
+    formPicks,
   ] = selectedRace
     ? await Promise.all([
         getRaceEntries(currentDate, selectedRace.meet, selectedRace.race_no),
@@ -305,8 +305,8 @@ export default async function RacesPage({
         getRaceComboDividends(currentDate, selectedRace.meet, selectedRace.race_no),
         getRacePoolSales(currentDate, selectedRace.meet, selectedRace.race_no),
         getRaceCorner(currentDate, selectedRace.meet, selectedRace.race_no),
-        // 그날 경마지 발행본이 있는 경마장 — 실패해도 [] (경기 일람은 그대로 뜬다).
-        getEditionMeetsSafe(currentDate),
+        // 이 경주의 경마지 주목마 (발행된 호가 있을 때만) — 실패해도 null (경기 일람은 그대로 뜬다).
+        getRaceFormPicksSafe(currentDate, selectedRace.meet, selectedRace.race_no),
       ])
     : [
         { phase: "post" as const, entries: [] },
@@ -315,16 +315,9 @@ export default async function RacesPage({
         [] as RaceComboDividend[],
         [] as RacePoolSales[],
         null,
-        [],
+        null,
       ];
   const entries = entriesResult.entries;
-  // 이 경주의 경마지 경주면 — 그날 그 경마장 호가 발행됐을 때만 링크.
-  // (races.meet 표기가 '부산경남' 이어도 같은 slug 로 맞춘다. 영천은 slug 가 없어 링크 없음.)
-  const formSlug = selectedRace ? slugFromMeet(selectedRace.meet) : null;
-  const formHref =
-    selectedRace && formSlug && formMeets.some((m) => slugFromMeet(m) === formSlug)
-      ? formRacePath(currentDate, selectedRace.meet, selectedRace.race_no)
-      : null;
   const entriesPhase = entriesResult.phase;
   const [compareSummaries, recentFinishesMap] = entries.length > 0 && selectedRace
     ? await Promise.all([
@@ -517,14 +510,6 @@ export default async function RacesPage({
                   <RaceChip label="출전" value={`${selectedRace.entry_count}두`} />
                 )}
               </div>
-              {formHref && (
-                <Link
-                  href={formHref}
-                  className="inline-flex min-h-[max(44px,2.75rem)] items-center self-start text-base font-semibold text-foreground underline-offset-4 transition-colors hover:underline"
-                >
-                  이 경주 경마지 예상 보기 ›
-                </Link>
-              )}
             </div>
 
             <div className="flex flex-col items-start gap-2 md:items-end">
@@ -913,6 +898,14 @@ export default async function RacesPage({
               );
             })()}
           </div>
+
+          {/* 이 경주의 경마지 주목마 — 복식 배당 위, 주목마가 없으면 그리지 않는다 */}
+          <RaceFormPicks
+            data={formPicks}
+            date={currentDate}
+            meet={selectedRace.meet}
+            raceNo={selectedRace.race_no}
+          />
 
           {comboDividends.length > 0 && (
             <ComboDividendsSection rows={comboDividends} />

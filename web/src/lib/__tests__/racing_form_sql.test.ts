@@ -372,6 +372,59 @@ describe("실패 처리 — 캐시 바깥 try/catch · Safe 함수", () => {
     err.mockRestore();
   });
 
+  it("getRaceFormPicksSafe — 발행된 호의 이 경주 조각·정산, '부산경남' 도 부경 호, 예상 숨김·실패는 null", async () => {
+    const head = {
+      id: 7, race_date: "2026-11-15", meet: "부경", issue_no: 3, rules_version: "r2", schema_version: 1,
+      history_before: "2026-11-14", results_through: null, entries_batch_at: null,
+      freeze_at: "2026-11-14T18:00:00.000000+09:00", deadline_at: "2026-11-15T08:00:00.000000+09:00",
+      published_at: "2026-11-14T18:00:05.000000+09:00", race_count: 3, runner_count: 15, summary: null,
+    };
+    const outcomeRow = (race_no: number) => ({
+      race_no, status: "official", starters: 5, finish: [], winners: [], placed: [], non_starters: [],
+      extra_starters: [], favorites: [], pop_ranks: {}, is_final: false,
+      first_settled_at: "2026-11-15T17:45:00.000000+09:00", settled_at: "2026-11-15T17:45:00.000000+09:00",
+      finalized_at: null,
+    });
+    const withdrawn = (hide: boolean) => [{
+      id: 1, race_date: "2026-11-15", meet: "부경", edition_id: 7, kind: "withdrawn",
+      public_text: "철회", until: null, hide_picks: hide, race_no: null,
+      noticed_at: "2026-11-14T20:00:00.000000+09:00",
+    }];
+    const run = (notices: unknown[]) =>
+      queryMock.mockImplementation(async (sql: string, params?: unknown[]) => {
+        if (sql === rf.EDITION_HEAD_SQL) {
+          expect(params).toEqual(["2026-11-15", "부경"]); // '부산경남' 으로 물어도 부경 호
+          return [head];
+        }
+        if (sql === rf.NOTICES_SQL) return notices;
+        if (sql === rf.RACE_SLICE_SQL) {
+          expect(params).toEqual([7, 2]);
+          return [{ schema_version: 1, edition: GOLDEN.edition, rules: GOLDEN.rules, race: GOLDEN.races[1], race_nos: [1, 2, 3] }];
+        }
+        if (sql === rf.OUTCOMES_SQL) return [outcomeRow(1), outcomeRow(2)];
+        throw new Error(`unexpected ${sql.slice(0, 40)}`);
+      });
+
+    run([]);
+    const got = await rf.getRaceFormPicksSafe("2026-11-15", "부산경남", 2);
+    expect(got?.head.issue_no).toBe(3);
+    expect(got?.slice.race).toStrictEqual(GOLDEN.races[1]);
+    expect(got?.outcomes.map((o) => o.race_no)).toEqual([2]); // 이 경주 정산만
+
+    run(withdrawn(false)); // 철회됐어도 예상을 숨기지 않은 호는 보인다
+    expect(await rf.getRaceFormPicksSafe("2026-11-15", "부경", 2)).not.toBeNull();
+    run(withdrawn(true)); // 법적 사유로 예상을 숨긴 호는 보이지 않는다
+    expect(await rf.getRaceFormPicksSafe("2026-11-15", "부경", 2)).toBeNull();
+
+    expect(await rf.getRaceFormPicksSafe("2026-11-15", "영천", 2)).toBeNull(); // 다루지 않는 경마장
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    queryMock.mockImplementation(async () => {
+      throw new Error("db down");
+    });
+    expect(await rf.getRaceFormPicksSafe("2026-11-15", "부경", 2)).toBeNull();
+    err.mockRestore();
+  });
+
   it("getFormSitemapUrlsSafe — 발행본 1면 URL, 실패면 [] (sitemap 이 500 이 되지 않게)", async () => {
     queryMock.mockResolvedValueOnce([
       { race_date: "2026-11-27", meet: "부경", lastmod: "2026-11-26T09:00:05Z" },

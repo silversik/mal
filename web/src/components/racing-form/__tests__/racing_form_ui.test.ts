@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -48,6 +51,7 @@ import { EditionPager } from "../edition-pager";
 import { EditionPicker } from "../edition-picker";
 import { editionBasisText, EditionStamp } from "../edition-stamp";
 import { PaperMasthead, PaperSheet, paperTitleKo } from "../paper-sheet";
+import { RaceFormPicks } from "../race-form-picks";
 import { ChangeList, StatusBlock } from "../status-block";
 import { UpdatesSection } from "../updates-section";
 import { BetaBadge } from "../beta-notice";
@@ -763,6 +767,49 @@ describe("호 카드 — 경주 전 / 결과 구분, 결과는 예상 ↔ 실제
     const only = renderToStaticMarkup(createElement(EditionCardGroups, { cards: [cards[1]], today: "2026-11-27" }));
     expect(only).toContain('aria-label="경주 전"');
     expect(only).not.toContain('aria-label="경주 결과"');
+  });
+});
+
+describe("RaceFormPicks — 경기 일람 경주 상세의 경마지 주목마 (2026-11-28)", () => {
+  const golden = JSON.parse(
+    readFileSync(
+      fileURLToPath(
+        new URL("../../../../../crawler/tests/fixtures/racing_form/payload_v1.golden.json", import.meta.url),
+      ),
+      "utf8",
+    ),
+  );
+  const data = (raceIdx: number) => ({
+    head: { issue_no: 3 } as EditionHead,
+    slice: { edition: golden.edition, rules: golden.rules, race: golden.races[raceIdx], race_nos: [1, 2, 3] },
+    outcomes: [],
+  });
+
+  it("주목마가 있으면 카드 + 고른 기준, '경마지 전체 보기' 는 새 창", () => {
+    const h = renderToStaticMarkup(
+      createElement(RaceFormPicks, { data: data(0), date: "2026-11-15", meet: "서울", raceNo: 1 }),
+    );
+    expect(h).toContain("경마지 주목마");
+    expect(h).toContain("제3호");
+    expect(h).toMatch(/<a href="\/form\/2026-11-15\/seoul\/1" target="_blank" rel="noopener"/);
+    expect(h).toContain("(새 창)");
+    expect(h.match(/<li class="space-y-2/g)?.length).toBe(golden.races[0].consensus.picks.length);
+    expect(h).not.toMatch(/[◎○△]|추천|강력/);
+    // 예전 링크 문구는 없다
+    expect(h).not.toContain("예상 보기");
+  });
+
+  it("주목마가 없거나 데이터가 없으면 그리지 않는다", () => {
+    expect(
+      renderToStaticMarkup(
+        createElement(RaceFormPicks, { data: data(1), date: "2026-11-15", meet: "서울", raceNo: 2 }),
+      ),
+    ).toBe("");
+    expect(
+      renderToStaticMarkup(
+        createElement(RaceFormPicks, { data: null, date: "2026-11-15", meet: "서울", raceNo: 1 }),
+      ),
+    ).toBe("");
   });
 });
 
