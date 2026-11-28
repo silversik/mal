@@ -16,7 +16,7 @@ import { RuleList } from "@/components/racing-form/rule-list";
 import { RunnerCard } from "@/components/racing-form/runner-card";
 import { ResponsibleGamblingNotice } from "@/components/responsible-gambling-notice";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
-import { getCurrentJockeys, getOutcomes, getRuleRecord } from "@/lib/racing_form";
+import { getCurrentJockeys, getEntryPeopleSafe, getOutcomes, getRuleRecord } from "@/lib/racing_form";
 import {
   dateKo,
   diffJockeys,
@@ -29,6 +29,7 @@ import {
   formRacePath,
   publishedJockeys,
   raceResultState,
+  runnerPeopleLinks,
 } from "@/lib/racing_form-shared";
 import { getRacesByDate } from "@/lib/races";
 
@@ -121,11 +122,12 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
 
   const { race, rules: defs, race_nos: raceNos } = r.slice;
   const hidePicks = s.state === "withdrawn" && s.hidePicks;
-  const [outcomes, current, races, record] = await Promise.all([
+  const [outcomes, current, races, record, people] = await Promise.all([
     getOutcomes(head.id),
     getCurrentJockeys(p.date, p.meet),
     getRacesByDate(p.date, p.meet),
     getRuleRecord({ version: head.rules_version }),
+    getEntryPeopleSafe(p.date, p.meet, race.race_no),
   ]);
 
   const outcome = outcomes.find((o) => o.race_no === race.race_no) ?? null;
@@ -202,6 +204,7 @@ export default async function RaceFormPage({ params }: { params: Promise<Params>
               runner={u}
               hidePicks={hidePicks}
               strong={strongPicks.has(u.horse_no)}
+              links={runnerPeopleLinks(u, people)}
             />
           ))}
         </div>

@@ -41,6 +41,7 @@
   --color-brown:     var(--brown);
   --color-positive:  var(--positive);
   --color-negative:  var(--negative);
+  --color-star:      var(--star);
   --color-ad-surface: var(--ad-surface);
 
   --color-sidebar-ring: var(--sidebar-ring);
@@ -100,6 +101,8 @@
   --brown-fg:    #ffffff;
   --positive:    #56682a;
   --negative:    #a83e34;
+  /* 경마지 "주목" 별 전용 금색 (그래픽 대비 ≥3:1, 글자에는 쓰지 않는다) */
+  --star:        #b07d12;
   --ad-surface:  #eae3d8;
 
   /* shadcn semantic → brown */
@@ -159,6 +162,7 @@ html { font-size: calc(100% * var(--scale)); }
   --brown-fg:    #14100d;
   --positive:    #a3b663;
   --negative:    #dc8178;
+  --star:        #e0b44c;
   --ad-surface:  #eae3d8;
 
   --muted: #2e251f;
@@ -183,6 +187,7 @@ html { font-size: calc(100% * var(--scale)); }
     --brown-fg:    #14100d;
     --positive:    #a3b663;
     --negative:    #dc8178;
+    --star:        #e0b44c;
     --ad-surface:  #eae3d8;
     --muted: #2e251f;
     --accent: #33291f;

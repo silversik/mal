@@ -1060,3 +1060,21 @@ describe("pickHomeEditions — 홈 카드에 실을 호", () => {
     expect(pickHomeEditions(all, [{ kind: "erratum", edition_id: 2 }], "2026-11-26").map((e) => e.id)).toEqual([2, 3, 4]);
   });
 });
+
+describe("runnerPeopleLinks — 출전마 카드의 기수·조교사 상세 링크", () => {
+  const runner = { horse_no: "0056092", jockey_name: "(-2)권중석", trainer_name: "김조교" };
+  const entry = { horse_no: "0056092", jockey_name: "권중석", jk_no: "080123", trainer_name: "김조교", tr_no: "070001" };
+
+  it("감량 표기를 떼고 이름이 같으면 번호로 링크한다", async () => {
+    const { runnerPeopleLinks, jockeyNameKey } = await import("../racing_form-shared");
+    expect(jockeyNameKey(" (-1.5) 홍길동 ")).toBe("홍길동");
+    expect(runnerPeopleLinks(runner, [entry])).toEqual({ jockey: "/jockey/080123", trainer: "/trainer/070001" });
+  });
+
+  it("발행 뒤 사람이 바뀌었거나 번호·출전표가 없으면 링크하지 않는다", async () => {
+    const { runnerPeopleLinks } = await import("../racing_form-shared");
+    expect(runnerPeopleLinks(runner, [{ ...entry, jockey_name: "다른기수" }]).jockey).toBeNull();
+    expect(runnerPeopleLinks(runner, [{ ...entry, tr_no: null }]).trainer).toBeNull();
+    expect(runnerPeopleLinks(runner, [])).toEqual({ jockey: null, trainer: null });
+  });
+});
