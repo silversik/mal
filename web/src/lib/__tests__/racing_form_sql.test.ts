@@ -55,10 +55,11 @@ beforeEach(() => {
 });
 
 describe("SQL 상수 — e2e 가 글자 그대로 복사해 실행할 수 있는 형태", () => {
-  it("상수 20개", () => {
+  it("상수 21개", () => {
     expect(SQL_CONSTANTS.map(([k]) => k).sort()).toEqual(
       [
         "CURRENT_JOCKEYS_SQL",
+        "ENTRY_PEOPLE_SQL",
         "EDITION_FRONT_SQL",
         "EDITION_HEAD_SQL",
         "EDITION_INDEX_SQL",
@@ -125,6 +126,8 @@ describe("파라미터 — 한글 경마장·날짜는 $n 으로만", () => {
     await rf.getCurrentJockeys("2026-11-27", "부경"); // 출전표는 '부산경남' 으로 저장돼 있다
     expectParamOnly(rf.CURRENT_JOCKEYS_SQL, ["2026-11-27", ["부경", "부산경남"]]);
     expect(rf.CURRENT_JOCKEYS_SQL).toContain("e.meet = ANY($2::text[])");
+    await rf.getEntryPeopleSafe("2026-11-27", "부경", 3);
+    expectParamOnly(rf.ENTRY_PEOPLE_SQL, ["2026-11-27", ["부경", "부산경남"], 3]);
     await rf.getNotices("2026-11-15", "제주");
     expectParamOnly(rf.NOTICES_SQL, ["2026-11-15", "제주"]);
     await rf.getNoticesBetween("2026-11-09", "2026-11-15");

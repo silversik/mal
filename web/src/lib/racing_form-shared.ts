@@ -1672,6 +1672,33 @@ export function isSameJockey(jc: Pick<JockeyChangeV1, "before" | "after">): bool
   return b !== null && a !== null && b === a;
 }
 
+/** 기수 이름 비교 키 — 앞의 감량 표기 "(-2)" 를 떼고 공백 정리 (크롤러 parse.jockey_key 와 같은 규칙). */
+export function jockeyNameKey(name: string | null | undefined): string | null {
+  if (!name) return null;
+  const s = name.replace(/^\s*\(\s*[-+]?\d+(?:\.\d+)?\s*\)\s*/, "").trim();
+  return s || null;
+}
+
+export type RunnerPeopleLinks = { jockey: string | null; trainer: string | null };
+
+/**
+ * 출전마 카드의 기수·조교사 상세 경로. payload(발행 때 고정)에는 번호가 없어 출전표의 번호를 쓰되,
+ * 이름이 payload 와 같을 때만 단다 (발행 뒤 바뀐 사람에게 잘못 링크하지 않게).
+ */
+export function runnerPeopleLinks(
+  runner: Pick<RunnerV1, "horse_no" | "jockey_name" | "trainer_name">,
+  entries: readonly { horse_no: string; jockey_name: string | null; jk_no: string | null; trainer_name: string | null; tr_no: string | null }[],
+): RunnerPeopleLinks {
+  const e = entries.find((x) => x.horse_no === runner.horse_no);
+  if (!e) return { jockey: null, trainer: null };
+  const jk = jockeyNameKey(runner.jockey_name);
+  const tr = runner.trainer_name?.trim() || null;
+  return {
+    jockey: e.jk_no && jk !== null && jk === jockeyNameKey(e.jockey_name) ? `/jockey/${encodeURIComponent(e.jk_no)}` : null,
+    trainer: e.tr_no && tr !== null && tr === e.trainer_name?.trim() ? `/trainer/${encodeURIComponent(e.tr_no)}` : null,
+  };
+}
+
 /** 출전마 카드의 "기수 교체" 표시용 — 발행 시점 기수변경이 없거나 "A→A" 면 null. */
 export function shownJockeyChange(runner: Pick<RunnerV1, "jockey_change">): JockeyChangeV1 | null {
   const jc = runner.jockey_change;

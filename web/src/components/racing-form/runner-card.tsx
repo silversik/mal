@@ -5,6 +5,7 @@ import { RecentFormStrip } from "@/components/recent-form-strip";
 import {
   runnerAnchorId,
   shownJockeyChange,
+  type RunnerPeopleLinks,
   type RunnerV1,
 } from "@/lib/racing_form-shared";
 import { cn } from "@/lib/utils";
@@ -43,7 +44,7 @@ function RatingValue({ rating, prev }: { rating: number | null; prev: number | n
   return (
     <span>
       <Num>{rating}</Num>{" "}
-      <span className={cn("font-mono font-semibold tabular-nums", deltaClass(d.sign))}>{d.text}</span>{" "}
+      <span className={cn("font-mono text-sm font-semibold tabular-nums", deltaClass(d.sign))}>{d.text}</span>{" "}
       <span className="text-sm text-muted-foreground">
         (직전 <span className="font-mono tabular-nums">{prev}</span>)
       </span>
@@ -51,13 +52,32 @@ function RatingValue({ rating, prev }: { rating: number | null; prev: number | n
   );
 }
 
-function JockeyValue({ runner }: { runner: RunnerV1 }) {
+/** 상세 페이지 새 창 링크 (경마지는 그대로 두고 옆에 연다). 경로가 없으면 글자만. */
+function DetailLink({ href, children }: { href: string | null; children: ReactNode }) {
+  if (!href) return <span>{children}</span>;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener"
+      className="inline-flex items-center gap-0.5 font-semibold text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
+    >
+      {children}
+      <span aria-hidden="true" className="text-sm text-muted-foreground">
+        ↗
+      </span>
+      <span className="sr-only"> (새 창)</span>
+    </a>
+  );
+}
+
+function JockeyValue({ runner, href }: { runner: RunnerV1; href: string | null }) {
   const jc = shownJockeyChange(runner);
   const wb = jc?.weight_before_tenths ?? null;
   const wa = jc?.weight_after_tenths ?? null;
   return (
     <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-      <span>{runner.jockey_name ?? "-"}</span>
+      {runner.jockey_name ? <DetailLink href={href}>{runner.jockey_name}</DetailLink> : <span>-</span>}
       {jc ? (
         <span className="inline-flex min-h-7 flex-wrap items-center gap-x-1 rounded-md border border-foreground px-2 text-sm font-semibold">
           교체 {jc.before ?? "-"}→{jc.after ?? "-"}
@@ -84,11 +104,11 @@ function stripInlineBadges(runner: RunnerV1): RunnerV1["badges"] {
   );
 }
 
-function TrainerValue({ runner }: { runner: RunnerV1 }) {
+function TrainerValue({ runner, href }: { runner: RunnerV1; href: string | null }) {
   const change = runner.badges.find((b) => b.kind === "trainer_change") ?? null;
   return (
     <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-      <span>{runner.trainer_name ?? "-"}</span>
+      {runner.trainer_name ? <DetailLink href={href}>{runner.trainer_name}</DetailLink> : <span>-</span>}
       {change ? (
         <span className="inline-flex min-h-7 items-center rounded-md border border-foreground px-2 text-sm font-semibold">
           {change.text}
@@ -127,18 +147,22 @@ function briefText(r: RunnerV1): string {
  *
  * 접히는 아코디언(<details>, DESIGN.md Decisions Log 2026-11-27): 접힌 상태는 두 줄 —
  * 마번(게이트 색)·마명·성별/나이·"주목", 그리고 기수·레이팅·최근 5전. 누르면 펼쳐져
- * 받은 기호 · 레이팅 증감 · 부담 · 기수·조교사(+교체) · 간격 · 같은 거리 전적 · 최고기록 · 통산 · 배지 · 지난 5경주.
+ * 종합 평가(기준별 기호) · 레이팅 증감 · 부담 · 기수·조교사(+교체) · 간격 · 같은 거리 전적 · 최고기록 · 통산 ·
+ * 소식 배지(모두) · 지난 5경주(펼친 채). 말·기수·조교사 이름은 상세 페이지 새 창 링크.
  * #chul-n 앵커로 들어오면 OpenOnHash 가 그 카드를 펼친다.
  */
 export function RunnerCard({
   runner,
   hidePicks,
   strong = false,
+  links = { jockey: null, trainer: null },
 }: {
   runner: RunnerV1;
   hidePicks: boolean;
   /** 예상을 낸 기준이 모두 고른 주목마 — "주목" 뱃지 (그 밖의 주목마는 뱃지 없이) */
   strong?: boolean;
+  /** 기수·조교사 상세 경로 (runnerPeopleLinks) — 이름이 출전표와 같을 때만 */
+  links?: RunnerPeopleLinks;
 }) {
   const id = runnerAnchorId(runner.chul_no);
   const hasMarks = Object.keys(runner.marks).length > 0;
@@ -192,9 +216,12 @@ export function RunnerCard({
       </summary>
 
       <div className="space-y-3 border-t border-border px-4 py-3">
+        <p className="text-base">
+          <DetailLink href={`/horse/${encodeURIComponent(runner.horse_no)}`}>{runner.horse_name} 상세</DetailLink>
+        </p>
         {!hidePicks ? (
           <p className="text-base text-foreground">
-            <span className="text-sm text-muted-foreground">받은 기호 </span>
+            <span className="text-sm text-muted-foreground">종합 평가 </span>
             {hasMarks ? (
               <MarksReceived marks={runner.marks} />
             ) : (
@@ -210,10 +237,10 @@ export function RunnerCard({
           {kgText(runner.budam_tenths) ? <Num>{kgText(runner.budam_tenths)}</Num> : "-"}
         </Fact>
         <Fact label="기수">
-          <JockeyValue runner={runner} />
+          <JockeyValue runner={runner} href={links.jockey} />
         </Fact>
         <Fact label="조교사">
-          <TrainerValue runner={runner} />
+          <TrainerValue runner={runner} href={links.trainer} />
         </Fact>
         <Fact label="최근 5전">
           <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -253,19 +280,10 @@ export function RunnerCard({
       <NewsBadges badges={stripInlineBadges(runner)} />
 
       {recent.length > 0 ? (
-        <details className="group">
-          <summary
-            className={cn(
-              SUMMARY_RESET,
-              "inline-flex items-center gap-1 rounded-md text-sm font-semibold text-foreground",
-              TAP,
-            )}
-          >
+        <section aria-labelledby={`${id}-last`} className="space-y-1">
+          <h4 id={`${id}-last`} className="text-sm font-semibold text-foreground">
             지난 {recent.length}경주
-            <span aria-hidden="true" className="inline-block transition-transform group-open:rotate-90">
-              ›
-            </span>
-          </summary>
+          </h4>
           <ol className="divide-y divide-border border-t border-border">
             {recent.map((s) => (
               <li
@@ -288,7 +306,7 @@ export function RunnerCard({
             ))}
           </ol>
           <p className="pb-1 pt-1 text-small text-muted-foreground">최근 순 · 발행 때 반영한 기록까지</p>
-        </details>
+        </section>
       ) : null}
       </div>
     </details>

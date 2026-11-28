@@ -87,7 +87,7 @@ export function ConsensusBox({
                   {consensusLine({ status: "picked", active_rules: c.active_rules, votes: p.votes })}
                 </p>
                 <p className="text-sm text-foreground">
-                  <span className="text-muted-foreground">받은 기호 </span>
+                  <span className="text-muted-foreground">종합 평가 </span>
                   <MarksReceived marks={p.marks} />
                 </p>
                 {p.reasons.length > 0 ? (

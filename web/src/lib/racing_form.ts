@@ -551,6 +551,58 @@ export async function getCurrentJockeys(date: string, meet: string): Promise<Cur
   return query<CurrentJockeyRow>(CURRENT_JOCKEYS_SQL, [d, [...FORM_MEET_STORED_LABELS[meet]]]);
 }
 
+/**
+ * 출전마 카드의 기수·조교사 상세 링크용 — 출전표(race_entries)의 이름에 붙은 번호.
+ * payload 에는 기수·조교사 번호가 없어 화면에서 이름이 같을 때만 링크를 단다 (runnerPeopleLinks).
+ * 기수는 번호(jk_no) 우선, 없으면 감량 표기를 뗀 이름으로 한 사람만. 조교사는 raw trNo 우선, 없으면 이름.
+ * $1 race_date · $2 저장 라벨 목록 · $3 race_no.
+ */
+export const ENTRY_PEOPLE_SQL = `
+SELECT DISTINCT ON (e.horse_no)
+       e.horse_no,
+       NULLIF(btrim(e.jockey_name), '') AS jockey_name,
+       j.jk_no,
+       NULLIF(btrim(e.trainer_name), '') AS trainer_name,
+       t.tr_no
+  FROM race_entries e
+  LEFT JOIN LATERAL (
+        SELECT p.jk_no FROM jockeys p
+         WHERE p.jk_no = e.jk_no
+            OR p.jk_name = btrim(regexp_replace(e.jockey_name, '^[[:space:]]*[(][[:space:]]*[-+]?[0-9.]+[[:space:]]*[)]', ''))
+         ORDER BY (p.jk_no = e.jk_no) DESC NULLS LAST, p.jk_no
+         LIMIT 1
+       ) j ON TRUE
+  LEFT JOIN LATERAL (
+        SELECT p.tr_no FROM trainers p
+         WHERE p.tr_no = NULLIF(btrim(e.raw->>'trNo'), '') OR p.tr_name = btrim(e.trainer_name)
+         ORDER BY (p.tr_no = NULLIF(btrim(e.raw->>'trNo'), '')) DESC NULLS LAST, p.tr_no
+         LIMIT 1
+       ) t ON TRUE
+ WHERE e.race_date = $1::date
+   AND e.meet = ANY($2::text[])
+   AND e.race_no = $3
+ ORDER BY e.horse_no, e.updated_at DESC`;
+
+export type EntryPeopleRow = {
+  horse_no: string;
+  jockey_name: string | null;
+  jk_no: string | null;
+  trainer_name: string | null;
+  tr_no: string | null;
+};
+
+/** 실패하면 [] — 링크만 빠지고 경주면은 그대로 뜬다. */
+export async function getEntryPeopleSafe(date: string, meet: string, raceNo: number): Promise<EntryPeopleRow[]> {
+  const d = normalizeFormDate(date);
+  if (!d || !isFormMeet(meet) || !Number.isInteger(raceNo)) return [];
+  try {
+    return await query<EntryPeopleRow>(ENTRY_PEOPLE_SQL, [d, [...FORM_MEET_STORED_LABELS[meet]], raceNo]);
+  } catch (err) {
+    console.error("[racing_form] getEntryPeopleSafe 실패", err);
+    return [];
+  }
+}
+
 // ============================================================================
 // 공지 (publish_failed 는 내부용 — 읽지 않는다)
 // ============================================================================
