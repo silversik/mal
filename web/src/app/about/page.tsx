@@ -52,7 +52,7 @@ export default function AboutPage() {
             <strong>경마지</strong> — 경주 전날 오후 6시에 발행하는 무료 웹 경마지. 미리 공개한 기준
             4개(레이팅·최근 성적·기수·조교사)가 고른 1·2·3순위와 숫자 근거, 말 소식, 첫 호부터의
             적중 기록을{" "}
-            <Link href="/form" className="text-primary underline underline-offset-2 hover:opacity-80">
+            <Link href="/paper" className="text-primary underline underline-offset-2 hover:opacity-80">
               경마지
             </Link>
             에서 볼 수 있습니다 (서울·부경·제주).

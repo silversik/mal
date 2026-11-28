@@ -21,7 +21,7 @@ const ANALYSIS_PATHS = ["/analysis", "/rankings", "/records", "/compare"] as con
 // 모바일은 '더보기'·경기 일람·홈의 경마지 섹션에서 들어간다 ('경기' 서브탭은 2026-11-27 에 뺐다).
 const NAV_ITEMS = [
   { href: "/races", label: "경기", paths: ["/races"] },
-  { href: "/form", label: "경마지", paths: ["/form"] },
+  { href: "/paper", label: "경마지", paths: ["/paper"] },
   { href: "/database", label: "데이터베이스", paths: DATABASE_PATHS },
   { href: "/analysis", label: "분석", paths: ANALYSIS_PATHS },
 ];

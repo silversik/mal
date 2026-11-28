@@ -37,7 +37,12 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     // 뉴스 기능 제거 (2026-11) — 색인·북마크된 /news 는 홈으로 영구 이동.
-    return [{ source: "/news", destination: "/", permanent: true }];
+    // 경마지 주소 /form → /paper (2026-11-28) — 북마크·공유·색인된 옛 주소는 같은 자리로 영구 이동 (쿼리 유지).
+    return [
+      { source: "/news", destination: "/", permanent: true },
+      { source: "/form", destination: "/paper", permanent: true },
+      { source: "/form/:path*", destination: "/paper/:path*", permanent: true },
+    ];
   },
 };
 

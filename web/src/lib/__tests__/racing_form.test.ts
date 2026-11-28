@@ -360,15 +360,15 @@ describe("경마장 slug · 경로", () => {
   });
 
   it("경로 함수", () => {
-    expect(formHubPath()).toBe("/form");
-    expect(formDatePath("2026-11-15")).toBe("/form/2026-11-15");
-    expect(formEditionPath("2026-11-15", "서울")).toBe("/form/2026-11-15/seoul");
-    expect(formEditionPath("2026-11-15", "busan")).toBe("/form/2026-11-15/busan");
-    expect(formEditionPath("2026-11-15", "부산경남")).toBe("/form/2026-11-15/busan");
-    expect(formEditionPath("2026-11-15", "영천")).toBe("/form/2026-11-15");
-    expect(formRacePath("2026-11-15", "제주", 7)).toBe("/form/2026-11-15/jeju/7");
-    expect(formRecordPath()).toBe("/form/record");
-    expect(formRecordPath("부경")).toBe("/form/record?meet=busan");
+    expect(formHubPath()).toBe("/paper");
+    expect(formDatePath("2026-11-15")).toBe("/paper/2026-11-15");
+    expect(formEditionPath("2026-11-15", "서울")).toBe("/paper/2026-11-15/seoul");
+    expect(formEditionPath("2026-11-15", "busan")).toBe("/paper/2026-11-15/busan");
+    expect(formEditionPath("2026-11-15", "부산경남")).toBe("/paper/2026-11-15/busan");
+    expect(formEditionPath("2026-11-15", "영천")).toBe("/paper/2026-11-15");
+    expect(formRacePath("2026-11-15", "제주", 7)).toBe("/paper/2026-11-15/jeju/7");
+    expect(formRecordPath()).toBe("/paper/record");
+    expect(formRecordPath("부경")).toBe("/paper/record?meet=busan");
     expect(runnerAnchorId(3)).toBe("chul-3");
   });
 
@@ -1005,12 +1005,12 @@ describe("formMetadata — canonical 직접 지정, 색인은 index:true 인 페
     const m = formMetadata({
       title: "11월 14일(토) 서울 경마지",
       description: "설명",
-      path: "/form/2026-11-14/seoul",
+      path: "/paper/2026-11-14/seoul",
     });
-    expect(m.alternates?.canonical).toBe("/form/2026-11-14/seoul");
+    expect(m.alternates?.canonical).toBe("/paper/2026-11-14/seoul");
     expect(m.robots).toEqual({ index: false, follow: true });
     expect(m.title).toBe("11월 14일(토) 서울 경마지");
-    expect(m.openGraph).toMatchObject({ url: "/form/2026-11-14/seoul", title: "11월 14일(토) 서울 경마지", locale: "ko_KR" });
+    expect(m.openGraph).toMatchObject({ url: "/paper/2026-11-14/seoul", title: "11월 14일(토) 서울 경마지", locale: "ko_KR" });
     expect(m.openGraph && "images" in m.openGraph).toBe(false);
   });
 
@@ -1018,7 +1018,7 @@ describe("formMetadata — canonical 직접 지정, 색인은 index:true 인 페
     const m = formMetadata({
       title: "경마지 기록 · mal.kr",
       description: "d",
-      path: "/form/record",
+      path: "/paper/record",
       index: true,
       ogImages: ["/opengraph-image"],
     });

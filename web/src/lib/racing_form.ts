@@ -740,7 +740,7 @@ SELECT b.id::int AS id,
  ORDER BY (b.label = 'holdout') DESC, b.computed_at DESC, b.id DESC
  LIMIT 1`;
 
-/** /form/record "과거 데이터로 시험(참고)" — 실전과 합산하지 않는다. 없으면 null. */
+/** /paper/record "과거 데이터로 시험(참고)" — 실전과 합산하지 않는다. 없으면 null. */
 export async function getPublicBacktest(): Promise<PublicBacktest | null> {
   const rows = await query<PublicBacktest>(PUBLIC_BACKTEST_SQL);
   const r = rows[0];

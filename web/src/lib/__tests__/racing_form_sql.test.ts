@@ -433,7 +433,7 @@ describe("실패 처리 — 캐시 바깥 try/catch · Safe 함수", () => {
       { race_date: "2026-11-27", meet: "부경", lastmod: "2026-11-26T09:00:05Z" },
     ]);
     expect(await rf.getFormSitemapUrlsSafe()).toEqual([
-      { loc: "https://mal.kr/form/2026-11-27/busan", lastmod: "2026-11-26T09:00:05Z", changefreq: "weekly", priority: 0.6 },
+      { loc: "https://mal.kr/paper/2026-11-27/busan", lastmod: "2026-11-26T09:00:05Z", changefreq: "weekly", priority: 0.6 },
     ]);
     expect(queryMock.mock.calls[0][0]).toBe(rf.FORM_SITEMAP_SQL);
     const err = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -472,8 +472,8 @@ describe("실패 처리 — 캐시 바깥 try/catch · Safe 함수", () => {
         { race_date: "2026-11-14", meet: "제주", lastmod: null },
       ]),
     ).toEqual([
-      { loc: "https://mal.kr/form/2026-11-15/busan", lastmod: "2026-11-16T04:20:00Z", changefreq: "weekly", priority: 0.6 },
-      { loc: "https://mal.kr/form/2026-11-14/jeju", changefreq: "weekly", priority: 0.6 },
+      { loc: "https://mal.kr/paper/2026-11-15/busan", lastmod: "2026-11-16T04:20:00Z", changefreq: "weekly", priority: 0.6 },
+      { loc: "https://mal.kr/paper/2026-11-14/jeju", changefreq: "weekly", priority: 0.6 },
     ]);
     expect(rf.FORM_SITEMAP_SQL).toContain(`AT TIME ZONE 'UTC'`);
     expect(rf.FORM_SITEMAP_SQL).toContain(`'YYYY-MM-DD"T"HH24:MI:SS"Z"'`);

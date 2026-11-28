@@ -642,7 +642,7 @@ def cmd_racing_form_backtest(
     label: str = typer.Option(..., "--label", help="dev (읽기 전용) | holdout (저장 필수, 1회)"),
     save: bool = typer.Option(False, "--save", help="보고서 저장 — holdout 만 (필수)"),
     public: bool = typer.Option(
-        False, "--public", help="저장 행을 공개로 (/form/record) — 나중에 바꿀 수 없음"
+        False, "--public", help="저장 행을 공개로 (/paper/record) — 나중에 바꿀 수 없음"
     ),
     json_output: bool = typer.Option(False, "--json", help="보고서 JSON 전체"),
     rules_version: str | None = typer.Option(
