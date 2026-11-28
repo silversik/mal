@@ -1,41 +1,25 @@
-// 말 모색(coat color) → 색상 hex / 라벨 helper.
-// SVG 아바타 렌더링은 brand/HorseMark 가 담당하고, 여기서는 모색별 색상만 노출.
+// 말 모색(coat color) → 실루엣 색 / 라벨 helper.
+// 아이콘 렌더링은 components/coat-horse-mark 가 담당한다. 배경은 모든 말이 같은
+// 중립 토큰(--muted + hairline 테두리)이고, 모색은 말 실루엣 fill 에만 쓴다 —
+// 밝은 모색(백색)·어두운 모색(흑색, 다크 모드)은 실루엣 윤곽선으로 배경과 구분.
 
-type CoatPalette = {
-  body: string;
-  mane: string;
-  bg: string;
+const COAT_BODY: Record<string, string> = {
+  갈색: "#7A5030", // bay
+  밤색: "#7A3200", // chestnut
+  흑갈색: "#3C2416", // dark bay
+  흑색: "#242424", // black
+  회색: "#7C8A96", // gray
+  백색: "#D2C7B9", // white — 윤곽선이 배경과 구분
+  청색: "#3E5A68", // blue roan
+  월모: "#A05040", // red roan
+  얼룩: "#7A5030", // piebald
 };
 
-const COAT_PALETTES: Record<string, CoatPalette> = {
-  갈색:   { body: "#7A5030", mane: "#2E1508", bg: "#F4EDE2" }, // bay
-  밤색:   { body: "#7A3200", mane: "#3A1400", bg: "#F4E6DA" }, // chestnut
-  흑갈색: { body: "#3C2416", mane: "#180C06", bg: "#ECE4DA" }, // dark bay
-  흑색:   { body: "#242424", mane: "#0E0E0E", bg: "#E8E8E6" }, // black
-  회색:   { body: "#6E8090", mane: "#344048", bg: "#ECF0F2" }, // gray
-  백색:   { body: "#A09080", mane: "#6A5A4A", bg: "#F5F0EA" }, // white
-  청색:   { body: "#3E5A68", mane: "#22323C", bg: "#E6EEF2" }, // blue roan
-  월모:   { body: "#A05040", mane: "#562820", bg: "#F2E2DC" }, // red roan
-  얼룩:   { body: "#7A5030", mane: "#EDE4D6", bg: "#F0E8DC" }, // piebald
-};
-
-const DEFAULT_PALETTE: CoatPalette = {
-  body: "#6C5040",
-  mane: "#362018",
-  bg: "#F0E8E0",
-};
-
-function getPalette(coatColor: string | null | undefined): CoatPalette {
-  if (!coatColor || coatColor === "-") return DEFAULT_PALETTE;
-  return COAT_PALETTES[coatColor.trim()] ?? DEFAULT_PALETTE;
-}
+const DEFAULT_BODY = "#6C5040";
 
 export function coatBodyHex(coatColor: string | null | undefined): string {
-  return getPalette(coatColor).body;
-}
-
-export function coatBgHex(coatColor: string | null | undefined): string {
-  return getPalette(coatColor).bg;
+  if (!coatColor || coatColor === "-") return DEFAULT_BODY;
+  return COAT_BODY[coatColor.trim()] ?? DEFAULT_BODY;
 }
 
 export function coatColorLabel(coatColor: string | null | undefined): string | null {

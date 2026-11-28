@@ -6,10 +6,8 @@ import { auth } from "@/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FavoriteHorseButton } from "@/components/favorite-horse-button";
-import { HorseMark } from "@/components/brand/logo";
+import { CoatHorseMark } from "@/components/coat-horse-mark";
 import {
-  coatBgHex,
-  coatBodyHex,
   coatColorLabel,
   normalizeCharacteristics,
 } from "@/lib/coat";
@@ -144,12 +142,7 @@ export default async function HorseDetailPage({
                   href={`/horse/${c.horse_no}`}
                   className="group flex items-center gap-3 rounded-lg border bg-card p-3 transition hover:border-primary/50 hover:bg-accent"
                 >
-                  <HorseMark
-                    size={36}
-                    radius={6}
-                    badgeFill={coatBgHex(c.coat_color)}
-                    markFill={coatBodyHex(c.coat_color)}
-                  />
+                  <CoatHorseMark size={36} coatColor={c.coat_color} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium group-hover:text-primary">
                       {c.horse_name}
@@ -362,12 +355,7 @@ function ProfileCard({
       <CardContent className="p-4">
         {/* 헤더: 마크 · 이름/태그/메타 · ⭐ 자리 */}
         <div className="flex items-start gap-3 pr-12">
-          <HorseMark
-            size={64}
-            radius={10}
-            badgeFill={coatBgHex(horse.coat_color)}
-            markFill={coatBodyHex(horse.coat_color)}
-          />
+          <CoatHorseMark size={64} coatColor={horse.coat_color} />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               {rating?.rating4 != null && (

@@ -18,7 +18,7 @@ type HorseMarkProps = {
 // 한 페이지에 HorseMark 가 여러 개 노출돼도 path 데이터는 1번만 직렬화되도록
 // <symbol> 로 분리. layout.tsx 에 한 번 마운트되는 HorseMarkSymbolDefs 가
 // 정의를 제공하고, 각 HorseMark 는 <use href="#mal-horse-path" /> 로 참조.
-const HORSE_SYMBOL_ID = "mal-horse-path";
+export const HORSE_SYMBOL_ID = "mal-horse-path";
 
 export function HorseMarkSymbolDefs() {
   return (
