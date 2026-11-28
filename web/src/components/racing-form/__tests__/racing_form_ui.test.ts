@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -48,6 +51,7 @@ import { EditionPager } from "../edition-pager";
 import { EditionPicker } from "../edition-picker";
 import { editionBasisText, EditionStamp } from "../edition-stamp";
 import { PaperMasthead, PaperSheet, paperTitleKo } from "../paper-sheet";
+import { RaceFormPicks } from "../race-form-picks";
 import { ChangeList, StatusBlock } from "../status-block";
 import { UpdatesSection } from "../updates-section";
 import { BetaBadge } from "../beta-notice";
@@ -730,8 +734,11 @@ describe("호 카드 — 경주 전 / 결과 구분, 결과는 예상 ↔ 실제
     const h = renderToStaticMarkup(
       createElement(EditionCardGroups, { cards, today: "2026-11-27", showPicks: true }),
     );
-    const [upcoming, result] = h.split('aria-label="경주 결과"');
-    expect(upcoming).toContain('aria-label="경주 전"');
+    // 묶음 제목은 화면에 없고(스크린리더 이름만) 구분선 하나로 나눈다
+    expect(h).not.toMatch(/<h3[^>]*>경주/);
+    expect(h.match(/<hr/g)?.length).toBe(1);
+    const [upcoming, result] = h.split('aria-label="경주 이후"');
+    expect(upcoming).toContain('aria-label="경주 이전"');
     expect(upcoming).toContain("서울 11월 28일(토)");
     expect(upcoming).not.toContain("부경");
     // 경주 전 카드 — 발행 시각 대신 라운드별 주목마 (모두 고른 말은 별)
@@ -747,8 +754,10 @@ describe("호 카드 — 경주 전 / 결과 구분, 결과는 예상 ↔ 실제
     expect(result).toContain("잠정 — 내일 오후 1시 확정");
     expect(result).toContain("매직트리");
     expect(result).toContain("(1착 <span");
-    expect(result).toContain("결과 전");
+    expect(result).toContain("결과 대기");
     expect(result).toContain("무효");
+    // "주목마 n경주 — 1착 n · …" 집계 줄은 싣지 않는다
+    expect(result).not.toContain("주목마 5경주");
     // 결과 카드는 발행 시각·건수 줄 대신 결과를 싣는다
     expect(result).not.toContain("11월 26일(목) 오후 6시 발행");
     // 예상 기호 글리프·권유어 없음, 마번은 색 없이
@@ -757,12 +766,67 @@ describe("호 카드 — 경주 전 / 결과 구분, 결과는 예상 ↔ 실제
 
     // 홈(showPicks 없음) — 경주 전 카드에 주목마 이름을 싣지 않는다
     const home = renderToStaticMarkup(createElement(EditionCardGroups, { cards, today: "2026-11-27" }));
-    expect(home.split('aria-label="경주 결과"')[0]).not.toContain("선라이즈킹");
-    expect(home.split('aria-label="경주 결과"')[0]).toContain("10경주 · 주목마 5경주");
+    expect(home.split('aria-label="경주 이후"')[0]).not.toContain("선라이즈킹");
+    expect(home.split('aria-label="경주 이후"')[0]).toContain("10경주 · 주목마 5경주");
+
+    // 경주일이 됐는데 결과가 하나도 없으면 "결과 대기 중" (줄마다 결과 대기)
+    const waiting = renderToStaticMarkup(
+      createElement(EditionCardGroups, {
+        cards: [{ ...cards[0], result: editionResult(summary, [], { raceDayStarted: true }), provisional: null }],
+        today: "2026-11-27",
+      }),
+    );
+    expect(waiting).toContain("결과 대기 중");
+    expect(waiting).not.toContain("<hr");
+    expect(waiting.match(/결과 대기</g)?.length).toBe(5);
 
     const only = renderToStaticMarkup(createElement(EditionCardGroups, { cards: [cards[1]], today: "2026-11-27" }));
-    expect(only).toContain('aria-label="경주 전"');
-    expect(only).not.toContain('aria-label="경주 결과"');
+    expect(only).toContain('aria-label="경주 이전"');
+    expect(only).not.toContain('aria-label="경주 이후"');
+    expect(only).not.toContain("<hr");
+  });
+});
+
+describe("RaceFormPicks — 경기 일람 경주 상세의 경마지 주목마 (2026-11-28)", () => {
+  const golden = JSON.parse(
+    readFileSync(
+      fileURLToPath(
+        new URL("../../../../../crawler/tests/fixtures/racing_form/payload_v1.golden.json", import.meta.url),
+      ),
+      "utf8",
+    ),
+  );
+  const data = (raceIdx: number) => ({
+    head: { issue_no: 3 } as EditionHead,
+    slice: { edition: golden.edition, rules: golden.rules, race: golden.races[raceIdx], race_nos: [1, 2, 3] },
+    outcomes: [],
+  });
+
+  it("주목마가 있으면 카드 + 고른 기준, '경마지 전체 보기' 는 새 창", () => {
+    const h = renderToStaticMarkup(
+      createElement(RaceFormPicks, { data: data(0), date: "2026-11-15", meet: "서울", raceNo: 1 }),
+    );
+    expect(h).toContain("경마지 주목마");
+    expect(h).toContain("제3호");
+    expect(h).toMatch(/<a href="\/form\/2026-11-15\/seoul\/1" target="_blank" rel="noopener"/);
+    expect(h).toContain("(새 창)");
+    expect(h.match(/<li class="space-y-2/g)?.length).toBe(golden.races[0].consensus.picks.length);
+    expect(h).not.toMatch(/[◎○△]|추천|강력/);
+    // 예전 링크 문구는 없다
+    expect(h).not.toContain("예상 보기");
+  });
+
+  it("주목마가 없거나 데이터가 없으면 그리지 않는다", () => {
+    expect(
+      renderToStaticMarkup(
+        createElement(RaceFormPicks, { data: data(1), date: "2026-11-15", meet: "서울", raceNo: 2 }),
+      ),
+    ).toBe("");
+    expect(
+      renderToStaticMarkup(
+        createElement(RaceFormPicks, { data: null, date: "2026-11-15", meet: "서울", raceNo: 1 }),
+      ),
+    ).toBe("");
   });
 });
 

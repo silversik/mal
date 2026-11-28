@@ -4,8 +4,7 @@ import { notFound } from "next/navigation";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { HorseMark } from "@/components/brand/logo";
-import { coatBgHex, coatBodyHex } from "@/lib/coat";
+import { CoatHorseMark } from "@/components/coat-horse-mark";
 import { BreadcrumbJsonLd } from "@/components/seo/breadcrumb-jsonld";
 import {
   getChildrenByParentNo,
@@ -104,12 +103,7 @@ export default async function ParentPage({
                 href={`/horse/${c.horse_no}`}
                 className="group flex items-center gap-3 rounded-lg border bg-card p-3 transition hover:border-primary/50 hover:bg-accent"
               >
-                <HorseMark
-                  size={32}
-                  radius={6}
-                  badgeFill={coatBgHex(c.coat_color)}
-                  markFill={coatBodyHex(c.coat_color)}
-                />
+                <CoatHorseMark size={32} coatColor={c.coat_color} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold group-hover:text-primary">
                     {c.horse_name}

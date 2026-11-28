@@ -4,9 +4,9 @@ import { RankBadge } from "@/components/rank-badge";
 import {
   dateKo,
   editionResult,
-  editionResultLine,
   formEditionPath,
   issueLabel,
+  kstDateOf,
   publishStampKo,
   settlementLine,
   type EditionHead,
@@ -103,7 +103,10 @@ export function publishedEditionCard(args: {
     issue: issueLabel(e.issue_no),
     status: `${publishStampKo(e.published_at)} 발행${args.late ? " · 늦게 발행" : ""}`,
     sub: editionCardSub(e),
-    result: editionResult(e.summary, args.outcomes),
+    // 경주일이 되면 정산 전이어도 "예상 ↔ 실제" 줄을 만든다 (모두 결과 대기)
+    result: editionResult(e.summary, args.outcomes, {
+      raceDayStarted: e.race_date <= kstDateOf(args.now),
+    }),
     provisional: line?.provisional ?? null,
     picks: e.summary
       ? [...e.summary.races]
@@ -129,7 +132,7 @@ export function publishedEditionCard(args: {
 /** 주목마의 실제 결과 — 1~3착은 RankBadge, 그 밖은 글자. */
 function Actual({ row }: { row: EditionResultRow }) {
   if (row.outcome === "pending") {
-    return <span className="text-sm text-muted-foreground">결과 전</span>;
+    return <span className="text-sm text-muted-foreground">결과 대기</span>;
   }
   if (row.outcome === "void") {
     return <span className="text-sm font-semibold text-muted-foreground">무효</span>;
@@ -240,13 +243,13 @@ export function EditionCard({ card, showPicks = false }: { card: EditionCardData
     >
       {head}
       {res ? (
+        // 경주 이후 — 1착 몇 번 같은 집계 줄은 싣지 않는다 (2026-11-28). 결과가 하나도 없으면 "결과 대기 중"
         <>
-          <span className="block text-base text-foreground">
-            <NumText text={editionResultLine(res)} />
-            {card.provisional ? (
-              <span className="text-sm text-muted-foreground"> ({card.provisional})</span>
-            ) : null}
-          </span>
+          {res.pending >= res.rows.length ? (
+            <span className="block text-base text-foreground">결과 대기 중</span>
+          ) : card.provisional ? (
+            <span className="block text-sm text-muted-foreground">{card.provisional}</span>
+          ) : null}
           {res.rows.length > 0 ? <ResultRows rows={res.rows} /> : null}
         </>
       ) : card.picks !== null ? (
@@ -267,8 +270,8 @@ export function EditionCard({ card, showPicks = false }: { card: EditionCardData
 }
 
 /**
- * 호 카드 묶음 — "경주 전" 과 "경주 결과" 를 나눠 보여 준다 (허브 · 홈).
- * 경주 결과 = 정산이 시작됐거나 경주일이 지난 호(미발행·철회 포함). 한쪽이 비면 그 묶음은 그리지 않는다.
+ * 호 카드 묶음 (허브 · 홈) — 경주 이전 호들을 먼저, 구분선 하나, 경주일이 된 호들 (2026-11-28: 묶음 제목 없이 구분선만).
+ * 경주일이 된 호 = 정산이 시작됐거나(result) 경주일이 오늘 이전(미발행·철회 포함). 한쪽이 비면 구분선도 없다.
  */
 export function EditionCardGroups({
   cards,
@@ -283,27 +286,23 @@ export function EditionCardGroups({
 }) {
   const done = (c: EditionCardData) => c.result !== null || c.date < today;
   const groups = [
-    { key: "upcoming", label: "경주 전", items: cards.filter((c) => !done(c)) },
-    { key: "result", label: "경주 결과", items: cards.filter(done) },
+    { key: "upcoming", label: "경주 이전", items: cards.filter((c) => !done(c)) },
+    { key: "after", label: "경주 이후", items: cards.filter(done) },
   ].filter((g) => g.items.length > 0);
   return (
     <div className="space-y-4">
-      {groups.map((g) => (
-        <section key={g.key} aria-label={g.label} className="space-y-2">
-          <h3 className="flex items-center gap-2 text-base font-bold text-foreground">
-            {g.label}
-            <span className="font-mono text-sm font-semibold tabular-nums text-muted-foreground">
-              {g.items.length}
-            </span>
-          </h3>
-          <ul className="grid gap-3 md:grid-cols-2">
+      {groups.map((g, i) => (
+        <div key={g.key} className="space-y-4">
+          {i > 0 ? <hr className="border-border" /> : null}
+          {/* 제목은 화면에 싣지 않는다 — 스크린리더에만 묶음 이름 */}
+          <ul aria-label={g.label} className="grid gap-3 md:grid-cols-2">
             {g.items.map((c) => (
               <li key={c.key}>
                 <EditionCard card={c} showPicks={showPicks} />
               </li>
             ))}
           </ul>
-        </section>
+        </div>
       ))}
     </div>
   );

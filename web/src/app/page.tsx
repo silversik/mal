@@ -2,8 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
 
-import { HorseMark } from "@/components/brand/logo";
-import { coatBodyHex, coatBgHex } from "@/lib/coat";
+import { CoatHorseMark } from "@/components/coat-horse-mark";
 import { VenueIcon } from "@/components/venue-icon";
 import { RACE_VENUES } from "@/lib/meets";
 import { EmptyState } from "@/components/empty-state";
@@ -560,12 +559,7 @@ function HorseRow({ horse }: { horse: RecentWinner }) {
         href={`/horse/${horse.horse_no}`}
         className="flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-muted"
       >
-        <HorseMark
-          size={40}
-          radius={8}
-          badgeFill={coatBgHex(horse.coat_color)}
-          markFill={coatBodyHex(horse.coat_color)}
-        />
+        <CoatHorseMark size={40} coatColor={horse.coat_color} />
         <div className="min-w-0 flex-1">
           <div className="truncate text-base font-bold text-foreground">{horse.horse_name}</div>
           <div className="truncate text-small text-muted-foreground">

@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AgeSelect } from "./age-select";
-import { HorseMark } from "@/components/brand/logo";
-import { coatBgHex, coatBodyHex } from "@/lib/coat";
+import { CoatHorseMark } from "@/components/coat-horse-mark";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -264,13 +263,7 @@ function HorseCard({ horse, showWins }: { horse: Horse; showWins: boolean }) {
       <Card className="h-full py-0 transition-colors hover:bg-muted">
         <CardContent className="p-3">
           <div className="flex items-start gap-3">
-            <HorseMark
-              size={36}
-              radius={6}
-              badgeFill={coatBgHex(horse.coat_color)}
-              markFill={coatBodyHex(horse.coat_color)}
-              className="mt-0.5 shrink-0"
-            />
+            <CoatHorseMark size={36} coatColor={horse.coat_color} className="mt-0.5 shrink-0" />
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="truncate text-base font-semibold leading-snug">

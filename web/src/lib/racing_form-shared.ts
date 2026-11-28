@@ -2145,14 +2145,16 @@ export type EditionResult = {
 };
 
 /**
- * 발행본의 주목마(요약의 1순위)와 정산을 맞춰 "예상 ↔ 실제" 줄을 만든다.
- * 정산된 경주가 하나도 없으면 null — 그 호는 아직 "경주 전" 이다.
+ * 발행본의 주목마(요약의 1순위 — 2순위는 싣지 않는다)와 정산을 맞춰 "예상 ↔ 실제" 줄을 만든다.
+ * 정산된 경주가 하나도 없으면 null — 그 호는 아직 "경주 전" 이다. 단 raceDayStarted(경주일이 됨)면
+ * 정산 전이어도 줄을 만든다 (모두 결과 대기).
  */
 export function editionResult(
   summary: Pick<SummaryV1, "races"> | null,
   outcomes: readonly OutcomeRow[],
+  opts: { raceDayStarted?: boolean } = {},
 ): EditionResult | null {
-  if (!summary || outcomes.length === 0) return null;
+  if (!summary || (outcomes.length === 0 && !opts.raceDayStarted)) return null;
   const rows: EditionResultRow[] = [];
   for (const r of [...summary.races].sort((a, b) => a.race_no - b.race_no)) {
     const pick = r.consensus.status === "picked" ? r.consensus.pick : null;
