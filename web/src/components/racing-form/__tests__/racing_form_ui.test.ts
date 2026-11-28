@@ -250,10 +250,10 @@ describe("buildRaceRows — 1면 경주 한 줄", () => {
       hidePicks: false,
     });
     expect(rows.map((r) => r.href)).toEqual([
-      "/form/2026-11-14/busan/1",
-      "/form/2026-11-14/busan/2",
-      "/form/2026-11-14/busan/3",
-      "/form/2026-11-14/busan/4",
+      "/paper/2026-11-14/busan/1",
+      "/paper/2026-11-14/busan/2",
+      "/paper/2026-11-14/busan/3",
+      "/paper/2026-11-14/busan/4",
     ]);
     // 1R — 기준 4개 중 3개: 별 없음(strong=false). 고른 기준은 줄이지 않고 전부 —
     // 고정 순서(RULE_ORDER)·글자("1순위")·기준마다 근거 한 줄. 고르지 않은 기준(최근 성적)은 싣지 않는다
@@ -346,7 +346,7 @@ describe("1면 단순화 (2026-11-27) — 탭 · 색 없는 출전번호 · 주�
         changes: [
           {
             key: "1-H1",
-            href: "/form/2026-11-27/busan/1#chul-3",
+            href: "/paper/2026-11-27/busan/1#chul-3",
             raceNo: 1,
             chulNo: 3,
             horseName: "솔빛물결",
@@ -373,11 +373,11 @@ describe("1면 단순화 (2026-11-27) — 탭 · 색 없는 출전번호 · 주�
     const h = html(
       createElement(RaceList, {
         rows: [
-          { raceNo: 1, href: "/form/2026-11-27/busan/1", stakes: null, picks: [] },
-          { raceNo: 4, href: "/form/2026-11-27/busan/4", stakes: null, picks: [pick(3, "매직트리", true)] },
+          { raceNo: 1, href: "/paper/2026-11-27/busan/1", stakes: null, picks: [] },
+          { raceNo: 4, href: "/paper/2026-11-27/busan/4", stakes: null, picks: [pick(3, "매직트리", true)] },
           {
             raceNo: 5,
-            href: "/form/2026-11-27/busan/5",
+            href: "/paper/2026-11-27/busan/5",
             stakes: null,
             picks: [pick(1, "판타스틱밸류", false), pick(14, "라온포레스트", false)],
           },
@@ -387,7 +387,7 @@ describe("1면 단순화 (2026-11-27) — 탭 · 색 없는 출전번호 · 주�
     const rows = h.split("<li").slice(1);
     expect(rows).toHaveLength(3);
     // 1R — 주목마 없음: 라운드(경주면 링크)만, 설명 문구 없음
-    expect(rows[0]).toContain('href="/form/2026-11-27/busan/1"');
+    expect(rows[0]).toContain('href="/paper/2026-11-27/busan/1"');
     expect(rows[0]).toContain("1R");
     expect(rows[0]).not.toContain("<button");
     expect(rows[0]).not.toMatch(/주목마 없음|혼전|예상 안 함/);
@@ -439,10 +439,10 @@ describe("지면 — 호 한 부를 종이 한 장에, 요약 → 라운드로 �
     expect(front).toContain("border-double");
     expect(front).not.toContain("<a ");
     const race = renderToStaticMarkup(
-      createElement(PaperMasthead, { title, as: "p", href: "/form/2026-11-28/seoul" }),
+      createElement(PaperMasthead, { title, as: "p", href: "/paper/2026-11-28/seoul" }),
     );
     expect(race).not.toContain("<h1");
-    expect(race).toMatch(/<a[^>]*href="\/form\/2026-11-28\/seoul"[^>]*>서울 11월 28일\(토\) 제1호 경마지<\/a>/);
+    expect(race).toMatch(/<a[^>]*href="\/paper\/2026-11-28\/seoul"[^>]*>서울 11월 28일\(토\) 제1호 경마지<\/a>/);
   });
 
   it("editionPickerGroups — 호 번호로 묶고(경마장 섞임) 그 안에서 날짜 → 경마장 순, 발행 전은 맨 뒤", () => {
@@ -465,12 +465,12 @@ describe("지면 — 호 한 부를 종이 한 장에, 요약 → 라운드로 �
       ["planned", "발행 예정"],
     ]);
     expect(groups[0].items).toEqual([
-      { href: "/form/2026-11-27/jeju", date: "2026-11-27", label: "11월 27일(금) 제주" },
-      { href: "/form/2026-11-27/busan", date: "2026-11-27", label: "11월 27일(금) 부경" },
-      { href: "/form/2026-11-28/seoul", date: "2026-11-28", label: "11월 28일(토) 서울" },
+      { href: "/paper/2026-11-27/jeju", date: "2026-11-27", label: "11월 27일(금) 제주" },
+      { href: "/paper/2026-11-27/busan", date: "2026-11-27", label: "11월 27일(금) 부경" },
+      { href: "/paper/2026-11-28/seoul", date: "2026-11-28", label: "11월 28일(토) 서울" },
     ]);
     expect(groups[1].items.map((x) => x.label)).toEqual(["11월 28일(토) 제주"]);
-    expect(groups[2].items.map((x) => x.href)).toEqual(["/form/2026-11-29/seoul"]);
+    expect(groups[2].items.map((x) => x.href)).toEqual(["/paper/2026-11-29/seoul"]);
     expect(editionPickerGroups([], [])).toEqual([]);
   });
 
@@ -478,8 +478,8 @@ describe("지면 — 호 한 부를 종이 한 장에, 요약 → 라운드로 �
     const h = renderToStaticMarkup(
       createElement(EditionPicker, {
         groups: editionPickerGroups([{ race_date: "2026-11-28", meet: "서울", issue_no: 1 }], []),
-        currentHref: "/form/2026-11-28/seoul",
-        hubHref: "/form",
+        currentHref: "/paper/2026-11-28/seoul",
+        hubHref: "/paper",
       }),
     );
     expect(h).toMatch(/<button[^>]*aria-haspopup="dialog"[^>]*>경마지 선택<\/button>/);
@@ -554,7 +554,7 @@ describe("지면 — 호 한 부를 종이 한 장에, 요약 → 라운드로 �
         changes: [
           {
             key: "2-H5",
-            href: "/form/2026-11-28/seoul/2#chul-5",
+            href: "/paper/2026-11-28/seoul/2#chul-5",
             raceNo: 2,
             chulNo: 5,
             horseName: "새벽",
@@ -573,10 +573,10 @@ describe("지면 — 호 한 부를 종이 한 장에, 요약 → 라운드로 �
     expect(changed).not.toContain(">예정<");
   });
 
-  const rounds = [1, 2, 3].map((n) => ({ raceNo: n, href: `/form/2026-11-27/busan/${n}` }));
+  const rounds = [1, 2, 3].map((n) => ({ raceNo: n, href: `/paper/2026-11-27/busan/${n}` }));
   const pager = (current: "summary" | number) =>
     renderToStaticMarkup(
-      createElement(EditionPager, { summaryHref: "/form/2026-11-27/busan", rounds, current }),
+      createElement(EditionPager, { summaryHref: "/paper/2026-11-27/busan", rounds, current }),
     );
 
   it("EditionPager — 첫 장은 요약: 앞 장 없음, 다음 장은 1R", () => {
@@ -589,7 +589,7 @@ describe("지면 — 호 한 부를 종이 한 장에, 요약 → 라운드로 �
     expect(h).not.toContain(">요약<");
     expect(h).not.toContain('aria-label="앞 장');
     expect(h).toContain('aria-label="다음 장 — 1R" class=');
-    expect(h).toMatch(/href="\/form\/2026-11-27\/busan\/1"[^>]*aria-label="다음 장 — 1R"|aria-label="다음 장 — 1R"[^>]*href="\/form\/2026-11-27\/busan\/1"/);
+    expect(h).toMatch(/href="\/paper\/2026-11-27\/busan\/1"[^>]*aria-label="다음 장 — 1R"|aria-label="다음 장 — 1R"[^>]*href="\/paper\/2026-11-27\/busan\/1"/);
     // 전체 라운드가 한 줄에
     for (const n of [1, 2, 3]) expect(h).toContain(`>${n}R<`);
   });
@@ -600,7 +600,7 @@ describe("지면 — 호 한 부를 종이 한 장에, 요약 → 라운드로 �
     expect(first).toContain('aria-label="앞 장 — 요약"');
     expect(first).toContain('aria-label="다음 장 — 2R"');
     // 요약 장으로 돌아가는 링크
-    expect(first).toMatch(/<a[^>]*aria-label="요약 \(첫 장\)"[^>]*href="\/form\/2026-11-27\/busan"[^>]*><svg|<a[^>]*href="\/form\/2026-11-27\/busan"[^>]*aria-label="요약 \(첫 장\)"[^>]*><svg/);
+    expect(first).toMatch(/<a[^>]*aria-label="요약 \(첫 장\)"[^>]*href="\/paper\/2026-11-27\/busan"[^>]*><svg|<a[^>]*href="\/paper\/2026-11-27\/busan"[^>]*aria-label="요약 \(첫 장\)"[^>]*><svg/);
     const last = pager(3);
     expect(last).toContain('aria-label="앞 장 — 2R"');
     expect(last).not.toContain('aria-label="다음 장');
@@ -681,7 +681,7 @@ describe("호 카드 — 경주 전 / 결과 구분, 결과는 예상 ↔ 실제
       {
         ...base,
         key: "a",
-        href: "/form/2026-11-27/busan",
+        href: "/paper/2026-11-27/busan",
         date: "2026-11-27",
         title: "부경 11월 27일(금)",
         status: "11월 26일(목) 오후 6시 발행",
@@ -692,7 +692,7 @@ describe("호 카드 — 경주 전 / 결과 구분, 결과는 예상 ↔ 실제
       {
         ...base,
         key: "b",
-        href: "/form/2026-11-28/seoul",
+        href: "/paper/2026-11-28/seoul",
         date: "2026-11-28",
         title: "서울 11월 28일(토)",
         status: "11월 27일(금) 오후 6시 발행",
@@ -705,7 +705,7 @@ describe("호 카드 — 경주 전 / 결과 구분, 결과는 예상 ↔ 실제
       // 발행 예정 — 누를 수 없는 흐린 카드
       {
         key: "d",
-        href: "/form/2026-11-29/seoul",
+        href: "/paper/2026-11-29/seoul",
         date: "2026-11-29",
         title: "서울 11월 29일(일)",
         issue: null,
@@ -719,7 +719,7 @@ describe("호 카드 — 경주 전 / 결과 구분, 결과는 예상 ↔ 실제
       // 지난 날짜의 미발행 — 결과는 없지만 "경주 전" 은 아니다
       {
         key: "c",
-        href: "/form/2026-11-26/jeju",
+        href: "/paper/2026-11-26/jeju",
         date: "2026-11-26",
         title: "제주 11월 26일(목)",
         issue: null,
@@ -748,7 +748,7 @@ describe("호 카드 — 경주 전 / 결과 구분, 결과는 예상 ↔ 실제
     expect(upcoming.match(/aria-label="주목"/g)?.length).toBe(1);
     // 발행 예정 — 링크가 아니다
     expect(upcoming).toMatch(/<div aria-disabled="true"[^>]*>.*서울 11월 29일\(일\).*발행 예정/);
-    expect(upcoming).not.toContain('href="/form/2026-11-29/seoul"');
+    expect(upcoming).not.toContain('href="/paper/2026-11-29/seoul"');
     expect(result).toContain("부경 11월 27일(금)");
     expect(result).toContain("제주 11월 26일(목)");
     expect(result).toContain("잠정 — 내일 오후 1시 확정");
@@ -809,7 +809,7 @@ describe("RaceFormPicks — 경기 일람 경주 상세의 경마지 주목마 (
     );
     expect(h).toContain("경마지 주목마");
     expect(h).toContain("제3호");
-    expect(h).toMatch(/<a href="\/form\/2026-11-15\/seoul\/1" target="_blank" rel="noopener"/);
+    expect(h).toMatch(/<a href="\/paper\/2026-11-15\/seoul\/1" target="_blank" rel="noopener"/);
     expect(h).toContain("(새 창)");
     expect(h.match(/<li class="space-y-2/g)?.length).toBe(golden.races[0].consensus.picks.length);
     expect(h).not.toMatch(/[◎○△]|추천|강력/);
@@ -844,8 +844,8 @@ describe("buildHeadlineItems — 경주·출전번호·마명은 웹이 붙인�
       headlines,
       runners: [{ race_no: 2, horse_no: "H1", chul_no: 1, horse_name: "별빛방패", jockey_name: "을" }],
     });
-    expect(items[0]).toMatchObject({ href: "/form/2026-11-14/seoul/9", kind: "stakes" });
-    expect(items[1]).toMatchObject({ href: "/form/2026-11-14/seoul/2#chul-1", horseName: "별빛방패" });
+    expect(items[0]).toMatchObject({ href: "/paper/2026-11-14/seoul/9", kind: "stakes" });
+    expect(items[1]).toMatchObject({ href: "/paper/2026-11-14/seoul/2#chul-1", horseName: "별빛방패" });
     expect(items[2].href).toBeNull();
     expect(new Set(items.map((i) => i.key)).size).toBe(3);
   });

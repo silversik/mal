@@ -29,7 +29,7 @@ const PRIMARY_ITEMS: NavItem[] = [
       </svg>
     ),
     // 경마지(/form)도 '경기' 영역 — 하단 5칸은 그대로 두고 '더보기' 와 경기 일람·홈에서 들어간다.
-    activePaths: ["/races", "/form"],
+    activePaths: ["/races", "/paper"],
   },
   {
     href: "/database",
@@ -69,7 +69,7 @@ const PRIMARY_ITEMS: NavItem[] = [
 ];
 
 const MORE_ITEMS = [
-  { href: "/form", label: "경마지" },
+  { href: "/paper", label: "경마지" },
   { href: "/notifications", label: "알림" },
   { href: "/me", label: "마이페이지" },
 ];

@@ -956,25 +956,25 @@ export function meetOrder(meet: string): number {
   return i < 0 ? FORM_MEET_LABELS.length : i;
 }
 
-export const FORM_HUB_PATH = "/form";
-export const FORM_RECORD_PATH = "/form/record";
+export const FORM_HUB_PATH = "/paper";
+export const FORM_RECORD_PATH = "/paper/record";
 
 export function formHubPath(): string {
   return FORM_HUB_PATH;
 }
 
-/** /form/{date} — 그날 첫 경마장으로 redirect 하는 경로. */
+/** /paper/{date} — 그날 첫 경마장으로 redirect 하는 경로. */
 export function formDatePath(date: string): string {
   return `${FORM_HUB_PATH}/${date}`;
 }
 
-/** 1면 /form/{date}/{slug}. meet 는 한글 라벨 또는 slug. 모르는 경마장이면 날짜 경로. */
+/** 1면 /paper/{date}/{slug}. meet 는 한글 라벨 또는 slug. 모르는 경마장이면 날짜 경로. */
 export function formEditionPath(date: string, meet: string): string {
   const slug = toSlug(meet);
   return slug ? `${FORM_HUB_PATH}/${date}/${slug}` : formDatePath(date);
 }
 
-/** 경주면 /form/{date}/{slug}/{raceNo}. */
+/** 경주면 /paper/{date}/{slug}/{raceNo}. */
 export function formRacePath(date: string, meet: string, raceNo: number): string {
   const slug = toSlug(meet);
   return slug ? `${FORM_HUB_PATH}/${date}/${slug}/${raceNo}` : formDatePath(date);
@@ -2284,7 +2284,7 @@ const SITE_SUFFIX_RE = /\s*·\s*mal\.kr\s*$/;
 export function formMetadata(opts: {
   title: string;
   description: string;
-  /** canonical 경로 ("/form/…", 쿼리 없이) */
+  /** canonical 경로 ("/paper/…", 쿼리 없이) */
   path: string;
   index?: boolean;
   ogImages?: NonNullable<Metadata["openGraph"]>["images"];

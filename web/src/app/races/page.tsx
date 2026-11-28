@@ -356,7 +356,7 @@ export default async function RacesPage({
         <h1 className="text-2xl font-bold tracking-tight">경기 일람</h1>
         <nav aria-label="경기 관련 메뉴" className="flex flex-wrap items-center gap-x-4">
           <Link
-            href="/form"
+            href="/paper"
             className="inline-flex min-h-[max(44px,2.75rem)] items-center text-base text-muted-foreground transition hover:text-foreground"
           >
             경마지 →

@@ -12,7 +12,7 @@ import {
 export const dynamic = "force-dynamic";
 
 /**
- * /form/{YYYY-MM-DD} — 그날 계획된 첫 경마장의 1면으로 보낸다 (서울 → 제주 → 부경, MEET_ORDER).
+ * /paper/{YYYY-MM-DD} — 그날 계획된 첫 경마장의 1면으로 보낸다 (서울 → 제주 → 부경, MEET_ORDER).
  * 계획이 없거나 출시 전이라 1면이 404 인 날은 404.
  */
 export default async function FormDatePage({ params }: { params: Promise<{ date: string }> }) {
