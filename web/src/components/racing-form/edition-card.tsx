@@ -151,7 +151,7 @@ function Actual({ row }: { row: EditionResultRow }) {
   );
 }
 
-/** 예상(주목마) ↔ 실제 한 줄 — "4R 3 매직트리 → 4착 (1착 8번)". */
+/** 예상(주목마) ↔ 실제 한 줄 — "4R 3 매직트리 → 4착". 1착 말 번호는 싣지 않는다 (소유자 결정 2026-11-28). */
 function ResultRows({ rows }: { rows: readonly EditionResultRow[] }) {
   return (
     <span className="block divide-y divide-border border-y border-border">
@@ -170,11 +170,6 @@ function ResultRows({ rows }: { rows: readonly EditionResultRow[] }) {
           <span className="flex items-center gap-1.5">
             <span className="sr-only">실제 </span>
             <Actual row={r} />
-            {r.winner_chul_nos.length > 0 ? (
-              <span className="text-sm text-muted-foreground">
-                (1착 <span className="font-mono tabular-nums">{r.winner_chul_nos.join("·")}</span>번)
-              </span>
-            ) : null}
           </span>
         </span>
       ))}

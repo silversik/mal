@@ -753,7 +753,8 @@ describe("호 카드 — 경주 전 / 결과 구분, 결과는 예상 ↔ 실제
     expect(result).toContain("제주 11월 26일(목)");
     expect(result).toContain("잠정 — 내일 오후 1시 확정");
     expect(result).toContain("매직트리");
-    expect(result).toContain("(1착 <span");
+    // 1착 말 번호는 싣지 않는다 — 주목마가 몇 착인지만 (2026-11-28)
+    expect(result).not.toContain("(1착");
     expect(result).toContain("결과 대기");
     expect(result).toContain("무효");
     // "주목마 n경주 — 1착 n · …" 집계 줄은 싣지 않는다
